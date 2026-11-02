@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.36.3 - 2026-11-01
+
+### Added
+
+- fuel-memory: `BackendStorage::backend_id()` and `BackendStorage::location()` (the designed storage queries, ROADMAP row 137 S3 step 2). `fuel-dispatch` names the backend in seven error messages with `backend_id()` instead of printing an opaque `Discriminant(n)`. No behaviour change otherwise.
+
 ## v0.36.1 - 2026-11-01
 
 ### Changed
