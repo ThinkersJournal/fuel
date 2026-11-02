@@ -7,6 +7,12 @@ This documents the main changes to the `fuel` workspace.
 
 - Docs: step 3 of ROADMAP row 137 (the device registry) broken into parts 3a to 3c in the S3 design note, with the lookup sites measured and the reason the first part must keep a scan's answer. No code change.
 
+## v0.36.8 - 2026-11-01
+
+### Added
+
+- Docs: follow-up read of the cuBLAS documentation added to the Nvidia terms note (outer-vector and block scaling modes), and ROADMAP row 141 for what is still unread. No code change.
+
 ## v0.36.7 - 2026-11-01
 
 ### Fixed
