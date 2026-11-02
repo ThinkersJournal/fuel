@@ -207,6 +207,23 @@ impl DeviceRegistry {
         self
     }
 
+    /// The CUDA device a caller handed in for `gpu_id`, without looking in any cache. `None` when none was
+    /// registered for that place.
+    #[cfg(feature = "cuda")]
+    pub fn registered_cuda(&self, gpu_id: usize) -> Option<&fuel_cuda_backend::CudaDevice> {
+        self.cuda.get(&DeviceLocation::Cuda { gpu_id })
+    }
+
+    /// The Vulkan backend a caller handed in for `gpu_id`, without looking in any cache. `None` when none
+    /// was registered for that place.
+    #[cfg(feature = "vulkan")]
+    pub fn registered_vulkan(
+        &self,
+        gpu_id: usize,
+    ) -> Option<&std::sync::Arc<fuel_vulkan_backend::VulkanBackend>> {
+        self.vulkan.get(&DeviceLocation::Vulkan { gpu_id })
+    }
+
     /// The CUDA device at `gpu_id`: remembered, else found in `cache` as before.
     #[cfg(feature = "cuda")]
     fn cuda(

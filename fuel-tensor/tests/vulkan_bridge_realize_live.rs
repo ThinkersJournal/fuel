@@ -89,6 +89,30 @@ fn two_gpu_graph_realizes() {
     let (vk0, vk1) = (Arc::new(vk0), Arc::new(vk1));
     let loc0 = DeviceLocation::Vulkan { gpu_id: vk0.gpu_id };
     let loc1 = DeviceLocation::Vulkan { gpu_id: vk1.gpu_id };
+    // The device registry (ROADMAP row 137, step 3b) keys each handle by the place the backend reports for
+    // itself: asking for a place returns the backend that lives there, and only that one. (A registry keyed
+    // wrongly would hand GPU 0's handle to work placed on GPU 1; the numbers would still come out right, so
+    // this is checked here directly.)
+    let registry = fuel_dispatch::pipelined::DeviceRegistry::new()
+        .with_vulkan(vk0.clone())
+        .with_vulkan(vk1.clone());
+    assert!(Arc::ptr_eq(
+        registry
+            .registered_vulkan(vk0.gpu_id)
+            .expect("GPU 0 registered"),
+        &vk0
+    ));
+    assert!(Arc::ptr_eq(
+        registry
+            .registered_vulkan(vk1.gpu_id)
+            .expect("GPU 1 registered"),
+        &vk1
+    ));
+    assert!(
+        registry
+            .registered_vulkan(vk0.gpu_id + vk1.gpu_id + 2)
+            .is_none()
+    );
 
     let a = Tensor::from_f32(
         vec![1.0_f32, 2.0, 3.0, 4.0],
