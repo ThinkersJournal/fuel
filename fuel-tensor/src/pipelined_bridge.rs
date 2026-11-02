@@ -979,14 +979,20 @@ fn dispatch_with_plan_retry(
             Some((s, l)) => (Some(s), Some(l)),
             None => (None, None),
         };
-        let mut cache_for_attempt = cache.clone();
+        let cache_for_attempt = cache.clone();
         // Option B — post-optimize device seed. If the plan offloaded any node
         // to a GPU the pinned-device const upload didn't seed (the CPU-pinned
         // mixed realize), give the executor a device-handle anchor per placed
         // backend so its H2D `Op::Copy`/`Op::Alloc` device-handle search
         // succeeds. No-op for a single-device realize (incl. the reference
         // oracle, which suppresses cross-device placement outright).
-        seed_placed_device_handles(graph, cpu_target, pinned_loc, &mut cache_for_attempt)?;
+        let devices = register_placed_devices(
+            graph,
+            cpu_target,
+            pinned_loc,
+            &cache_for_attempt,
+            primary_device_registry(device)?,
+        )?;
         // Dispatch the "plan IS the graph" form: the executor recomputes its
         // run/`lower_run` dispatch order from the (now fully-stamped) graph,
         // resolves each branch's arm at the frontier (streaming), then
@@ -999,7 +1005,7 @@ fn dispatch_with_plan_retry(
             selector,
             lookup,
             sym_env.clone(),
-            primary_device_registry(device)?,
+            devices,
         );
         match result {
             Ok((storage, _layout)) => {
@@ -1968,8 +1974,8 @@ fn cached_storage_location(storage: &Storage) -> Option<DeviceLocation> {
 /// CPU-pinned realize whose plan offloaded nodes to a GPU has H2D copies whose
 /// destination device the executor must derive from the cache — but a
 /// single-device realize's const upload only seeded the pinned device. The
-/// returned locations are exactly those needing a [`device_seed_storage`]
-/// anchor. Empty for a pure single-device realize (the reference oracle, or any
+/// returned locations are exactly those needing a handle registered
+/// ([`register_placed_devices`]). Empty for a pure single-device realize (the reference oracle, or any
 /// plan that didn't cross devices).
 fn placed_device_locations_needing_seed(
     graph: &Arc<RwLock<Graph>>,
@@ -2033,54 +2039,38 @@ fn device_for_location(loc: DeviceLocation) -> Result<Device> {
     }
 }
 
-/// Option B — the post-optimize device seed. After `optimize_graph` stamps
-/// placements and inserts cross-device residency `Op::Copy`/`Op::Alloc` nodes,
-/// a CPU-pinned realize whose plan offloaded work to a GPU needs a device-
-/// handle anchor for each such backend in the executor's cache: the executor
-/// derives the per-backend device handle by searching the cache
-/// (`find_cuda_device_in_cache`), and a single-device realize's const upload
-/// only seeded the pinned device. Without this the first H2D
-/// `Op::Copy { target: Cuda }` panics ("no CUDA storage in input cache … seed
-/// via device_seed_storage").
-///
-/// For each location in [`placed_device_locations_needing_seed`] this pushes a
-/// fresh unreachable `Op::Const` anchor node and inserts that backend's
-/// [`device_seed_storage`] into `cache` at the anchor's NodeId — the same
-/// mechanism as [`seed_extra_device_handles`], but driven by the *plan's actual
-/// placements* rather than a caller-supplied device list. A strict no-op for a
-/// single-device realize (the reference oracle, or any plan that stayed put),
-/// so `realize_f32` / `realize_f32_reference` on a CPU-only host are unaffected.
-///
-/// Known minor: a repeated realize of the SAME graph that keeps crossing to the
-/// same GPU accumulates one unreachable anchor `Op::Const` per call (graph
-/// growth; harmless — never dispatched). Amortize via the persistent-cache
-/// (InferenceContext) path when that matters.
-fn seed_placed_device_handles(
+/// Option B — the post-optimize device handles. After `optimize_graph` stamps placements and inserts
+/// cross-device residency `Op::Copy`/`Op::Alloc` nodes, a CPU-pinned realize whose plan offloaded work to a GPU
+/// needs the handle of each such device: a single-device realize's const upload only put the pinned device's
+/// handle in the cache. The executor used to find the others by scanning its cache, so this pushed a 0-byte
+/// anchor storage on each (inside a fresh `Op::Const` node pushed into the user's graph). It now registers
+/// each placed device's handle in the [`DeviceRegistry`] handed to the executor, and pushes nothing into the
+/// graph or the cache (ROADMAP row 137, seam S3 step 3b-3). The devices needed are those
+/// [`placed_device_locations_needing_seed`] names; no-op for a single-device realize (incl. the reference
+/// oracle, which suppresses cross-device placement outright).
+fn register_placed_devices(
     graph: &Arc<RwLock<Graph>>,
     root: NodeId,
     pinned_loc: DeviceLocation,
-    cache: &mut StorageCache,
-) -> Result<()> {
-    let needed = placed_device_locations_needing_seed(graph, root, pinned_loc, cache)?;
-    for loc in needed {
+    cache: &StorageCache,
+    registry: DeviceRegistry,
+) -> Result<DeviceRegistry> {
+    let mut registry = registry;
+    for loc in placed_device_locations_needing_seed(graph, root, pinned_loc, cache)? {
         let dev = device_for_location(loc)?;
-        let Some(seed) = device_seed_storage(&dev)? else {
-            continue; // CPU (unreachable given the filter) — no handle needed.
+        registry = match dev.location() {
+            #[cfg(feature = "cuda")]
+            DeviceLocation::Cuda { .. } => {
+                registry.with_cuda(crate::cuda_backend::as_device(&dev)?.clone())
+            }
+            #[cfg(feature = "vulkan")]
+            DeviceLocation::Vulkan { .. } => {
+                registry.with_vulkan(crate::vulkan_backend::as_device(&dev)?)
+            }
+            _ => registry,
         };
-        let anchor_id = {
-            let mut g = graph.write().map_err(|_| {
-                Error::Msg("graph lock poisoned during placed-device seed".into()).bt()
-            })?;
-            g.push(Node {
-                op: Op::Const,
-                inputs: vec![],
-                shape: fuel_ir::Shape::from_dims(&[4]),
-                dtype: fuel_ir::DType::U8,
-            })
-        };
-        cache.insert(anchor_id, Arc::new(RwLock::new(seed)));
     }
-    Ok(())
+    Ok(registry)
 }
 
 /// Allocate a small "device anchor" storage on `device` — enough bytes

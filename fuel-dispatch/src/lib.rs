@@ -110,6 +110,7 @@ pub mod decode_flash;
 #[doc(hidden)]
 pub mod dev_tools;
 pub mod device_budget;
+pub mod device_registry;
 pub mod dispatch;
 pub mod driver;
 pub mod fkc;
