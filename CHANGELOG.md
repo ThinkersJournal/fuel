@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.36.14 - 2026-11-01
+
+### Changed
+
+- fuel-dispatch: `DeviceRegistry` and the two cache-scan lookups move out of `pipelined.rs` into their own module `device_registry.rs` (`pipelined::DeviceRegistry` still names it). fuel-tensor: the CPU-pinned mixed realize no longer pushes a 0-byte anchor storage and an `Op::Const` node per placed GPU into the graph and cache; it registers each placed device's handle in the registry the executor receives (`seed_placed_device_handles` is replaced by `register_placed_devices`). The extra devices passed to `realize_one_as_multi_device` still use anchors (next step). ROADMAP row 137, seam S3 step 3b-3.
+
 ## v0.36.13 - 2026-11-01
 
 ### Changed
