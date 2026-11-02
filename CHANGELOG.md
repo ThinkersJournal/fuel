@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.36.10 - 2026-11-01
+
+### Added
+
+- fuel-dispatch: `DeviceRegistry`, the device handles found during one realize keyed by `DeviceLocation` (ROADMAP row 137, seam S3 step 3a). The four CUDA and Vulkan handle lookups in the executor ask it; a lookup remembers the first handle the old cache scan found and the scan itself is unchanged, so behaviour is identical. Parts 3b and 3c replace the scan and delete the seeding.
+
 ## v0.36.8 - 2026-11-01
 
 ### Added
