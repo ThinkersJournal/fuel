@@ -172,95 +172,37 @@ pub fn realize_one_as<T: bytemuck::Pod + WithDType>(
     realize_one_as_with_initial::<T>(graph, target, device, StorageCache::new())
 }
 
-/// Multi-DEVICE realize: like [`realize_one_as`], but additionally seeds
-/// the executor's input cache with a device-handle anchor for each device
-/// in `extra_devices` — the backends that appear in the graph's per-node
-/// placements OTHER than the primary realize `device`.
+/// Multi-device sibling of [`realize_one_as`]: realize `target` on the primary `device` for a graph whose
+/// per-node placements also name the backends in `extra_devices` (for example a sub-DAG placed on CUDA
+/// reconverging with one placed on Vulkan).
 ///
-/// # Why this exists (the dual-device-seed gap)
+/// # Device handles
 ///
-/// A realize pins ONE `device` (the primary). `build_const_cache` uploads
-/// the reachable `Op::Const`s to that device, so a primary-device handle
-/// lands in the cache (carried by the uploaded const storages) and the
-/// executor's H2D `Op::Copy`/`Op::Alloc` device-handle search
-/// (`find_cuda_device_in_cache` / `find_vulkan_backend_in_cache`) succeeds
-/// for the primary backend. But a genuinely multi-VENDOR graph (e.g. a
-/// sub-DAG placed on CUDA reconverging with one placed on Vulkan) also has
-/// H2D copies targeting the OTHER backend — and NO storage on that backend
-/// is in the cache, so the handle search fails with "no storage in input
-/// cache to derive the handle".
+/// A realize pins ONE `device` (the primary). The executor needs the handle of every device that an H2D
+/// `Op::Copy` or an `Op::Alloc` targets. Those handles are handed to it in a `DeviceRegistry`: the primary's,
+/// each of `extra_devices`', and the GPUs the optimized plan placed work on (ROADMAP row 137, seam S3 step
+/// 3b-4). It used to find them by scanning its storage cache, so this entry pushed a 0-byte anchor storage
+/// and an `Op::Const` node into the graph per extra device; nothing is pushed into the graph or the cache now.
+/// A Vulkan device cannot be derived from an ordinal alone, which is why the caller passes it here.
 ///
-/// This entry closes that: for each `extra_devices` handle it pushes a tiny
-/// `Op::Const` anchor node into the graph and inserts that backend's
-/// 0-byte [`device_seed_storage`] at the anchor's NodeId. The anchor is
-/// unreachable from `target`, so it is never dispatched (it does not appear
-/// in the executor's run order) — it exists ONLY so the per-backend handle
-/// search resolves. The anchor IS a cache key, so the executor's
-/// `layout_cache` seeding (`g.layout(id)` over `inputs.keys()`) requires it
-/// to be a real graph node — hence the push rather than a synthetic id.
-///
-/// Single-device realize is unaffected: pass an empty `extra_devices` and
-/// this is byte-identical to [`realize_one_as`] (no anchors pushed, the
-/// same `StorageCache::new()` initial).
-///
-/// CPU appearing among the extra devices is a no-op (CPU's allocation path
-/// is handle-free; [`device_seed_storage`] returns `Ok(None)` for it).
+/// Single-device realize is unaffected: pass an empty `extra_devices`. CPU among the extra devices is a no-op
+/// (CPU allocation is handle-free).
 pub fn realize_one_as_multi_device<T: bytemuck::Pod + WithDType>(
     graph: &Arc<RwLock<Graph>>,
     target: NodeId,
     device: &Device,
     extra_devices: &[&Device],
 ) -> Result<Vec<T>> {
-    let initial = seed_extra_device_handles(graph, device, extra_devices)?;
-    realize_one_as_with_initial::<T>(graph, target, device, initial)
-}
-
-/// Build the `initial` [`StorageCache`] for a multi-device realize: one
-/// device-handle anchor per `extra_devices` entry whose backend differs
-/// from the primary `device`'s backend (and isn't CPU). See
-/// [`realize_one_as_multi_device`] for the rationale.
-///
-/// Each anchor is a fresh `Op::Const` node pushed into `graph`, paired
-/// with the backend's [`device_seed_storage`] in the returned cache. The
-/// primary backend is skipped — the const upload already seeds it.
-fn seed_extra_device_handles(
-    graph: &Arc<RwLock<Graph>>,
-    primary: &Device,
-    extra_devices: &[&Device],
-) -> Result<StorageCache> {
-    let mut cache = StorageCache::new();
-    if extra_devices.is_empty() {
-        return Ok(cache);
-    }
-    // De-dup by device LOCATION, not backend: two GPUs of one backend (Vulkan 0 and Vulkan 1)
-    // need one handle each.
-    let mut seeded: Vec<DeviceLocation> = vec![primary.location()];
-    for dev in extra_devices {
-        let backend = dev.location();
-        if seeded.contains(&backend) {
-            continue;
-        }
-        // device_seed_storage returns Ok(None) for CPU (no handle anchor
-        // needed) and a 0/4-byte device storage for GPU backends.
-        let Some(seed) = device_seed_storage(dev)? else {
-            seeded.push(backend);
-            continue;
-        };
-        let anchor_id = {
-            let mut g = graph.write().map_err(|_| {
-                Error::Msg("graph lock poisoned during device-handle seed".into()).bt()
-            })?;
-            g.push(Node {
-                op: Op::Const,
-                inputs: vec![],
-                shape: fuel_ir::Shape::from_dims(&[4]),
-                dtype: fuel_ir::DType::U8,
-            })
-        };
-        cache.insert(anchor_id, Arc::new(RwLock::new(seed)));
-        seeded.push(backend);
-    }
-    Ok(cache)
+    realize_one_as_reporting_impl::<T>(
+        graph,
+        target,
+        device,
+        StorageCache::new(),
+        &SymEnv::default(),
+        true,
+        extra_devices,
+    )
+    .map(|(bytes, _root_kernel_source)| bytes)
 }
 
 /// Multi-target counterpart of [`realize_one_as`]. Returns parallel
@@ -331,7 +273,7 @@ pub fn realize_one_as_with_initial_reporting<T: bytemuck::Pod + WithDType>(
     sym_env: &SymEnv,
 ) -> Result<(Vec<T>, RootKernelIdent)> {
     // Production realize: cost-based cross-device auto-placement enabled.
-    realize_one_as_reporting_impl::<T>(graph, target, device, initial, sym_env, true)
+    realize_one_as_reporting_impl::<T>(graph, target, device, initial, sym_env, true, &[])
 }
 
 /// Reference realize: single-device, cost-based cross-device placement
@@ -353,6 +295,7 @@ pub fn realize_one_reference_as<T: bytemuck::Pod + WithDType>(
         StorageCache::new(),
         &SymEnv::default(),
         false,
+        &[],
     )
     .map(|(bytes, _root_kernel_source)| bytes)
 }
@@ -369,6 +312,7 @@ fn realize_one_to_storage(
     initial: StorageCache,
     sym_env: &SymEnv,
     allow_cost_placement: bool,
+    extra_devices: &[&Device],
 ) -> Result<(Arc<RwLock<Storage>>, RootKernelIdent)> {
     let (cache, _backend_id, mut effective_targets) = prepare(graph, &[target], device, initial)?;
     let Some(cpu_target) = effective_targets.pop() else {
@@ -400,6 +344,7 @@ fn realize_one_to_storage(
         target,
         sym_env,
         allow_cost_placement,
+        extra_devices,
     )
 }
 
@@ -410,6 +355,7 @@ fn realize_one_as_reporting_impl<T: bytemuck::Pod + WithDType>(
     initial: StorageCache,
     sym_env: &SymEnv,
     allow_cost_placement: bool,
+    extra_devices: &[&Device],
 ) -> Result<(Vec<T>, RootKernelIdent)> {
     let (storage, root_kernel_source) = realize_one_to_storage(
         graph,
@@ -418,6 +364,7 @@ fn realize_one_as_reporting_impl<T: bytemuck::Pod + WithDType>(
         initial,
         sym_env,
         allow_cost_placement,
+        extra_devices,
     )?;
     Ok((extract_cpu_bytes_typed::<T>(&storage)?, root_kernel_source))
 }
@@ -442,8 +389,15 @@ pub fn realize_one_bytes_with_initial(
     device: &Device,
     initial: StorageCache,
 ) -> Result<Vec<u8>> {
-    let (storage, _root_kernel_source) =
-        realize_one_to_storage(graph, target, device, initial, &SymEnv::default(), true)?;
+    let (storage, _root_kernel_source) = realize_one_to_storage(
+        graph,
+        target,
+        device,
+        initial,
+        &SymEnv::default(),
+        true,
+        &[],
+    )?;
     extract_cpu_bytes_raw(&storage)
 }
 
@@ -552,7 +506,12 @@ pub fn prebuild_optimized_env_capturing_cache<T: bytemuck::Pod + WithDType>(
 /// row 137, seam S3 step 3b-2). CPU has no handle. Extra devices of a multi-device graph are still seeded
 /// through anchors until step 3b-3.
 fn primary_device_registry(device: &Device) -> Result<DeviceRegistry> {
-    let registry = DeviceRegistry::new();
+    register_device(DeviceRegistry::new(), device)
+}
+
+/// Record `device`'s own handle in `registry` (CUDA: the `CudaDevice`; Vulkan: the `Arc<VulkanBackend>`; CPU and
+/// anything else: nothing, there is no handle to find).
+fn register_device(registry: DeviceRegistry, device: &Device) -> Result<DeviceRegistry> {
     match device.location() {
         #[cfg(feature = "cuda")]
         DeviceLocation::Cuda { .. } => {
@@ -938,6 +897,7 @@ fn dispatch_with_plan_retry(
     report_node: NodeId,
     sym_env: &SymEnv,
     allow_cost_placement: bool,
+    extra_devices: &[&Device],
 ) -> Result<(Arc<RwLock<Storage>>, RootKernelIdent)> {
     let pinned_loc = device.location();
     let mut retry = TopologyRetryState::new();
@@ -986,13 +946,14 @@ fn dispatch_with_plan_retry(
         // backend so its H2D `Op::Copy`/`Op::Alloc` device-handle search
         // succeeds. No-op for a single-device realize (incl. the reference
         // oracle, which suppresses cross-device placement outright).
-        let devices = register_placed_devices(
-            graph,
-            cpu_target,
-            pinned_loc,
-            &cache_for_attempt,
-            primary_device_registry(device)?,
-        )?;
+        // The primary, then the extra devices the caller handed in (a Vulkan device cannot be derived from an
+        // ordinal alone), then the GPUs the plan placed work on.
+        let mut devices = primary_device_registry(device)?;
+        for extra in extra_devices {
+            devices = register_device(devices, extra)?;
+        }
+        let devices =
+            register_placed_devices(graph, cpu_target, pinned_loc, &cache_for_attempt, devices)?;
         // Dispatch the "plan IS the graph" form: the executor recomputes its
         // run/`lower_run` dispatch order from the (now fully-stamped) graph,
         // resolves each branch's arm at the frontier (streaming), then
@@ -2039,6 +2000,20 @@ fn device_for_location(loc: DeviceLocation) -> Result<Device> {
     }
 }
 
+/// Whether `registry` already holds a handle for `loc`.
+fn registry_holds(registry: &DeviceRegistry, loc: DeviceLocation) -> bool {
+    match loc {
+        #[cfg(feature = "cuda")]
+        DeviceLocation::Cuda { gpu_id } => registry.registered_cuda(gpu_id).is_some(),
+        #[cfg(feature = "vulkan")]
+        DeviceLocation::Vulkan { gpu_id } => registry.registered_vulkan(gpu_id).is_some(),
+        _ => {
+            let _ = (registry, loc);
+            false
+        }
+    }
+}
+
 /// Option B — the post-optimize device handles. After `optimize_graph` stamps placements and inserts
 /// cross-device residency `Op::Copy`/`Op::Alloc` nodes, a CPU-pinned realize whose plan offloaded work to a GPU
 /// needs the handle of each such device: a single-device realize's const upload only put the pinned device's
@@ -2057,18 +2032,12 @@ fn register_placed_devices(
 ) -> Result<DeviceRegistry> {
     let mut registry = registry;
     for loc in placed_device_locations_needing_seed(graph, root, pinned_loc, cache)? {
-        let dev = device_for_location(loc)?;
-        registry = match dev.location() {
-            #[cfg(feature = "cuda")]
-            DeviceLocation::Cuda { .. } => {
-                registry.with_cuda(crate::cuda_backend::as_device(&dev)?.clone())
-            }
-            #[cfg(feature = "vulkan")]
-            DeviceLocation::Vulkan { .. } => {
-                registry.with_vulkan(crate::vulkan_backend::as_device(&dev)?)
-            }
-            _ => registry,
-        };
+        // A device the caller already handed in (the primary or an extra) needs nothing more; deriving a
+        // Vulkan device from an ordinal alone is not possible.
+        if registry_holds(&registry, loc) {
+            continue;
+        }
+        registry = register_device(registry, &device_for_location(loc)?)?;
     }
     Ok(registry)
 }
