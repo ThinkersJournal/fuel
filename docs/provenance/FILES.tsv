@@ -580,7 +580,7 @@ fuel-dispatch/src/kernel.rs	own		no lineage; 7 of 1207 lines verbatim in candle 
 fuel-dispatch/src/kiss_corpus.rs	own		no lineage; 1 of 355 lines verbatim in candle (0%)
 fuel-dispatch/src/lib.rs	own		no lineage; 0 of 110 lines verbatim in candle (0%)
 fuel-dispatch/src/optimize.rs	own		no lineage; 7 of 1613 lines verbatim in candle (0%)
-fuel-dispatch/src/pipelined.rs	own		no lineage; 19 of 8602 lines verbatim in candle (0%)
+fuel-dispatch/src/pipelined.rs	not-traced	candle-metal-kernels/src/tests.rs	22 of 8675 lines also appear in candle (mostly candle-metal-kernels/src/tests.rs); not judged
 fuel-dispatch/src/plan.rs	own		no lineage; 6 of 2685 lines verbatim in candle (0%)
 fuel-dispatch/src/ranker/alternative_set.rs	own		no lineage; 4 of 591 lines verbatim in candle (1%)
 fuel-dispatch/src/ranker/candidate.rs	own		no lineage; 1 of 117 lines verbatim in candle (1%)

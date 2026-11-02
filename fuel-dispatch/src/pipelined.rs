@@ -182,6 +182,31 @@ impl DeviceRegistry {
         Self::default()
     }
 
+    /// Record the CUDA device a caller already holds, so a realize does not have to find it by scanning the
+    /// storage cache for a tensor that lives there (ROADMAP row 137, seam S3 step 3b). The place is the one
+    /// the device reports for itself.
+    #[cfg(feature = "cuda")]
+    pub fn with_cuda(mut self, device: fuel_cuda_backend::CudaDevice) -> Self {
+        self.cuda.insert(device.location(), device);
+        self
+    }
+
+    /// Record the Vulkan backend a caller already holds (see [`Self::with_cuda`]); the place is the backend's
+    /// own `gpu_id`.
+    #[cfg(feature = "vulkan")]
+    pub fn with_vulkan(
+        mut self,
+        backend: std::sync::Arc<fuel_vulkan_backend::VulkanBackend>,
+    ) -> Self {
+        self.vulkan.insert(
+            DeviceLocation::Vulkan {
+                gpu_id: backend.gpu_id,
+            },
+            backend,
+        );
+        self
+    }
+
     /// The CUDA device at `gpu_id`: remembered, else found in `cache` as before.
     #[cfg(feature = "cuda")]
     fn cuda(
@@ -1070,6 +1095,102 @@ impl PipelinedExecutor {
         .map(|(s, l, _produced)| (s, l))
     }
 
+    /// [`Self::realize_with_optimized`] with the device handles the caller already holds (ROADMAP row 137,
+    /// seam S3 step 3b): a CUDA or Vulkan place named in `devices` is not looked for in the storage cache.
+    pub fn realize_with_optimized_with_devices(
+        graph: Arc<RwLock<Graph>>,
+        target: NodeId,
+        inputs: StorageCache,
+        optimized: &OptimizedGraph,
+        devices: DeviceRegistry,
+    ) -> Result<(Arc<RwLock<Storage>>, Layout)> {
+        Self::realize_inner_with(
+            graph,
+            target,
+            inputs,
+            OrderSource::Optimized {
+                optimized,
+                route: None,
+            },
+            SymEnv::default(),
+            devices,
+        )
+        .map(|(s, l, _produced)| (s, l))
+    }
+
+    /// [`Self::realize_with_optimized_picking_env`] with the device handles the caller already holds.
+    #[allow(clippy::too_many_arguments)]
+    pub fn realize_with_optimized_picking_env_with_devices(
+        graph: Arc<RwLock<Graph>>,
+        target: NodeId,
+        inputs: StorageCache,
+        optimized: &OptimizedGraph,
+        selector: Option<Arc<dyn RuntimeSelector>>,
+        lookup: Option<BackendRuntimeLookup>,
+        sym_env: SymEnv,
+        devices: DeviceRegistry,
+    ) -> Result<(Arc<RwLock<Storage>>, Layout)> {
+        let order_source = match Self::streaming_pick_for(&graph, selector, lookup)? {
+            Some(pick) => {
+                return Self::realize_inner_with(
+                    graph,
+                    target,
+                    inputs,
+                    OrderSource::Streaming {
+                        optimized,
+                        pick: &pick,
+                    },
+                    sym_env,
+                    devices,
+                )
+                .map(|(s, l, _produced)| (s, l));
+            }
+            None => OrderSource::Optimized {
+                optimized,
+                route: None,
+            },
+        };
+        Self::realize_inner_with(graph, target, inputs, order_source, sym_env, devices)
+            .map(|(s, l, _produced)| (s, l))
+    }
+
+    /// [`Self::realize_with_optimized_picking_cached_env`] with the device handles the caller already holds.
+    #[allow(clippy::too_many_arguments)]
+    pub fn realize_with_optimized_picking_cached_env_with_devices(
+        graph: Arc<RwLock<Graph>>,
+        target: NodeId,
+        inputs: StorageCache,
+        optimized: &OptimizedGraph,
+        order_cache: &std::sync::OnceLock<Vec<NodeId>>,
+        selector: Option<Arc<dyn RuntimeSelector>>,
+        lookup: Option<BackendRuntimeLookup>,
+        sym_env: SymEnv,
+        devices: DeviceRegistry,
+    ) -> Result<(Arc<RwLock<Storage>>, Layout)> {
+        let order_source = match Self::streaming_pick_for(&graph, selector, lookup)? {
+            Some(pick) => {
+                return Self::realize_inner_with(
+                    graph,
+                    target,
+                    inputs,
+                    OrderSource::Streaming {
+                        optimized,
+                        pick: &pick,
+                    },
+                    sym_env,
+                    devices,
+                )
+                .map(|(s, l, _produced)| (s, l));
+            }
+            None => OrderSource::Cached {
+                optimized,
+                order_cache,
+            },
+        };
+        Self::realize_inner_with(graph, target, inputs, order_source, sym_env, devices)
+            .map(|(s, l, _produced)| (s, l))
+    }
+
     /// Env-carrying sibling of [`Self::realize_with_optimized`]: same
     /// optimized-graph dispatch, but with a per-pass [`SymEnv`] supplying
     /// the runtime bindings for `DynScalar` op params (Phase D symbolic
@@ -1579,6 +1700,25 @@ impl PipelinedExecutor {
         order_source: OrderSource<'_>,
         sym_env: SymEnv,
     ) -> Result<(Arc<RwLock<Storage>>, Layout, SymEnv)> {
+        Self::realize_inner_with(
+            graph,
+            target,
+            inputs,
+            order_source,
+            sym_env,
+            DeviceRegistry::new(),
+        )
+    }
+
+    /// [`Self::realize_inner`] with the device handles the caller already holds.
+    fn realize_inner_with(
+        graph: Arc<RwLock<Graph>>,
+        target: NodeId,
+        inputs: StorageCache,
+        order_source: OrderSource<'_>,
+        sym_env: SymEnv,
+        device_handles: DeviceRegistry,
+    ) -> Result<(Arc<RwLock<Storage>>, Layout, SymEnv)> {
         // Auto-insert safety copies for in-place ops whose target
         // has additional readers in this realize set (residual-
         // connection cycle break). No-op when no destructive ops
@@ -1664,7 +1804,7 @@ impl PipelinedExecutor {
         let plan_generation: Option<u64> = generation_for(&order_source);
         let mut current_chunk_backend: Option<BackendId> = None;
         let mut cache: StorageCache = inputs;
-        let mut devices = DeviceRegistry::new();
+        let mut devices = device_handles;
         // Data-dependent dynamic-shapes: symbols BOUND BY PRODUCERS during
         // this pass (e.g. `Op::NonZeroIndices`'s runtime count). Distinct
         // from the compile-time `sym_env` (input-determined, moved into the
@@ -1956,6 +2096,58 @@ impl PipelinedExecutor {
         )
     }
 
+    /// [`Self::realize_many`] with the device handles the caller already holds (ROADMAP row 137, seam S3
+    /// step 3b).
+    pub fn realize_many_with_devices(
+        graph: Arc<RwLock<Graph>>,
+        targets: &[NodeId],
+        inputs: StorageCache,
+        devices: DeviceRegistry,
+    ) -> Result<Vec<(Arc<RwLock<Storage>>, Layout)>> {
+        Self::realize_many_inner_with(
+            graph,
+            targets,
+            inputs,
+            OrderSource::Default,
+            SymEnv::default(),
+            devices,
+        )
+    }
+
+    /// [`Self::realize_many_with_optimized_picking_env`] with the device handles the caller already holds.
+    #[allow(clippy::too_many_arguments)]
+    pub fn realize_many_with_optimized_picking_env_with_devices(
+        graph: Arc<RwLock<Graph>>,
+        targets: &[NodeId],
+        inputs: StorageCache,
+        optimized: &OptimizedGraph,
+        selector: Option<Arc<dyn RuntimeSelector>>,
+        lookup: Option<BackendRuntimeLookup>,
+        sym_env: SymEnv,
+        devices: DeviceRegistry,
+    ) -> Result<Vec<(Arc<RwLock<Storage>>, Layout)>> {
+        let order_source = match Self::streaming_pick_for(&graph, selector, lookup)? {
+            Some(pick) => {
+                return Self::realize_many_inner_with(
+                    graph,
+                    targets,
+                    inputs,
+                    OrderSource::Streaming {
+                        optimized,
+                        pick: &pick,
+                    },
+                    sym_env,
+                    devices,
+                );
+            }
+            None => OrderSource::Optimized {
+                optimized,
+                route: None,
+            },
+        };
+        Self::realize_many_inner_with(graph, targets, inputs, order_source, sym_env, devices)
+    }
+
     /// Multi-target PR-A3b-1 entry — the `realize_many` sibling of
     /// [`Self::realize_with_optimized`]. Drives the executor from the
     /// `OptimizedGraph`'s run lowering via the binding-table-lookup
@@ -2083,6 +2275,25 @@ impl PipelinedExecutor {
         order_source: OrderSource<'_>,
         sym_env: SymEnv,
     ) -> Result<Vec<(Arc<RwLock<Storage>>, Layout)>> {
+        Self::realize_many_inner_with(
+            graph,
+            targets,
+            inputs,
+            order_source,
+            sym_env,
+            DeviceRegistry::new(),
+        )
+    }
+
+    /// [`Self::realize_many_inner`] with the device handles the caller already holds.
+    fn realize_many_inner_with(
+        graph: Arc<RwLock<Graph>>,
+        targets: &[NodeId],
+        inputs: StorageCache,
+        order_source: OrderSource<'_>,
+        sym_env: SymEnv,
+        device_handles: DeviceRegistry,
+    ) -> Result<Vec<(Arc<RwLock<Storage>>, Layout)>> {
         if targets.is_empty() {
             return Ok(Vec::new());
         }
@@ -2145,7 +2356,7 @@ impl PipelinedExecutor {
         let plan_generation: Option<u64> = generation_for(&order_source);
         let mut current_chunk_backend: Option<BackendId> = None;
         let mut cache: StorageCache = inputs;
-        let mut devices = DeviceRegistry::new();
+        let mut devices = device_handles;
         // Data-dependent dynamic-shapes producer-bound symbols (see
         // `realize_inner`). `realize_many` does not expose them today; the
         // env is dropped at pass end (producers still publish, keeping the
