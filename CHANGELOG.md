@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.36.13 - 2026-11-01
+
+### Changed
+
+- fuel-tensor: the realize bridge now hands the executor the primary device's own handle (a `DeviceRegistry` built from the `Device` it holds) through the `_with_devices` entry points instead of relying on a storage in the cache to find it (ROADMAP row 137, seam S3 step 3b-2). `fuel-dispatch`: `DeviceRegistry::registered_cuda` and `registered_vulkan` read back what a caller registered. Extra devices of a multi-device graph still use the anchor nodes until 3b-3. No output change intended.
+
 ## v0.36.12 - 2026-11-01
 
 ### Added
