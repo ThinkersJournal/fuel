@@ -189,6 +189,22 @@ Nvidia CPU product; the int8 scale modes in cuBLASLt; the CUTLASS repository `NO
 documentation; any Nvidia sentence inviting commercial use; Intel, ARM and other prior-art documents dated before
 2020-08-28 (llama.cpp and GGML block quantisation date from 2023, after that line, so they are not prior art for it).
 
+## 5c. Follow-up read of the cuDNN backend documentation (2026-11-02, raw page text)
+
+Source: `https://docs.nvidia.com/deeplearning/cudnn/backend/latest/api/cudnn-graph-library.html` (the cuDNN graph
+library page), footer "Last updated on Oct 07, 2026", fetched with `curl`; counted and read in the extracted text (about
+211,000 characters). Not read: the operation pages that say what each engine consumes.
+
+- The backend descriptor list contains `CUDNN_BACKEND_OPERATION_BLOCK_SCALE_QUANTIZE_DESCRIPTOR` and
+  `CUDNN_BACKEND_OPERATION_BLOCK_SCALE_DEQUANTIZE_DESCRIPTOR`. Their attributes include `..._XDESC`, `..._YDESC`,
+  `..._SCALE_DESC`, `..._MATH_PREC` and `..._BLOCK_SIZE`. So cuDNN exposes block-scaled quantize and dequantize as graph
+  operations with a block size.
+- The data types listed include `CUDNN_DATA_INT8` ("The data is an 8-bit signed integer"), the `INT8x4` and `INT8x32`
+  variants, and the tensor reordering values `CUDNN_TENSOR_REORDERING_INT8x32`, `F16x16` and `F8_128x4`.
+- Whether cuDNN's convolution, matrix multiply or attention engines consume block-scaled low-bit operands as a scaled
+  dot product: **UNREAD** (this page lists descriptors and enums, not engine behaviour). The page has no occurrence of the
+  word "commercial", so it contains no sentence inviting commercial use.
+
 ## 6. What this note does not say
 
 Nothing here says Fuel needs, lacks or can obtain a licence. It does not interpret any clause, say whether hardware
