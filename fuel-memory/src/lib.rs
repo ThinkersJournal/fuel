@@ -182,41 +182,67 @@ impl BackendStorage {
     /// This is the one place the per-pair knowledge lives (ROADMAP row 137, seam S3 step 2); the
     /// executor's `Op::Copy` wrappers call it.
     pub fn copy_from(&mut self, src: &BackendStorage) -> Result<()> {
-        match (&mut *self, src) {
-            (BackendStorage::Cpu(dst), BackendStorage::Cpu(s)) => {
-                copy_prefix(dst, s.bytes());
-                Ok(())
-            }
+        match self {
+            BackendStorage::Cpu(dst) => copy_into_cpu(dst, src),
             #[cfg(feature = "cuda")]
-            (BackendStorage::Cpu(dst), BackendStorage::Cuda(s)) => {
-                let bytes = s.to_cpu_bytes_finer()?;
-                copy_prefix(dst, &bytes);
-                Ok(())
-            }
-            #[cfg(feature = "cuda")]
-            (BackendStorage::Cuda(dst), BackendStorage::Cuda(s)) => dst.copy_from_device(s),
+            BackendStorage::Cuda(dst) => copy_into_cuda(dst, src),
             #[cfg(feature = "vulkan")]
-            (BackendStorage::Cpu(dst), BackendStorage::Vulkan(s)) => {
-                let backend = vulkan_backend_of(s)?;
-                let bytes = backend.download_bytes(s)?;
-                copy_prefix(dst, &bytes);
-                Ok(())
-            }
-            #[cfg(feature = "vulkan")]
-            (BackendStorage::Vulkan(dst), BackendStorage::Vulkan(s)) => {
-                let backend = vulkan_backend_of(s)?;
-                *dst = backend.slot_copy_to_new_handle(s, 0, s.len_bytes())?;
-                Ok(())
-            }
-            // Unreachable when only the CPU variant is compiled; reachable for every other pair.
-            #[allow(unreachable_patterns)]
-            (dst, src) => Err(fuel_ir::Error::Msg(format!(
-                "BackendStorage::copy_from: no direct transfer from {:?} storage to {:?} storage                  (cross-vendor and host-to-device copies are separate hops)",
-                src.backend_id(),
-                dst.backend_id(),
-            ))
-            .bt()),
+            BackendStorage::Vulkan(dst) => copy_into_vulkan(dst, src),
+            #[cfg(all(feature = "metal", any(target_os = "macos", target_os = "ios")))]
+            BackendStorage::Metal(_) => Err(no_direct_transfer(src, BackendId::Metal)),
         }
+    }
+}
+
+/// The error for a (source, destination) pair with no direct transfer.
+fn no_direct_transfer(src: &BackendStorage, dst: BackendId) -> fuel_ir::Error {
+    fuel_ir::Error::Msg(format!(
+        "BackendStorage::copy_from: no direct transfer from {:?} storage to {dst:?} storage          (cross-vendor and host-to-device copies are separate hops)",
+        src.backend_id(),
+    ))
+    .bt()
+}
+
+/// Destination CPU: a byte copy from CPU, a device-to-host read from CUDA or Vulkan.
+fn copy_into_cpu(dst: &mut CpuStorageBytes, src: &BackendStorage) -> Result<()> {
+    match src {
+        BackendStorage::Cpu(s) => {
+            copy_prefix(dst, s.bytes());
+            Ok(())
+        }
+        #[cfg(feature = "cuda")]
+        BackendStorage::Cuda(s) => {
+            copy_prefix(dst, &s.to_cpu_bytes_finer()?);
+            Ok(())
+        }
+        #[cfg(feature = "vulkan")]
+        BackendStorage::Vulkan(s) => {
+            copy_prefix(dst, &vulkan_backend_of(s)?.download_bytes(s)?);
+            Ok(())
+        }
+        #[allow(unreachable_patterns)]
+        other => Err(no_direct_transfer(other, BackendId::Cpu)),
+    }
+}
+
+/// Destination CUDA: write into the existing buffer from CUDA; nothing else is direct.
+#[cfg(feature = "cuda")]
+fn copy_into_cuda(dst: &mut CudaStorage, src: &BackendStorage) -> Result<()> {
+    match src {
+        BackendStorage::Cuda(s) => dst.copy_from_device(s),
+        other => Err(no_direct_transfer(other, BackendId::Cuda)),
+    }
+}
+
+/// Destination Vulkan: one buffer copy from Vulkan that replaces the destination; nothing else is direct.
+#[cfg(feature = "vulkan")]
+fn copy_into_vulkan(dst: &mut VulkanStorage, src: &BackendStorage) -> Result<()> {
+    match src {
+        BackendStorage::Vulkan(s) => {
+            *dst = vulkan_backend_of(s)?.slot_copy_to_new_handle(s, 0, s.len_bytes())?;
+            Ok(())
+        }
+        other => Err(no_direct_transfer(other, BackendId::Vulkan)),
     }
 }
 
