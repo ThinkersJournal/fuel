@@ -171,7 +171,7 @@ fn cuda_registry_of_inputs(inputs: &StorageCache) -> DeviceRegistry {
     let mut registry = DeviceRegistry::new();
     for arc in inputs.values() {
         if let Ok(guard) = arc.read()
-            && let BackendStorage::Cuda(c) = &guard.inner
+            && let fuel_memory::BackendStorage::Cuda(c) = &guard.inner
         {
             registry = registry.with_cuda(c.device().clone());
         }
