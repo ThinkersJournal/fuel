@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.36.5 - 2026-11-01
+
+### Added
+
+- Docs: `docs/design-notes/2026-11-02-nvidia-licence-read.md`, a read of the published Nvidia terms (CUDA Toolkit EULA, cuDNN, CUTLASS, CuTe DSL, NCCL, TensorRT-LLM) with pinned sources and UNREAD marks. Not legal advice; no verdict.
+
 ## v0.36.4 - 2026-11-01
 
 ### Changed
