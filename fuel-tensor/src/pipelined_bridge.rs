@@ -74,7 +74,7 @@ use fuel_backend_contract::dyn_backend::DynBackendDevice;
 use fuel_dispatch::dispatch::global_bindings;
 use fuel_dispatch::dispatched_kernel_ident;
 use fuel_dispatch::optimize::{OptimizedGraph, optimize_graph_with_runtime_fusion};
-use fuel_dispatch::pipelined::{PipelinedExecutor, StorageCache};
+use fuel_dispatch::pipelined::{DeviceRegistry, PipelinedExecutor, StorageCache};
 use fuel_dispatch::plan::PlanOptions;
 use fuel_dispatch::ranker::{
     BackendRuntimeHandle, BackendRuntimeLookup, ChainedSelector, JudgeOracle, RuntimeSelector,
@@ -547,6 +547,25 @@ pub fn prebuild_optimized_env_capturing_cache<T: bytemuck::Pod + WithDType>(
 /// per call; for the branchless decode graph the selector is never consulted
 /// (arm-0 lowering), so this is a no-op there.
 ///
+/// The device handles a realize starts with: the primary `device`'s own handle, taken from the `Device`
+/// the caller holds rather than found by scanning the storage cache for a tensor that lives there (ROADMAP
+/// row 137, seam S3 step 3b-2). CPU has no handle. Extra devices of a multi-device graph are still seeded
+/// through anchors until step 3b-3.
+fn primary_device_registry(device: &Device) -> Result<DeviceRegistry> {
+    let registry = DeviceRegistry::new();
+    match device.location() {
+        #[cfg(feature = "cuda")]
+        DeviceLocation::Cuda { .. } => {
+            Ok(registry.with_cuda(crate::cuda_backend::as_device(device)?.clone()))
+        }
+        #[cfg(feature = "vulkan")]
+        DeviceLocation::Vulkan { .. } => {
+            Ok(registry.with_vulkan(crate::vulkan_backend::as_device(device)?))
+        }
+        _ => Ok(registry),
+    }
+}
+
 /// `TopologyChanged` is surfaced as its typed error (NOT retried here): a
 /// topology shift means the cached `optimized.generation` is stale and the
 /// stamps may be wrong, so re-optimizing in place would be incorrect. The
@@ -565,7 +584,7 @@ pub fn realize_one_prebuilt_env<T: bytemuck::Pod + WithDType>(
         Some((s, l)) => (Some(s), Some(l)),
         None => (None, None),
     };
-    let (storage, _layout) = PipelinedExecutor::realize_with_optimized_picking_env(
+    let (storage, _layout) = PipelinedExecutor::realize_with_optimized_picking_env_with_devices(
         graph.clone(),
         effective_target,
         cache,
@@ -573,6 +592,7 @@ pub fn realize_one_prebuilt_env<T: bytemuck::Pod + WithDType>(
         selector,
         lookup,
         sym_env.clone(),
+        primary_device_registry(device)?,
     )?;
     extract_cpu_bytes_typed::<T>(&storage)
 }
@@ -601,7 +621,7 @@ pub fn realize_one_prebuilt_cached_env<T: bytemuck::Pod + WithDType>(
     };
     let (storage, _layout) = {
         let _t = fuel_dispatch::compiled::op_profile::PhaseTimer::start("bridge.executor_total");
-        PipelinedExecutor::realize_with_optimized_picking_cached_env(
+        PipelinedExecutor::realize_with_optimized_picking_cached_env_with_devices(
             graph.clone(),
             effective_target,
             cache,
@@ -610,6 +630,7 @@ pub fn realize_one_prebuilt_cached_env<T: bytemuck::Pod + WithDType>(
             selector,
             lookup,
             sym_env.clone(),
+            primary_device_registry(device)?,
         )?
     };
     let _t = fuel_dispatch::compiled::op_profile::PhaseTimer::start("bridge.extract_logits");
@@ -639,7 +660,7 @@ fn dispatch_with_plan_retry_capturing(
             None => (None, None),
         };
         let cache_for_attempt = cache.clone();
-        let result = PipelinedExecutor::realize_with_optimized_picking_env(
+        let result = PipelinedExecutor::realize_with_optimized_picking_env_with_devices(
             graph.clone(),
             cpu_target,
             cache_for_attempt,
@@ -647,6 +668,7 @@ fn dispatch_with_plan_retry_capturing(
             selector,
             lookup,
             sym_env.clone(),
+            primary_device_registry(device)?,
         );
         match result {
             Ok((storage, _layout)) => return Ok((storage, optimized, cache)),
@@ -969,7 +991,7 @@ fn dispatch_with_plan_retry(
         // run/`lower_run` dispatch order from the (now fully-stamped) graph,
         // resolves each branch's arm at the frontier (streaming), then
         // resolves each node's kernel via the binding-table lookup.
-        let result = PipelinedExecutor::realize_with_optimized_picking_env(
+        let result = PipelinedExecutor::realize_with_optimized_picking_env_with_devices(
             graph.clone(),
             cpu_target,
             cache_for_attempt,
@@ -977,6 +999,7 @@ fn dispatch_with_plan_retry(
             selector,
             lookup,
             sym_env.clone(),
+            primary_device_registry(device)?,
         );
         match result {
             Ok((storage, _layout)) => {
@@ -1125,7 +1148,7 @@ fn dispatch_many_with_plan_retry(
             None => (None, None),
         };
         let cache_for_attempt = cache.clone();
-        let result = PipelinedExecutor::realize_many_with_optimized_picking_env(
+        let result = PipelinedExecutor::realize_many_with_optimized_picking_env_with_devices(
             graph.clone(),
             effective_targets,
             cache_for_attempt,
@@ -1133,6 +1156,7 @@ fn dispatch_many_with_plan_retry(
             selector,
             lookup,
             sym_env.clone(),
+            primary_device_registry(device)?,
         );
         match result {
             Ok(r) => break Ok(r),
