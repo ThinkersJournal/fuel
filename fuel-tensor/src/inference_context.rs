@@ -242,21 +242,7 @@ impl KvCache {
         // `layout_cache` seeding (which calls `g.layout(id)` on every
         // cache key) doesn't panic.
         let graph = Arc::new(RwLock::new(Graph::new()));
-        let mut cache = StorageCache::new();
-        if let Some(seed) = crate::pipelined_bridge::device_seed_storage(device)? {
-            let anchor_id = {
-                let mut g = graph.write().map_err(|_| {
-                    Error::Msg("graph lock poisoned during KvCache build".into()).bt()
-                })?;
-                g.push(Node {
-                    op: Op::Const,
-                    inputs: vec![],
-                    shape: Shape::from_dims(&[4]),
-                    dtype: DType::U8,
-                })
-            };
-            cache.insert(anchor_id, Arc::new(RwLock::new(seed)));
-        }
+        let cache = StorageCache::new();
         // Emit pairs of (Op::Alloc, Op::ZeroFill) per K/V slot. The
         // ZeroFill consumes the Alloc destructively (in-place fill,
         // output adopts the Alloc's Storage Arc). Realizing the
@@ -298,7 +284,12 @@ impl KvCache {
         // executor's destructive_input cleanup evicts the Op::Alloc
         // intermediate NodeIds while the ZeroFill targets adopt the
         // same Arcs (post-fill bytes).
-        let realized = PipelinedExecutor::realize_many(Arc::clone(&graph), &zero_fill_ids, cache)?;
+        let realized = PipelinedExecutor::realize_many_with_devices(
+            Arc::clone(&graph),
+            &zero_fill_ids,
+            cache,
+            crate::pipelined_bridge::primary_device_registry(device)?,
+        )?;
         if realized.len() != 2 * n_layers {
             return Err(Error::Msg(format!(
                 "KvCache::with_capacity: realize_many returned {} storages \
@@ -647,21 +638,7 @@ pub fn alloc_batched_kv(
     let target_loc = device.location();
 
     let graph = Arc::new(RwLock::new(Graph::new()));
-    let mut cache = StorageCache::new();
-    if let Some(seed) = crate::pipelined_bridge::device_seed_storage(device)? {
-        let anchor_id = {
-            let mut g = graph.write().map_err(|_| {
-                Error::Msg("graph lock poisoned during alloc_batched_kv".into()).bt()
-            })?;
-            g.push(Node {
-                op: Op::Const,
-                inputs: vec![],
-                shape: Shape::from_dims(&[4]),
-                dtype: DType::U8,
-            })
-        };
-        cache.insert(anchor_id, Arc::new(RwLock::new(seed)));
-    }
+    let cache = StorageCache::new();
 
     let zero_fill_ids: Vec<NodeId> = {
         let mut g = graph
@@ -685,7 +662,12 @@ pub fn alloc_batched_kv(
             .collect()
     };
 
-    let realized = PipelinedExecutor::realize_many(Arc::clone(&graph), &zero_fill_ids, cache)?;
+    let realized = PipelinedExecutor::realize_many_with_devices(
+        Arc::clone(&graph),
+        &zero_fill_ids,
+        cache,
+        crate::pipelined_bridge::primary_device_registry(device)?,
+    )?;
     if realized.len() != 2 * n_layers {
         return Err(Error::Msg(format!(
             "alloc_batched_kv: realize_many returned {} storages for {} Op::ZeroFill targets",
@@ -848,21 +830,7 @@ impl LatentKvCache {
         // emission pattern as KvCache::with_capacity — see that
         // constructor's doc for the full rationale.
         let graph = Arc::new(RwLock::new(Graph::new()));
-        let mut cache = StorageCache::new();
-        if let Some(seed) = crate::pipelined_bridge::device_seed_storage(device)? {
-            let anchor_id = {
-                let mut g = graph.write().map_err(|_| {
-                    Error::Msg("graph lock poisoned during LatentKvCache build".into()).bt()
-                })?;
-                g.push(Node {
-                    op: Op::Const,
-                    inputs: vec![],
-                    shape: Shape::from_dims(&[4]),
-                    dtype: DType::U8,
-                })
-            };
-            cache.insert(anchor_id, Arc::new(RwLock::new(seed)));
-        }
+        let cache = StorageCache::new();
 
         // Emit (Op::Alloc, Op::ZeroFill) pairs for every (layer, slot),
         // each shaped per its own slot's shape.
@@ -893,7 +861,12 @@ impl LatentKvCache {
         // Realize all n_layers * n_slots Op::ZeroFill targets in one pass
         // — see KvCache::with_capacity's doc for why a single realize_many
         // call is used instead of one realize per buffer.
-        let realized = PipelinedExecutor::realize_many(Arc::clone(&graph), &zero_fill_ids, cache)?;
+        let realized = PipelinedExecutor::realize_many_with_devices(
+            Arc::clone(&graph),
+            &zero_fill_ids,
+            cache,
+            crate::pipelined_bridge::primary_device_registry(device)?,
+        )?;
         if realized.len() != n_layers * n_slots {
             return Err(Error::Msg(format!(
                 "LatentKvCache::with_capacity: realize_many returned {} storages \

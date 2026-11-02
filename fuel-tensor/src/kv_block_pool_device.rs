@@ -1013,22 +1013,10 @@ fn alloc_layer_buffers(
 ) -> Result<KvStorageColumns> {
     let target_loc = device.location();
     let graph = Arc::new(RwLock::new(Graph::new()));
-    let mut cache = StorageCache::new();
+    let cache = StorageCache::new();
 
     // Non-CPU targets need a device anchor in the cache so the first Op::Alloc's
     // device lookup succeeds (see with_capacity's note). CPU returns None.
-    if let Some(seed) = crate::pipelined_bridge::device_seed_storage(device)? {
-        let anchor_id = graph
-            .write()
-            .map_err(|_| Error::Msg("graph lock poisoned during DeviceKvPool build".into()).bt())?
-            .push(Node {
-                op: Op::Const,
-                inputs: vec![],
-                shape: Shape::from_dims(&[4]),
-                dtype: DType::U8,
-            });
-        cache.insert(anchor_id, Arc::new(RwLock::new(seed)));
-    }
 
     // Emit 2*n_layers (Alloc, ZeroFill) pairs — K then V per layer.
     let zero_fill_ids: Vec<NodeId> = {
@@ -1053,7 +1041,12 @@ fn alloc_layer_buffers(
             .collect()
     };
 
-    let realized = PipelinedExecutor::realize_many(Arc::clone(&graph), &zero_fill_ids, cache)?;
+    let realized = PipelinedExecutor::realize_many_with_devices(
+        Arc::clone(&graph),
+        &zero_fill_ids,
+        cache,
+        crate::pipelined_bridge::primary_device_registry(device)?,
+    )?;
     if realized.len() != 2 * n_layers {
         return Err(Error::Msg(format!(
             "DeviceKvPool::new: realize_many returned {} storages for {} Op::ZeroFill \

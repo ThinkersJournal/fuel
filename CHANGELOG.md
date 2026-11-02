@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.36.16 - 2026-11-01
+
+### Changed
+
+- fuel-tensor: the remaining device-handle anchors are gone. `KvCache::with_capacity`, the latent and paged KV caches, `DeviceKvPool::new` and the bridge's transient const upload no longer push a 0-byte anchor storage and an `Op::Const` node into a graph and cache; they hand the executor a `DeviceRegistry` built from the `Device` (`realize_many_with_devices`). `pipelined_bridge::device_seed_storage` now has no caller in the workspace and is deleted in the next step. ROADMAP row 137, seam S3 step 3b-5.
+
 ## v0.36.15 - 2026-11-01
 
 ### Changed

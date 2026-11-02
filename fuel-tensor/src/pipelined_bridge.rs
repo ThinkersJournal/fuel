@@ -505,7 +505,7 @@ pub fn prebuild_optimized_env_capturing_cache<T: bytemuck::Pod + WithDType>(
 /// the caller holds rather than found by scanning the storage cache for a tensor that lives there (ROADMAP
 /// row 137, seam S3 step 3b-2). CPU has no handle. Extra devices of a multi-device graph are still seeded
 /// through anchors until step 3b-3.
-fn primary_device_registry(device: &Device) -> Result<DeviceRegistry> {
+pub(crate) fn primary_device_registry(device: &Device) -> Result<DeviceRegistry> {
     register_device(DeviceRegistry::new(), device)
 }
 
@@ -1453,20 +1453,6 @@ pub(crate) fn build_const_cache(
     // resolve a CUDA/Vulkan device handle. Push an Op::Const
     // placeholder first; its cache entry is the 4-byte device-seed
     // Storage.
-    if let Some(seed) = device_seed_storage(device)? {
-        let anchor_id = {
-            let mut g = transient
-                .write()
-                .map_err(|_| Error::Msg("transient graph lock poisoned".into()).bt())?;
-            g.push(Node {
-                op: Op::Const,
-                inputs: vec![],
-                shape: fuel_ir::Shape::from_dims(&[4]),
-                dtype: fuel_ir::DType::U8,
-            })
-        };
-        transient_cache.insert(anchor_id, Arc::new(RwLock::new(seed)));
-    }
 
     // Push one Op::Const → Op::Copy pair per user Const. The
     // transient Const's cache entry is the CPU storage of the host
@@ -1516,8 +1502,12 @@ pub(crate) fn build_const_cache(
     }
 
     let copy_targets: Vec<NodeId> = user_to_copy.iter().map(|(_, c)| *c).collect();
-    let realized =
-        PipelinedExecutor::realize_many(Arc::clone(&transient), &copy_targets, transient_cache)?;
+    let realized = PipelinedExecutor::realize_many_with_devices(
+        Arc::clone(&transient),
+        &copy_targets,
+        transient_cache,
+        primary_device_registry(device)?,
+    )?;
     if realized.len() != user_to_copy.len() {
         return Err(Error::Msg(format!(
             "build_const_cache: realize_many returned {} storages for {} \
@@ -1585,20 +1575,6 @@ pub fn upload_host_buffer_to_device(
     // Non-CPU: transient Op::Const → Op::Copy { target } upload.
     let transient = Arc::new(RwLock::new(Graph::new()));
     let mut transient_cache = StorageCache::new();
-    if let Some(seed) = device_seed_storage(device)? {
-        let anchor_id = {
-            let mut g = transient
-                .write()
-                .map_err(|_| Error::Msg("transient graph lock poisoned".into()).bt())?;
-            g.push(Node {
-                op: Op::Const,
-                inputs: vec![],
-                shape: fuel_ir::Shape::from_dims(&[4]),
-                dtype: fuel_ir::DType::U8,
-            })
-        };
-        transient_cache.insert(anchor_id, Arc::new(RwLock::new(seed)));
-    }
     let n_elem = if dtype.size_in_bytes() == 0 {
         0
     } else {
@@ -1631,8 +1607,12 @@ pub fn upload_host_buffer_to_device(
         g.set_target_backend(copy_id, BackendId::Cpu);
         copy_id
     };
-    let realized =
-        PipelinedExecutor::realize_many(Arc::clone(&transient), &[copy_id], transient_cache)?;
+    let realized = PipelinedExecutor::realize_many_with_devices(
+        Arc::clone(&transient),
+        &[copy_id],
+        transient_cache,
+        primary_device_registry(device)?,
+    )?;
     let (arc, _layout) = realized.into_iter().next().ok_or_else(|| {
         Error::Msg(
             "upload_host_buffer_to_device: realize_many returned no storage \

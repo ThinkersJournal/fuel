@@ -134,6 +134,21 @@ fn two_gpu_graph_realizes() {
 
     let dev0: fuel_tensor::Device = vk0.clone().into();
     let dev1: fuel_tensor::Device = vk1.clone().into();
+    // KV buffers are allocated by `Op::Alloc` on the device; the executor gets the device handle from the
+    // registry, not from a seeded anchor (ROADMAP row 137, step 3b-5). Nothing else is on GPU 1 yet, so a
+    // missing handle fails here. (Folded into this existing ignored test: no new `#[ignore]`.)
+    for (dev, loc) in [(&dev0, loc0), (&dev1, loc1)] {
+        let kv = fuel_tensor::inference_context::KvCache::with_capacity(
+            1,
+            2,
+            4,
+            8,
+            fuel_ir::DType::F32,
+            dev,
+        )
+        .expect("a KV cache on a Vulkan GPU");
+        assert_eq!(kv.device_location(), Some(loc));
+    }
     let got = fuel_tensor::pipelined_bridge::realize_one_as_multi_device::<f32>(
         &g_arc,
         out_id,
