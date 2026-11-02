@@ -121,6 +121,32 @@ the S3 item count).
 
 Steps 1 and 2 need no decision; the storage decision (section 7) is made.
 
+### 6b. Step 3 broken into parts (written 2026-11-02, measured at `origin/main` 79b2a83c2, 0.36.7)
+
+Where the code stands: `find_cuda_device_in_cache` and `find_vulkan_backend_in_cache` (`fuel-dispatch/src/pipelined.rs`)
+each scan the whole storage cache for a storage on the wanted GPU and take its handle; four call sites use them (the
+`Op::Alloc` path and one other path, for CUDA and for Vulkan). The cache is filled for devices that hold no tensor by
+`device_seed_storage` (`fuel-tensor/src/pipelined_bridge.rs`), called from `seed_extra_device_handles`,
+`seed_placed_device_handles`, `inference_context.rs` (3 places) and `kv_block_pool_device.rs`.
+
+One fact that shapes the order: a lookup runs while the realize is in progress, and the cache gains storages during it,
+so a device can become findable part-way through (a copy to a GPU creates a storage on it). A registry built once from
+the cache at the start would change behaviour for that case. So the first part must keep the answer identical to a scan.
+
+- **3a. The registry type, no behaviour change.** `DeviceRegistry` in `fuel-dispatch`: a map from `DeviceLocation` to a
+  handle (`Cuda(CudaDevice)` or `Vulkan(Arc<VulkanBackend>)`), filled lazily: a lookup tries the map, then scans the
+  cache exactly as today and remembers the first match. The four call sites ask the registry. Test: for a cache with
+  a storage on each of two locations the registry returns the same handle as the old scan, and returns `None` where the
+  scan did (CPU-only unit test with fake locations is not possible for the handle types, so the live two-GPU probe
+  from row 114 is the oracle, run through `gpu-run`).
+- **3b. Hand the registry in.** The realize entry points take an optional registry; the bridge fills it from the
+  `Device` handles it already holds; with a registry supplied the anchor nodes are no longer pushed. The row 114 probe
+  decides.
+- **3c. Delete the seeding.** `seed_extra_device_handles`, `seed_placed_device_handles`, `device_seed_storage` and the
+  "caller must seed the cache" error text.
+
+Each part is its own PR with its own version. 3a changes no output; 3b and 3c change the seeding boundary.
+
 ## 7. Decision (2026-11-01, CireSnave, relayed by the PM)
 
 The question was whether the storage abstraction is (a) the closed enum plus ops methods, or (b)
