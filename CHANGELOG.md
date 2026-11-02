@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.37.3 - 2026-11-01
+
+### Added
+
+- Docs: step 4 of ROADMAP row 137 (identity in place of index) read and written up as section 6c of the S3 design note: what exists (row 125 step one), where an ordinal is a key or a selector (measured), three levels of change and a recommendation. No code change.
+
 ## v0.37.2 - 2026-11-01
 
 ### Added
