@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.36.15 - 2026-11-01
+
+### Changed
+
+- fuel-tensor: `realize_one_as_multi_device` no longer pushes an anchor storage and an `Op::Const` node per extra device into the graph and cache; the extra devices are registered in the `DeviceRegistry` the executor receives, next to the primary's and the plan-placed GPUs' (`seed_extra_device_handles` is deleted; one `register_device` helper serves all three). A place the registry already holds is not derived again by the plan-driven path. The `device_seed_storage` callers in `inference_context.rs` and `kv_block_pool_device.rs` are unchanged. ROADMAP row 137, seam S3 step 3b-4.
+
 ## v0.36.14 - 2026-11-01
 
 ### Changed
