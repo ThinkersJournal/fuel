@@ -147,6 +147,44 @@ the cache at the start would change behaviour for that case. So the first part m
 
 Each part is its own PR with its own version. 3a changes no output; 3b and 3c change the seeding boundary.
 
+### 6c. Step 4, identity in place of index (written 2026-11-02 at `origin/main` 05e4a234, 0.37.0; reading only, no code)
+
+What is already there (ROADMAP row 125, step one, 0.35.17): `fuel_ir::DeviceIdentity { uuid, pci }` with `same_physical_device`
+(UUIDs decide when both sides have a usable one; an all-zero UUID counts as absent; the PCI address is the fallback; unknown is
+never "same"), `VulkanBackend::identity()`, `fuel_vulkan_backend::probe::device_identities()`,
+`fuel_cuda_backend::probe::device_identities()`, and `DeviceMemory.identity` in the device inventory. Measured on the
+development box in that step: the CUDA device and the Vulkan RTX 4070 report the same UUID and PCI address, and the Vulkan
+enumeration order differs between builds (index 0 was the AMD iGPU in Vulkan-only builds and the RTX 4070 in CUDA-plus-Vulkan
+builds). What is not there: anything that CHOOSES a device by identity, and anything that keys state by identity.
+
+Where an ordinal is the key or the selector today (counted with `grep` over tracked `fuel-*/src` files, so a size, not a design):
+the token `gpu_id` appears on 138 lines in 18 files of `fuel-dispatch`, 50 in 3 files of `fuel-graph`, 17 in 3 of `fuel-ir`, 15 in 2 of
+`fuel-tensor`, 11 in 3 of `fuel-vulkan-backend`, 10 in 2 of `fuel-memory`, 9 in 3 of `fuel-hardware`, 6 in 3 of `fuel-cuda-backend`
+and 3 in 2 of `fuel-metal-backend`. Constructors that take an ordinal: `fuel_tensor::cuda_backend::new_device(ordinal)`,
+`DeviceSelection::Index` in `fuel-hardware/src/inventory.rs`, `transfer_cost.rs` and `fuel-tensor/src/factories.rs`, and the
+two Vulkan example binaries. In-process maps keyed by `DeviceLocation` (which carries the ordinal): `DeviceRegistry` (this
+step's subject), the transfer-path table `HashMap<(DeviceLocation, DeviceLocation), TransferPath>` and the in-flight counters
+`HashMap<DeviceLocation, AtomicU32>` in `dispatch.rs`, and the optimizer's `placements: HashMap<NodeId, DeviceLocation>` in
+`optimize.rs`. All of these live for one process. I did not find a cross-run store keyed by an ordinal: the judge cache's test
+fixtures carry `device_index: 0` next to an `EquivalenceKey` (whose real content I did not read, **UNREAD**), so whether the
+persisted profile is keyed by hardware or by ordinal is open and decides how urgent 4c is.
+
+What "identity in place of index" can mean, from least to most invasive:
+- **4a. Choose by identity.** A selector (`DeviceSelection::Identity` for Vulkan, a CUDA counterpart, and an inventory lookup
+  `location_of(identity)`) resolves an identity to the ordinal of THIS process, once, at device creation; everything downstream keeps
+  using `DeviceLocation { gpu_id }` as the in-process handle. Fixes "name the MI50" and the order flip between builds. Oracle: the
+  live inventory test (every CUDA device matches exactly one Vulkan device), a synthetic-enumeration test of the resolver in both
+  orders, and a live test that creating by identity returns the same physical device in a CUDA-plus-Vulkan and a Vulkan-only build.
+- **4b. Register by identity.** `DeviceRegistry::with_*` also records the handle's `DeviceIdentity`, and `registered_*` can be asked by
+  identity, so a caller holding an identity does not need the ordinal. No change to `DeviceLocation`. Oracle: the row 114 probe
+  with the two GPUs registered in both orders.
+- **4c. Key persisted state by identity.** Only if the profile or judge cache is keyed by ordinal (open, see above). Changing
+  `DeviceLocation` itself to carry an identity would touch the ~250 lines above and the published `fuel-ir` type, a breaking
+  change; not proposed.
+
+Recommendation: 4a then 4b, each its own PR with the probe plus a sabotage as oracle and a hand CUDA compile (no runner, board
+item 366); read the judge cache's key before deciding 4c.
+
 ## 7. Decision (2026-11-01, CireSnave, relayed by the PM)
 
 The question was whether the storage abstraction is (a) the closed enum plus ops methods, or (b)
