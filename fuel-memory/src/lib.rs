@@ -208,6 +208,8 @@ impl BackendStorage {
                 *dst = backend.slot_copy_to_new_handle(s, 0, s.len_bytes())?;
                 Ok(())
             }
+            // Unreachable when only the CPU variant is compiled; reachable for every other pair.
+            #[allow(unreachable_patterns)]
             (dst, src) => Err(fuel_ir::Error::Msg(format!(
                 "BackendStorage::copy_from: no direct transfer from {:?} storage to {:?} storage                  (cross-vendor and host-to-device copies are separate hops)",
                 src.backend_id(),
