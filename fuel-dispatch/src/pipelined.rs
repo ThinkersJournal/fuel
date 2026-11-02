@@ -163,6 +163,22 @@ pub type StorageCache = HashMap<NodeId, Arc<RwLock<Storage>>>;
 /// re-exported here so the path every caller already uses keeps working.
 pub use crate::device_registry::DeviceRegistry;
 
+/// A registry holding the CUDA device of every CUDA storage among a captured decode's inputs. The capture API
+/// takes tensors, not devices, so the devices are read off the caller's own inputs once, here, and handed to the
+/// executor like any other caller's registry; the executor no longer scans a cache for them.
+#[cfg(feature = "cuda")]
+fn cuda_registry_of_inputs(inputs: &StorageCache) -> DeviceRegistry {
+    let mut registry = DeviceRegistry::new();
+    for arc in inputs.values() {
+        if let Ok(guard) = arc.read()
+            && let BackendStorage::Cuda(c) = &guard.inner
+        {
+            registry = registry.with_cuda(c.device().clone());
+        }
+    }
+    registry
+}
+
 /// Persistent per-node output buffers for CUDA-graph capture (the
 /// "CapturedRun executor" build-out). Maps each compute node's [`NodeId`]
 /// to a FIXED-ADDRESS output [`Storage`] Arc that survives across realizes,
@@ -667,10 +683,9 @@ enum WorkItemKind {
     ///
     /// Doesn't dispatch through the binding table — the executor's
     /// arm calls each backend's native allocator directly. For
-    /// non-CPU targets it derives the device handle by searching the
-    /// input cache for any storage on `target_location`'s backend
-    /// (callers seed this via
-    /// `fuel-tensor::pipelined_bridge::device_seed_storage`).
+    /// non-CPU targets it takes the device handle from the
+    /// [`DeviceRegistry`] the caller handed the realize (a
+    /// `*_with_devices` entry point).
     ///
     /// Phase 3a of the bridge-retirement trajectory (post-9c).
     /// Replaces `fuel-tensor::inference_context::alloc_zeroed_on`'s
@@ -945,6 +960,27 @@ impl PipelinedExecutor {
             inputs,
             OrderSource::Default,
             SymEnv::default(),
+        )
+        .map(|(s, l, _produced)| (s, l))
+    }
+
+    /// [`Self::realize`] with the device handles the caller already holds (ROADMAP row 137, seam S3 step 3c):
+    /// a CUDA or Vulkan place named in `devices` is where the executor finds its handle. Use this for any
+    /// graph that allocates on, or copies to, a GPU; the plain [`Self::realize`] has no handle to give the
+    /// executor, so it is for CPU graphs and for graphs whose GPU work needs none.
+    pub fn realize_with_devices(
+        graph: Arc<RwLock<Graph>>,
+        target: NodeId,
+        inputs: StorageCache,
+        devices: DeviceRegistry,
+    ) -> Result<(Arc<RwLock<Storage>>, Layout)> {
+        Self::realize_inner_with(
+            graph,
+            target,
+            inputs,
+            OrderSource::Default,
+            SymEnv::default(),
+            devices,
         )
         .map(|(s, l, _produced)| (s, l))
     }
@@ -1524,7 +1560,7 @@ impl PipelinedExecutor {
         let mut warm_cache: StorageCache = inputs.clone();
         let mut warm_layouts = seed_layouts.clone();
         let mut warm_syms = SymEnv::new();
-        let mut warm_devices = DeviceRegistry::new();
+        let mut warm_devices = cuda_registry_of_inputs(&warm_cache);
         for item in &items {
             let _handle = execute_work_item(
                 item,
@@ -1576,7 +1612,7 @@ impl PipelinedExecutor {
         let mut cap_cache: StorageCache = inputs;
         let mut cap_layouts = seed_layouts;
         let mut cap_syms = SymEnv::new();
-        let mut cap_devices = DeviceRegistry::new();
+        let mut cap_devices = cuda_registry_of_inputs(&cap_cache);
         let mut inner_err: Option<Error> = None;
         let items_ref = &items;
         let graph_ref = &graph;
@@ -6201,10 +6237,9 @@ fn execute_work_item(
         WorkItemKind::Alloc { target_location } => {
             // Op::Alloc { target }: allocate a fresh, zero-init storage
             // on target_location. No inputs, no kernel call — direct
-            // executor dispatch. For non-CPU targets we derive the
-            // per-backend device handle by searching the input cache
-            // for any storage on the target backend (callers seed this
-            // via `pipelined_bridge::device_seed_storage`).
+            // executor dispatch. For non-CPU targets the per-backend
+            // device handle comes from the `DeviceRegistry` the caller
+            // handed the realize (a `*_with_devices` entry point).
             // Used only by the Vulkan arm below (alloc_bytes_handle); a
             // default-feature build sees it unused. GAP-229: 68161981's
             // unused_variables --fix renamed it `_n_bytes` at default
@@ -6221,13 +6256,12 @@ fn execute_work_item(
                 DeviceLocation::Cpu => fuel_memory::alloc_cpu_zeroed(item.dtype, item.elem_count)?,
                 #[cfg(feature = "cuda")]
                 DeviceLocation::Cuda { gpu_id } => {
-                    let cuda_dev = devices.cuda(cache, *gpu_id).ok_or_else(|| {
+                    let cuda_dev = devices.cuda(*gpu_id).ok_or_else(|| {
                         Error::Msg(format!(
                             "Op::Alloc on Cuda {{ gpu_id: {} }}: no CUDA \
-                             storage in input cache to derive the device \
-                             handle from. The caller must seed the cache \
-                             (e.g. via `fuel-core::pipelined_bridge::\
-                             device_seed_storage`) before realizing.",
+                             device registered for this place. Hand the device to \
+                             the realize in a `DeviceRegistry` (a `*_with_devices` \
+                             entry point).",
                             gpu_id,
                         ))
                         .bt()
@@ -6253,13 +6287,12 @@ fn execute_work_item(
                 }
                 #[cfg(feature = "vulkan")]
                 DeviceLocation::Vulkan { gpu_id } => {
-                    let backend = devices.vulkan(cache, *gpu_id).ok_or_else(|| {
+                    let backend = devices.vulkan(*gpu_id).ok_or_else(|| {
                         Error::Msg(format!(
                             "Op::Alloc on Vulkan {{ gpu_id: {} }}: no Vulkan \
-                             storage in input cache to derive the backend \
-                             handle from. The caller must seed the cache \
-                             (e.g. via `fuel-core::pipelined_bridge::\
-                             device_seed_storage`) before realizing.",
+                             device registered for this place. Hand the device to \
+                             the realize in a `DeviceRegistry` (a `*_with_devices` \
+                             entry point).",
                             gpu_id,
                         ))
                         .bt()
@@ -6525,11 +6558,9 @@ fn execute_work_item(
             // Allocate the output on `target_location`. Phase 2
             // covered D2H (target=Cpu); Phase 3b extends to H2D
             // (target=Cuda / Vulkan from a CPU source). For non-CPU
-            // targets the executor's Op::Alloc-style device-handle
-            // search applies (find_cuda_device_in_cache /
-            // find_vulkan_backend_in_cache); callers seed the cache
-            // (e.g. `pipelined_bridge::device_seed_storage`) before
-            // realizing.
+            // targets the device handle comes from the caller's
+            // `DeviceRegistry` (a `*_with_devices` entry point), as for
+            // Op::Alloc.
             // Used only by the Vulkan arm below (alloc_bytes_handle); a
             // default-feature build sees it unused. GAP-229: 68161981's
             // unused_variables --fix renamed it `_n_bytes` at default
@@ -6547,14 +6578,12 @@ fn execute_work_item(
                     }
                     #[cfg(feature = "cuda")]
                     DeviceLocation::Cuda { gpu_id } => {
-                        let cuda_dev = devices.cuda(cache, *gpu_id).ok_or_else(|| {
+                        let cuda_dev = devices.cuda(*gpu_id).ok_or_else(|| {
                             Error::Msg(format!(
                                 "Op::{op_label} on Cuda {{ gpu_id: {} }}: no CUDA \
-                                 storage in input cache to derive the device \
-                                 handle from. The caller must seed the cache \
-                                 (e.g. via `fuel-core::pipelined_bridge::\
-                                 device_seed_storage`) before realizing an \
-                                 H2D Op::{op_label}.",
+                                 device registered for this place. Hand the device to \
+                                 the realize in a `DeviceRegistry` (a `*_with_devices` \
+                                 entry point) before an H2D Op::{op_label}.",
                                 gpu_id,
                             ))
                             .bt()
@@ -6573,14 +6602,12 @@ fn execute_work_item(
                     }
                     #[cfg(feature = "vulkan")]
                     DeviceLocation::Vulkan { gpu_id } => {
-                        let backend = devices.vulkan(cache, *gpu_id).ok_or_else(|| {
+                        let backend = devices.vulkan(*gpu_id).ok_or_else(|| {
                             Error::Msg(format!(
                                 "Op::{op_label} on Vulkan {{ gpu_id: {} }}: no Vulkan \
-                                 storage in input cache to derive the backend \
-                                 handle from. The caller must seed the cache \
-                                 (e.g. via `fuel-core::pipelined_bridge::\
-                                 device_seed_storage`) before realizing an \
-                                 H2D Op::{op_label}.",
+                                 device registered for this place. Hand the device to \
+                                 the realize in a `DeviceRegistry` (a `*_with_devices` \
+                                 entry point) before an H2D Op::{op_label}.",
                                 gpu_id,
                             ))
                             .bt()

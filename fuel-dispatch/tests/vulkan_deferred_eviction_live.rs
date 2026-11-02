@@ -131,8 +131,13 @@ fn vulkan_evict_fault_back_roundtrip_preserves_output() {
 
     // --- Baseline: no eviction --------------------------------------
     let (graph1, a1, out1) = build();
-    let (s1, _) = PipelinedExecutor::realize(graph1, out1, seed_vulkan(a1))
-        .expect("baseline realize on Vulkan");
+    let (s1, _) = PipelinedExecutor::realize_with_devices(
+        graph1,
+        out1,
+        seed_vulkan(a1),
+        fuel_dispatch::pipelined::DeviceRegistry::new().with_vulkan(backend.clone()),
+    )
+    .expect("baseline realize on Vulkan");
     let baseline = download(&s1);
     assert_eq!(baseline, vec![0.0_f32, 6.0, 0.0, 20.0]);
 
@@ -164,8 +169,13 @@ fn vulkan_evict_fault_back_roundtrip_preserves_output() {
         assert_eq!(g.target_backend(chain.reload), Some(BackendId::Cpu));
     }
 
-    let (s2, _) = PipelinedExecutor::realize(graph2, out2, seed_vulkan(a2))
-        .expect("evicted realize on Vulkan (A2.1 deferred-deletion path)");
+    let (s2, _) = PipelinedExecutor::realize_with_devices(
+        graph2,
+        out2,
+        seed_vulkan(a2),
+        fuel_dispatch::pipelined::DeviceRegistry::new().with_vulkan(backend.clone()),
+    )
+    .expect("evicted realize on Vulkan (A2.1 deferred-deletion path)");
     let evicted = download(&s2);
 
     assert_eq!(
@@ -284,8 +294,13 @@ fn vulkan_release_open_batch_deferred_deletion_no_drain() {
 
     // Targets: out (the value) + rel (keeps the Release marker reachable so the
     // destructive eviction of t1 fires).
-    let results = PipelinedExecutor::realize_many(graph, &[out, rel], seed())
-        .expect("Op::Release deferred-deletion realize_many");
+    let results = PipelinedExecutor::realize_many_with_devices(
+        graph,
+        &[out, rel],
+        seed(),
+        fuel_dispatch::pipelined::DeviceRegistry::new().with_vulkan(backend.clone()),
+    )
+    .expect("Op::Release deferred-deletion realize_many");
 
     let after = fuel_dispatch::pipelined::deferred_eviction_retains();
 
