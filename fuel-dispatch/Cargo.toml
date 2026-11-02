@@ -20,7 +20,7 @@ fuel-graph = { workspace = true }
 # unconditional core infrastructure.
 fuel-kernel-seam-types = { workspace = true }
 # kiss-ref advisory cross-check (cuda-gated verify path only) — see the `cuda` feature.
-fuel-kiss-ref-backend = { path = "../fuel-kiss-ref-backend", version = "0.36.5", optional = true }
+fuel-kiss-ref-backend = { path = "../fuel-kiss-ref-backend", version = "0.36.6", optional = true }
 # kiss-ref-core (github.com/ThinkersJournal/kiss-ref, crates.io "0.4") — the SINGLE
 # cross-project source of truth for the ULP-distance metric. `fkc::verify::ulp::
 # ulp_distance` delegates to `kiss_ref_core::ulp_distance_f32` so Fuel's verify stack
@@ -37,6 +37,10 @@ fuel-vulkan-backend = { workspace = true, optional = true }
 # can call it; already present transitively via fuel-cuda-backend.
 baracuda-kernels-types = { workspace = true, optional = true }
 unpopped-vocab = { workspace = true, optional = true }
+# Used by the CUDA host-fallback dequantize in `baracuda_dispatch.rs` (`fuel_quantized::dequant_ggml_bytes`).
+# Before this line it was only a dev-dependency, so `cargo check -p fuel-dispatch --features cuda` failed
+# with E0433 unless another crate in the build happened to be checked first and nothing else named it.
+fuel-quantized = { workspace = true, optional = true }
 # The JIT-on-request envelope — only under `jit` (the adopt-glue seam). The core
 # dispatch layer stays free of it (adopt_runtime_fused takes resolved parts).
 fuel-kernel-seam = { workspace = true, optional = true }
@@ -153,7 +157,7 @@ baracuda-types = ["dep:baracuda-kernels-types"]
 # Per-backend dispatch wrappers. Feature flags propagate the same shape
 # fuel-memory used: each GPU backend's registration entry-point is
 # gated behind its feature.
-cuda = ["dep:fuel-cuda-backend", "baracuda-types", "dep:baracuda-nvrtc", "fuel-memory/cuda", "fuel-hardware/cuda", "dep:fuel-kiss-ref-backend"]
+cuda = ["dep:fuel-cuda-backend", "baracuda-types", "dep:baracuda-nvrtc", "fuel-memory/cuda", "fuel-hardware/cuda", "dep:fuel-kiss-ref-backend", "dep:fuel-quantized"]
 vulkan = ["dep:fuel-vulkan-backend", "fuel-memory/vulkan", "fuel-hardware/vulkan"]
 metal = ["dep:fuel-metal-backend", "fuel-memory/metal"]
 # Baracuda dispatch-telemetry / miss-reporting emission (docs/session-prompts/

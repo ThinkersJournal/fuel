@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.36.6 - 2026-11-01
+
+### Fixed
+
+- `fuel-dispatch --features cuda` did not compile (E0433: `fuel_quantized` unresolved in `baracuda_dispatch.rs`, the CUDA host-fallback dequantize) because `fuel-quantized` was only a dev-dependency. It is now an optional dependency pulled in by the `cuda` feature. Present in 0.35.2 through 0.36.5; the self-hosted CUDA compile workflow had never completed a run, so nothing caught it.
+
 ## v0.36.5 - 2026-11-01
 
 ### Added
