@@ -1336,7 +1336,7 @@ fuel-memory/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the roo
 fuel-memory/examples/gap315_dside_test.rs	own		no lineage; 1 of 87 lines verbatim in candle (1%)
 fuel-memory/src/dlpack_view.rs	own		no lineage; 1 of 463 lines verbatim in candle (0%)
 fuel-memory/src/dlpack_view/tests.rs	own		no lineage; 0 of 392 lines verbatim in candle (0%)
-fuel-memory/src/lib.rs	own		no lineage; 2 of 280 lines verbatim in candle (1%)
+fuel-memory/src/lib.rs	own		no lineage; 2 of 294 lines verbatim in candle (1%)
 fuel-metal-backend/Cargo.toml	own		no lineage; 2 of 21 lines verbatim in candle (10%)
 fuel-metal-backend/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-metal-backend/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
