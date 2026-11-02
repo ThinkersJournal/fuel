@@ -50,7 +50,7 @@ pub use fuel_metal_backend::MetalStorageBytes as MetalStorage;
 
 use fuel_cpu_backend::CpuStorageBytes;
 use fuel_ir::storage::OutputView;
-use fuel_ir::{DType, Result, SType};
+use fuel_ir::{BackendId, DType, DeviceLocation, Result, SType};
 use std::sync::Arc;
 
 #[cfg(feature = "dlpack")]
@@ -133,6 +133,39 @@ impl BackendStorage {
     /// Total addressable byte count, regardless of dtype.
     pub fn len_bytes(&self) -> usize {
         dispatch_storage!(self, inner => inner.len_bytes())
+    }
+
+    /// The kind of backend that owns these bytes. Exhaustive: a new variant fails to compile here
+    /// until it names its [`BackendId`]. Use this, not `std::mem::discriminant`, to say which backend a
+    /// storage came from (ROADMAP row 137, seam S3 step 2).
+    pub fn backend_id(&self) -> BackendId {
+        match self {
+            BackendStorage::Cpu(_) => BackendId::Cpu,
+            #[cfg(feature = "cuda")]
+            BackendStorage::Cuda(_) => BackendId::Cuda,
+            #[cfg(feature = "vulkan")]
+            BackendStorage::Vulkan(_) => BackendId::Vulkan,
+            #[cfg(all(feature = "metal", any(target_os = "macos", target_os = "ios")))]
+            BackendStorage::Metal(_) => BackendId::Metal,
+        }
+    }
+
+    /// The device these bytes live on, with the within-process GPU ordinal the owning device reports
+    /// (an enumeration index, not an identity: ROADMAP row 125). `None` only for a Vulkan storage built
+    /// without a backend handle (the legacy `alloc_bytes` path), which cannot say which GPU holds it;
+    /// [`Self::backend_id`] still answers for it.
+    pub fn location(&self) -> Option<DeviceLocation> {
+        match self {
+            BackendStorage::Cpu(_) => Some(DeviceLocation::Cpu),
+            #[cfg(feature = "cuda")]
+            BackendStorage::Cuda(c) => Some(c.device().location()),
+            #[cfg(feature = "vulkan")]
+            BackendStorage::Vulkan(v) => v
+                .backend()
+                .map(|b| DeviceLocation::Vulkan { gpu_id: b.gpu_id }),
+            #[cfg(all(feature = "metal", any(target_os = "macos", target_os = "ios")))]
+            BackendStorage::Metal(m) => Some(m.device().location()),
+        }
     }
 }
 
@@ -276,6 +309,17 @@ pub fn from_slice_cpu<T: bytemuck::Pod + fuel_ir::WithDType>(data: &[T]) -> Stor
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A CPU storage names its backend and its place, and `len_bytes` agrees with the bytes built.
+    #[test]
+    fn cpu_storage_reports_backend_id_and_location() {
+        let bs = BackendStorage::Cpu(CpuStorageBytes::from_zero_bytes(24));
+        assert_eq!(bs.backend_id(), BackendId::Cpu);
+        assert_eq!(bs.location(), Some(DeviceLocation::Cpu));
+        assert_eq!(bs.len_bytes(), 24);
+        // The reported place maps back to the reported backend (the fuel-ir mapping, one definition).
+        assert_eq!(bs.location().map(|l| l.backend()), Some(bs.backend_id()));
+    }
 
     /// Smoke: building a Storage via the CPU backend and reading back
     /// dtype + len_bytes + elem_count works.

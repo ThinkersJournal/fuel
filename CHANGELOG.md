@@ -1,11 +1,17 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
-## v0.36.2 - 2026-11-01
+## v0.36.4 - 2026-11-01
 
 ### Changed
 
 - Baracuda dependencies move to the 0.1.0-alpha.80 family (Baracuda yanked `baracuda-kernels-sys` 0.0.1-alpha.158): every `baracuda-*` crate Fuel names, including `baracuda-kernels-sys`, `baracuda-kernels-types`, `baracuda-cutlass` and `baracuda-cuda-seam` (now `=0.1.0-alpha.80`). They move together because `baracuda-kernels-sys` and `baracuda-cutlass` both link `baracuda_cutlass_kernels`. No Fuel source changes.
+
+## v0.36.3 - 2026-11-01
+
+### Added
+
+- fuel-memory: `BackendStorage::backend_id()` and `BackendStorage::location()` (the designed storage queries, ROADMAP row 137 S3 step 2). `fuel-dispatch` names the backend in seven error messages with `backend_id()` instead of printing an opaque `Discriminant(n)`. No behaviour change otherwise.
 
 ## v0.36.1 - 2026-11-01
 
