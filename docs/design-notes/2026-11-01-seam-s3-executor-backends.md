@@ -165,9 +165,7 @@ and 3 in 2 of `fuel-metal-backend`. Constructors that take an ordinal: `fuel_ten
 two Vulkan example binaries. In-process maps keyed by `DeviceLocation` (which carries the ordinal): `DeviceRegistry` (this
 step's subject), the transfer-path table `HashMap<(DeviceLocation, DeviceLocation), TransferPath>` and the in-flight counters
 `HashMap<DeviceLocation, AtomicU32>` in `dispatch.rs`, and the optimizer's `placements: HashMap<NodeId, DeviceLocation>` in
-`optimize.rs`. All of these live for one process. I did not find a cross-run store keyed by an ordinal: the judge cache's test
-fixtures carry `device_index: 0` next to an `EquivalenceKey` (whose real content I did not read, **UNREAD**), so whether the
-persisted profile is keyed by hardware or by ordinal is open and decides how urgent 4c is.
+`optimize.rs`. All of these live for one process. The one cross-run store I checked is the judge cache, and it is NOT keyed by an ordinal: `fuel_ir::probe::EquivalenceKey` is `(backend, vendor_id, device_id, compute_capability, driver_version)`, a hardware class plus the driver release (its own doc says the driver is in the key so a driver upgrade invalidates the profile), and two identical cards share one class by design while `DeviceDescriptor.device_index` stays an ordinal on the descriptor, outside the key. So 4c is not needed for the judge cache. Any other persisted state keyed by an ordinal I did not look for beyond the judge cache and the maps above (**UNREAD**).
 
 What "identity in place of index" can mean, from least to most invasive:
 - **4a. Choose by identity.** A selector (`DeviceSelection::Identity` for Vulkan, a CUDA counterpart, and an inventory lookup
@@ -183,7 +181,7 @@ What "identity in place of index" can mean, from least to most invasive:
   change; not proposed.
 
 Recommendation: 4a then 4b, each its own PR with the probe plus a sabotage as oracle and a hand CUDA compile (no runner, board
-item 366); read the judge cache's key before deciding 4c.
+item 366); 4c is not needed for the judge cache (above); look for other persisted ordinal keys before dropping it entirely.
 
 ## 7. Decision (2026-11-01, CireSnave, relayed by the PM)
 

@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.37.4 - 2026-11-01
+
+### Added
+
+- Docs: the S3 design note 6c now records that the judge cache is keyed by hardware class and driver release (EquivalenceKey), not by an ordinal, so step 4c is not needed for it. No code change.
+
 ## v0.37.3 - 2026-11-01
 
 ### Added
