@@ -161,6 +161,34 @@ citing; the underlying documents were not read in full):
 - **UNREAD / not searched:** GGML and llama.cpp block-quantized dot products, Intel and ARM documents, other
   conference papers.
 
+## 5b. Follow-up read of the cuBLAS documentation (2026-11-02, raw page text)
+
+Source: `https://docs.nvidia.com/cuda/cublas/index.html`, footer "Last updated on Oct 12, 2026", fetched with `curl`; the
+sentences below were located in the raw text (this closes the cuBLAS "section bodies **UNREAD**" item of section 3 for
+the two scaled modes, not for int8).
+
+- 3.1.4.3 "Outer Vector Scaling for FP8 Data Types": "a scaling factor is associated with each row of \(A\) and each
+  column of \(B\)", with the formula "D_ij = alpha * scale_A^i * scale_B^j * sum_l a_il b_lj + beta * scale_C * C_ij"
+  (transcribed from the page's TeX); it is enabled by setting the `CUBLASLT_MATMUL_DESC_A_SCALE_MODE` and
+  `CUBLASLT_MATMUL_DESC_B_SCALE_MODE` attributes to `CUBLASLT_MATMUL_MATRIX_SCALE_OUTER_VEC_32F`, and "the scale_A and
+  scale_B must be vectors of length M and N respectively". The only supported D precisions are `CUDA_R_16F`,
+  `CUDA_R_16BF` and `CUDA_R_32F`.
+- 3.1.4.4 "16/32/128-Element 1D Block Scaling for FP8 and FP4 Data Types": "elements within the same 16- or 32-element
+  block of adjacent values are assigned a shared scaling factor", described as following "the OCP MXFP specification".
+  The page ties parts of this to "GPUs with compute capabilities 10.x and 11.0" (the rest of that sentence was not read).
+- Integer: the data-type tables list `CUDA_R_8I` with `CUBLAS_COMPUTE_32I`. In the sections read, no scale-mode attribute
+  is attached to an int8 matrix: whether cuBLAS offers per-vector or per-block scaled int8 matrix multiplies is
+  **UNREAD** (not shown in what was read, which is not the same as absent).
+- What this means for the board 307 question "does Nvidia's own library embody per-vector scaled low-bit products":
+  the documentation describes per-row/per-column scaled FP8 matrix multiplies and per-block scaled FP8/FP4 matrix
+  multiplies in cuBLASLt. Those are GPU, floating-point low-bit formats; whether they correspond to anything Fuel
+  would call in place of its own kernels, and under which terms, is not decided here.
+
+Still **UNREAD** after this follow-up (tracked as ROADMAP row 141): cuDNN documentation on scaled low-bit kernels; any
+Nvidia CPU product; the int8 scale modes in cuBLASLt; the CUTLASS repository `NOTICE` and kernel headers; NVRTC and cudart
+documentation; any Nvidia sentence inviting commercial use; Intel, ARM and other prior-art documents dated before
+2020-08-28 (llama.cpp and GGML block quantisation date from 2023, after that line, so they are not prior art for it).
+
 ## 6. What this note does not say
 
 Nothing here says Fuel needs, lacks or can obtain a licence. It does not interpret any clause, say whether hardware
