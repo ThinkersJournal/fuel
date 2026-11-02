@@ -1,11 +1,17 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
-## v0.36.6 - 2026-11-01
+## v0.36.7 - 2026-11-01
 
 ### Fixed
 
 - `fuel-dispatch --features cuda` did not compile (E0433: `fuel_quantized` unresolved in `baracuda_dispatch.rs`, the CUDA host-fallback dequantize) because `fuel-quantized` was only a dev-dependency. It is now an optional dependency pulled in by the `cuda` feature. Present in 0.35.2 through 0.36.5; the self-hosted CUDA compile workflow had never completed a run, so nothing caught it.
+
+## v0.36.6 - 2026-11-01
+
+### Added
+
+- fuel-memory: `BackendStorage::copy_from(&mut self, src)`, the one place the per-pair transfer lives (CPU from CPU, CUDA, Vulkan; CUDA to CUDA writes into the existing buffer, Vulkan to Vulkan replaces it with one buffer copy; any other pair returns an error naming both backends). The executor's `Op::Copy` wrappers for CUDA and Vulkan sources are now thin calls to it, so their per-variant matches are gone (ROADMAP row 137, seam S3 step 2). No behaviour change intended.
 
 ## v0.36.5 - 2026-11-01
 
