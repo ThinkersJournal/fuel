@@ -1,11 +1,17 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
-## v0.36.17 - 2026-11-01
+## v0.37.1 - 2026-11-01
 
 ### Added
 
 - Docs: GAP-371 and ROADMAP row 142 for `vulkan_deferred_eviction_live::vulkan_release_open_batch_deferred_deletion_no_drain`, red on the published v0.36.7 (the A2.1 eviction counter never advances), with the bisect plan. No code change.
+
+## v0.37.0 - 2026-11-01
+
+### Breaking
+
+- fuel-dispatch / fuel-tensor (ROADMAP row 137, seam S3 step 3c). **The executor no longer finds a GPU device handle by scanning its storage cache.** A graph that allocates on, or copies to, a CUDA or Vulkan place must hand the executor the devices it holds in a `DeviceRegistry` (`DeviceRegistry::with_cuda` / `with_vulkan`) through a `*_with_devices` entry point (`realize_with_devices`, `realize_many_with_devices`, `realize_with_optimized_with_devices`, `realize_with_optimized_picking_env_with_devices`, `realize_with_optimized_picking_cached_env_with_devices`, `realize_many_with_optimized_picking_env_with_devices`); a place nobody registered is an error naming the place ("no CUDA/Vulkan device registered for this place"). The plain entry points (`realize`, `realize_many`, ...) are unchanged and are for CPU graphs. **Removed:** `fuel_tensor::pipelined_bridge::device_seed_storage` (the 0-byte anchor storage that existed only to be found by that scan); `fuel_dispatch`'s private `find_cuda_device_in_cache` / `find_vulkan_backend_in_cache`. Callers that seeded a cache with a GPU storage and called a plain entry point on a GPU graph must register the device instead. CUDA code in this release was compiled by hand (cuda-build slot, cargo json), not by CI: no runner is registered for this repository (board item 366).
 
 ## v0.36.16 - 2026-11-01
 

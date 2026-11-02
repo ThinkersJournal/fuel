@@ -52,10 +52,10 @@
 //!   (`CudaStorageBytes::write_from_host`,
 //!   `VulkanBackend::write_bytes`). `upload_host_buffer` deleted.
 //!
-//! Residual bridge code: [`device_seed_storage`] (~30 LOC, just the
-//! 0-byte device-handle anchor per backend) and
-//! `host_buffer_to_bytes` (per-dtype HostBuffer → bytes
-//! conversion — orthogonal to the device-dispatch concern).
+//! Residual bridge code: `host_buffer_to_bytes` (per-dtype HostBuffer →
+//! bytes conversion — orthogonal to the device-dispatch concern). The
+//! 0-byte device-handle anchor (`device_seed_storage`) is gone: devices
+//! reach the executor through a `DeviceRegistry`.
 //!
 //! ## Phase E.3 coverage (complete)
 //!
@@ -2020,71 +2020,6 @@ fn register_placed_devices(
         registry = register_device(registry, &device_for_location(loc)?)?;
     }
     Ok(registry)
-}
-
-/// Allocate a small "device anchor" storage on `device` — enough bytes
-/// to carry the device handle into the [`StorageCache`] so the
-/// pipelined executor's `WorkItemKind::Alloc` arm can derive the
-/// per-backend handle for `Op::Alloc` nodes.
-///
-/// Phase 3a of bridge-retirement (post-9c). This is the *residual*
-/// of the deleted `fuel-tensor::inference_context::alloc_zeroed_on`:
-/// it does only the per-backend "allocate-on-device" piece, not the
-/// zero-fill (that moves to the executor's Alloc arm). Callers
-/// (today: [`crate::inference_context::KvCache::with_capacity`])
-/// insert the returned Storage into the StorageCache before realizing
-/// Op::Alloc nodes; the executor finds the device handle by searching
-/// the cache for any storage on the target backend.
-///
-/// For CPU targets returns `Ok(None)` — CPU's Op::Alloc arm doesn't
-/// need a device-handle anchor (`alloc_cpu_zeroed` is allocator-free).
-///
-/// The 4-byte size is arbitrary: small enough to be ~free, large
-/// enough that even Vulkan's strict `vkAllocateMemory` accepts it.
-pub fn device_seed_storage(device: &Device) -> Result<Option<Storage>> {
-    #[cfg(any(feature = "cuda", feature = "vulkan"))]
-    const SEED_BYTES: usize = 4;
-    match device.location() {
-        DeviceLocation::Cpu => Ok(None),
-        #[cfg(feature = "cuda")]
-        DeviceLocation::Cuda { .. } => {
-            let cuda_dev = crate::cuda_backend::as_device(device)?;
-            let cuda_bytes = fuel_cuda_backend::CudaStorageBytes::alloc(cuda_dev, SEED_BYTES)?;
-            Ok(Some(Storage::new(
-                BackendStorage::Cuda(cuda_bytes),
-                fuel_ir::DType::U8,
-            )))
-        }
-        #[cfg(not(feature = "cuda"))]
-        DeviceLocation::Cuda { .. } => Err(Error::Msg(
-            "device_seed_storage: CUDA device requested but fuel-core wasn't built \
-             with --features cuda"
-                .into(),
-        )
-        .bt()),
-        #[cfg(feature = "vulkan")]
-        DeviceLocation::Vulkan { .. } => {
-            let backend = crate::vulkan_backend::as_device(device)?;
-            let zeros = vec![0_u8; SEED_BYTES];
-            let vk_bytes = backend.upload_bytes_handle(&zeros)?;
-            Ok(Some(Storage::new(
-                BackendStorage::Vulkan(vk_bytes),
-                fuel_ir::DType::U8,
-            )))
-        }
-        #[cfg(not(feature = "vulkan"))]
-        DeviceLocation::Vulkan { .. } => Err(Error::Msg(
-            "device_seed_storage: Vulkan device requested but fuel-core wasn't built \
-             with --features vulkan"
-                .into(),
-        )
-        .bt()),
-        other => Err(Error::Msg(format!(
-            "device_seed_storage: device {other:?} not wired (CPU + CUDA + Vulkan \
-             today; Metal pending its byte-storage substrate)",
-        ))
-        .bt()),
-    }
 }
 
 #[cfg(test)]

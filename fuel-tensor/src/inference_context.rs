@@ -2020,8 +2020,8 @@ impl PagedDecodeSession {
 // emission + the executor's `WorkItemKind::Alloc` arm. The per-
 // `DeviceLocation` match this function used to carry lives in
 // `fuel-storage::pipelined::execute_work_item`'s Alloc arm; the
-// residual "0-byte device anchor" helper lives in
-// `crate::pipelined_bridge::device_seed_storage`.
+// per-realize device handles come from a `DeviceRegistry` built from the
+// `Device` (`crate::pipelined_bridge::primary_device_registry`).
 
 // ===========================================================================
 // InferenceContext
