@@ -1,11 +1,35 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
-## v0.35.19 - 2026-11-01
+## v0.36.1 - 2026-11-01
 
 ### Changed
 
 - One definition of the two mappings between `BackendId` and `DeviceLocation` (`DeviceLocation::backend()`, `BackendId::default_location()`) in `fuel-ir`, replacing eight hand-written copies across `fuel-dispatch`, `fuel-graph` and `fuel-tensor` (ROADMAP row 137, seam S3, step 1). Behaviour is unchanged; the public `plan::default_device_for` and `plan::backend_for_device` remain as thin wrappers. The new match is exhaustive, so adding a backend now fails to compile until it is given a default place.
+
+## v0.36.0 - 2026-11-01
+
+### Breaking
+
+- The per-vector-scaled integer dot kernels are removed from `fuel-quantized` and the floating-point route is the only quantized CPU matmul (ROADMAP row 140, board 307). Removed: `GgmlType::vec_dot`, `vec_dot_unopt`, the `VecDotType` associated type, `DIRECT_COPY` and `direct_copy`, the `avx` and `neon` modules, the `float-dot` and `neon-dotprod` features and the `FLOAT_DOT` constant. `matmul` and `matmul_f16` now convert each weight row to f32 and take a plain f32 dot with the f32 activation row: no activation quantisation, no integer multiply, no scaling of an integer block sum. Every block format still reads, writes and dequantizes as before. Versions of `fuel-quantized` before this one were yanked.
+
+## v0.35.18 - 2026-11-01
+
+### Added
+
+- ROADMAP rows 136 to 139 and a design note (`docs/design-notes/2026-11-01-seams-and-cleanup-program.md`) for the work of splitting more of Fuel into separate projects, in a fixed order: measure the structure (136), clean up separation of concerns near the candidate seams (137), define the seams as tested interface crates (138), and only then split, one seam at a time and with its own go (139). Documentation only.
+
+## v0.35.17 - 2026-11-01
+
+### Added
+
+- Stable device identity (ROADMAP row 125, step one): `fuel_ir::DeviceIdentity` (UUID and PCI address) with a matcher that treats an all-zero UUID as absent and never calls an unknown pair the same card; `device_identities()` for the CUDA and Vulkan backends and `VulkanBackend::identity()`; `DeviceMemory.identity` in the device inventory. On this box the CUDA and Vulkan views of the RTX 4070 report the same UUID. The two-GPU Vulkan probe now picks its GPUs by identity instead of by enumeration index, because Vulkan's device order differs between builds here.
+
+## v0.35.16 - 2026-11-01
+
+### Added
+
+- ROADMAP row 118 step one: a design note records what an installed `qwen35` GGUF actually contains (metadata keys, tensor names, types, the 24 Gated DeltaNet and 8 full-attention layers, tied output head, Q6_K and Q8_0 weights, no Q4_K). Read-only; no code changes.
 
 ## v0.35.15 - 2026-11-01
 
