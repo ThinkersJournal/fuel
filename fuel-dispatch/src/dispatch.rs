@@ -7460,49 +7460,13 @@ fn copy_from_cuda_wrapper(
         .bt());
     }
     let in_guard = read_storage(&inputs[0])?;
-    let cuda_src = cuda_input(&in_guard)?;
+    // The key is the SOURCE backend: keep the typed error for a non-CUDA input.
+    cuda_input(&in_guard)?;
     let mut out_guard = write_storage(&outputs[0])?;
-    match &mut out_guard.inner {
-        BackendStorage::Cpu(_) => {
-            // Step E A4b-3: the FINER cross-device D2H. The executor waited the
-            // source node's CompletionHandle before dispatching this Copy/Move
-            // (`pipelined::wait_producer_handle`), so the producer is done; use
-            // `to_cpu_bytes_finer` (no whole-device `synchronize`) so the OTHER
-            // sub-DAG's independent in-flight CUDA work is NOT force-drained.
-            // `cuMemcpyDtoH_v2` is itself host-synchronous + legacy-stream-ordered
-            // (see `CudaStorageBytes::to_cpu_bytes_finer`), so the read stays
-            // byte-exact. This wrapper is reached ONLY via the executor's
-            // Copy/Move WorkItem (it is the kernel registered at
-            // `(OpKind::Copy, [dt,dt], Cuda)`), never standalone — so the finer
-            // contract always holds here.
-            let bytes = cuda_src.to_cpu_bytes_finer()?;
-            let dst = cpu_output(&mut out_guard)?;
-            let n = bytes.len().min(dst.len_bytes());
-            dst.bytes_mut()[..n].copy_from_slice(&bytes[..n]);
-            Ok(())
-        }
-        BackendStorage::Cuda(_) => {
-            // Device-to-device, write-into (CapturedRun build-out, 4b-ζ):
-            // overwrite the executor-provided output's bytes in place via
-            // `CudaStorageBytes::copy_from_device` — no allocation, so this
-            // branch is capture-safe (mirrors the Affine/Concat/Contiguize
-            // conversions from 4b-α/γ) AND a strict improvement for ordinary
-            // (non-capture) realize: the executor already hands this wrapper
-            // a validly-sized pre-allocated output, so writing into it
-            // produces byte-identical results with one fewer allocation.
-            let dst = cuda_output(&mut out_guard)?;
-            dst.copy_from_device(cuda_src)?;
-            Ok(())
-        }
-        #[allow(unreachable_patterns)]
-        other => Err(Error::Msg(format!(
-            "copy_from_cuda_wrapper: unsupported output substrate {:?} \
-             (CUDA sources copy to CPU or CUDA outputs only; cross-vendor \
-             GPU transfer goes through host staging as two Copy hops)",
-            std::mem::discriminant(other),
-        ))
-        .bt()),
-    }
+    // The per-pair transfer (CPU output: finer D2H, no whole-device synchronize, the executor waited the
+    // producer's CompletionHandle; CUDA output: write-into, no allocation, capture-safe) lives in
+    // `BackendStorage::copy_from` (ROADMAP row 137, seam S3 step 2).
+    out_guard.inner.copy_from(&in_guard.inner)
 }
 
 /// Phase 7.5 CUDA registration — now `Op::Copy` D2H only.
