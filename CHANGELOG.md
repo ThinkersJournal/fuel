@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.37.2 - 2026-11-01
+
+### Added
+
+- Docs: ROADMAP row 137 states where it stands after step 3c (done: steps 1 to 3; remaining: 4 identity for index, 5 park DynBackendStorage, 6 backend-gated code out of fuel-dispatch, with measured sizes). No code change.
+
 ## v0.37.1 - 2026-11-01
 
 ### Added
