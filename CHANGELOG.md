@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.36.8 - 2026-11-01
+
+### Added
+
+- Docs: follow-up read of the cuBLAS documentation added to the Nvidia terms note (outer-vector and block scaling modes), and ROADMAP row 141 for what is still unread. No code change.
+
 ## v0.36.7 - 2026-11-01
 
 ### Fixed
