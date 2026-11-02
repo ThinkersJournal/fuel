@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.37.1 - 2026-11-01
+
+### Added
+
+- Docs: GAP-371 and ROADMAP row 142 for `vulkan_deferred_eviction_live::vulkan_release_open_batch_deferred_deletion_no_drain`, red on the published v0.36.7 (the A2.1 eviction counter never advances), with the bisect plan. No code change.
+
 ## v0.37.0 - 2026-11-01
 
 ### Breaking
