@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.36.12 - 2026-11-01
+
+### Added
+
+- Docs: cuDNN backend documentation read added to the Nvidia terms note (section 5c) and ROADMAP row 141 updated. No code change.
+
 ## v0.36.10 - 2026-11-01
 
 ### Added
