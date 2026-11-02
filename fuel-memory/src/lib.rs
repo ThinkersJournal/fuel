@@ -167,6 +167,73 @@ impl BackendStorage {
             BackendStorage::Metal(m) => Some(m.device().location()),
         }
     }
+
+    /// Receive the bytes of `src` into `self`, using the transfer the pair of backends supports:
+    ///
+    /// | `self` \ `src` | Cpu | Cuda | Vulkan |
+    /// |---|---|---|---|
+    /// | Cpu | byte copy | device-to-host read (`to_cpu_bytes_finer`, no whole-device sync) | device-to-host read (`download_bytes`) |
+    /// | Cuda | typed `Err` | write into the existing buffer (`copy_from_device`, no allocation) | typed `Err` |
+    /// | Vulkan | typed `Err` | typed `Err` | one `vkCmdCopyBuffer` into a fresh buffer that replaces `self` |
+    ///
+    /// A pair outside the table returns an `Err` naming both backends by [`BackendId`] (cross-vendor
+    /// transfer is two hops through the CPU, planned by the optimizer, not hidden here). A CPU
+    /// destination copies `min(src, dst)` bytes, as the executor's sized outputs always match.
+    /// This is the one place the per-pair knowledge lives (ROADMAP row 137, seam S3 step 2); the
+    /// executor's `Op::Copy` wrappers call it.
+    pub fn copy_from(&mut self, src: &BackendStorage) -> Result<()> {
+        match (&mut *self, src) {
+            (BackendStorage::Cpu(dst), BackendStorage::Cpu(s)) => {
+                copy_prefix(dst, s.bytes());
+                Ok(())
+            }
+            #[cfg(feature = "cuda")]
+            (BackendStorage::Cpu(dst), BackendStorage::Cuda(s)) => {
+                let bytes = s.to_cpu_bytes_finer()?;
+                copy_prefix(dst, &bytes);
+                Ok(())
+            }
+            #[cfg(feature = "cuda")]
+            (BackendStorage::Cuda(dst), BackendStorage::Cuda(s)) => dst.copy_from_device(s),
+            #[cfg(feature = "vulkan")]
+            (BackendStorage::Cpu(dst), BackendStorage::Vulkan(s)) => {
+                let backend = vulkan_backend_of(s)?;
+                let bytes = backend.download_bytes(s)?;
+                copy_prefix(dst, &bytes);
+                Ok(())
+            }
+            #[cfg(feature = "vulkan")]
+            (BackendStorage::Vulkan(dst), BackendStorage::Vulkan(s)) => {
+                let backend = vulkan_backend_of(s)?;
+                *dst = backend.slot_copy_to_new_handle(s, 0, s.len_bytes())?;
+                Ok(())
+            }
+            (dst, src) => Err(fuel_ir::Error::Msg(format!(
+                "BackendStorage::copy_from: no direct transfer from {:?} storage to {:?} storage                  (cross-vendor and host-to-device copies are separate hops)",
+                src.backend_id(),
+                dst.backend_id(),
+            ))
+            .bt()),
+        }
+    }
+}
+
+/// Copy as many bytes of `bytes` as fit into the CPU destination.
+fn copy_prefix(dst: &mut CpuStorageBytes, bytes: &[u8]) {
+    let n = bytes.len().min(dst.len_bytes());
+    dst.bytes_mut()[..n].copy_from_slice(&bytes[..n]);
+}
+
+/// The backend handle a Vulkan storage must carry for the pipelined executor's copies.
+#[cfg(feature = "vulkan")]
+fn vulkan_backend_of(s: &VulkanStorage) -> Result<&Arc<fuel_vulkan_backend::VulkanBackend>> {
+    s.backend().ok_or_else(|| {
+        fuel_ir::Error::Msg(
+            "BackendStorage::copy_from: Vulkan source has no backend handle. Storages flowing              through the pipelined-executor Copy path come from VulkanBackend::alloc_bytes_handle /              upload_bytes_handle."
+                .to_string(),
+        )
+        .bt()
+    })
 }
 
 impl Storage {
@@ -309,6 +376,27 @@ pub fn from_slice_cpu<T: bytemuck::Pod + fuel_ir::WithDType>(data: &[T]) -> Stor
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// CPU to CPU copy moves the bytes; a pair with no direct transfer fails loudly, naming both backends.
+    #[test]
+    fn copy_from_cpu_to_cpu_copies_and_unsupported_pairs_error() {
+        let src = BackendStorage::Cpu(CpuStorageBytes::from_slice(&[1u8, 2, 3, 4]));
+        let mut dst = BackendStorage::Cpu(CpuStorageBytes::from_zero_bytes(4));
+        dst.copy_from(&src).unwrap();
+        match &dst {
+            BackendStorage::Cpu(c) => assert_eq!(c.bytes(), &[1, 2, 3, 4]),
+            #[allow(unreachable_patterns)]
+            _ => panic!("destination changed backend"),
+        }
+        // A shorter destination takes the prefix that fits and does not overrun.
+        let mut short = BackendStorage::Cpu(CpuStorageBytes::from_zero_bytes(2));
+        short.copy_from(&src).unwrap();
+        match &short {
+            BackendStorage::Cpu(c) => assert_eq!(c.bytes(), &[1, 2]),
+            #[allow(unreachable_patterns)]
+            _ => panic!("destination changed backend"),
+        }
+    }
 
     /// A CPU storage names its backend and its place, and `len_bytes` agrees with the bytes built.
     #[test]

@@ -54,7 +54,7 @@ use fuel_ir::probe::BackendId;
 use fuel_ir::{DType, Error, Layout, Result};
 
 use crate::kernel::{KernelBindingTable, OpParams};
-use fuel_memory::{BackendStorage, Storage};
+use fuel_memory::Storage;
 
 // Re-use the storage-lock helpers from dispatch.rs.
 use crate::dispatch::{read_storage, write_storage};
@@ -4942,46 +4942,13 @@ pub fn copy_to_cpu_vulkan(
         .bt());
     }
     let in_guard = read_storage(&inputs[0])?;
-    let vk_src = vulkan_input(&in_guard)?;
-    let backend = vk_src.backend().ok_or_else(|| {
-        Error::Msg(
-            "copy_to_cpu_vulkan: Vulkan input has no backend handle. \
-             Storages flowing through the pipelined-executor binding-table \
-             Copy path must come from VulkanBackend::alloc_bytes_handle / \
-             upload_bytes_handle."
-                .to_string(),
-        )
-        .bt()
-    })?;
+    // The key is the SOURCE backend: keep the typed error for a non-Vulkan input.
+    vulkan_input(&in_guard)?;
     let mut out_guard = write_storage(&outputs[0])?;
-    match &mut out_guard.inner {
-        BackendStorage::Cpu(_) => {
-            let bytes = backend.download_bytes(vk_src)?;
-            let dst = crate::dispatch::cpu_output(&mut out_guard)?;
-            let n = bytes.len().min(dst.len_bytes());
-            dst.bytes_mut()[..n].copy_from_slice(&bytes[..n]);
-            Ok(())
-        }
-        BackendStorage::Vulkan(_) => {
-            // Same-device copy: one vkCmdCopyBuffer into a fresh
-            // standalone buffer (safety copies on destructive ops /
-            // residency machinery emit these; before this routing any
-            // Vulkan→Vulkan Copy mis-dispatched into cpu_output).
-            let copied = backend.slot_copy_to_new_handle(vk_src, 0, vk_src.len_bytes())?;
-            let dst = vulkan_output(&mut out_guard)?;
-            *dst = copied;
-            Ok(())
-        }
-        #[allow(unreachable_patterns)]
-        other => Err(Error::Msg(format!(
-            "copy_to_cpu_vulkan: unsupported output substrate {:?} \
-             (Vulkan sources copy to CPU or Vulkan outputs only; \
-             cross-vendor GPU transfer goes through host staging as \
-             two Copy hops)",
-            std::mem::discriminant(other),
-        ))
-        .bt()),
-    }
+    // CPU output: download; Vulkan output: one vkCmdCopyBuffer into a fresh buffer. Both, and the
+    // error for a Vulkan source with no backend handle, live in `BackendStorage::copy_from`
+    // (ROADMAP row 137, seam S3 step 2).
+    out_guard.inner.copy_from(&in_guard.inner)
 }
 
 // ===========================================================================
