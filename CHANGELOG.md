@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.36.11 - 2026-11-01
+
+### Added
+
+- fuel-dispatch: `DeviceRegistry::with_cuda` / `with_vulkan` and five additive entry points ending in `_with_devices` (`realize_with_optimized`, `realize_with_optimized_picking_env`, `realize_with_optimized_picking_cached_env`, `realize_many`, `realize_many_with_optimized_picking_env`) so a caller can hand in the CUDA or Vulkan devices it already holds instead of relying on a storage in the cache (ROADMAP row 137, seam S3 step 3b-1). The existing entry points are unchanged and use an empty registry; the lookup still falls back to the cache scan.
+
 ## v0.36.10 - 2026-11-01
 
 ### Added
