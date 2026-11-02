@@ -162,7 +162,7 @@ pub type StorageCache = HashMap<NodeId, Arc<RwLock<Storage>>>;
 /// Device handles found during one realize, keyed by [`DeviceLocation`] (ROADMAP row 137, seam S3 step 3a).
 ///
 /// A handle is still found the way it always was: the first lookup for a place scans the storage cache for
-/// a storage that lives there ([`find_cuda_device_in_cache`], [`find_vulkan_backend_in_cache`]), and the
+/// a storage that lives there (`find_cuda_device_in_cache`, `find_vulkan_backend_in_cache`), and the
 /// registry remembers the answer so the next lookup for that place does not scan. The scan runs against
 /// the cache as it is AT THAT MOMENT, so a device that becomes findable part-way through a realize (a copy
 /// creates the first storage on it) is found exactly when it was before. Nothing is pre-filled and nothing
