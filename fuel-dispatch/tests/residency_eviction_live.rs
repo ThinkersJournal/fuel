@@ -109,8 +109,13 @@ fn cuda_evict_fault_back_roundtrip_preserves_output() {
 
     // --- Baseline: no eviction --------------------------------------
     let (graph1, a1, out1) = build();
-    let (s1, _) = PipelinedExecutor::realize(graph1, out1, seed_cuda(&dev, a1))
-        .expect("baseline realize on CUDA");
+    let (s1, _) = PipelinedExecutor::realize_with_devices(
+        graph1,
+        out1,
+        seed_cuda(&dev, a1),
+        fuel_dispatch::pipelined::DeviceRegistry::new().with_cuda(dev.clone()),
+    )
+    .expect("baseline realize on CUDA");
     let baseline = download(&s1);
     assert_eq!(baseline, vec![0.0_f32, 6.0, 0.0, 20.0]);
 
@@ -152,8 +157,13 @@ fn cuda_evict_fault_back_roundtrip_preserves_output() {
         assert_eq!(g.target_backend(chain.reload), Some(BackendId::Cpu));
     }
 
-    let (s2, _) = PipelinedExecutor::realize(graph2, out2, seed_cuda(&dev, a2))
-        .expect("evicted realize on CUDA");
+    let (s2, _) = PipelinedExecutor::realize_with_devices(
+        graph2,
+        out2,
+        seed_cuda(&dev, a2),
+        fuel_dispatch::pipelined::DeviceRegistry::new().with_cuda(dev.clone()),
+    )
+    .expect("evicted realize on CUDA");
     let evicted = download(&s2);
 
     assert_eq!(

@@ -1015,13 +1015,12 @@ pub enum Op {
     /// with a graph-level node the optimizer can see + the executor's
     /// `WorkItemKind::Alloc` arm dispatches per-backend.
     ///
-    /// **Device-handle requirement**: the executor's Alloc arm derives
-    /// the per-backend handle (e.g. `&CudaDevice`, `&Arc<VulkanBackend>`)
-    /// by searching the input cache for any Storage already on
-    /// `target`'s backend. Callers must seed the cache with at least
-    /// one such storage before realizing an Op::Alloc on a non-CPU
-    /// target. `fuel-tensor::pipelined_bridge::device_seed_storage` is
-    /// the canonical seeder.
+    /// **Device-handle requirement**: the executor's Alloc arm takes the
+    /// per-backend handle (e.g. `&CudaDevice`, `&Arc<VulkanBackend>`)
+    /// from the `DeviceRegistry` the caller hands the realize (a
+    /// `*_with_devices` entry point of `fuel-dispatch`'s
+    /// `PipelinedExecutor`). A non-CPU place nobody registered is a
+    /// typed error at the Alloc.
     Alloc { target: DeviceLocation },
 
     /// Fill the input tensor's bytes with zero, in place. Aliases

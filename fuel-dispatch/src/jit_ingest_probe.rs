@@ -345,7 +345,12 @@ pub fn reference_output(
     }
 
     // (f) Realize the region sink on the device.
-    let (out_arc, _layout) = PipelinedExecutor::realize(graph, sink, cache)?;
+    let (out_arc, _layout) = PipelinedExecutor::realize_with_devices(
+        graph,
+        sink,
+        cache,
+        crate::pipelined::DeviceRegistry::new().with_cuda(device.clone()),
+    )?;
 
     // (g) D2H: read the CUDA output storage back to host bytes.
     let bytes = {
@@ -469,7 +474,12 @@ pub fn reference_from_registered_recipe(
     }
 
     // (f) Realize the lowered base-map sink on the device.
-    let (out_arc, _layout) = PipelinedExecutor::realize(graph, sink, cache)?;
+    let (out_arc, _layout) = PipelinedExecutor::realize_with_devices(
+        graph,
+        sink,
+        cache,
+        crate::pipelined::DeviceRegistry::new().with_cuda(device.clone()),
+    )?;
 
     // (g) D2H: read the CUDA output storage back to host bytes.
     let bytes = {
