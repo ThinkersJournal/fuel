@@ -447,7 +447,7 @@ impl CapturedDecodeSession {
                 other => {
                     return Err(Error::Msg(format!(
                         "CapturedDecodeSession::capture: input is BackendStorage::{:?}, not Cuda",
-                        std::mem::discriminant(other),
+                        other.backend_id(),
                     ))
                     .bt());
                 }
@@ -514,7 +514,7 @@ impl CapturedDecodeSession {
                         "CapturedDecodeSession::replay_token: input {:?} is \
                          BackendStorage::{:?}, not Cuda",
                         id,
-                        std::mem::discriminant(other),
+                        other.backend_id(),
                     ))
                     .bt());
                 }
@@ -1458,7 +1458,7 @@ impl PipelinedExecutor {
                     return Err(Error::Msg(format!(
                         "capture_decode: target {:?} is BackendStorage::{:?}, not Cuda",
                         target,
-                        std::mem::discriminant(other),
+                        other.backend_id(),
                     ))
                     .bt());
                 }
@@ -5403,7 +5403,7 @@ fn bind_data_determined_count(
                 "NonZeroIndices: data-determined count read is CPU-only today; got \
                  BackendStorage::{:?} (device backends need a D2H after the completion \
                  handle is waited — a documented follow-up)",
-                std::mem::discriminant(other),
+                other.backend_id(),
             ))
             .bt());
         }
@@ -6657,7 +6657,7 @@ fn execute_work_item(
                                  input has BackendStorage::{:?}; mixed-backend kernels \
                                  require an explicit Op::Copy first",
                                     item.node_id,
-                                    std::mem::discriminant(other),
+                                    other.backend_id(),
                                 ))
                                 .bt());
                             }
@@ -6696,7 +6696,7 @@ fn execute_work_item(
                                  input has BackendStorage::{:?}; mixed-backend kernels \
                                  require an explicit Op::Copy first",
                                     item.node_id,
-                                    std::mem::discriminant(other),
+                                    other.backend_id(),
                                 ))
                                 .bt());
                             }
@@ -7690,7 +7690,7 @@ fn contiguize_into(
                 other => {
                     return Err(Error::Msg(format!(
                         "contiguize_into: dest is BackendStorage::{:?}, not Cuda",
-                        std::mem::discriminant(other),
+                        other.backend_id(),
                     ))
                     .bt());
                 }
