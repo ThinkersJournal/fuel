@@ -74,7 +74,8 @@ open-source project"), whether it embodies scaled low-bit dot kernels (A2 item 3
   scaled low-bit matrix multiplies for FP8/FP4. Whether it has int8 per-vector kernels: **UNREAD** (section bodies not
   read).
 - The cuBLAS page carries the usual document notice: "No license, either expressed or implied, is granted under any
-  NVIDIA patent right, copyright, or other NVIDIA intellectual property right under this document." and "Use of such
+  NVIDIA patent right, [one further right named here], or other NVIDIA intellectual property right under this
+  document." and "Use of such
   information may require a license from a third party under the patents or other intellectual property rights of the
   third party, or a license from NVIDIA under the patents or other intellectual property rights of NVIDIA."
 - Software (libraries run on Nvidia GPUs).
@@ -91,7 +92,7 @@ open-source project"), whether it embodies scaled low-bit dot kernels (A2 item 3
 
 ### CUTLASS C++ (BSD-3-Clause)
 
-- `LICENSE.txt` begins "Copyright (c) 2017 - 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved." and
+- `LICENSE.txt` begins with a 2017 to 2026 notice line naming NVIDIA CORPORATION & AFFILIATES, then
   "SPDX-License-Identifier: BSD-3-Clause". The word "patent" does not occur in it: the text is silent on patents.
 - "Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
   following conditions are met:" (keep the notice in source; reproduce it in binary form; no endorsement).
