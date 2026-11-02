@@ -159,6 +159,62 @@ pub(crate) struct StreamingPick {
 /// and as the output cache (built up during execution).
 pub type StorageCache = HashMap<NodeId, Arc<RwLock<Storage>>>;
 
+/// Device handles found during one realize, keyed by [`DeviceLocation`] (ROADMAP row 137, seam S3 step 3a).
+///
+/// A handle is still found the way it always was: the first lookup for a place scans the storage cache for
+/// a storage that lives there (`find_cuda_device_in_cache`, `find_vulkan_backend_in_cache`), and the
+/// registry remembers the answer so the next lookup for that place does not scan. The scan runs against
+/// the cache as it is AT THAT MOMENT, so a device that becomes findable part-way through a realize (a copy
+/// creates the first storage on it) is found exactly when it was before. Nothing is pre-filled and nothing
+/// is invalidated: a handle stays valid for the whole realize. Parts 3b and 3c replace the scan with handles
+/// handed in by the caller and delete the seeding.
+#[derive(Default)]
+pub struct DeviceRegistry {
+    #[cfg(feature = "cuda")]
+    cuda: HashMap<DeviceLocation, fuel_cuda_backend::CudaDevice>,
+    #[cfg(feature = "vulkan")]
+    vulkan: HashMap<DeviceLocation, std::sync::Arc<fuel_vulkan_backend::VulkanBackend>>,
+}
+
+impl DeviceRegistry {
+    /// An empty registry (the state at the start of every realize).
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// The CUDA device at `gpu_id`: remembered, else found in `cache` as before.
+    #[cfg(feature = "cuda")]
+    fn cuda(
+        &mut self,
+        cache: &StorageCache,
+        gpu_id: usize,
+    ) -> Option<fuel_cuda_backend::CudaDevice> {
+        let at = DeviceLocation::Cuda { gpu_id };
+        if let Some(dev) = self.cuda.get(&at) {
+            return Some(dev.clone());
+        }
+        let dev = find_cuda_device_in_cache(cache, gpu_id)?;
+        self.cuda.insert(at, dev.clone());
+        Some(dev)
+    }
+
+    /// The Vulkan backend at `gpu_id`: remembered, else found in `cache` as before.
+    #[cfg(feature = "vulkan")]
+    fn vulkan(
+        &mut self,
+        cache: &StorageCache,
+        gpu_id: usize,
+    ) -> Option<std::sync::Arc<fuel_vulkan_backend::VulkanBackend>> {
+        let at = DeviceLocation::Vulkan { gpu_id };
+        if let Some(dev) = self.vulkan.get(&at) {
+            return Some(dev.clone());
+        }
+        let dev = find_vulkan_backend_in_cache(cache, gpu_id)?;
+        self.vulkan.insert(at, dev.clone());
+        Some(dev)
+    }
+}
+
 /// Persistent per-node output buffers for CUDA-graph capture (the
 /// "CapturedRun executor" build-out). Maps each compute node's [`NodeId`]
 /// to a FIXED-ADDRESS output [`Storage`] Arc that survives across realizes,
@@ -1424,10 +1480,12 @@ impl PipelinedExecutor {
         let mut warm_cache: StorageCache = inputs.clone();
         let mut warm_layouts = seed_layouts.clone();
         let mut warm_syms = SymEnv::new();
+        let mut warm_devices = DeviceRegistry::new();
         for item in &items {
             let _handle = execute_work_item(
                 item,
                 &mut warm_cache,
+                &mut warm_devices,
                 &mut warm_layouts,
                 &mut warm_syms,
                 false,
@@ -1474,6 +1532,7 @@ impl PipelinedExecutor {
         let mut cap_cache: StorageCache = inputs;
         let mut cap_layouts = seed_layouts;
         let mut cap_syms = SymEnv::new();
+        let mut cap_devices = DeviceRegistry::new();
         let mut inner_err: Option<Error> = None;
         let items_ref = &items;
         let graph_ref = &graph;
@@ -1485,6 +1544,7 @@ impl PipelinedExecutor {
                 match execute_work_item(
                     item,
                     &mut cap_cache,
+                    &mut cap_devices,
                     &mut cap_layouts,
                     &mut cap_syms,
                     false,
@@ -1604,6 +1664,7 @@ impl PipelinedExecutor {
         let plan_generation: Option<u64> = generation_for(&order_source);
         let mut current_chunk_backend: Option<BackendId> = None;
         let mut cache: StorageCache = inputs;
+        let mut devices = DeviceRegistry::new();
         // Data-dependent dynamic-shapes: symbols BOUND BY PRODUCERS during
         // this pass (e.g. `Op::NonZeroIndices`'s runtime count). Distinct
         // from the compile-time `sym_env` (input-determined, moved into the
@@ -1746,6 +1807,7 @@ impl PipelinedExecutor {
             let handle = execute_work_item(
                 &item,
                 &mut cache,
+                &mut devices,
                 &mut layout_cache,
                 &mut produced_syms,
                 will_be_waited(&wait_set, item.node_id),
@@ -2083,6 +2145,7 @@ impl PipelinedExecutor {
         let plan_generation: Option<u64> = generation_for(&order_source);
         let mut current_chunk_backend: Option<BackendId> = None;
         let mut cache: StorageCache = inputs;
+        let mut devices = DeviceRegistry::new();
         // Data-dependent dynamic-shapes producer-bound symbols (see
         // `realize_inner`). `realize_many` does not expose them today; the
         // env is dropped at pass end (producers still publish, keeping the
@@ -2161,6 +2224,7 @@ impl PipelinedExecutor {
             let handle = execute_work_item(
                 &item,
                 &mut cache,
+                &mut devices,
                 &mut layout_cache,
                 &mut produced_syms,
                 will_be_waited(&wait_set, item.node_id),
@@ -5521,6 +5585,11 @@ fn resolve_deferred_matmul(
 fn execute_work_item(
     item: &WorkItem,
     cache: &mut StorageCache,
+    #[cfg_attr(
+        not(any(feature = "cuda", feature = "vulkan")),
+        allow(unused_variables)
+    )]
+    devices: &mut DeviceRegistry,
     layout_cache: &mut HashMap<NodeId, Layout>,
     produced_syms: &mut SymEnv,
     // Step E A4b open question #4 — "event only where waited": whether
@@ -6018,7 +6087,7 @@ fn execute_work_item(
                 DeviceLocation::Cpu => fuel_memory::alloc_cpu_zeroed(item.dtype, item.elem_count)?,
                 #[cfg(feature = "cuda")]
                 DeviceLocation::Cuda { gpu_id } => {
-                    let cuda_dev = find_cuda_device_in_cache(cache, *gpu_id).ok_or_else(|| {
+                    let cuda_dev = devices.cuda(cache, *gpu_id).ok_or_else(|| {
                         Error::Msg(format!(
                             "Op::Alloc on Cuda {{ gpu_id: {} }}: no CUDA \
                              storage in input cache to derive the device \
@@ -6050,18 +6119,17 @@ fn execute_work_item(
                 }
                 #[cfg(feature = "vulkan")]
                 DeviceLocation::Vulkan { gpu_id } => {
-                    let backend =
-                        find_vulkan_backend_in_cache(cache, *gpu_id).ok_or_else(|| {
-                            Error::Msg(format!(
-                                "Op::Alloc on Vulkan {{ gpu_id: {} }}: no Vulkan \
+                    let backend = devices.vulkan(cache, *gpu_id).ok_or_else(|| {
+                        Error::Msg(format!(
+                            "Op::Alloc on Vulkan {{ gpu_id: {} }}: no Vulkan \
                              storage in input cache to derive the backend \
                              handle from. The caller must seed the cache \
                              (e.g. via `fuel-core::pipelined_bridge::\
                              device_seed_storage`) before realizing.",
-                                gpu_id,
-                            ))
-                            .bt()
-                        })?;
+                            gpu_id,
+                        ))
+                        .bt()
+                    })?;
                     // Phase 3a follow-up: true uninit alloc. The old
                     // `upload_bytes_handle(vec![0u8; n])` host-staged
                     // zeros (~2× the bandwidth of a device-side fill);
@@ -6345,19 +6413,18 @@ fn execute_work_item(
                     }
                     #[cfg(feature = "cuda")]
                     DeviceLocation::Cuda { gpu_id } => {
-                        let cuda_dev =
-                            find_cuda_device_in_cache(cache, *gpu_id).ok_or_else(|| {
-                                Error::Msg(format!(
-                                    "Op::{op_label} on Cuda {{ gpu_id: {} }}: no CUDA \
+                        let cuda_dev = devices.cuda(cache, *gpu_id).ok_or_else(|| {
+                            Error::Msg(format!(
+                                "Op::{op_label} on Cuda {{ gpu_id: {} }}: no CUDA \
                                  storage in input cache to derive the device \
                                  handle from. The caller must seed the cache \
                                  (e.g. via `fuel-core::pipelined_bridge::\
                                  device_seed_storage`) before realizing an \
                                  H2D Op::{op_label}.",
-                                    gpu_id,
-                                ))
-                                .bt()
-                            })?;
+                                gpu_id,
+                            ))
+                            .bt()
+                        })?;
                         let cuda_bytes =
                             fuel_cuda_backend::CudaStorageBytes::alloc_uninit(&cuda_dev, n_bytes)?;
                         Storage::new(fuel_memory::BackendStorage::Cuda(cuda_bytes), item.dtype)
@@ -6372,19 +6439,18 @@ fn execute_work_item(
                     }
                     #[cfg(feature = "vulkan")]
                     DeviceLocation::Vulkan { gpu_id } => {
-                        let backend =
-                            find_vulkan_backend_in_cache(cache, *gpu_id).ok_or_else(|| {
-                                Error::Msg(format!(
-                                    "Op::{op_label} on Vulkan {{ gpu_id: {} }}: no Vulkan \
+                        let backend = devices.vulkan(cache, *gpu_id).ok_or_else(|| {
+                            Error::Msg(format!(
+                                "Op::{op_label} on Vulkan {{ gpu_id: {} }}: no Vulkan \
                                  storage in input cache to derive the backend \
                                  handle from. The caller must seed the cache \
                                  (e.g. via `fuel-core::pipelined_bridge::\
                                  device_seed_storage`) before realizing an \
                                  H2D Op::{op_label}.",
-                                    gpu_id,
-                                ))
-                                .bt()
-                            })?;
+                                gpu_id,
+                            ))
+                            .bt()
+                        })?;
                         let vk_bytes = backend.alloc_bytes_handle(n_bytes)?;
                         Storage::new(fuel_memory::BackendStorage::Vulkan(vk_bytes), item.dtype)
                     }
