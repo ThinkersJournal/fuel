@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.36.9 - 2026-11-01
+
+### Added
+
+- Docs: step 3 of ROADMAP row 137 (the device registry) broken into parts 3a to 3c in the S3 design note, with the lookup sites measured and the reason the first part must keep a scan's answer. No code change.
+
 ## v0.36.7 - 2026-11-01
 
 ### Fixed
