@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.37.10 - 2026-11-03
+
+### Added
+
+- `fuel-loaders`: `quantized::arch::Architecture::Qwen35` (`general.architecture = qwen35`), detected by its declared name and its own `qwen35.*` key prefix; a header fixture from the 4B file derives the generic fields. Row 118. Adding a public enum variant: only `fuel-loaders` refers to `Architecture` (`git grep` over `*.rs` at `22d3faab`), so `-p fuel-loaders --all-targets` is the gate. The derived config has no head dimension, partial-rotary or DeltaNet fields yet; no loader wiring.
+
 ## v0.37.9 - 2026-11-03
 
 ### Added

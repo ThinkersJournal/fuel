@@ -13,7 +13,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 7% of 476 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 477 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1392 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 304 lines verbatim
@@ -581,7 +581,7 @@ fuel-dispatch/src/kernel.rs	own		no lineage; 7 of 1207 lines verbatim in candle 
 fuel-dispatch/src/kiss_corpus.rs	own		no lineage; 1 of 355 lines verbatim in candle (0%)
 fuel-dispatch/src/lib.rs	own		no lineage; 0 of 110 lines verbatim in candle (0%)
 fuel-dispatch/src/optimize.rs	own		no lineage; 7 of 1613 lines verbatim in candle (0%)
-fuel-dispatch/src/pipelined.rs	not-traced	candle-metal-kernels/src/tests.rs	22 of 8619 lines also appear in candle (mostly candle-metal-kernels/src/tests.rs); not judged
+fuel-dispatch/src/pipelined.rs	not-traced	candle-metal-kernels/src/tests.rs	22 of 8626 lines also appear in candle (mostly candle-metal-kernels/src/tests.rs); not judged
 fuel-dispatch/src/plan.rs	own		no lineage; 6 of 2685 lines verbatim in candle (0%)
 fuel-dispatch/src/ranker/alternative_set.rs	own		no lineage; 4 of 591 lines verbatim in candle (1%)
 fuel-dispatch/src/ranker/candidate.rs	own		no lineage; 1 of 117 lines verbatim in candle (1%)
