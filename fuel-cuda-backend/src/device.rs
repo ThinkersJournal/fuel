@@ -543,6 +543,13 @@ impl CudaDevice {
         Self::new_with_stream(ordinal)
     }
 
+    /// Construct a CudaDevice for the physical GPU with this stable identity (ROADMAP row 137 step
+    /// 4a), resolved to this process's ordinal once, here. The identity may come from another API
+    /// (a Vulkan device's UUID). Fails when no device, or more than one, matches.
+    pub fn new_by_identity(wanted: &fuel_ir::probe::DeviceIdentity) -> Result<Self> {
+        Self::new(crate::probe::ordinal_of_identity(wanted)?)
+    }
+
     fn new_from(
         context: baracuda_driver::Context,
         stream: baracuda_driver::Stream,

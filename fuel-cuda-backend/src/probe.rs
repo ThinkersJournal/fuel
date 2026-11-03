@@ -258,6 +258,89 @@ mod tests {
     }
 }
 
+/// Resolve `wanted` against per-device identities in ordinal order (`None` = the UUID query failed,
+/// so that device can never match). Fails on no match and on more than one match rather than taking
+/// the first (ROADMAP row 137 step 4a). Pure: the synthetic-enumeration tests drive this.
+pub(crate) fn ordinal_in(
+    wanted: &fuel_ir::probe::DeviceIdentity,
+    enumerated: &[Option<fuel_ir::probe::DeviceIdentity>],
+) -> Result<usize> {
+    use fuel_ir::probe::{DeviceIdentity, IdentityResolveError, resolve_identity_ordinal};
+    let unknown = DeviceIdentity {
+        uuid: None,
+        pci: None,
+    };
+    let ids: Vec<DeviceIdentity> = enumerated.iter().map(|i| i.unwrap_or(unknown)).collect();
+    resolve_identity_ordinal(wanted, &ids).map_err(|e| match e {
+        IdentityResolveError::NoMatch => Error::Msg(format!(
+            "no CUDA device has identity {wanted:?} ({} device(s) enumerated)",
+            enumerated.len()
+        )),
+        IdentityResolveError::Ambiguous(ordinals) => Error::Msg(format!(
+            "identity {wanted:?} matches more than one CUDA device (ordinals {ordinals:?})"
+        )),
+    })
+}
+
+/// The CUDA ordinal of the physical GPU with this identity, in THIS process (ROADMAP row 137 step
+/// 4a). The identity may come from another API: a Vulkan device's UUID names the same GPU. The
+/// ordinal is a within-process handle; do not store it.
+pub fn ordinal_of_identity(wanted: &fuel_ir::probe::DeviceIdentity) -> Result<usize> {
+    ordinal_in(wanted, &device_identities()?)
+}
+
+/// `ordinal_in` on synthetic enumerations: no device needed.
+#[cfg(test)]
+mod identity_ordinal_tests {
+    use super::ordinal_in;
+    use fuel_ir::probe::{DeviceIdentity, PciAddress};
+
+    fn id(uuid_byte: u8, bus: u32) -> DeviceIdentity {
+        DeviceIdentity {
+            uuid: Some([uuid_byte; 16]),
+            // CUDA reports no PCI function.
+            pci: Some(PciAddress {
+                domain: 0,
+                bus,
+                device: 0,
+                function: None,
+            }),
+        }
+    }
+
+    #[test]
+    fn same_gpu_resolves_in_either_enumeration_order() {
+        let (a, b) = (id(0x11, 1), id(0x22, 6));
+        assert_eq!(ordinal_in(&a, &[Some(a), Some(b)]).unwrap(), 0);
+        assert_eq!(ordinal_in(&a, &[Some(b), Some(a)]).unwrap(), 1);
+    }
+
+    #[test]
+    fn a_device_whose_uuid_query_failed_never_matches_and_does_not_shift_ordinals() {
+        let (a, b) = (id(0x11, 1), id(0x22, 6));
+        assert_eq!(ordinal_in(&a, &[None, Some(b), Some(a)]).unwrap(), 2);
+        let unknown = DeviceIdentity {
+            uuid: None,
+            pci: None,
+        };
+        assert!(ordinal_in(&unknown, &[None, None]).is_err());
+    }
+
+    #[test]
+    fn no_match_and_ambiguity_both_decline_with_a_named_reason() {
+        let (a, b) = (id(0x11, 1), id(0x22, 6));
+        let none = ordinal_in(&a, &[Some(b)]).unwrap_err().to_string();
+        assert!(none.contains("no CUDA device has identity"), "{none}");
+        let many = ordinal_in(&a, &[Some(a), Some(b), Some(a)])
+            .unwrap_err()
+            .to_string();
+        assert!(
+            many.contains("more than one") && many.contains("[0, 2]"),
+            "{many}"
+        );
+    }
+}
+
 #[cfg(test)]
 mod probe_memoization_tests {
     use super::*;
