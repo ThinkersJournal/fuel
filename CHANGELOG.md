@@ -7,6 +7,12 @@ This documents the main changes to the `fuel` workspace.
 
 - `fuel-backend-contract`: **removed `InplaceOp1`, `InplaceOp2`, `InplaceOp3`** (the `inplace_op` module and its re-exports) **and `Storage::inplace_op1`, `Storage::inplace_op2`, `Storage::inplace_op3`**. They were the trait objects behind the retired eager `Tensor::inplace_opN` API: no backend implemented them and nothing in the workspace, on crates.io (12 reverse dependencies, all Fuel members) or in the other projects on this machine (Lightbulb uses only `backend::BackendRuntime`) named them. Census, code only, from the repository root: `git grep -n -E "InplaceOp[123]|inplace_op[123]" -- '*.rs' ':!fuel-backend-contract'` finds only comments; the same command restricted to `fuel-backend-contract` at the previous commit finds the definitions (positive control). A caller that implemented or called them must stop; there is no replacement. **`BackendCapabilityProvider` is deliberately kept**: it has no implementation and no caller either, but the architecture document (`docs/architecture/05-backend-contract.md`, Tier 1) specifies it and the dlpack extension spec depends on it; amending the constitution is not part of this change. `DynBackendStorage` is also kept (it is reached from `fuel-graph`'s host-data boundary; see the S3 note).
 
+## v0.37.19 - 2026-11-03
+
+### Changed
+
+- `fuel-backend-contract`: the crate documentation no longer says `DynBackendStorage` / `DynBackendDevice` are "at the heart of dispatch" and "the contract Fuel dispatches through" (the executor matches the closed `fuel_memory::BackendStorage` enum); a Status section says they are kept, not extended, and still live at `fuel-graph`'s host-data boundary (`NodeHandle::from_*` builds a `Box<dyn DynBackendStorage>` through `DynBackendDevice::storage_from_host_buffer_owned_dyn`). It records the evidence behind keeping them: code-only caller counts across the workspace, crates.io reverse dependencies (12, all Fuel members) and the one outside project on this machine (Lightbulb, `BackendRuntime` only). Documentation only; no item changes. ROADMAP row 137 step 5 and section 6d of the S3 design note carry the full evidence, including that `InplaceOp1/2/3` and `BackendCapabilityProvider` are unreached and could be deleted in a separate Breaking PR.
+
 ## v0.37.18 - 2026-11-03
 
 ### Added
