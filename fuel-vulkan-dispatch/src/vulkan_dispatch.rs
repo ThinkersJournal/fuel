@@ -10,7 +10,7 @@
 //! Phase 7.6 step 9c Vulkan catch-up V.1.C — the proof-of-life
 //! milestone. One op (`Add f32`) wired end-to-end through the
 //! pipelined-executor binding-table dispatch:
-//! 1. The executor's [`pipelined::execute_work_item`] output-
+//! 1. The executor's `fuel_dispatch::pipelined::execute_work_item` output-
 //!    allocation match arm sees `BackendId::Vulkan` and allocates
 //!    via [`fuel_vulkan_backend::VulkanBackend::alloc_bytes_handle`]
 //!    (V.1.B).
@@ -1962,7 +1962,7 @@ pub mod matmul {
     }
 
     /// MatMul bf16 × bf16 → f32 via cooperative-matrix tensor cores
-    /// (coop[3] tile: A=f16, B=f16, C=f32, R=f32; both inputs are
+    /// (`coop[3]` tile: A=f16, B=f16, C=f32, R=f32; both inputs are
     /// stored as bf16 and downcast bf16→f16 on shared-mem load).
     /// COOP-ONLY — bails on small shapes; route picker should fall
     /// through to a cast-and-f32-matmul alternative.
@@ -4437,7 +4437,7 @@ pub mod flash_attn {
         )
     }
 
-    /// FlashAttention backward — dQ, f32. Inputs (q, k, v, dO, [alibi]);
+    /// FlashAttention backward — dQ, f32. Inputs (q, k, v, dO, `[alibi]`);
     /// output dQ (same shape as Q). Bails on window/softcap (route
     /// picker falls through to CPU).
     pub fn flash_attn_backward_q_f32(
@@ -4912,7 +4912,7 @@ pub mod cast_f8e4m3 {
 /// Dispatch wrapper for `(OpKind::Copy, [T, T], Vulkan)` — D2H from a
 /// Vulkan source storage into a freshly-allocated CPU output. The
 /// executor allocates the CPU output before this wrapper runs
-/// (see [`crate::pipelined::WorkItemKind::Copy`]); the wrapper calls
+/// (see `fuel_dispatch::pipelined::WorkItemKind::Copy`); the wrapper calls
 /// `VulkanBackend::download_bytes` on the input's attached backend
 /// handle and copies the result into the CPU storage.
 ///

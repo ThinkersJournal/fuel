@@ -28,9 +28,10 @@ required-features = ["dev-tools"]
 [dev-dependencies]
 bytemuck = { workspace = true }
 # The hidden, semver-exempt `dev_tools` module (`vulkan_verify_only_on`) for the cross-vendor test.
-fuel-dispatch = { workspace = true, features = ["vulkan", "dev-tools"] }
+# Path-only, as scripts/check-dev-dep-publish-cycles.py requires of every workspace dev-dependency.
+fuel-dispatch = { path = "../fuel-dispatch", features = ["vulkan", "dev-tools"] }
 fuel-conv = { path = "../fuel-conv" }
-fuel-cpu-backend = { workspace = true }
+fuel-cpu-backend = { path = "../fuel-cpu-backend" }
 fuel-quantized = { path = "../fuel-quantized" }
 fuel-test-support = { path = "../fuel-test-support" }
 half = { workspace = true }

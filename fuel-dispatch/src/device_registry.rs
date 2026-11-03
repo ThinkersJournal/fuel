@@ -58,7 +58,7 @@ impl DeviceRegistry {
         self
     }
 
-    /// Record the Vulkan backend a caller already holds (see [`Self::with_cuda`]); the place is the backend's
+    /// Record the Vulkan backend a caller already holds (see `Self::with_cuda`); the place is the backend's
     /// own `gpu_id`.
     #[cfg(feature = "vulkan")]
     pub fn with_vulkan(

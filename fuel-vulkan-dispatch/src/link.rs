@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! The built-in Vulkan backend's FKC `link_registry` (kernel-seam-interop §3.5,
-//! §4.3; FKC §12.6). The GPU analogue of [`crate::fkc::CpuLinkRegistry`]: maps
+//! §4.3; FKC §12.6). The GPU analogue of `fuel_dispatch::fkc::CpuLinkRegistry`: maps
 //! each Vulkan kernel contract's `entry_point` symbol to the production dispatch
 //! wrapper — the real, non-stub resolution the importer uses so an imported
 //! contract binds the **actual** kernel (no raw pointers in the serialized

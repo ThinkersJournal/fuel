@@ -138,6 +138,8 @@ MECHANISMS = (
 #
 # So a DEFECT needs evidence the link cannot resolve under ANY plausible
 # configuration. A SOURCE READ SAYING "THIS LOOKS REACHABLE" IS NOT SUFFICIENT.
+# (That link was de-linked and its entry removed when the module moved to fuel-vulkan-dispatch; the
+# measurement below stands as the worked example.)
 # Measured here: `crate::vulkan_dispatch::register_vulkan_kernels` is a `pub fn`
 # in an UNGATED `pub mod` with no cfg above it -- every source signal says
 # reachable -- and it resolves ONLY under `--features vulkan` (two-arm: plain 1
@@ -157,12 +159,6 @@ DISPOSITIONS = {
              'cfg(feature = "dlpack") on the impl block at fuel-ir/src/stype.rs:140; '
              "`dlpack = []` is a non-default feature. The doc prose itself says "
              '"(step 3, `dlpack` feature)".'),
-    "crate::vulkan_dispatch::register_vulkan_kernels": (CORRECT,
-             "the `vulkan` feature of fuel-dispatch, which turns on an optional = true "
-             "dep (fuel-vulkan-backend). MEASURED TWO-ARM, not read: `cargo doc -p "
-             "fuel-dispatch --no-deps` leaves it unresolved; `--features vulkan` resolves "
-             "it. EVERY SOURCE SIGNAL SAYS REACHABLE -- `pub fn` in an UNGATED `pub mod`, "
-             "no cfg above it -- so a source read would have mis-classified this DEFECT."),
     "fuel_cuda_backend::CudaDevice": (CORRECT,
              "optional = true dep (fuel-cuda-backend, behind fuel-core's `cuda` feature) "
              "and also a CI-excluded crate. The containing `pub mod cuda_backend` is "
