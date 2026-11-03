@@ -1,0 +1,275 @@
+AbsElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=749af61cc831258a
+AbsElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=df9ae96abcb19a4f
+AbsElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=df9ae96abcb19a4f
+AbsElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=df9ae96abcb19a4f
+AddElementwise [BF16, BF16, BF16] Vulkan src=vulkan-slang generic=true rev=261b289f4f0ed3b8
+AddElementwise [F16, F16, F16] Vulkan src=vulkan-slang generic=true rev=261b289f4f0ed3b8
+AddElementwise [F32, F32, F32] Vulkan src=vulkan-slang generic=true rev=261b289f4f0ed3b8
+AddElementwise [F64, F64, F64] Vulkan src=vulkan-slang generic=true rev=261b289f4f0ed3b8
+Affine [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=72ee37b4f2c0b32f
+Affine [F16, F16] Vulkan src=vulkan-slang generic=true rev=eeca28abf49c8f36
+Affine [F32, F32] Vulkan src=vulkan-slang generic=true rev=eeca28abf49c8f36
+Affine [F64, F64] Vulkan src=vulkan-slang generic=true rev=eeca28abf49c8f36
+ArgMaxDim [BF16, U32] Vulkan src=vulkan-slang generic=false rev=8330ff0b93419126
+ArgMaxDim [F16, U32] Vulkan src=vulkan-slang generic=false rev=8330ff0b93419126
+ArgMaxDim [F32, U32] Vulkan src=vulkan-slang generic=false rev=8330ff0b93419126
+ArgMaxDim [F64, U32] Vulkan src=vulkan-slang generic=false rev=8330ff0b93419126
+ArgMinDim [BF16, U32] Vulkan src=vulkan-slang generic=false rev=65f9d8dc5faf4aa4
+ArgMinDim [F16, U32] Vulkan src=vulkan-slang generic=false rev=65f9d8dc5faf4aa4
+ArgMinDim [F32, U32] Vulkan src=vulkan-slang generic=false rev=65f9d8dc5faf4aa4
+ArgMinDim [F64, U32] Vulkan src=vulkan-slang generic=false rev=65f9d8dc5faf4aa4
+Cast [BF16, F32] Vulkan src=vulkan-slang generic=false rev=a9f0e0eececd06a5
+Cast [BF16, F8E4M3] Vulkan src=vulkan-slang generic=false rev=d921a331490c7964
+Cast [F16, F32] Vulkan src=vulkan-slang generic=false rev=e63696537795002f
+Cast [F16, F8E4M3] Vulkan src=vulkan-slang generic=false rev=3fb35b802d578496
+Cast [F32, BF16] Vulkan src=vulkan-slang generic=false rev=ffb8d51e5e5b81df
+Cast [F32, F16] Vulkan src=vulkan-slang generic=false rev=42062f00f2678b79
+Cast [F32, F64] Vulkan src=vulkan-slang generic=false rev=725459c6c7015efb
+Cast [F32, F8E4M3] Vulkan src=vulkan-slang generic=false rev=82120be315215c4e
+Cast [F64, F32] Vulkan src=vulkan-slang generic=false rev=bd9bdcc5c0899f60
+Cast [F8E4M3, BF16] Vulkan src=vulkan-slang generic=false rev=0afe704fa0d8b4b8
+Cast [F8E4M3, F16] Vulkan src=vulkan-slang generic=false rev=3c6a1d477a11147a
+Cast [F8E4M3, F32] Vulkan src=vulkan-slang generic=false rev=f46352143ed43d0c
+ClampElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=5be82235be848415
+Concat [BF16, BF16] Vulkan src=vulkan-slang generic=true rev=5fd457798e429057
+Concat [F16, F16] Vulkan src=vulkan-slang generic=true rev=5fd457798e429057
+Concat [F32, F32] Vulkan src=vulkan-slang generic=true rev=5fd457798e429057
+Concat [F64, F64] Vulkan src=vulkan-slang generic=true rev=5fd457798e429057
+Conv2D [BF16, BF16, BF16] Vulkan src=vulkan-slang generic=false rev=236945856ee88cc0
+Conv2D [F16, F16, F16] Vulkan src=vulkan-slang generic=false rev=08c3045fff745654
+Conv2D [F32, F32, F32] Vulkan src=vulkan-slang generic=false rev=c90ae37580f90fdc
+Copy [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=22ec8a61e4b7dc74
+Copy [F16, F16] Vulkan src=vulkan-slang generic=false rev=22ec8a61e4b7dc74
+Copy [F32, F32] Vulkan src=vulkan-slang generic=false rev=22ec8a61e4b7dc74
+Copy [F64, F64] Vulkan src=vulkan-slang generic=false rev=22ec8a61e4b7dc74
+Copy [I16, I16] Vulkan src=vulkan-slang generic=false rev=22ec8a61e4b7dc74
+Copy [I32, I32] Vulkan src=vulkan-slang generic=false rev=22ec8a61e4b7dc74
+Copy [I64, I64] Vulkan src=vulkan-slang generic=false rev=22ec8a61e4b7dc74
+Copy [U32, U32] Vulkan src=vulkan-slang generic=false rev=22ec8a61e4b7dc74
+Copy [U8, U8] Vulkan src=vulkan-slang generic=false rev=22ec8a61e4b7dc74
+CosElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=2e4265cbe981f75d
+CosElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=5e9e4775587a9262
+CosElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=5e9e4775587a9262
+CosElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=5e9e4775587a9262
+CumSum [BF16, BF16] Vulkan src=vulkan-slang generic=true rev=a02d21e402bc3dd9
+CumSum [F16, F16] Vulkan src=vulkan-slang generic=true rev=a02d21e402bc3dd9
+CumSum [F32, F32] Vulkan src=vulkan-slang generic=true rev=a02d21e402bc3dd9
+CumSum [F64, F64] Vulkan src=vulkan-slang generic=true rev=a02d21e402bc3dd9
+DivElementwise [BF16, BF16, BF16] Vulkan src=vulkan-slang generic=true rev=275a14da093bdfe0
+DivElementwise [F16, F16, F16] Vulkan src=vulkan-slang generic=true rev=275a14da093bdfe0
+DivElementwise [F32, F32, F32] Vulkan src=vulkan-slang generic=true rev=275a14da093bdfe0
+DivElementwise [F64, F64, F64] Vulkan src=vulkan-slang generic=true rev=275a14da093bdfe0
+ExpElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=6859c1784a5fb6ed
+ExpElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=e266c9c1e075a0b2
+ExpElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=e266c9c1e075a0b2
+ExpElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=e266c9c1e075a0b2
+FlashAttn [BF16, BF16, BF16, BF16, BF16] Vulkan src=vulkan-slang generic=false rev=ed51def443331d82
+FlashAttn [BF16, BF16, BF16, BF16] Vulkan src=vulkan-slang generic=false rev=ed51def443331d82
+FlashAttn [F16, F16, F16, F16, F16] Vulkan src=vulkan-slang generic=false rev=d3782309bef65734
+FlashAttn [F16, F16, F16, F16] Vulkan src=vulkan-slang generic=false rev=d3782309bef65734
+FlashAttn [F32, F32, F32, F32, F32] Vulkan src=vulkan-slang generic=false rev=99407b12096c7dd4
+FlashAttn [F32, F32, F32, F32] Vulkan src=vulkan-slang generic=false rev=99407b12096c7dd4
+FlashAttnBackwardK [F32, F32, F32, F32, F32, F32] Vulkan src=vulkan-slang generic=false rev=76729b0c6396a161
+FlashAttnBackwardK [F32, F32, F32, F32, F32] Vulkan src=vulkan-slang generic=false rev=76729b0c6396a161
+FlashAttnBackwardQ [F32, F32, F32, F32, F32, F32] Vulkan src=vulkan-slang generic=false rev=4faaf48133914267
+FlashAttnBackwardQ [F32, F32, F32, F32, F32] Vulkan src=vulkan-slang generic=false rev=4faaf48133914267
+FlashAttnBackwardV [F32, F32, F32, F32, F32, F32] Vulkan src=vulkan-slang generic=false rev=5ce07553693a1990
+FlashAttnBackwardV [F32, F32, F32, F32, F32] Vulkan src=vulkan-slang generic=false rev=5ce07553693a1990
+Flip [BF16, BF16] Vulkan src=vulkan-slang generic=true rev=2ab9fbf275e49de2
+Flip [F16, F16] Vulkan src=vulkan-slang generic=true rev=2ab9fbf275e49de2
+Flip [F32, F32] Vulkan src=vulkan-slang generic=true rev=2ab9fbf275e49de2
+Flip [F64, F64] Vulkan src=vulkan-slang generic=true rev=2ab9fbf275e49de2
+Flip [I32, I32] Vulkan src=vulkan-slang generic=true rev=2ab9fbf275e49de2
+Flip [I64, I64] Vulkan src=vulkan-slang generic=true rev=2ab9fbf275e49de2
+Flip [U32, U32] Vulkan src=vulkan-slang generic=true rev=2ab9fbf275e49de2
+Gather [BF16, U32, BF16] Vulkan src=vulkan-slang generic=false rev=8d11761976ca65f2
+Gather [F16, U32, F16] Vulkan src=vulkan-slang generic=false rev=8d11761976ca65f2
+Gather [F32, U32, F32] Vulkan src=vulkan-slang generic=false rev=8d11761976ca65f2
+Gather [F64, U32, F64] Vulkan src=vulkan-slang generic=false rev=8d11761976ca65f2
+Gather [U32, U32, U32] Vulkan src=vulkan-slang generic=false rev=8d11761976ca65f2
+Gather [U8, U32, U8] Vulkan src=vulkan-slang generic=false rev=8d11761976ca65f2
+GeluTanhElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=597c9b1718ab250b
+GeluTanhElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=5551e61efd4bfab0
+GeluTanhElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=5551e61efd4bfab0
+GeluTanhElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=5551e61efd4bfab0
+IndexAdd [BF16, U32, BF16, BF16] Vulkan src=vulkan-slang generic=false rev=2e94a9d51dacf3b1
+IndexAdd [F16, U32, F16, F16] Vulkan src=vulkan-slang generic=false rev=2e94a9d51dacf3b1
+IndexAdd [F32, U32, F32, F32] Vulkan src=vulkan-slang generic=false rev=2e94a9d51dacf3b1
+IndexAdd [F64, U32, F64, F64] Vulkan src=vulkan-slang generic=false rev=2e94a9d51dacf3b1
+IndexSelect [BF16, U32, BF16] Vulkan src=vulkan-slang generic=false rev=61bd4b43d56494f2
+IndexSelect [F16, U32, F16] Vulkan src=vulkan-slang generic=false rev=61bd4b43d56494f2
+IndexSelect [F32, U32, F32] Vulkan src=vulkan-slang generic=false rev=61bd4b43d56494f2
+IndexSelect [F64, U32, F64] Vulkan src=vulkan-slang generic=false rev=61bd4b43d56494f2
+LayerNormLastDim [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=00f4670978e5da75
+LayerNormLastDim [F16, F16] Vulkan src=vulkan-slang generic=false rev=00f4670978e5da75
+LayerNormLastDim [F32, F32] Vulkan src=vulkan-slang generic=false rev=00f4670978e5da75
+LayerNormLastDim [F64, F64] Vulkan src=vulkan-slang generic=false rev=00f4670978e5da75
+LayerNormLastDimBackward [BF16, BF16, BF16] Vulkan src=vulkan-slang generic=false rev=5d74385b65b37c39
+LayerNormLastDimBackward [F16, F16, F16] Vulkan src=vulkan-slang generic=false rev=5d74385b65b37c39
+LayerNormLastDimBackward [F32, F32, F32] Vulkan src=vulkan-slang generic=false rev=5d74385b65b37c39
+LayerNormLastDimBackward [F64, F64, F64] Vulkan src=vulkan-slang generic=false rev=5d74385b65b37c39
+LogElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=9509a0a071e5de70
+LogElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=ce99e1b231b3cc71
+LogElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=ce99e1b231b3cc71
+LogElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=ce99e1b231b3cc71
+MaskedFill [BF16, Bool, BF16] Vulkan src=vulkan-slang generic=false rev=1012942a3e8252d5
+MaskedFill [F16, Bool, F16] Vulkan src=vulkan-slang generic=false rev=1012942a3e8252d5
+MaskedFill [F32, Bool, F32] Vulkan src=vulkan-slang generic=false rev=1012942a3e8252d5
+MaskedFill [F64, Bool, F64] Vulkan src=vulkan-slang generic=false rev=1012942a3e8252d5
+MaskedFill [U32, Bool, U32] Vulkan src=vulkan-slang generic=false rev=1012942a3e8252d5
+MaskedFill [U8, Bool, U8] Vulkan src=vulkan-slang generic=false rev=1012942a3e8252d5
+MatMul [BF16, BF16, BF16] Vulkan src=vulkan-slang generic=false rev=1611360d5fd35e9e
+MatMul [BF16, BF16, F32] Vulkan src=vulkan-slang generic=false rev=134b06a10bbccc04
+MatMul [F16, F16, F16] Vulkan src=vulkan-slang generic=false rev=63238bec2e20ee4c
+MatMul [F16, F16, F32] Vulkan src=vulkan-slang generic=false rev=193ffcbbedd449ac
+MatMul [F32, BF16, F32] Vulkan src=vulkan-slang generic=false rev=75fa2f974b77f0b8
+MatMul [F32, F32, F32] Vulkan src=vulkan-slang generic=false rev=fef4e95417b1cf88
+MaxReduce [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=dd6c0db6067db632
+MaxReduce [F16, F16] Vulkan src=vulkan-slang generic=false rev=dd6c0db6067db632
+MaxReduce [F32, F32] Vulkan src=vulkan-slang generic=false rev=dd6c0db6067db632
+MaxReduce [F64, F64] Vulkan src=vulkan-slang generic=false rev=dd6c0db6067db632
+MaximumElementwise [BF16, BF16, BF16] Vulkan src=vulkan-slang generic=true rev=02cc7706855cd977
+MaximumElementwise [F16, F16, F16] Vulkan src=vulkan-slang generic=true rev=02cc7706855cd977
+MaximumElementwise [F32, F32, F32] Vulkan src=vulkan-slang generic=true rev=02cc7706855cd977
+MaximumElementwise [F64, F64, F64] Vulkan src=vulkan-slang generic=true rev=02cc7706855cd977
+MeanReduce [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=81266915b3fb49e7
+MeanReduce [F16, F16] Vulkan src=vulkan-slang generic=false rev=81266915b3fb49e7
+MeanReduce [F32, F32] Vulkan src=vulkan-slang generic=false rev=81266915b3fb49e7
+MeanReduce [F64, F64] Vulkan src=vulkan-slang generic=false rev=81266915b3fb49e7
+MinReduce [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=d357de851cabc14c
+MinReduce [F16, F16] Vulkan src=vulkan-slang generic=false rev=d357de851cabc14c
+MinReduce [F32, F32] Vulkan src=vulkan-slang generic=false rev=d357de851cabc14c
+MinReduce [F64, F64] Vulkan src=vulkan-slang generic=false rev=d357de851cabc14c
+MinimumElementwise [BF16, BF16, BF16] Vulkan src=vulkan-slang generic=true rev=e6b735881f858979
+MinimumElementwise [F16, F16, F16] Vulkan src=vulkan-slang generic=true rev=e6b735881f858979
+MinimumElementwise [F32, F32, F32] Vulkan src=vulkan-slang generic=true rev=e6b735881f858979
+MinimumElementwise [F64, F64, F64] Vulkan src=vulkan-slang generic=true rev=e6b735881f858979
+MulElementwise [BF16, BF16, BF16] Vulkan src=vulkan-slang generic=true rev=23087a49686e16df
+MulElementwise [F16, F16, F16] Vulkan src=vulkan-slang generic=true rev=23087a49686e16df
+MulElementwise [F32, F32, F32] Vulkan src=vulkan-slang generic=true rev=23087a49686e16df
+MulElementwise [F64, F64, F64] Vulkan src=vulkan-slang generic=true rev=23087a49686e16df
+NegElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=444713fdd05423fc
+NegElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=023775f8049f9495
+NegElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=023775f8049f9495
+NegElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=023775f8049f9495
+Pad [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=a13f0e1188eb1bec
+Pad [F16, F16] Vulkan src=vulkan-slang generic=false rev=a13f0e1188eb1bec
+Pad [F32, F32] Vulkan src=vulkan-slang generic=false rev=a13f0e1188eb1bec
+Pad [F64, F64] Vulkan src=vulkan-slang generic=false rev=a13f0e1188eb1bec
+Pad [U32, U32] Vulkan src=vulkan-slang generic=false rev=a13f0e1188eb1bec
+Pad [U8, U8] Vulkan src=vulkan-slang generic=false rev=a13f0e1188eb1bec
+PadBackward [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=c6ab6b282fb1bbca
+PadBackward [F16, F16] Vulkan src=vulkan-slang generic=false rev=c6ab6b282fb1bbca
+PadBackward [F32, F32] Vulkan src=vulkan-slang generic=false rev=c6ab6b282fb1bbca
+PadBackward [F64, F64] Vulkan src=vulkan-slang generic=false rev=c6ab6b282fb1bbca
+PadBackward [U32, U32] Vulkan src=vulkan-slang generic=false rev=c6ab6b282fb1bbca
+PadBackward [U8, U8] Vulkan src=vulkan-slang generic=false rev=c6ab6b282fb1bbca
+PowIElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=a3ed59d8fa26cbef
+QMatMul [F32, U32, F32] Vulkan src=vulkan-slang generic=false rev=13b2b9a3d3349c8d
+RecipElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=a8bce1e2807ec665
+RecipElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=3b068f99d212965a
+RecipElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=3b068f99d212965a
+RecipElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=3b068f99d212965a
+ReluElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=5ac17030324b874c
+ReluElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=aaec43f51a4f8eed
+ReluElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=aaec43f51a4f8eed
+ReluElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=aaec43f51a4f8eed
+RmsNormLastDim [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=4c4930ea6b94c26f
+RmsNormLastDim [F16, F16] Vulkan src=vulkan-slang generic=false rev=4c4930ea6b94c26f
+RmsNormLastDim [F32, F32] Vulkan src=vulkan-slang generic=false rev=ad8a0dc574bf6408
+RmsNormLastDim [F64, F64] Vulkan src=vulkan-slang generic=false rev=4c4930ea6b94c26f
+Roll [BF16, BF16] Vulkan src=vulkan-slang generic=true rev=80802b0637e3c342
+Roll [F16, F16] Vulkan src=vulkan-slang generic=true rev=80802b0637e3c342
+Roll [F32, F32] Vulkan src=vulkan-slang generic=true rev=80802b0637e3c342
+Roll [F64, F64] Vulkan src=vulkan-slang generic=true rev=80802b0637e3c342
+Roll [I32, I32] Vulkan src=vulkan-slang generic=true rev=80802b0637e3c342
+Roll [I64, I64] Vulkan src=vulkan-slang generic=true rev=80802b0637e3c342
+Roll [U32, U32] Vulkan src=vulkan-slang generic=true rev=80802b0637e3c342
+Rope [BF16, BF16, BF16, BF16] Vulkan src=vulkan-slang generic=true rev=3fa03d67097ccbc5
+Rope [F16, F16, F16, F16] Vulkan src=vulkan-slang generic=true rev=3fa03d67097ccbc5
+Rope [F32, F32, F32, F32] Vulkan src=vulkan-slang generic=true rev=35e0ca8710341e92
+Rope [F64, F64, F64, F64] Vulkan src=vulkan-slang generic=true rev=3fa03d67097ccbc5
+ScatterAdd [BF16, U32, BF16, BF16] Vulkan src=vulkan-slang generic=false rev=efdc0bcff598539f
+ScatterAdd [F16, U32, F16, F16] Vulkan src=vulkan-slang generic=false rev=efdc0bcff598539f
+ScatterAdd [F32, U32, F32, F32] Vulkan src=vulkan-slang generic=false rev=efdc0bcff598539f
+ScatterAdd [F64, U32, F64, F64] Vulkan src=vulkan-slang generic=false rev=efdc0bcff598539f
+SigmoidElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=627cf277071e6286
+SigmoidElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=b2f2a8679f38ac9b
+SigmoidElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=b2f2a8679f38ac9b
+SigmoidElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=b2f2a8679f38ac9b
+SignElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=3c51efd2d5a57a5d
+SignElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=7bdea4e76a43f7e6
+SignElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=7bdea4e76a43f7e6
+SignElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=7bdea4e76a43f7e6
+SiluElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=928fc61d2cb8a503
+SiluElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=bf3985318048e578
+SiluElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=bf3985318048e578
+SiluElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=bf3985318048e578
+SinElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=1b0e1d6ed152e618
+SinElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=d6a8cb67ce2cc8c9
+SinElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=d6a8cb67ce2cc8c9
+SinElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=d6a8cb67ce2cc8c9
+SoftmaxLastDim [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=0351af0dfcece06c
+SoftmaxLastDim [F16, F16] Vulkan src=vulkan-slang generic=false rev=0351af0dfcece06c
+SoftmaxLastDim [F32, F32] Vulkan src=vulkan-slang generic=false rev=6a8fdd47f954c2d5
+SoftmaxLastDim [F64, F64] Vulkan src=vulkan-slang generic=false rev=0351af0dfcece06c
+SoftmaxLastDimBackward [BF16, BF16, BF16] Vulkan src=vulkan-slang generic=false rev=bd0b8812f49e84f5
+SoftmaxLastDimBackward [F16, F16, F16] Vulkan src=vulkan-slang generic=false rev=bd0b8812f49e84f5
+SoftmaxLastDimBackward [F32, F32, F32] Vulkan src=vulkan-slang generic=false rev=bd0b8812f49e84f5
+SoftmaxLastDimBackward [F64, F64, F64] Vulkan src=vulkan-slang generic=false rev=bd0b8812f49e84f5
+SqrElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=bee3f63ac352c87c
+SqrElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=05e17977f6624ad5
+SqrElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=05e17977f6624ad5
+SqrElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=05e17977f6624ad5
+SqrtElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=310b96804b7f7288
+SqrtElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=def5018734945569
+SqrtElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=def5018734945569
+SqrtElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=def5018734945569
+StepElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=84d2359ee4a22548
+StepElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=906134ed90427279
+StepElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=906134ed90427279
+StepElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=906134ed90427279
+SubElementwise [BF16, BF16, BF16] Vulkan src=vulkan-slang generic=true rev=d6d792a1d07555eb
+SubElementwise [F16, F16, F16] Vulkan src=vulkan-slang generic=true rev=d6d792a1d07555eb
+SubElementwise [F32, F32, F32] Vulkan src=vulkan-slang generic=true rev=d6d792a1d07555eb
+SubElementwise [F64, F64, F64] Vulkan src=vulkan-slang generic=true rev=d6d792a1d07555eb
+SumReduce [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=e619a5ea053fe5a7
+SumReduce [F16, F16] Vulkan src=vulkan-slang generic=false rev=e619a5ea053fe5a7
+SumReduce [F32, F32] Vulkan src=vulkan-slang generic=false rev=e619a5ea053fe5a7
+SumReduce [F64, F64] Vulkan src=vulkan-slang generic=false rev=e619a5ea053fe5a7
+TanhElementwise [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=274399d18a895f91
+TanhElementwise [F16, F16] Vulkan src=vulkan-slang generic=true rev=d7b605fec2372d72
+TanhElementwise [F32, F32] Vulkan src=vulkan-slang generic=true rev=d7b605fec2372d72
+TanhElementwise [F64, F64] Vulkan src=vulkan-slang generic=true rev=d7b605fec2372d72
+Tril [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=14cf00eadca26ff4
+Tril [F16, F16] Vulkan src=vulkan-slang generic=false rev=14cf00eadca26ff4
+Tril [F32, F32] Vulkan src=vulkan-slang generic=false rev=14cf00eadca26ff4
+Tril [F64, F64] Vulkan src=vulkan-slang generic=false rev=14cf00eadca26ff4
+Tril [I32, I32] Vulkan src=vulkan-slang generic=false rev=14cf00eadca26ff4
+Tril [I64, I64] Vulkan src=vulkan-slang generic=false rev=14cf00eadca26ff4
+Tril [U32, U32] Vulkan src=vulkan-slang generic=false rev=14cf00eadca26ff4
+Triu [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=37b81efdfb2cf3eb
+Triu [F16, F16] Vulkan src=vulkan-slang generic=false rev=37b81efdfb2cf3eb
+Triu [F32, F32] Vulkan src=vulkan-slang generic=false rev=37b81efdfb2cf3eb
+Triu [F64, F64] Vulkan src=vulkan-slang generic=false rev=37b81efdfb2cf3eb
+Triu [I32, I32] Vulkan src=vulkan-slang generic=false rev=37b81efdfb2cf3eb
+Triu [I64, I64] Vulkan src=vulkan-slang generic=false rev=37b81efdfb2cf3eb
+Triu [U32, U32] Vulkan src=vulkan-slang generic=false rev=37b81efdfb2cf3eb
+WriteSlice [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=de2e1958a51fd89c
+WriteSlice [F16, F16] Vulkan src=vulkan-slang generic=false rev=de2e1958a51fd89c
+WriteSlice [F32, F32] Vulkan src=vulkan-slang generic=false rev=de2e1958a51fd89c
+WriteSlice [F64, F64] Vulkan src=vulkan-slang generic=false rev=de2e1958a51fd89c
+WriteSlice [I32, I32] Vulkan src=vulkan-slang generic=false rev=de2e1958a51fd89c
+WriteSlice [I64, I64] Vulkan src=vulkan-slang generic=false rev=de2e1958a51fd89c
+WriteSlice [I8, I8] Vulkan src=vulkan-slang generic=false rev=de2e1958a51fd89c
+WriteSlice [U32, U32] Vulkan src=vulkan-slang generic=false rev=de2e1958a51fd89c
+WriteSlice [U8, U8] Vulkan src=vulkan-slang generic=false rev=de2e1958a51fd89c
+WriteSliceRotating [BF16, BF16] Vulkan src=vulkan-slang generic=false rev=23425808ccad4a8e
+WriteSliceRotating [F16, F16] Vulkan src=vulkan-slang generic=false rev=23425808ccad4a8e
+WriteSliceRotating [F32, F32] Vulkan src=vulkan-slang generic=false rev=23425808ccad4a8e
+WriteSliceRotating [F64, F64] Vulkan src=vulkan-slang generic=false rev=23425808ccad4a8e
+WriteSliceRotating [I32, I32] Vulkan src=vulkan-slang generic=false rev=23425808ccad4a8e
+WriteSliceRotating [I64, I64] Vulkan src=vulkan-slang generic=false rev=23425808ccad4a8e
+WriteSliceRotating [I8, I8] Vulkan src=vulkan-slang generic=false rev=23425808ccad4a8e
+WriteSliceRotating [U32, U32] Vulkan src=vulkan-slang generic=false rev=23425808ccad4a8e
+WriteSliceRotating [U8, U8] Vulkan src=vulkan-slang generic=false rev=23425808ccad4a8e

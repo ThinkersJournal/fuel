@@ -34,7 +34,12 @@ use fuel_vulkan_backend::VulkanBackend;
 
 fn backend_or_skip() -> Option<Arc<VulkanBackend>> {
     match VulkanBackend::new() {
-        Ok(b) => Some(Arc::new(b)),
+        Ok(b) => {
+            // The executor reads the global binding table; the Vulkan kernels are installed by
+            // `fuel-vulkan-dispatch`, not registered by `fuel-dispatch` (ROADMAP row 137 step 6.1).
+            fuel_vulkan_dispatch::install_global();
+            Some(Arc::new(b))
+        }
         Err(e) => {
             eprintln!("no Vulkan device; skipping: {e:?}");
             None
