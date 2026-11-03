@@ -44,6 +44,36 @@ pub fn seed_vulkan_ledger(register: fn(&mut crate::kernel::KernelBindingTable)) 
     verify::seed_vulkan_ledger::run_seed_vulkan_ledger(register);
 }
 
+/// The Vulkan f32 accuracy claims the seeder earns, as `(kernel, max_relative, max_absolute)`. The contracts that
+/// declare the same numbers moved to `fuel-vulkan-dispatch`, so the test that keeps the two in step moved with
+/// them and reads the claims through this function (the constants themselves are private to `fkc::verify`).
+#[cfg(feature = "vulkan")]
+pub fn vulkan_f32_accuracy_claims() -> [(&'static str, f64, f64); 4] {
+    use verify::seed_vulkan_matmul_accuracy as s;
+    [
+        (
+            "matmul_f32",
+            s::MATMUL_F32_CLAIM.max_relative,
+            s::MATMUL_F32_CLAIM.max_absolute,
+        ),
+        (
+            "rms_norm_last_dim_f32",
+            s::RMS_NORM_F32_CLAIM.max_relative,
+            s::RMS_NORM_F32_CLAIM.max_absolute,
+        ),
+        (
+            "softmax_last_dim_f32",
+            s::SOFTMAX_F32_CLAIM.max_relative,
+            s::SOFTMAX_F32_CLAIM.max_absolute,
+        ),
+        (
+            "rope_f32",
+            s::ROPE_F32_CLAIM.max_relative,
+            s::ROPE_F32_CLAIM.max_absolute,
+        ),
+    ]
+}
+
 /// One Vulkan verification attempt, as the cross-vendor comparison reads it (the harness's own record type is
 /// private to `fkc::verify`).
 #[cfg(feature = "vulkan")]
