@@ -183,31 +183,53 @@ What "identity in place of index" can mean, from least to most invasive:
 Recommendation: 4a then 4b, each its own PR with the probe plus a sabotage as oracle and a hand CUDA compile (no runner, board
 item 366); 4c is not needed for the judge cache (above); look for other persisted ordinal keys before dropping it entirely.
 
-### 6d. Step 5, park the trait-object alternative (written 2026-11-03 at `origin/main` 043de464, 0.37.18)
+### 6d. Step 5, the trait-object alternative: evidence and decision (written 2026-11-03 at `origin/main` 043de464, 0.37.18)
 
-Step 5 is a record, not a refactor: section 7 rules that `DynBackendStorage`, `DynBackendDevice` and the
-Vulkan exception stay as they are. What was done: the `fuel-backend-contract` crate docs said these traits
-were "at the heart of dispatch" and "the contract Fuel dispatches through", which section 2 already showed
-to be false; that claim is replaced by a Status section saying they are parked, with the numbers below.
+Section 7 rules that `DynBackendStorage`, `DynBackendDevice` and the Vulkan exception stay as they are, and
+that deletion is decided later with reachability output in hand. The PM's instruction of 2026-11-03: count
+callers across every workspace crate (with a positive control) and the reverse dependencies of
+`fuel-backend-contract`; if there are no callers and no outside dependents, delete as a Breaking change,
+else keep and record why. This is that evidence. **Decision: keep.**
 
-Measured (`git grep -c DynBackendStorage -- '*.rs'` at 043de464): 19 files. In the contract crate
-`dyn_backend.rs` 62, `storage.rs` 60, `inplace_op.rs` 15, `quantized.rs` 13, `backend.rs` 2, `lib.rs` 3. In the
-backend crates the implementations: `dyn_impl.rs` 58 (CPU), 58 (CUDA), 57 (Metal), 10 (Vulkan), and
-`quantized.rs` 9, 9 and 8, plus `fuel-cpu-backend/tests/kiss_int_wrap.rs` 2. **Everywhere else, five mentions,
-all in comments:** `fuel-dispatch/src/pipelined.rs`, `fuel-graph/src/lib.rs`, `fuel-ir/src/lib.rs`,
-`fuel-ir/src/storage.rs`, `fuel-ir/src/backend.rs`. So the hot path does not name it (section 2's "one use in
-`fuel-dispatch`" was a comment, not code).
+**1. The name, code only (comments stripped; a positive control: the same scan finds the impls in the
+backend crates).** `DynBackendStorage` appears in `fuel-backend-contract` (127), `fuel-cpu-backend` (62),
+`fuel-cuda-backend` (62), `fuel-metal-backend` (61) and `fuel-vulkan-backend` (8), and in no other crate; the
+five other mentions are comments (`fuel-dispatch/src/pipelined.rs`, `fuel-graph/src/lib.rs`,
+`fuel-ir/src/{lib,storage,backend}.rs`). Section 2's "1 use in `fuel-dispatch`" was a doc comment.
 
-CodeRipper 0.20.1 `check reachability`, run on `fuel-backend-contract` alone from a clean worktree at that
-commit: 4 findings, `BackendCapabilityProvider`, `InplaceOp1`, `InplaceOp2`, `InplaceOp3` have zero callers
-within the crate; `DynBackendStorage` is not reported. The check is per crate and reads the committed tree, so
-it cannot say whether a backend crate or a downstream project calls these traits. A run on the repository root
-fails (it is a virtual workspace; the tool wants a member directory), and the portfolio job's log in CI holds no
-reachability findings for these types (its matches are `allow(unreachable_patterns)` lines).
+**2. But the trait is reached without its name, and that decides it.** `DynBackendDevice` is live (code
+uses: `fuel-graph` 23, `fuel-tensor` 8, `fuel-dispatch` 2, `fuel-inference` 2, `fuel-lazy-examples` 2), and
+three of its methods return `Box<dyn DynBackendStorage>`: `zeros_impl_dyn`, `storage_from_host_buffer_dyn`
+and `storage_from_host_buffer_owned_dyn`. `fuel-graph` calls `storage_from_host_buffer_owned_dyn` at three
+production sites (`NodeHandle::from_*` at lib.rs:3980, `const_like` at 4226, `build_filled_const` at 12149;
+a fourth call, at 14921, is in the test module), wraps each result with `Storage::from_dyn` and stores it as a
+constant node's data; `allocate_bundled_storage` has 7 more uses in `fuel-graph` (production and tests not
+separated), and `fuel-tensor` and `fuel` import
+the `fuel_backend_contract::Storage` handle. So building a tensor from host data goes through
+`DynBackendStorage`. The executor does not (it matches the closed enum); the graph's host-data boundary does.
+`DynQuantizedStorage` and `QuantizedDeviceKernels` are also live (`fuel-loaders`, `fuel-quantized`).
 
-What a deletion decision still needs (NOT done): a cross-crate count of call sites of the trait methods
-(not impls, not the `Storage` handle's own plumbing), and a check of the downstream projects that name the
-types (`fuel-backend-contract` is a published crate; its dependants were not looked at).
+**3. Dependants.** crates.io lists 12 reverse dependencies of `fuel-backend-contract` (latest 0.36.7): all are
+Fuel workspace members. On this machine the only other project that depends on it is Lightbulb, which uses
+`fuel_backend_contract::backend::BackendRuntime` and nothing else (same scan over every sibling project under
+`C:\Projects`; the positive control finds the Fuel uses). Third parties off crates.io and off this machine
+were not looked for (the crate has 2263 downloads in total).
+
+**4. CodeRipper 0.20.1 `check reachability`** on `fuel-backend-contract` alone reports 4 items with zero
+callers inside the crate: `BackendCapabilityProvider`, `InplaceOp1`, `InplaceOp2`, `InplaceOp3`;
+`DynBackendStorage` is not reported. The check is per crate and reads the committed tree. It fails on the
+repository root (a virtual workspace); the CI portfolio log holds no reachability findings for these types.
+
+**Why keep.** Deleting `DynBackendStorage` means re-plumbing `NodeHandle::from_*` and the graph's constant
+nodes (and `allocate_bundled_storage`, the `Storage` handle, and the quantized and in-place traits that take
+it), in a published crate, while the executor's own path already avoids it. That is a design change with no
+consumer asking for it, not a cleanup; it belongs to a future decision on the graph's storage type, not to
+row 137.
+
+**The four unreached items** (`InplaceOp1/2/3`, `BackendCapabilityProvider`): zero code uses outside the
+contract crate in the workspace (same code-only scan), no backend implements them, and no outside project
+names them. Deleting them is a small Breaking change to a published crate (`inplace_op.rs` mentions
+`DynBackendStorage` 15 times, comments included). Not done here; it is a separate, optional PR for the PM.
 
 ## 7. Decision (2026-11-01, CireSnave, relayed by the PM)
 

@@ -5,7 +5,7 @@ This documents the main changes to the `fuel` workspace.
 
 ### Changed
 
-- `fuel-backend-contract`: the crate documentation no longer says `DynBackendStorage` / `DynBackendDevice` are "at the heart of dispatch" and "the contract Fuel dispatches through" (the executor matches the closed `fuel_memory::BackendStorage` enum); it now carries a Status section marking them as the parked trait-object alternative, with the reference counts measured at `origin/main` 043de464 (outside the contract and the four backend crates the name appears five times, all in comments). Documentation only; no item changes. ROADMAP row 137 step 5 and a new section 6d of the S3 design note record it, including what CodeRipper 0.20.1 `reachability` did and did not report and what a deletion decision still needs.
+- `fuel-backend-contract`: the crate documentation no longer says `DynBackendStorage` / `DynBackendDevice` are "at the heart of dispatch" and "the contract Fuel dispatches through" (the executor matches the closed `fuel_memory::BackendStorage` enum); a Status section says they are kept, not extended, and still live at `fuel-graph`'s host-data boundary (`NodeHandle::from_*` builds a `Box<dyn DynBackendStorage>` through `DynBackendDevice::storage_from_host_buffer_owned_dyn`). It records the evidence behind keeping them: code-only caller counts across the workspace, crates.io reverse dependencies (12, all Fuel members) and the one outside project on this machine (Lightbulb, `BackendRuntime` only). Documentation only; no item changes. ROADMAP row 137 step 5 and section 6d of the S3 design note carry the full evidence, including that `InplaceOp1/2/3` and `BackendCapabilityProvider` are unreached and could be deleted in a separate Breaking PR.
 
 ## v0.37.18 - 2026-11-03
 
