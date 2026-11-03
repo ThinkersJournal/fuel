@@ -255,6 +255,29 @@ mod tests {
                 .collect();
             assert_eq!(matches.len(), 1, "CUDA {} matches {matches:?}", c.name);
         }
+        // Row 137 step 4a, the CUDA selector: a CUDA identity resolves to the ordinal the inventory
+        // lists that device under, a device opens by it, and the matching Vulkan device's identity
+        // (another API's handle on the same GPU) resolves to the same CUDA ordinal.
+        #[cfg(feature = "cuda")]
+        for c in inv.iter().filter(|m| m.backend == BackendId::Cuda) {
+            let cid = c.identity.expect("a CUDA device reports its UUID");
+            let ordinal = fuel_cuda_backend::probe::ordinal_of_identity(&cid)
+                .unwrap_or_else(|e| panic!("CUDA {} by its own identity: {e}", c.name));
+            assert_eq!(ordinal, c.device_index as usize, "CUDA {}", c.name);
+            fuel_cuda_backend::CudaDevice::new_by_identity(&cid)
+                .unwrap_or_else(|e| panic!("open CUDA {} by identity: {e}", c.name));
+            #[cfg(feature = "vulkan")]
+            for v in inv
+                .iter()
+                .filter(|m| m.backend == BackendId::Vulkan)
+                .filter(|m| m.identity.is_some_and(|vi| vi.same_physical_device(&cid)))
+            {
+                let via_vulkan =
+                    fuel_cuda_backend::probe::ordinal_of_identity(&v.identity.unwrap())
+                        .unwrap_or_else(|e| panic!("CUDA by Vulkan identity of {}: {e}", v.name));
+                assert_eq!(via_vulkan, ordinal, "Vulkan {} -> CUDA ordinal", v.name);
+            }
+        }
         let cpu = inv
             .iter()
             .find(|m| m.backend == BackendId::Cpu)

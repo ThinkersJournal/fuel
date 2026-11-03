@@ -36,6 +36,18 @@ pub fn new_device(_ordinal: usize) -> Result<Device> {
     Err(Error::NotCompiledWithCudaSupport.bt())
 }
 
+/// Creates a new CUDA device for the physical GPU with this stable identity (resolved to an ordinal
+/// once, here; see [`fuel_cuda_backend::CudaDevice::new_by_identity`]).
+#[cfg(feature = "cuda")]
+pub fn new_device_by_identity(wanted: &fuel_ir::probe::DeviceIdentity) -> Result<Device> {
+    Ok(fuel_cuda_backend::CudaDevice::new_by_identity(wanted)?.into())
+}
+
+#[cfg(not(feature = "cuda"))]
+pub fn new_device_by_identity(_wanted: &fuel_ir::probe::DeviceIdentity) -> Result<Device> {
+    Err(Error::NotCompiledWithCudaSupport.bt())
+}
+
 /// Creates a new CUDA device with a dedicated stream.
 #[cfg(feature = "cuda")]
 pub fn new_device_with_stream(ordinal: usize) -> Result<Device> {
