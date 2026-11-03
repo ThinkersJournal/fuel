@@ -578,10 +578,14 @@ where
 
     match (lhs, rhs) {
         (HostBuffer::BF16(a), HostBuffer::BF16(b)) => {
-            dispatch_pair!(a, b, BF16, |v: bf16| v.to_f64(), |v: f64| bf16::from_f64(v))
+            dispatch_pair!(a, b, BF16, |v: bf16| v.to_f64(), |v: f64| {
+                fuel_ir::round::bf16_from_f64(v)
+            })
         }
         (HostBuffer::F16(a), HostBuffer::F16(b)) => {
-            dispatch_pair!(a, b, F16, |v: f16| v.to_f64(), |v: f64| f16::from_f64(v))
+            dispatch_pair!(a, b, F16, |v: f16| v.to_f64(), |v: f64| {
+                fuel_ir::round::f16_from_f64(v)
+            })
         }
         (HostBuffer::F32(a), HostBuffer::F32(b)) => {
             let out = binary_map(lhs_l, rhs_l, a, b, |a, b| f(a as f64, b as f64) as f32);
@@ -731,12 +735,12 @@ impl DynBackendStorage for CpuStorage {
     fn powf_dyn(&self, layout: &Layout, e: f64) -> Result<Box<dyn DynBackendStorage>> {
         use num_traits::Float;
         let result = match &self.0 {
-            HostBuffer::BF16(d) => {
-                HostBuffer::BF16(unary_map(d, layout, |v: bf16| v.powf(bf16::from_f64(e))))
-            }
-            HostBuffer::F16(d) => {
-                HostBuffer::F16(unary_map(d, layout, |v: f16| v.powf(f16::from_f64(e))))
-            }
+            HostBuffer::BF16(d) => HostBuffer::BF16(unary_map(d, layout, |v: bf16| {
+                v.powf(fuel_ir::round::bf16_from_f64(e))
+            })),
+            HostBuffer::F16(d) => HostBuffer::F16(unary_map(d, layout, |v: f16| {
+                v.powf(fuel_ir::round::f16_from_f64(e))
+            })),
             HostBuffer::F32(d) => {
                 HostBuffer::F32(unary_map(d, layout, |v: f32| quiet_f32(v.powf(e as f32))))
             }
@@ -753,12 +757,12 @@ impl DynBackendStorage for CpuStorage {
 
     fn elu_dyn(&self, layout: &Layout, alpha: f64) -> Result<Box<dyn DynBackendStorage>> {
         let result = match &self.0 {
-            HostBuffer::BF16(d) => {
-                HostBuffer::BF16(unary_map(d, layout, |v| elu(v, bf16::from_f64(alpha))))
-            }
-            HostBuffer::F16(d) => {
-                HostBuffer::F16(unary_map(d, layout, |v| elu(v, f16::from_f64(alpha))))
-            }
+            HostBuffer::BF16(d) => HostBuffer::BF16(unary_map(d, layout, |v| {
+                elu(v, fuel_ir::round::bf16_from_f64(alpha))
+            })),
+            HostBuffer::F16(d) => HostBuffer::F16(unary_map(d, layout, |v| {
+                elu(v, fuel_ir::round::f16_from_f64(alpha))
+            })),
             HostBuffer::F32(d) => HostBuffer::F32(unary_map(d, layout, |v| elu(v, alpha as f32))),
             HostBuffer::F64(d) => HostBuffer::F64(unary_map(d, layout, |v| elu(v, alpha))),
             HostBuffer::F8E4M3(d) => {
@@ -1983,10 +1987,16 @@ fn cpu_to_dtype(src: &HostBuffer, layout: &Layout, dtype: DType) -> Result<HostB
             as_f64.into_iter().map(|v| v as i64).collect(),
         )),
         DType::BF16 => Ok(HostBuffer::BF16(
-            as_f64.into_iter().map(bf16::from_f64).collect(),
+            as_f64
+                .into_iter()
+                .map(fuel_ir::round::bf16_from_f64)
+                .collect(),
         )),
         DType::F16 => Ok(HostBuffer::F16(
-            as_f64.into_iter().map(f16::from_f64).collect(),
+            as_f64
+                .into_iter()
+                .map(fuel_ir::round::f16_from_f64)
+                .collect(),
         )),
         DType::F32 => Ok(HostBuffer::F32(
             as_f64.into_iter().map(|v| v as f32).collect(),

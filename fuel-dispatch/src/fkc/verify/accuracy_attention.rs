@@ -274,7 +274,7 @@ mod tests {
                     softmax_scale as f64,
                 )
                 .into_iter()
-                .map(|x| f16::from_f64(x).to_f32())
+                .map(|x| fuel_ir::round::f16_from_f64(x).to_f32())
                 .collect();
                 out[0] += perturb;
                 Ok(out)

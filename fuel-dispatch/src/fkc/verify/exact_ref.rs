@@ -319,8 +319,10 @@ fn encode(dt: DType, s: Scalar) -> Option<Vec<u8>> {
             v.to_le_bytes().to_vec()
         }
         DType::F8E4M3 => vec![f8e4m3_encode(as_f(s))],
-        DType::F16 => half::f16::from_f64(as_f(s)).to_le_bytes().to_vec(),
-        DType::BF16 => half::bf16::from_f64(as_f(s)).to_le_bytes().to_vec(),
+        DType::F16 => fuel_ir::round::f16_from_f64(as_f(s)).to_le_bytes().to_vec(),
+        DType::BF16 => fuel_ir::round::bf16_from_f64(as_f(s))
+            .to_le_bytes()
+            .to_vec(),
         DType::F32 => (as_f(s) as f32).to_le_bytes().to_vec(),
         DType::F64 => as_f(s).to_le_bytes().to_vec(),
         _ => return None,

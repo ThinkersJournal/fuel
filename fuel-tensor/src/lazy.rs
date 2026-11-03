@@ -7517,13 +7517,13 @@ impl Tensor {
             }
             DType::BF16 => {
                 let data: Vec<half::bf16> = (0..n)
-                    .map(|_| half::bf16::from_f64(rng.random_range(lo..up)))
+                    .map(|_| fuel_ir::round::bf16_from_f64(rng.random_range(lo..up)))
                     .collect();
                 Self::from_bf16(data, shape, device)
             }
             DType::F16 => {
                 let data: Vec<half::f16> = (0..n)
-                    .map(|_| half::f16::from_f64(rng.random_range(lo..up)))
+                    .map(|_| fuel_ir::round::f16_from_f64(rng.random_range(lo..up)))
                     .collect();
                 Self::from_f16(data, shape, device)
             }
@@ -7561,13 +7561,13 @@ impl Tensor {
             }
             DType::BF16 => {
                 let data: Vec<half::bf16> = (0..n)
-                    .map(|_| half::bf16::from_f64(normal.sample(&mut rng)))
+                    .map(|_| fuel_ir::round::bf16_from_f64(normal.sample(&mut rng)))
                     .collect();
                 Self::from_bf16(data, shape, device)
             }
             DType::F16 => {
                 let data: Vec<half::f16> = (0..n)
-                    .map(|_| half::f16::from_f64(normal.sample(&mut rng)))
+                    .map(|_| fuel_ir::round::f16_from_f64(normal.sample(&mut rng)))
                     .collect();
                 Self::from_f16(data, shape, device)
             }
