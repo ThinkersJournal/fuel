@@ -7,6 +7,18 @@ This documents the main changes to the `fuel` workspace.
 
 - `fuel-vulkan-backend`: `DeviceSelection::Identity(DeviceIdentity)`, row 137 step 4a for Vulkan. `VulkanBackend::with_selection` resolves the identity to this process's enumeration ordinal through `fuel_ir::probe::resolve_identity_ordinal` and fails on no match or more than one match; `gpu_id` stays the in-process handle. A new public variant: no other crate matches on `DeviceSelection` (`git grep`), so `-p fuel-vulkan-backend --all-targets` is the gate. Unit tests on synthetic enumerations; live test `tests/identity_selection_live.rs` (2 passed on the RTX 4070 + AMD iGPU box via `gpu-run`: each adapter opens by its own identity at its own ordinal; an unknown identity is an error). The CUDA counterpart, an inventory `location_of(identity)` and `DeviceRegistry` by identity (4b) are not done. No CUDA code touched.
 
+## v0.37.11 - 2026-11-03
+
+### Added
+
+- Docs: GAP-372, `scripts/provenance.py generate` crashes with a `KeyError` on any staged-but-uncommitted file (it enumerates the index and reads content from `HEAD`). No code change.
+
+## v0.37.10 - 2026-11-03
+
+### Added
+
+- `fuel-loaders`: `quantized::arch::Architecture::Qwen35` (`general.architecture = qwen35`), detected by its declared name and its own `qwen35.*` key prefix; a header fixture from the 4B file derives the generic fields. Row 118. Adding a public enum variant: only `fuel-loaders` refers to `Architecture` (`git grep` over `*.rs` at `22d3faab`), so `-p fuel-loaders --all-targets` is the gate. The derived config has no head dimension, partial-rotary or DeltaNet fields yet; no loader wiring.
+
 ## v0.37.9 - 2026-11-03
 
 ### Added

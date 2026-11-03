@@ -429,6 +429,55 @@ mod tests {
         content
     }
 
+    /// The generic fields of the installed `unsloth/Qwen3.5-4B-GGUF` header
+    /// (`docs/design-notes/2026-11-01-qwen35-gguf-header.md`). `GgufDerivedConfig` carries no
+    /// head dimension, partial-rotary or DeltaNet fields: those (`attention.key_length` 256,
+    /// `rope.dimension_count` 64, `ssm.*`) are read elsewhere or not at all today.
+    #[test]
+    fn qwen35_header_generic_fields_derive_from_the_qwen35_prefix() {
+        let mut metadata = std::collections::HashMap::new();
+        for (k, v) in [
+            ("embedding_length", Value::U32(2560)),
+            ("feed_forward_length", Value::U32(9216)),
+            ("block_count", Value::U32(32)),
+            ("attention.head_count", Value::U32(16)),
+            ("attention.head_count_kv", Value::U32(4)),
+            ("context_length", Value::U32(262144)),
+            ("attention.layer_norm_rms_epsilon", Value::F32(1e-6)),
+            ("rope.freq_base", Value::F32(10_000_000.0)),
+        ] {
+            metadata.insert(format!("qwen35.{k}"), v);
+        }
+        let mut content = content_with(metadata);
+        content.tensor_infos.insert(
+            "token_embd.weight".to_string(),
+            TensorInfo {
+                ggml_dtype: fuel_ir::quantized::GgmlDType::F32,
+                shape: fuel_ir::Shape::from_dims(&[2560, 248320]),
+                offset: 0,
+            },
+        );
+        let cfg = derive_config(&content, Architecture::Qwen35).unwrap();
+        assert_eq!(
+            (
+                cfg.hidden_size,
+                cfg.intermediate_size,
+                cfg.n_layers,
+                cfg.n_heads,
+                cfg.n_kv_heads
+            ),
+            (2560, 9216, 32, 16, 4)
+        );
+        assert_eq!(
+            (cfg.vocab_size, cfg.max_position_embeddings),
+            (248320, 262144)
+        );
+        assert_eq!(cfg.rope_theta, 10_000_000.0);
+        // The same metadata read under the qwen3 prefix must decline: the prefix is the arch.
+        let err = derive_config(&content, Architecture::Qwen3).unwrap_err();
+        assert!(format!("{err:?}").contains("qwen3."), "{err:?}");
+    }
+
     /// llama.cpp reads an absent `head_count_kv` as `head_count` (plain multi-head attention).
     #[test]
     fn absent_head_count_kv_defaults_to_head_count() {
