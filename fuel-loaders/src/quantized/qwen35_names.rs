@@ -5,7 +5,7 @@
 //! **Status: the NAME map is read off a real file; the VALUE rules are hypotheses.** The GGUF names
 //! and shapes come from `docs/design-notes/2026-11-01-qwen35-gguf-header.md` (the installed
 //! `unsloth/Qwen3.5-4B-GGUF` Q6_K blob, header only). Which GGUF tensor corresponds to which HF
-//! tensor is inferred from names and shapes, not yet checked against HF weights. Two value
+//! tensor is inferred from names and shapes, unchecked against HF weights. Two value
 //! transforms are also unknown: whether the GGUF norm gains already include the `+1` of the
 //! zero-centred convention, and whether `ssm_a` holds `A_log` or `-exp(A_log)`. They are returned
 //! as `Unverified*` rules so a caller cannot mistake them for established fact. The CPU Hugging Face
