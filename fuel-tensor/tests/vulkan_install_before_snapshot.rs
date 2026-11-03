@@ -80,9 +80,7 @@ fn the_bridge_installs_right_before_it_takes_the_optimize_snapshot() {
     for i in snapshots {
         let window = &lines[i.saturating_sub(3)..i];
         assert!(
-            window
-                .iter()
-                .any(|l| *l == "crate::cpu_accel::ensure_installed();"),
+            window.contains(&"crate::cpu_accel::ensure_installed();"),
             "line {}: `ensure_installed()` must run just before this snapshot, or Vulkan kernels registered \
              later are invisible to this realize",
             i + 1
