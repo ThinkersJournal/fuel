@@ -9,8 +9,8 @@
 //!
 //! The object-safe backend-contract **traits** (`DynBackendStorage`,
 //! `DynBackendDevice`, `HostStorage`, `BackendStorage`, `BackendRuntime`,
-//! `BackendCapabilityProvider`, `DynQuantizedStorage`, `QuantizedDeviceKernels`,
-//! `InplaceOp1/2/3`) and the type-erased `Storage` handle live in the
+//! `BackendCapabilityProvider`, `DynQuantizedStorage`, `QuantizedDeviceKernels`)
+//! and the type-erased `Storage` handle live in the
 //! `fuel-backend-contract` crate (above this crate, below the backends).
 
 /// A small-vector type for dimension storage (sizes are non-negative).

@@ -53,7 +53,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `docs` | 196 |  |  |  |  | 196 |  |  |
 | `fuel` | 8 |  |  |  |  | 5 |  | 3 |
 | `fuel-aocl-cpu-backend` | 7 |  |  |  |  | 4 |  | 3 |
-| `fuel-backend-contract` | 10 |  |  | 4 |  | 3 |  | 3 |
+| `fuel-backend-contract` | 9 |  |  | 3 |  | 3 |  | 3 |
 | `fuel-conv` | 6 |  |  |  |  | 3 |  | 3 |
 | `fuel-correctness-fixtures` | 7 |  |  |  |  | 4 |  | 3 |
 | `fuel-cpu-backend` | 30 | 2 | 3 | 5 |  | 17 |  | 3 |
@@ -97,5 +97,5 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-vulkan-backend` | 26 |  |  |  |  | 23 |  | 3 |
 | `fuel-vulkan-kernels` | 185 |  |  |  |  | 2 | 180 | 3 |
 | `scripts` | 75 |  |  | 1 |  | 74 |  |  |
-| **all** | **2091** | **112** | **216** | **259** | **4** | **1186** | **185** | **129** |
+| **all** | **2090** | **112** | **216** | **258** | **4** | **1186** | **185** | **129** |
 <!-- provenance-summary:end -->
