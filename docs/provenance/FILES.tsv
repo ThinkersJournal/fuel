@@ -13,7 +13,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 485 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 486 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1392 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 304 lines verbatim
@@ -236,10 +236,9 @@ fuel-backend-contract/LICENSE-MIT	copy		byte-identical packaged copy of the root
 fuel-backend-contract/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
 fuel-backend-contract/src/backend.rs	not-traced	candle-core/src/backend.rs	same file name as candle candle-core/src/backend.rs; a port or re-expression is presumed until judged
 fuel-backend-contract/src/dyn_backend.rs	own		no lineage; 3 of 178 lines verbatim in candle (2%)
-fuel-backend-contract/src/inplace_op.rs	not-traced	candle-core/src/custom_op.rs	6 of 60 lines also appear in candle (mostly candle-core/src/custom_op.rs); not judged
-fuel-backend-contract/src/lib.rs	own		no lineage; 0 of 28 lines verbatim in candle (0%)
+fuel-backend-contract/src/lib.rs	own		no lineage; 0 of 26 lines verbatim in candle (0%)
 fuel-backend-contract/src/quantized.rs	not-traced	candle-metal-kernels/src/kernels/quantized.rs	same file name as candle candle-metal-kernels/src/kernels/quantized.rs; a port or re-expression is presumed until judged
-fuel-backend-contract/src/storage.rs	not-traced	candle-core/src/storage.rs	36 of 419 lines also appear in candle (mostly candle-core/src/storage.rs); not judged
+fuel-backend-contract/src/storage.rs	not-traced	candle-core/src/storage.rs	33 of 411 lines also appear in candle (mostly candle-core/src/storage.rs); not judged
 fuel-conv/Cargo.toml	own		no lineage; 3 of 9 lines verbatim in candle (33%)
 fuel-conv/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-conv/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
