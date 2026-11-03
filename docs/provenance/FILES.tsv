@@ -13,7 +13,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 479 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 481 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1392 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 304 lines verbatim
@@ -74,7 +74,7 @@ docs/frontier-paradigms-vision.md	own		no lineage; 0 of 155 lines verbatim in ca
 docs/fuel-consumer-seam.md	own		no lineage; 0 of 1061 lines verbatim in candle (0%)
 docs/fused-op-registry.md	own		no lineage; 0 of 311 lines verbatim in candle (0%)
 docs/gap-015-handoff.md	own		no lineage; 0 of 183 lines verbatim in candle (0%)
-docs/gaps.md	own		no lineage; 0 of 415 lines verbatim in candle (0%)
+docs/gaps.md	own		no lineage; 0 of 416 lines verbatim in candle (0%)
 docs/interchange/stablehlo-to-fuel-op-map.md	own		no lineage; 0 of 157 lines verbatim in candle (0%)
 docs/kernel-contracts/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
 docs/method-rules-drafts-issue-159.md	own		no lineage; 0 of 286 lines verbatim in candle (0%)
@@ -1317,8 +1317,8 @@ fuel-loaders/src/awq.rs	own		no lineage; 1 of 88 lines verbatim in candle (1%)
 fuel-loaders/src/hf_config.rs	own		no lineage; 2 of 180 lines verbatim in candle (1%)
 fuel-loaders/src/lib.rs	own		no lineage; 0 of 18 lines verbatim in candle (0%)
 fuel-loaders/src/model_progress.rs	own		judged: 'candlelight' in a doc comment is a different project, not candle
-fuel-loaders/src/quantized/arch.rs	own		no lineage; 2 of 183 lines verbatim in candle (1%)
-fuel-loaders/src/quantized/config_from_gguf.rs	own		no lineage; 5 of 286 lines verbatim in candle (2%)
+fuel-loaders/src/quantized/arch.rs	own		no lineage; 2 of 194 lines verbatim in candle (1%)
+fuel-loaders/src/quantized/config_from_gguf.rs	own		no lineage; 5 of 312 lines verbatim in candle (2%)
 fuel-loaders/src/quantized/gguf_file.rs	not-traced	candle-core/src/quantized/gguf_file.rs	same file name as candle candle-core/src/quantized/gguf_file.rs; a port or re-expression is presumed until judged
 fuel-loaders/src/quantized/gguf_mmap.rs	own		no lineage; 2 of 72 lines verbatim in candle (3%)
 fuel-loaders/src/quantized/imatrix_file.rs	not-traced	candle-core/src/quantized/imatrix_file.rs	2 of 15 lines also appear in candle (mostly candle-core/src/quantized/imatrix_file.rs); not judged
@@ -1813,9 +1813,8 @@ fuel-vulkan-backend/src/probe.rs	own		no lineage; 2 of 525 lines verbatim in can
 fuel-vulkan-backend/src/recorder.rs	own		no lineage; 2 of 376 lines verbatim in candle (1%)
 fuel-vulkan-backend/src/residency.rs	own		no lineage; 2 of 157 lines verbatim in candle (1%)
 fuel-vulkan-backend/src/spirv_caps.rs	own		no lineage; 2 of 132 lines verbatim in candle (2%)
-fuel-vulkan-backend/tests/adapter_inventory_live.rs	own		no lineage; 0 of 36 lines verbatim in candle (0%)
+fuel-vulkan-backend/tests/adapter_inventory_live.rs	own		no lineage; 0 of 60 lines verbatim in candle (0%)
 fuel-vulkan-backend/tests/byte_storage_live.rs	own		no lineage; 0 of 189 lines verbatim in candle (0%)
-fuel-vulkan-backend/tests/identity_selection_live.rs	own		no lineage; 0 of 33 lines verbatim in candle (0%)
 fuel-vulkan-backend/tests/live_adapter/mod.rs	own		no lineage; 0 of 45 lines verbatim in candle (0%)
 fuel-vulkan-backend/tests/mapped_meter_live.rs	own		no lineage; 0 of 49 lines verbatim in candle (0%)
 fuel-vulkan-backend/tests/recycler_reclaim_live.rs	own		no lineage; 0 of 72 lines verbatim in candle (0%)
