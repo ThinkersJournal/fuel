@@ -1903,6 +1903,15 @@ fn cached_storage_location(storage: &Storage) -> Option<DeviceLocation> {
             .map(|b| DeviceLocation::Vulkan { gpu_id: b.gpu_id }),
         #[cfg(all(feature = "metal", any(target_os = "macos", target_os = "ios")))]
         BackendStorage::Metal(_) => None,
+        // The `Vulkan` variant exists whenever `fuel-memory` is built with `vulkan`, and another crate in the
+        // same build can turn that on without this crate's own `vulkan` feature (`fuel-vulkan-dispatch`
+        // depends on `fuel-memory/vulkan`; ROADMAP row 137 step 6.1). Without this arm `fuel-tensor` then
+        // fails to compile (E0004) for every consumer of that crate. A storage this build cannot report on
+        // is "unknown residency" (`None`), the documented fallback here. Unreachable (hence the allow)
+        // when no extra variant is compiled in.
+        #[cfg(not(feature = "vulkan"))]
+        #[allow(unreachable_patterns)]
+        _ => None,
     }
 }
 

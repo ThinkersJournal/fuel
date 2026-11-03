@@ -317,6 +317,13 @@ jobs:
       - name: Check vulkan-gated compilation (GAP-233)
         if: matrix.os == 'ubuntu-latest'
         run: cargo check --locked -p fuel-tensor -p fuel-dispatch -p fuel-vulkan-dispatch --features fuel-tensor/vulkan --all-targets
+      # `fuel-vulkan-dispatch` depends on `fuel-memory/vulkan`, which adds a `Vulkan` variant to the closed
+      # `BackendStorage` enum for EVERY crate in the build; `fuel-tensor` must still compile without its own
+      # `vulkan` feature (it once did not: E0004 in `pipelined_bridge.rs`, found by building the tarballs, where
+      # dev-dependencies that happen to enable `fuel-tensor/vulkan` are stripped). `--lib` leaves dev-deps out.
+      - name: Check fuel-tensor without its vulkan feature next to fuel-vulkan-dispatch (row 137 step 6.1)
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo check --locked -p fuel-tensor -p fuel-vulkan-dispatch --lib
       - name: Check jit-gated compilation (GAP-233)
         if: matrix.os == 'ubuntu-latest'
         run: cargo check --locked -p fuel-dispatch --features jit --all-targets
