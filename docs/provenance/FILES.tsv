@@ -13,7 +13,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 481 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 482 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1392 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 304 lines verbatim
@@ -334,13 +334,13 @@ fuel-cuda-backend/src/baracuda/write_slice.rs	own		no lineage; 0 of 224 lines ve
 fuel-cuda-backend/src/byte_storage.rs	own		no lineage; 4 of 280 lines verbatim in candle (1%)
 fuel-cuda-backend/src/capture.rs	own		no lineage; 0 of 188 lines verbatim in candle (0%)
 fuel-cuda-backend/src/cutlass.rs	own		no lineage; 0 of 95 lines verbatim in candle (0%)
-fuel-cuda-backend/src/device.rs	candle-modified	candle-core/src/cuda_backend/device.rs	rename/copy 30%; 30% of 581 lines verbatim
+fuel-cuda-backend/src/device.rs	candle-modified	candle-core/src/cuda_backend/device.rs	rename/copy 30%; 30% of 586 lines verbatim
 fuel-cuda-backend/src/dyn_impl.rs	own		no lineage; 7 of 228 lines verbatim in candle (3%)
 fuel-cuda-backend/src/error.rs	candle-modified	candle-core/src/cuda_backend/error.rs	rename/copy 30%; 32% of 38 lines verbatim
 fuel-cuda-backend/src/flash_attn.rs	not-traced		names candle in its text; not judged
 fuel-cuda-backend/src/lib.rs	own		no lineage; 2 of 61 lines verbatim in candle (3%)
 fuel-cuda-backend/src/pinned.rs	own		no lineage; 16 of 176 lines verbatim in candle (9%)
-fuel-cuda-backend/src/probe.rs	own		no lineage; 1 of 218 lines verbatim in candle (0%)
+fuel-cuda-backend/src/probe.rs	own		no lineage; 1 of 257 lines verbatim in candle (0%)
 fuel-cuda-backend/src/quantized.rs	not-traced	candle-core/src/quantized/cuda.rs	118 of 496 lines also appear in candle (mostly candle-core/src/quantized/cuda.rs); not judged
 fuel-cuda-backend/src/storage.rs	not-traced	candle-core/src/cuda_backend/mod.rs	424 of 2623 lines also appear in candle (mostly candle-core/src/cuda_backend/mod.rs); not judged
 fuel-cuda-backend/src/storage_status.rs	own		no lineage; 0 of 148 lines verbatim in candle (0%)
@@ -969,7 +969,7 @@ fuel-hardware/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICE
 fuel-hardware/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-hardware/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
 fuel-hardware/src/enumerate.rs	own		no lineage; 0 of 39 lines verbatim in candle (0%)
-fuel-hardware/src/inventory.rs	own		no lineage; 1 of 133 lines verbatim in candle (1%)
+fuel-hardware/src/inventory.rs	own		no lineage; 1 of 149 lines verbatim in candle (1%)
 fuel-hardware/src/lib.rs	own		no lineage; 0 of 9 lines verbatim in candle (0%)
 fuel-hardware/src/probe.rs	own		no lineage; 4 of 218 lines verbatim in candle (2%)
 fuel-hardware/src/transfer_cost.rs	own		no lineage; 3 of 553 lines verbatim in candle (1%)
@@ -1522,7 +1522,7 @@ fuel-tensor/examples/gap315_probe.rs	own		no lineage; 1 of 116 lines verbatim in
 fuel-tensor/examples/gap315_reconciliation_test.rs	own		no lineage; 1 of 77 lines verbatim in candle (1%)
 fuel-tensor/src/awq.rs	own		no lineage; 1 of 359 lines verbatim in candle (0%)
 fuel-tensor/src/cpu_accel.rs	own		no lineage; 2 of 67 lines verbatim in candle (3%)
-fuel-tensor/src/cuda_backend/mod.rs	own		no lineage; 2 of 36 lines verbatim in candle (6%)
+fuel-tensor/src/cuda_backend/mod.rs	own		no lineage; 3 of 43 lines verbatim in candle (7%)
 fuel-tensor/src/decode_shape.rs	own		no lineage; 2 of 252 lines verbatim in candle (1%)
 fuel-tensor/src/device.rs	candle-modified	candle-core/src/device.rs	rename/copy 38%; 43% of 176 lines verbatim
 fuel-tensor/src/dtype.rs	candle-modified	candle-core/src/dtype.rs	no git lineage; 35 of 52 lines verbatim in candle (mostly candle-core/src/dtype.rs)
