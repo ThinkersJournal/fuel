@@ -21,7 +21,6 @@
 //!   `BackendCapabilities`, `FitStatus` — stay in [`fuel_ir::backend`].)
 //! - [`quantized`] — [`DynQuantizedStorage`] / [`QuantizedDeviceKernels`].
 //!   (The `GgmlDType` *data* tag stays in [`fuel_ir::quantized`].)
-//! - [`inplace_op`] — [`InplaceOp1`] / [`InplaceOp2`] / [`InplaceOp3`].
 //! - [`storage`] — [`Storage`], the type-erased `Box<dyn DynBackendStorage>`
 //!   handle that carries a backend's storage, plus `allocate_bundled_storage`.
 //!   (The bundle *data* — `OutputView`, `OutputViewSpec`, `compose_bundle` —
@@ -43,12 +42,13 @@
 //! `DynBackendStorage` appears in this crate and the four backend crates and nowhere else; the five other
 //! mentions are comments. Dependants: crates.io lists 12 reverse dependencies of this crate (all Fuel
 //! workspace members); the one outside project on this machine that depends on it, Lightbulb, uses only
-//! `backend::BackendRuntime`. [`InplaceOp1`], [`InplaceOp2`], [`InplaceOp3`] and
-//! [`BackendCapabilityProvider`] are named by no code outside this crate and implemented by no backend.
+//! `backend::BackendRuntime`. `InplaceOp1/2/3` were removed in 0.38.0 (no
+//! implementation, no caller). [`BackendCapabilityProvider`] is kept although no backend implements it and no
+//! code calls it: that is known and deliberate, because the architecture document
+//! (`docs/architecture/05-backend-contract.md`, Tier 1) specifies it and the dlpack extension spec depends on it.
 
 pub mod backend;
 pub mod dyn_backend;
-pub mod inplace_op;
 pub mod quantized;
 pub mod storage;
 
@@ -56,6 +56,5 @@ pub use backend::{
     BackendCapabilityProvider, BackendRuntime, BackendStorage, BackendStreams, HostStorage,
 };
 pub use dyn_backend::{DynBackendDevice, DynBackendStorage};
-pub use inplace_op::{InplaceOp1, InplaceOp2, InplaceOp3};
 pub use quantized::{DynQuantizedStorage, QuantizedDeviceKernels};
 pub use storage::{Storage, allocate_bundled_storage};

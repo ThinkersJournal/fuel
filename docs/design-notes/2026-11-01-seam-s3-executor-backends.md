@@ -221,15 +221,21 @@ callers inside the crate: `BackendCapabilityProvider`, `InplaceOp1`, `InplaceOp2
 repository root (a virtual workspace); the CI portfolio log holds no reachability findings for these types.
 
 **Why keep.** Deleting `DynBackendStorage` means re-plumbing `NodeHandle::from_*` and the graph's constant
-nodes (and `allocate_bundled_storage`, the `Storage` handle, and the quantized and in-place traits that take
-it), in a published crate, while the executor's own path already avoids it. That is a design change with no
+nodes (and `allocate_bundled_storage`, the `Storage` handle, and the quantized traits that take it), in a published crate, while the executor's own path already avoids it. That is a design change with no
 consumer asking for it, not a cleanup; it belongs to a future decision on the graph's storage type, not to
 row 137.
 
-**The four unreached items** (`InplaceOp1/2/3`, `BackendCapabilityProvider`): zero code uses outside the
-contract crate in the workspace (same code-only scan), no backend implements them, and no outside project
-names them. Deleting them is a small Breaking change to a published crate (`inplace_op.rs` mentions
-`DynBackendStorage` 15 times, comments included). Not done here; it is a separate, optional PR for the PM.
+**The four unreached items (decision of the PM, 2026-11-03).** `InplaceOp1/2/3`, `BackendCapabilityProvider`:
+zero code uses outside the contract crate in the workspace (same code-only scan), no backend implements them,
+and no outside project names them. **Deleted: `InplaceOp1/2/3` and the dead `Storage::inplace_op1/2/3`
+delegates** (0.38.0, Breaking; `inplace_op.rs` mentioned `DynBackendStorage` 15 times, comments included).
+Checked by compiling the 10 workspace crates that depend on the contract crate (`cargo check --all-targets`,
+exit 0); the CUDA and Metal backends were not compiled, the text census covers them. **Kept:
+`BackendCapabilityProvider`.** It has no implementation and no caller, and that is known and deliberate: the
+architecture document (`docs/architecture/05-backend-contract.md`, Tier 1) specifies it, the dlpack extension
+spec depends on it, and `fuel-ir/tests/doc_declared_traits.rs` uses it as its positive control. Deleting it
+would need a constitution amendment, which is CireSnave's call and was not asked. I had reported it as
+"unreached" before checking the architecture documents; the code census was right and was not the whole picture.
 
 ## 7. Decision (2026-11-01, CireSnave, relayed by the PM)
 
