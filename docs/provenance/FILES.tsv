@@ -1791,6 +1791,9 @@ fuel-vulkan-backend/tests/live_adapter/mod.rs	own		no lineage; 0 of 45 lines ver
 fuel-vulkan-backend/tests/mapped_meter_live.rs	own		no lineage; 0 of 49 lines verbatim in candle (0%)
 fuel-vulkan-backend/tests/recycler_reclaim_live.rs	own		no lineage; 0 of 72 lines verbatim in candle (0%)
 fuel-vulkan-dispatch/Cargo.toml	own		no lineage; 3 of 23 lines verbatim in candle (13%)
+fuel-vulkan-dispatch/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
+fuel-vulkan-dispatch/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
+fuel-vulkan-dispatch/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
 fuel-vulkan-dispatch/examples/contiguize_vulkan_check.rs	own		no lineage; 0 of 53 lines verbatim in candle (0%)
 fuel-vulkan-dispatch/examples/flash_attn_route_check.rs	own		no lineage; 1 of 120 lines verbatim in candle (1%)
 fuel-vulkan-dispatch/kernel-contracts/vulkan/attention.fkc.md	own		no lineage; 0 of 346 lines verbatim in candle (0%)
