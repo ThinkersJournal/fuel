@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.37.14 - 2026-11-03
+
+### Added
+
+- `fuel-hardware`: `inventory::location_of(inventory, backend, identity)`, row 137 step 4a: resolve a physical GPU's identity to its `DeviceLocation` for a backend in this process, through `fuel_ir::probe::resolve_identity_ordinal`. Works across APIs (a CUDA device's identity finds its Vulkan ordinal), returns the entry's own `device_index` (not its position), and declines on no match, on ambiguity and on a backend without GPU ordinals. Pure; unit-tested on synthetic inventories in both Vulkan orders. Nothing calls it yet. No CUDA-gated code touched.
+
 ## v0.37.13 - 2026-11-03
 
 ### Added

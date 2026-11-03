@@ -15,7 +15,10 @@
 //! device), so call this when placing, not per token. `free_bytes` is `None` when the backend
 //! cannot report it (Vulkan without `VK_EXT_memory_budget`), never a guess.
 
-use fuel_ir::probe::{BackendId, DeviceDescriptor, DeviceIdentity};
+use fuel_ir::DeviceLocation;
+use fuel_ir::probe::{
+    BackendId, DeviceDescriptor, DeviceIdentity, IdentityResolveError, resolve_identity_ordinal,
+};
 
 use crate::probe::ProbeReport;
 
@@ -108,6 +111,41 @@ fn live_free_bytes(d: &DeviceDescriptor) -> Option<u64> {
         }
         _ => None,
     }
+}
+
+/// Resolve a physical GPU's identity to the [`DeviceLocation`] it has in THIS process for `backend`
+/// (ROADMAP row 137 step 4a). The identity may come from another API: a CUDA device's identity
+/// resolves to its Vulkan ordinal because both report the same UUID. Only `Cuda` and `Vulkan` carry
+/// a GPU ordinal; any other `backend` answers [`IdentityResolveError::NoMatch`]. The result is a
+/// within-process handle: do not store it. Fails on no match and on more than one match.
+pub fn location_of(
+    inventory: &[DeviceMemory],
+    backend: BackendId,
+    wanted: &DeviceIdentity,
+) -> Result<DeviceLocation, IdentityResolveError> {
+    let make: fn(usize) -> DeviceLocation = match backend {
+        BackendId::Cuda => |gpu_id| DeviceLocation::Cuda { gpu_id },
+        BackendId::Vulkan => |gpu_id| DeviceLocation::Vulkan { gpu_id },
+        _ => return Err(IdentityResolveError::NoMatch),
+    };
+    let ours: Vec<&DeviceMemory> = inventory.iter().filter(|m| m.backend == backend).collect();
+    let unknown = DeviceIdentity {
+        uuid: None,
+        pci: None,
+    };
+    let ids: Vec<DeviceIdentity> = ours.iter().map(|m| m.identity.unwrap_or(unknown)).collect();
+    // `resolve_identity_ordinal` answers a position in `ids`; the device's own ordinal is the
+    // entry's `device_index`, which need not equal the position.
+    let pos = resolve_identity_ordinal(wanted, &ids).map_err(|e| match e {
+        IdentityResolveError::Ambiguous(positions) => IdentityResolveError::Ambiguous(
+            positions
+                .into_iter()
+                .map(|p| ours[p].device_index as usize)
+                .collect(),
+        ),
+        other => other,
+    })?;
+    Ok(make(ours[pos].device_index as usize))
 }
 
 #[cfg(test)]
@@ -269,5 +307,88 @@ mod tests {
             );
             assert!(cpu.free_bytes.unwrap() <= cpu.total_bytes);
         }
+    }
+
+    fn mem(backend: BackendId, idx: u32, ident: Option<DeviceIdentity>) -> DeviceMemory {
+        DeviceMemory {
+            backend,
+            device_index: idx,
+            name: format!("{backend:?} {idx}"),
+            identity: ident,
+            total_bytes: 0,
+            free_bytes: None,
+        }
+    }
+
+    fn gid(b: u8) -> DeviceIdentity {
+        DeviceIdentity {
+            uuid: Some([b; 16]),
+            pci: None,
+        }
+    }
+
+    /// A CUDA device's identity finds the SAME physical GPU under Vulkan, whichever order Vulkan
+    /// enumerates in (the flip row 125 measured).
+    #[test]
+    fn a_cuda_identity_resolves_to_its_vulkan_ordinal_in_both_orders() {
+        let (nv, amd) = (gid(0x11), gid(0x22));
+        let cuda = mem(BackendId::Cuda, 0, Some(nv));
+        let vk_amd_first = [
+            mem(BackendId::Vulkan, 0, Some(amd)),
+            mem(BackendId::Vulkan, 1, Some(nv)),
+        ];
+        let vk_nv_first = [
+            mem(BackendId::Vulkan, 0, Some(nv)),
+            mem(BackendId::Vulkan, 1, Some(amd)),
+        ];
+        let find = |vk: &[DeviceMemory]| {
+            let mut inv = vec![cuda.clone()];
+            inv.extend_from_slice(vk);
+            location_of(&inv, BackendId::Vulkan, &nv)
+        };
+        assert_eq!(
+            find(&vk_amd_first),
+            Ok(DeviceLocation::Vulkan { gpu_id: 1 })
+        );
+        assert_eq!(find(&vk_nv_first), Ok(DeviceLocation::Vulkan { gpu_id: 0 }));
+    }
+
+    /// The answer is the entry's own `device_index`, not its position among the backend's entries.
+    #[test]
+    fn location_uses_the_device_index_not_the_position() {
+        let nv = gid(0x11);
+        let inv = [
+            mem(BackendId::Vulkan, 3, Some(gid(0x22))),
+            mem(BackendId::Vulkan, 7, Some(nv)),
+        ];
+        assert_eq!(
+            location_of(&inv, BackendId::Vulkan, &nv),
+            Ok(DeviceLocation::Vulkan { gpu_id: 7 })
+        );
+    }
+
+    #[test]
+    fn location_declines_on_no_match_ambiguity_and_a_backend_without_ordinals() {
+        let nv = gid(0x11);
+        let inv = [
+            mem(BackendId::Vulkan, 0, None),
+            mem(BackendId::Vulkan, 1, Some(gid(0x22))),
+        ];
+        assert_eq!(
+            location_of(&inv, BackendId::Vulkan, &nv),
+            Err(IdentityResolveError::NoMatch)
+        );
+        let dup = [
+            mem(BackendId::Vulkan, 2, Some(nv)),
+            mem(BackendId::Vulkan, 5, Some(nv)),
+        ];
+        assert_eq!(
+            location_of(&dup, BackendId::Vulkan, &nv),
+            Err(IdentityResolveError::Ambiguous(vec![2, 5]))
+        );
+        assert_eq!(
+            location_of(&dup, BackendId::Cpu, &nv),
+            Err(IdentityResolveError::NoMatch)
+        );
     }
 }
