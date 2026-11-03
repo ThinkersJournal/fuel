@@ -7,6 +7,12 @@ This documents the main changes to the `fuel` workspace.
 
 - `fuel-ir`: `probe::resolve_identity_ordinal` and `IdentityResolveError`, the pure half of ROADMAP row 137 step 4a: resolve a `DeviceIdentity` to this process's enumeration ordinal, declining on no match and on more than one match. Unit-tested on synthetic enumerations in both orders. Nothing calls it yet; the `DeviceSelection::Identity` selectors and live oracles wait for the GPU-build hold.
 
+## v0.37.8 - 2026-11-03
+
+### Added
+
+- `fuel-loaders`: `quantized::qwen35_names::map_qwen35_gguf_name`, the GGUF `qwen35` tensor-name -> Hugging Face name map for the text decoder (ROADMAP row 118 step two). Names come from the installed 4B file's header; value rules (norm `+1`, `ssm_a` vs `A_log`) are returned as `Unverified*` hypotheses pending the HF oracle run. Unit tests on a 426-name fixture reproducing the header note. No loader wiring, no `Architecture` variant yet.
+
 ## v0.37.7 - 2026-11-03
 
 ### Fixed

@@ -40,6 +40,7 @@ pub mod gguf_file;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod gguf_mmap;
 pub mod imatrix_file;
+pub mod qwen35_names;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod tokenizer;
 

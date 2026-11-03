@@ -1323,6 +1323,7 @@ fuel-loaders/src/quantized/gguf_file.rs	not-traced	candle-core/src/quantized/ggu
 fuel-loaders/src/quantized/gguf_mmap.rs	own		no lineage; 2 of 72 lines verbatim in candle (3%)
 fuel-loaders/src/quantized/imatrix_file.rs	not-traced	candle-core/src/quantized/imatrix_file.rs	2 of 15 lines also appear in candle (mostly candle-core/src/quantized/imatrix_file.rs); not judged
 fuel-loaders/src/quantized/mod.rs	own		no lineage; 2 of 31 lines verbatim in candle (6%)
+fuel-loaders/src/quantized/qwen35_names.rs	own		no lineage; 3 of 125 lines verbatim in candle (2%)
 fuel-loaders/src/quantized/tokenizer.rs	candle-modified	candle-core/src/quantized/tokenizer.rs	rename/copy 86%; 86% of 158 lines verbatim
 fuel-loaders/src/safetensors.rs	not-traced	candle-core/src/safetensors.rs	27 of 181 lines also appear in candle (mostly candle-core/src/safetensors.rs); not judged
 fuel-loaders/tests/fixtures/gguf_corpus_digests.PROVENANCE.md	own		no lineage; 0 of 18 lines verbatim in candle (0%)
