@@ -1,11 +1,17 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
-## v0.37.14 - 2026-11-03
+## v0.37.16 - 2026-11-03
 
 ### Added
 
 - `fuel-hardware`: `inventory::location_of(inventory, backend, identity)`, row 137 step 4a: resolve a physical GPU's identity to its `DeviceLocation` for a backend in this process, through `fuel_ir::probe::resolve_identity_ordinal`. Works across APIs (a CUDA device's identity finds its Vulkan ordinal), returns the entry's own `device_index` (not its position), and declines on no match, on ambiguity and on a backend without GPU ordinals. Pure; unit-tested on synthetic inventories in both Vulkan orders. Nothing calls it yet. No CUDA-gated code touched.
+
+## v0.37.15 - 2026-11-03
+
+### Added
+
+- `fuel-cuda-backend`: `probe::ordinal_of_identity` and `CudaDevice::new_by_identity`, the CUDA counterpart of row 137 step 4a. The identity may come from another API (a Vulkan device's UUID names the same GPU). Fails on no match and on more than one match. `fuel-tensor`: `cuda_backend::new_device_by_identity` (a typed `NotCompiledWithCudaSupport` error without the `cuda` feature). Pure unit tests on synthetic enumerations; the live check is added to `fuel-hardware`'s existing `live_inventory` test (no new `#[ignore]`). **CUDA code is touched, so this was compiled by hand before the PR** (no runner exists, board item 366): `cargo clippy -p fuel-cuda-backend -p fuel-hardware -p fuel-tensor --features fuel-hardware/cuda,fuel-hardware/vulkan,fuel-tensor/cuda --all-targets` through a `cuda-build.ps1` slot, compiler-artifact lines present for all three crates; the pre-existing CUDA-backend clippy warnings (448, none on the added lines) are not CI-gated. Run on this box (one RTX 4070 as the only CUDA device, so ordinals 0 == 0 and the live check cannot tell an always-0 answer from a right one; the unit tests cover ordering). No other CUDA behaviour changes.
 
 ## v0.37.13 - 2026-11-03
 
