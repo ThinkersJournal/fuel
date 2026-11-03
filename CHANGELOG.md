@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.37.12 - 2026-11-03
+
+### Added
+
+- CI (DRAFT, do not merge before the `ghr-fuel` runner exists): `.github/workflows/vulkan-live-tests.yml`, the ignored live Vulkan tests of `fuel-dispatch`, `fuel-vulkan-backend` and `fuel-tensor` on the self-hosted runner (push to main + manual dispatch only, no pull_request, no secrets). Because several of those tests report `ok` when no device is present, the workflow sets `FUEL_REQUIRE_VULKAN=1` and fails if any test printed "skipping" or a step passed zero tests. All three cargo command lines were checked to compile (`--no-run`); the workflow itself has not run on a runner.
+
 ## v0.37.8 - 2026-11-03
 
 ### Added
