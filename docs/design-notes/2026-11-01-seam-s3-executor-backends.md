@@ -183,6 +183,32 @@ What "identity in place of index" can mean, from least to most invasive:
 Recommendation: 4a then 4b, each its own PR with the probe plus a sabotage as oracle and a hand CUDA compile (no runner, board
 item 366); 4c is not needed for the judge cache (above); look for other persisted ordinal keys before dropping it entirely.
 
+### 6d. Step 5, park the trait-object alternative (written 2026-11-03 at `origin/main` 043de464, 0.37.18)
+
+Step 5 is a record, not a refactor: section 7 rules that `DynBackendStorage`, `DynBackendDevice` and the
+Vulkan exception stay as they are. What was done: the `fuel-backend-contract` crate docs said these traits
+were "at the heart of dispatch" and "the contract Fuel dispatches through", which section 2 already showed
+to be false; that claim is replaced by a Status section saying they are parked, with the numbers below.
+
+Measured (`git grep -c DynBackendStorage -- '*.rs'` at 043de464): 19 files. In the contract crate
+`dyn_backend.rs` 62, `storage.rs` 60, `inplace_op.rs` 15, `quantized.rs` 13, `backend.rs` 2, `lib.rs` 3. In the
+backend crates the implementations: `dyn_impl.rs` 58 (CPU), 58 (CUDA), 57 (Metal), 10 (Vulkan), and
+`quantized.rs` 9, 9 and 8, plus `fuel-cpu-backend/tests/kiss_int_wrap.rs` 2. **Everywhere else, five mentions,
+all in comments:** `fuel-dispatch/src/pipelined.rs`, `fuel-graph/src/lib.rs`, `fuel-ir/src/lib.rs`,
+`fuel-ir/src/storage.rs`, `fuel-ir/src/backend.rs`. So the hot path does not name it (section 2's "one use in
+`fuel-dispatch`" was a comment, not code).
+
+CodeRipper 0.20.1 `check reachability`, run on `fuel-backend-contract` alone from a clean worktree at that
+commit: 4 findings, `BackendCapabilityProvider`, `InplaceOp1`, `InplaceOp2`, `InplaceOp3` have zero callers
+within the crate; `DynBackendStorage` is not reported. The check is per crate and reads the committed tree, so
+it cannot say whether a backend crate or a downstream project calls these traits. A run on the repository root
+fails (it is a virtual workspace; the tool wants a member directory), and the portfolio job's log in CI holds no
+reachability findings for these types (its matches are `allow(unreachable_patterns)` lines).
+
+What a deletion decision still needs (NOT done): a cross-crate count of call sites of the trait methods
+(not impls, not the `Storage` handle's own plumbing), and a check of the downstream projects that name the
+types (`fuel-backend-contract` is a published crate; its dependants were not looked at).
+
 ## 7. Decision (2026-11-01, CireSnave, relayed by the PM)
 
 The question was whether the storage abstraction is (a) the closed enum plus ops methods, or (b)

@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.37.19 - 2026-11-03
+
+### Changed
+
+- `fuel-backend-contract`: the crate documentation no longer says `DynBackendStorage` / `DynBackendDevice` are "at the heart of dispatch" and "the contract Fuel dispatches through" (the executor matches the closed `fuel_memory::BackendStorage` enum); it now carries a Status section marking them as the parked trait-object alternative, with the reference counts measured at `origin/main` 043de464 (outside the contract and the four backend crates the name appears five times, all in comments). Documentation only; no item changes. ROADMAP row 137 step 5 and a new section 6d of the S3 design note record it, including what CodeRipper 0.20.1 `reachability` did and did not report and what a deletion decision still needs.
+
 ## v0.37.18 - 2026-11-03
 
 ### Added
