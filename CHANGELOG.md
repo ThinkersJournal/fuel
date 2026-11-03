@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.37.17 - 2026-11-03
+
+### Added
+
+- `fuel-dispatch`: `DeviceRegistry::registered_vulkan_by_identity` and `registered_cuda_by_identity`, ROADMAP row 137 step 4b: look up a registered handle by the physical GPU's identity (UUID, else PCI address), whatever ordinal this process enumerated it at, and across APIs (a Vulkan identity finds the CUDA device). Nothing is stored: the lookup asks the registered handles for their identity. Exactly one match returns it; none, or more than one, returns `None` (never the first of several); a handle with no identity never matches. Pure `unique_by_identity` core with 3 unit tests (sabotage seen red). **CUDA-gated code is touched, so it was compiled and run by hand** (no runner exists, board item 366): `cargo clippy -p fuel-dispatch -p fuel-tensor --features fuel-dispatch/cuda,fuel-dispatch/vulkan,fuel-tensor/cuda,fuel-tensor/vulkan --all-targets` through a `cuda-build.ps1` slot, exit 0, compiler artifacts for both crates, 0 error-level diagnostics and none in the changed files; then under `gpu-run` on the RTX 4070 + AMD iGPU box: the unit tests, `residency_eviction_live` (CUDA lookup) and `vulkan_bridge_realize_live` (both adapters registered, each found by identity; the two-GPU path ran, it did not skip). Live checks sit inside existing ignored tests: no new `#[ignore]`. One CUDA device on this box, so the CUDA lookup cannot tell a right ordinal from 0; the pure tests cover ordering.
+
 ## v0.37.16 - 2026-11-03
 
 ### Added

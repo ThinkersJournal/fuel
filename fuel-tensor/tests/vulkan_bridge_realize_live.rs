@@ -113,6 +113,27 @@ fn two_gpu_graph_realizes() {
             .registered_vulkan(vk0.gpu_id + vk1.gpu_id + 2)
             .is_none()
     );
+    // ROADMAP row 137 step 4b: the same handles are found by the physical GPU's identity, not by the
+    // ordinal this process happened to enumerate them at, and an identity no registered backend has is
+    // declined.
+    let (id0, id1) = (vk0.identity().unwrap(), vk1.identity().unwrap());
+    assert!(Arc::ptr_eq(
+        registry
+            .registered_vulkan_by_identity(&id0)
+            .expect("GPU 0 found by identity"),
+        &vk0
+    ));
+    assert!(Arc::ptr_eq(
+        registry
+            .registered_vulkan_by_identity(&id1)
+            .expect("GPU 1 found by identity"),
+        &vk1
+    ));
+    let nobody = fuel_ir::probe::DeviceIdentity {
+        uuid: Some([0xAB; 16]),
+        pci: None,
+    };
+    assert!(registry.registered_vulkan_by_identity(&nobody).is_none());
 
     let a = Tensor::from_f32(
         vec![1.0_f32, 2.0, 3.0, 4.0],

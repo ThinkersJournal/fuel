@@ -36,6 +36,28 @@ fn dev_or_skip() -> Option<CudaDevice> {
     }
 }
 
+/// ROADMAP row 137 step 4b: a registry finds a registered CUDA device by the physical GPU's identity, and
+/// declines an identity no registered device has. Called from the ignored test below, not a test of its own:
+/// the `#[ignore]` total is a ratchet (`fuel-ir/tests/suppression_ratchet.rs`). With one CUDA device the
+/// ordinal is 0 either way; the pure `unique_by_identity` tests cover ordering.
+fn registry_finds_the_device_by_identity(dev: &CudaDevice) {
+    let DeviceLocation::Cuda { gpu_id } = dev.location() else {
+        panic!("a CUDA device must report a CUDA place");
+    };
+    let ids = fuel_cuda_backend::probe::device_identities().expect("CUDA identities");
+    let wanted = ids[gpu_id].expect("the CUDA device reports an identity");
+    let registry = fuel_dispatch::pipelined::DeviceRegistry::new().with_cuda(dev.clone());
+    let got = registry
+        .registered_cuda_by_identity(&wanted)
+        .expect("the registered device is found by its own identity");
+    assert_eq!(got.location(), dev.location());
+    let nobody = fuel_ir::probe::DeviceIdentity {
+        uuid: Some([0xAB; 16]),
+        pci: None,
+    };
+    assert!(registry.registered_cuda_by_identity(&nobody).is_none());
+}
+
 /// Evict→fault-back roundtrip on the live GPU. Same canonical graph
 /// as the CPU unit tests (`a` has two consumers separated by a gap):
 ///
@@ -54,6 +76,7 @@ fn dev_or_skip() -> Option<CudaDevice> {
 #[ignore]
 fn cuda_evict_fault_back_roundtrip_preserves_output() {
     let Some(dev) = dev_or_skip() else { return };
+    registry_finds_the_device_by_identity(&dev);
 
     let build = || -> (SharedGraph, NodeId, NodeId) {
         let graph: SharedGraph = Arc::new(RwLock::new(Graph::new()));
