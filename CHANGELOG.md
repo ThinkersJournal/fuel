@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.37.13 - 2026-11-03
+
+### Added
+
+- `fuel-vulkan-backend`: `DeviceSelection::Identity(DeviceIdentity)`, row 137 step 4a for Vulkan. `VulkanBackend::with_selection` resolves the identity to this process's enumeration ordinal through `fuel_ir::probe::resolve_identity_ordinal` and fails on no match or more than one match; `gpu_id` stays the in-process handle. A new public variant: no other crate matches on `DeviceSelection` (`git grep`), so `-p fuel-vulkan-backend --all-targets` is the gate. Unit tests on synthetic enumerations; live check inside the existing ignored `tests/adapter_inventory_live.rs` (no new `#[ignore]`: the count is a ratchet): each adapter opens by its own identity at its own ordinal; the no-match error is covered by the unit test. The CUDA counterpart, an inventory `location_of(identity)` and `DeviceRegistry` by identity (4b) are not done. No CUDA code touched.
+
 ## v0.37.11 - 2026-11-03
 
 ### Added

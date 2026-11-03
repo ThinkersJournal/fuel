@@ -65,4 +65,45 @@ fn print_the_adapter_inventory() {
         "no Vulkan adapters enumerated — this test cannot report an inventory, \
          and must fail rather than pass having printed nothing"
     );
+
+    every_reporting_adapter_reopens_by_its_identity();
+}
+
+/// `DeviceSelection::Identity` against the real adapters (ROADMAP row 137 step 4a). Called from the
+/// ignored test above rather than being a test of its own: the `#[ignore]` count is a ratchet
+/// (`fuel-ir/tests/suppression_ratchet.rs`), and this needs the same live device.
+///
+/// For every adapter that reports an identity, selecting by that identity must open the adapter at
+/// the same enumeration ordinal and report an identity that is the same physical device. No
+/// identity-reporting adapter FAILS (`required`): a live test that cannot run must not report `ok`.
+fn every_reporting_adapter_reopens_by_its_identity() {
+    use fuel_test_support::{required, required_ok};
+    use fuel_vulkan_backend::{DeviceSelection, VulkanBackend, probe};
+
+    let identities = required_ok("device_identities()", probe::device_identities());
+    let reporting: Vec<(usize, _)> = identities
+        .iter()
+        .enumerate()
+        .filter_map(|(i, id)| id.map(|id| (i, id)))
+        .collect();
+    required(
+        "at least one Vulkan adapter that reports an identity",
+        (!reporting.is_empty()).then_some(()),
+    );
+    for (ordinal, wanted) in reporting {
+        let backend = required_ok(
+            "VulkanBackend::with_selection(Identity)",
+            VulkanBackend::with_selection(DeviceSelection::Identity(wanted)),
+        );
+        assert_eq!(
+            backend.gpu_id, ordinal,
+            "identity {wanted:?} resolved to a different ordinal than the enumeration order"
+        );
+        let got = required("the opened backend reports an identity", backend.identity());
+        assert!(
+            got.same_physical_device(&wanted),
+            "opened {got:?}, asked for {wanted:?}"
+        );
+        println!("=== identity selection: ordinal {ordinal} -> {got:?} ===");
+    }
 }
