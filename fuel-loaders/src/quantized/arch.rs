@@ -26,6 +26,9 @@ pub enum Architecture {
     Qwen2,
     Qwen3,
     Qwen3Moe,
+    /// Qwen3.5: the Gated DeltaNet / full-attention hybrid (`qwen35`). Tensor names:
+    /// [`super::qwen35_names`].
+    Qwen35,
     Phi,
     Phi3,
     Gemma,
@@ -47,6 +50,7 @@ impl Architecture {
             Architecture::Qwen2 => "qwen2",
             Architecture::Qwen3 => "qwen3",
             Architecture::Qwen3Moe => "qwen3moe",
+            Architecture::Qwen35 => "qwen35",
             Architecture::Phi => "phi2",
             Architecture::Phi3 => "phi3",
             Architecture::Gemma => "gemma",
@@ -74,6 +78,7 @@ impl Architecture {
             "qwen2" => Architecture::Qwen2,
             "qwen3" => Architecture::Qwen3,
             "qwen3moe" => Architecture::Qwen3Moe,
+            "qwen35" => Architecture::Qwen35,
             "phi" | "phi2" => Architecture::Phi,
             "phi3" => Architecture::Phi3,
             "gemma" => Architecture::Gemma,
@@ -163,6 +168,28 @@ pub fn detect_from_tensor_names<'a, I: IntoIterator<Item = &'a str>>(names: I) -
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn qwen35_is_its_own_architecture_not_qwen3() {
+        assert_eq!(
+            Architecture::from_metadata_string("qwen35"),
+            Architecture::Qwen35
+        );
+        assert_eq!(
+            Architecture::from_metadata_string("Qwen3.5"),
+            Architecture::Unknown,
+            "a dotted spelling is not a GGUF architecture string and must not alias qwen35"
+        );
+        assert_eq!(
+            Architecture::from_metadata_string("qwen3"),
+            Architecture::Qwen3
+        );
+        assert_eq!(Architecture::Qwen35.as_str(), "qwen35");
+        assert_eq!(
+            Architecture::from_metadata_string(Architecture::Qwen35.as_str()),
+            Architecture::Qwen35
+        );
+    }
 
     #[test]
     fn normalizes_architecture_names() {
