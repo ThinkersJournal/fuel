@@ -2702,6 +2702,15 @@ determinism: same_hardware_bitwise
 
         let mut files = Vec::new();
         collect_fkc_files(&corpus, &mut files);
+        // The Vulkan contracts moved with their kernel bindings to `fuel-vulkan-dispatch` (ROADMAP row
+        // 137 step 6.1); the corpus is still ONE corpus, so walk that directory too.
+        let vulkan_corpus = manifest.join("../fuel-vulkan-dispatch/kernel-contracts");
+        assert!(
+            vulkan_corpus.is_dir(),
+            "Vulkan corpus dir not found at {}",
+            vulkan_corpus.display()
+        );
+        collect_fkc_files(&vulkan_corpus, &mut files);
         files.sort();
         assert!(!files.is_empty(), "no .fkc.md files found");
 
@@ -2858,6 +2867,15 @@ determinism: same_hardware_bitwise
 
         let mut files = Vec::new();
         collect_fkc_files(&corpus, &mut files);
+        // The Vulkan contracts moved with their kernel bindings to `fuel-vulkan-dispatch` (ROADMAP row
+        // 137 step 6.1); the corpus is still ONE corpus, so walk that directory too.
+        let vulkan_corpus = manifest.join("../fuel-vulkan-dispatch/kernel-contracts");
+        assert!(
+            vulkan_corpus.is_dir(),
+            "Vulkan corpus dir not found at {}",
+            vulkan_corpus.display()
+        );
+        collect_fkc_files(&vulkan_corpus, &mut files);
         files.sort();
         assert!(!files.is_empty(), "no .fkc.md files found");
 

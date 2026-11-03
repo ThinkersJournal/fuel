@@ -2414,6 +2414,7 @@ dependencies = [
  "fuel-quantized",
  "fuel-test-support",
  "fuel-vulkan-backend",
+ "fuel-vulkan-dispatch",
  "gemm",
  "half",
  "hf-hub",
@@ -2529,6 +2530,23 @@ dependencies = [
  "memmap2",
  "tracing",
  "vulkane",
+]
+
+[[package]]
+name = "fuel-vulkan-dispatch"
+version = "0.38.0"
+dependencies = [
+ "bytemuck",
+ "fuel-conv",
+ "fuel-cpu-backend",
+ "fuel-dispatch",
+ "fuel-graph",
+ "fuel-ir",
+ "fuel-memory",
+ "fuel-quantized",
+ "fuel-test-support",
+ "fuel-vulkan-backend",
+ "half",
 ]
 
 [[package]]

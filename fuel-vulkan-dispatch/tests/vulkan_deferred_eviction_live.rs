@@ -23,8 +23,6 @@
 //!   cargo test -p fuel-dispatch --features vulkan \
 //!       --test vulkan_deferred_eviction_live -- --ignored --nocapture --test-threads=1
 
-#![cfg(feature = "vulkan")]
-
 use std::sync::{Arc, RwLock};
 
 use fuel_dispatch::pipelined::{PipelinedExecutor, StorageCache};

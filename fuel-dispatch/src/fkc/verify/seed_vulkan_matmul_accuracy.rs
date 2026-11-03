@@ -96,10 +96,11 @@ impl AccuracyRun {
 
 /// Measure the registered Vulkan f32 `MatMul`, `RmsNormLastDim`, `SoftmaxLastDim` and `Rope`.
 pub(crate) fn measure_vulkan_f32_accuracy(
+    register: fn(&mut KernelBindingTable),
     selection: fuel_vulkan_backend::DeviceSelection,
 ) -> Result<AccuracyRun, VerifyError> {
     let mut table = KernelBindingTable::new();
-    crate::vulkan_dispatch::register_vulkan_kernels(&mut table);
+    register(&mut table);
     let mut cpu_table = KernelBindingTable::new();
     crate::dispatch::register_cpu_kernels(&mut cpu_table);
     let backend = VulkanBackend::with_selection(selection)
@@ -162,9 +163,12 @@ fn print_run(run: &AccuracyRun) {
 /// merging writer. Needs a live Vulkan device. Run via
 /// `cargo run -p fuel-dispatch --features dev-tools,vulkan --bin fuel-dev-tools -- seed-vulkan-accuracy`.
 #[cfg(feature = "dev-tools")]
-pub(crate) fn run_seed_vulkan_matmul_accuracy() {
-    let run = measure_vulkan_f32_accuracy(fuel_vulkan_backend::DeviceSelection::PreferDiscrete)
-        .expect("vulkan f32 accuracy measurement runs");
+pub(crate) fn run_seed_vulkan_matmul_accuracy(register: fn(&mut KernelBindingTable)) {
+    let run = measure_vulkan_f32_accuracy(
+        register,
+        fuel_vulkan_backend::DeviceSelection::PreferDiscrete,
+    )
+    .expect("vulkan f32 accuracy measurement runs");
     print_run(&run);
     let records = run.records();
     for r in &records {
@@ -195,12 +199,13 @@ pub(crate) fn run_seed_vulkan_matmul_accuracy() {
 /// Exits non-zero when any measurement exceeds its claim. Run via
 /// `cargo run -p fuel-dispatch --features dev-tools,vulkan --bin fuel-dev-tools -- check-vulkan-accuracy`.
 #[cfg(feature = "dev-tools")]
-pub(crate) fn run_check_vulkan_accuracy() {
+pub(crate) fn run_check_vulkan_accuracy(register: fn(&mut KernelBindingTable)) {
     let selection = match std::env::var("FUEL_VULKAN_TEST_ADAPTER") {
         Ok(name) => fuel_vulkan_backend::DeviceSelection::ByName(name),
         Err(_) => fuel_vulkan_backend::DeviceSelection::PreferDiscrete,
     };
-    let run = measure_vulkan_f32_accuracy(selection).expect("vulkan f32 accuracy measurement runs");
+    let run = measure_vulkan_f32_accuracy(register, selection)
+        .expect("vulkan f32 accuracy measurement runs");
     print_run(&run);
     let failing: Vec<_> = run
         .records()
@@ -262,22 +267,30 @@ mod tests {
         }
         let cases = [
             (
-                include_str!("../../../kernel-contracts/vulkan/matmul.fkc.md"),
+                include_str!(
+                    "../../../../fuel-vulkan-dispatch/kernel-contracts/vulkan/matmul.fkc.md"
+                ),
                 "matmul_f32",
                 MATMUL_F32_CLAIM,
             ),
             (
-                include_str!("../../../kernel-contracts/vulkan/norm.fkc.md"),
+                include_str!(
+                    "../../../../fuel-vulkan-dispatch/kernel-contracts/vulkan/norm.fkc.md"
+                ),
                 "rms_norm_last_dim_f32",
                 RMS_NORM_F32_CLAIM,
             ),
             (
-                include_str!("../../../kernel-contracts/vulkan/norm.fkc.md"),
+                include_str!(
+                    "../../../../fuel-vulkan-dispatch/kernel-contracts/vulkan/norm.fkc.md"
+                ),
                 "softmax_last_dim_f32",
                 SOFTMAX_F32_CLAIM,
             ),
             (
-                include_str!("../../../kernel-contracts/vulkan/rope.fkc.md"),
+                include_str!(
+                    "../../../../fuel-vulkan-dispatch/kernel-contracts/vulkan/rope.fkc.md"
+                ),
                 "rope_f32",
                 ROPE_F32_CLAIM,
             ),

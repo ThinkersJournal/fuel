@@ -31,6 +31,7 @@ members = [
     "fuel-cuda-backend",
     "fuel-dispatch",
     "fuel-vulkan-backend",
+    "fuel-vulkan-dispatch",
     "fuel-inference",
     "fuel-kv-pool",
     "fuel-tensor",
@@ -73,6 +74,7 @@ default-members = [
     "fuel-kernel-seam-types",
     "fuel-cuda-backend",
     "fuel-vulkan-backend",
+    "fuel-vulkan-dispatch",
     "fuel-tensor",
     "fuel-kernels-source",
     "fuel-kv-pool",
@@ -143,6 +145,7 @@ fuel-kernel-seam = { path = "./fuel-kernel-seam", version = "0.38.0" }
 fuel-cuda-backend = { path = "./fuel-cuda-backend", version = "0.38.0" }
 fuel-dispatch = { path = "./fuel-dispatch", version = "0.38.0" }
 fuel-vulkan-backend = { path = "./fuel-vulkan-backend", version = "0.38.0" }
+fuel-vulkan-dispatch = { path = "./fuel-vulkan-dispatch", version = "0.38.0" }
 fuel-tensor = { path = "./fuel-tensor", version = "0.38.0" }
 fuel-kernels-source = { path = "./fuel-kernels-source", version = "0.38.0" }
 fuel-kv-pool = { path = "./fuel-kv-pool", version = "0.38.0" }

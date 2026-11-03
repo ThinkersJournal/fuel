@@ -1,0 +1,36 @@
+[package]
+categories.workspace = true
+description = "Vulkan kernel bindings for fuel-dispatch: the Vulkan dispatch wrappers, the FKC link registry and the one-call registrar (above fuel-dispatch, like the vendor CPU backends)"
+edition.workspace = true
+keywords.workspace = true
+license.workspace = true
+name = "fuel-vulkan-dispatch"
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+fuel-dispatch = { workspace = true, features = ["vulkan"] }
+fuel-graph = { workspace = true }
+fuel-ir = { workspace = true }
+fuel-memory = { workspace = true, features = ["vulkan"] }
+fuel-vulkan-backend = { workspace = true }
+
+[features]
+# Maintenance tools that rewrite the committed verified ledger (the Vulkan half). NOT part of the
+# supported API: semver-exempt, off by default, built in CI so it cannot rot unbuilt.
+dev-tools = ["fuel-dispatch/dev-tools"]
+
+[[bin]]
+name = "fuel-vulkan-dev-tools"
+path = "src/bin/fuel-vulkan-dev-tools.rs"
+required-features = ["dev-tools"]
+
+[dev-dependencies]
+bytemuck = { workspace = true }
+# The hidden, semver-exempt `dev_tools` module (`vulkan_verify_only_on`) for the cross-vendor test.
+fuel-dispatch = { workspace = true, features = ["vulkan", "dev-tools"] }
+fuel-conv = { path = "../fuel-conv" }
+fuel-cpu-backend = { workspace = true }
+fuel-quantized = { path = "../fuel-quantized" }
+fuel-test-support = { path = "../fuel-test-support" }
+half = { workspace = true }

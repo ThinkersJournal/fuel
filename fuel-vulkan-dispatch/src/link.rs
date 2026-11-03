@@ -15,8 +15,8 @@
 //! Everything here is gated behind the `vulkan` cargo feature — the DEFAULT
 //! build never compiles this module.
 
-use crate::fkc::lower::LinkRegistry;
-use crate::kernel::KernelRef;
+use fuel_dispatch::fkc::LinkRegistry;
+use fuel_dispatch::kernel::KernelRef;
 
 /// One `(contract entry_point symbol, production wrapper)` pair. The symbol
 /// matches the contract's `entry_point: "fuel_vulkan_backend::fkc::<name>"`.

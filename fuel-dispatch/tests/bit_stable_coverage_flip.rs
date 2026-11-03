@@ -101,8 +101,10 @@ fn repo_root() -> PathBuf {
 /// `assert_derived_set_matches_production` — a textual derivation is a model
 /// of the registration path, and the model is checked against the thing.
 fn live_contract_paths() -> HashSet<String> {
-    const PRODUCTION_REGISTRARS: &[&str] =
-        &["dispatch.rs", "baracuda_dispatch.rs", "vulkan_dispatch.rs"];
+    // `vulkan_dispatch.rs` moved to `fuel-vulkan-dispatch` (ROADMAP row 137 step 6.1). This test only
+    // uses the CPU slice of the derived set (`live_cpu_contracts` keeps `cpu/` paths), so the Vulkan
+    // registrar contributes nothing it needs.
+    const PRODUCTION_REGISTRARS: &[&str] = &["dispatch.rs", "baracuda_dispatch.rs"];
     let src = repo_root().join("fuel-dispatch").join("src");
     let mut out = HashSet::new();
     for file in PRODUCTION_REGISTRARS {

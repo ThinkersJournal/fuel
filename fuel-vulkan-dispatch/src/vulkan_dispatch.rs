@@ -26,8 +26,6 @@
 //! kernels in `fuel-vulkan-kernels`. V.3 writes new Slang for the
 //! kernel families CUDA has and Vulkan doesn't.
 
-#![cfg(feature = "vulkan")]
-
 use std::sync::{Arc, RwLock};
 
 // ⚠️ NOT UNUSED — `rustc` IS WRONG HERE, AND DELETING IT COSTS 177 ERRORS.
@@ -53,11 +51,11 @@ use fuel_ir::dispatch::OpKind;
 use fuel_ir::probe::BackendId;
 use fuel_ir::{DType, Error, Layout, Result};
 
-use crate::kernel::{KernelBindingTable, OpParams};
+use fuel_dispatch::kernel::{KernelBindingTable, OpParams};
 use fuel_memory::Storage;
 
 // Re-use the storage-lock helpers from dispatch.rs.
-use crate::dispatch::{read_storage, write_storage};
+use fuel_dispatch::dispatch::{read_storage, write_storage};
 
 /// Helper: extract `&VulkanStorageBytes` from `&Storage`. Returns
 /// `Err` if the variant isn't `BackendStorage::Vulkan`.
@@ -4952,57 +4950,6 @@ pub fn copy_to_cpu_vulkan(
 }
 
 // ===========================================================================
-// Native Vulkan contiguize (auto-Contiguize without a host round trip)
-// ===========================================================================
-
-/// Materialize `layout` over a Vulkan storage as a fresh dense row-major Vulkan
-/// storage with the `strided_copy_signed_*` kernels: no download, no CPU walk, no
-/// upload, and no forced flush (the dispatch joins the open batch).
-///
-/// `Ok(None)` when this path does not apply and the caller must fall back to the
-/// host round trip: an element width other than 2, 4 or 8 bytes (the kernels
-/// exist for those), an empty tensor, a layout that does not fit the kernel's
-/// 32-bit offsets, or a storage without a backend handle.
-///
-/// Replaces the V.1.B host round trip in `pipelined::auto_contiguize` (download, CPU
-/// `contiguize_cpu`, upload), which on the Qwen3-0.6B decode step was about
-/// 123 round trips and 150 ms of a 300 ms step
-/// (`docs/research/qwen3-vulkan-decode-profile.md`).
-pub fn contiguize_vulkan(
-    src: &fuel_vulkan_backend::VulkanStorageBytes,
-    layout: &Layout,
-    dtype_size: usize,
-) -> Result<Option<fuel_vulkan_backend::VulkanStorageBytes>> {
-    if !matches!(dtype_size, 2 | 4 | 8) {
-        return Ok(None);
-    }
-    let Some(backend) = src.backend() else {
-        return Ok(None);
-    };
-    let elem_count = layout.shape().elem_count();
-    if elem_count == 0 {
-        return Ok(None);
-    }
-    let shape = layout.shape().dims();
-    let strides: Vec<i64> = layout.stride().iter().map(|&s| s as i64).collect();
-    let mut out = backend.alloc_bytes_handle(elem_count * dtype_size)?;
-    // `strided_copy_signed_bytes` errors (rather than wrapping) on a stride or
-    // offset past i32; treat that as "not applicable" and fall back.
-    match backend.strided_copy_signed_bytes(
-        dtype_size,
-        src,
-        &mut out,
-        shape,
-        &strides,
-        layout.start_offset() as i64,
-        0,
-    ) {
-        Ok(()) => Ok(Some(out)),
-        Err(_) => Ok(None),
-    }
-}
-
-// ===========================================================================
 // register_vulkan_kernels — binding-table population
 // ===========================================================================
 
@@ -5026,7 +4973,7 @@ const VULKAN_CAST_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/cast
 /// importer-recognized form and would have dropped the output slot from the
 /// key; it was rewritten to the canonical `fixed(DST)` per section's documented
 /// destination). Every `entry_point` symbol resolves through the production
-/// [`crate::fkc::VulkanLinkRegistry`] to the exact same wrapper fn-pointer.
+/// [`crate::link::VulkanLinkRegistry`] to the exact same wrapper fn-pointer.
 ///
 /// Behavior-preserving vs. the deleted hand-written path on dispatch: identical
 /// wrappers + contiguous-only caps (`awkward_layout_strategy: requires_contiguous`
@@ -5047,17 +4994,19 @@ const VULKAN_CAST_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/cast
 /// `register_cpu_*_from_contract` convention); it cannot fail for a runtime-data
 /// reason.
 fn register_vulkan_cast_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_CAST_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan cast contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_CAST_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan cast contract must import \
                  (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan cast contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan cast contract must register into the binding table");
@@ -5079,7 +5028,7 @@ const VULKAN_ELEMENTWISE_CONTRACT: &str =
 /// (each fanning `[F32, F16, F64]` on a base `entry_point`, §3.4) + 16 bf16-unary
 /// sections + 6 per-op binary sections (fanning `[F32, F16, F64, BF16]`) + an
 /// affine strided-fan + affine_bf16 + clamp + powi. Every `entry_point` symbol
-/// resolves through [`crate::fkc::VulkanLinkRegistry`] to the exact same
+/// resolves through [`crate::link::VulkanLinkRegistry`] to the exact same
 /// per-(op, dtype) wrapper the deleted hand-written regs used.
 ///
 /// **Caps ride through truthfully.** Each section's per-operand five-flag layout
@@ -5101,17 +5050,19 @@ const VULKAN_ELEMENTWISE_CONTRACT: &str =
 /// fail-fast: a parse/lower/link failure of the embedded contract is a programmer
 /// error surfaced once here via `expect`.
 fn register_vulkan_elementwise_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_ELEMENTWISE_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan elementwise contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_ELEMENTWISE_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan elementwise contract must import \
          (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan elementwise contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan elementwise contract must register into the binding table");
@@ -5135,7 +5086,7 @@ const VULKAN_MATMUL_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/ma
 /// DIFFERENT lists, a `FanoutDtypeMismatch` the uniform fan-out importer cannot
 /// key) is SUPERSEDED by six single-dtype-per-operand sections, each declaring a
 /// specific `entry_point` symbol that resolves through
-/// [`crate::fkc::VulkanLinkRegistry`] to the exact production wrapper. Each
+/// [`crate::link::VulkanLinkRegistry`] to the exact production wrapper. Each
 /// wrapper route-picks its internal Slang kernels (matvec / reg-tile / tiled for
 /// f32; matvec_bf16_b / matmul_tiled_bf16_b / matmul_coop* + matmul_small_*
 /// fallbacks for the mixed combos) at dispatch time — that route-pick is NOT a
@@ -5161,17 +5112,19 @@ const VULKAN_MATMUL_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/ma
 /// failure of the embedded, authored contract is a programmer error surfaced once
 /// here via `expect`.
 fn register_vulkan_matmul_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_MATMUL_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan matmul contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_MATMUL_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan matmul contract must import \
                  (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan matmul contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan matmul contract must register into the binding table");
@@ -5199,7 +5152,7 @@ const VULKAN_CONV_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/conv
 /// WHOLE conv (im2col + GEMM internally). So the migration authors THREE faithful
 /// single-dtype-per-operand `op_kind: Conv2D` sections in the new production
 /// `fuel-dispatch/kernel-contracts/vulkan/conv.fkc.md`, each `entry_point` resolving through
-/// [`crate::fkc::VulkanLinkRegistry`] to the exact production wrapper.
+/// [`crate::link::VulkanLinkRegistry`] to the exact production wrapper.
 ///
 /// **No bias key.** The Vulkan conv wrappers BAIL on a 3-input (bias) call, so —
 /// UNLIKE the CPU conv contract's `optional: true` bias that fans a `[T,T,T,T]`
@@ -5223,17 +5176,19 @@ const VULKAN_CONV_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/conv
 /// failure of the embedded, authored contract is a programmer error surfaced once
 /// here via `expect`.
 fn register_vulkan_conv_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_CONV_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan conv contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_CONV_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan conv contract must import \
                  (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan conv contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan conv contract must register into the binding table");
@@ -5269,7 +5224,7 @@ const VULKAN_QMATMUL_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/q
 /// and flips the two corpus fused sections to `registrable: false` describe-only
 /// cross-referencing it (the matmul_mixed_precision precedent).
 ///
-/// The section's `entry_point` resolves through [`crate::fkc::VulkanLinkRegistry`]
+/// The section's `entry_point` resolves through [`crate::link::VulkanLinkRegistry`]
 /// to the exact production wrapper `qmatmul::qmatmul_vk`, which route-picks the
 /// per-format kernels (`qmatvec_q4_0` / `matmul_q4_0_tiled` for Q4_0;
 /// dequant-then-`matmul_f32` for Q4_K_M / Q8_0) at dispatch time by
@@ -5296,17 +5251,19 @@ const VULKAN_QMATMUL_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/q
 /// failure of the embedded, authored contract is a programmer error surfaced once
 /// here via `expect`.
 fn register_vulkan_qmatmul_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_QMATMUL_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan qmatmul contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_QMATMUL_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan qmatmul contract must import \
                  (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan qmatmul contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan qmatmul contract must register into the binding table");
@@ -5346,17 +5303,19 @@ const VULKAN_SELECT_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/se
 /// failure of the embedded, authored contract is a programmer error surfaced once
 /// here via `expect`.
 fn register_vulkan_select_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_SELECT_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan select contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_SELECT_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan select contract must import \
                  (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan select contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan select contract must register into the binding table");
@@ -5388,17 +5347,19 @@ const VULKAN_SCATTER_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/s
 /// failure of the embedded, authored contract is a programmer error surfaced once
 /// here via `expect`.
 fn register_vulkan_scatter_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_SCATTER_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan scatter contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_SCATTER_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan scatter contract must import \
                  (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan scatter contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan scatter contract must register into the binding table");
@@ -5430,17 +5391,19 @@ const VULKAN_MOVEMENT_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/
 /// failure of the embedded, authored contract is a programmer error surfaced once
 /// here via `expect`.
 fn register_vulkan_movement_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_MOVEMENT_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan movement contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_MOVEMENT_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan movement contract must import \
                  (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan movement contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan movement contract must register into the binding table");
@@ -5474,17 +5437,19 @@ const VULKAN_SHAPE_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/sha
 /// failure of the embedded, authored contract is a programmer error surfaced once
 /// here via `expect`.
 fn register_vulkan_shape_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_SHAPE_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan shape contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_SHAPE_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan shape contract must import \
                  (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan shape contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan shape contract must register into the binding table");
@@ -5514,17 +5479,19 @@ const VULKAN_PAD_COPY_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/
 /// failure of the embedded, authored contract is a programmer error surfaced once
 /// here via `expect`.
 fn register_vulkan_pad_copy_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_PAD_COPY_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan pad-copy contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_PAD_COPY_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan pad-copy contract must import \
                  (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan pad-copy contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan pad-copy contract must register into the binding table");
@@ -5558,17 +5525,19 @@ const VULKAN_WRITE_SLICE_CONTRACT: &str =
 /// failure of the embedded, authored contract is a programmer error surfaced once
 /// here via `expect`.
 fn register_vulkan_write_slice_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_WRITE_SLICE_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan write-slice contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_WRITE_SLICE_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan write-slice contract must import \
                  (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan write-slice contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan write-slice contract must register into the binding table");
@@ -5598,17 +5567,19 @@ const VULKAN_ROPE_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/rope
 /// failure of the embedded, authored contract is a programmer error surfaced once
 /// here via `expect`.
 fn register_vulkan_rope_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_ROPE_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan rope contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_ROPE_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan rope contract must import \
                  (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan rope contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan rope contract must register into the binding table");
@@ -5642,17 +5613,19 @@ const VULKAN_REDUCE_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/re
 /// failure of the embedded, authored contract is a programmer error surfaced once
 /// here via `expect`.
 fn register_vulkan_reduce_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_REDUCE_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan reduce contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_REDUCE_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan reduce contract must import \
                  (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan reduce contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan reduce contract must register into the binding table");
@@ -5686,17 +5659,19 @@ const VULKAN_NORM_CONTRACT: &str = include_str!("../kernel-contracts/vulkan/norm
 /// failure of the embedded, authored contract is a programmer error surfaced once
 /// here via `expect`.
 fn register_vulkan_norm_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_NORM_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan norm contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_NORM_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan norm contract must import \
                  (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan norm contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan norm contract must register into the binding table");
@@ -5760,17 +5735,19 @@ const VULKAN_ATTENTION_CONTRACT: &str = include_str!("../kernel-contracts/vulkan
 /// failure of the embedded, authored contract is a programmer error surfaced once
 /// here via `expect`.
 fn register_vulkan_attention_from_contract(table: &mut KernelBindingTable) {
-    let provider =
-        crate::fkc::import_bundle_str(VULKAN_ATTENTION_CONTRACT, &crate::fkc::VulkanLinkRegistry)
-            .expect(
-                "authored Vulkan attention contract must import \
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        VULKAN_ATTENTION_CONTRACT,
+        &crate::link::VulkanLinkRegistry,
+    )
+    .expect(
+        "authored Vulkan attention contract must import \
                  (embedded via include_str!, resolved through VulkanLinkRegistry)",
-            );
+    );
     debug_assert!(
         provider.fused.is_empty(),
         "vulkan attention contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("Vulkan attention contract must register into the binding table");
@@ -5788,7 +5765,7 @@ fn register_vulkan_attention_from_contract(table: &mut KernelBindingTable) {
 /// SPIR-V kernels; V.3 adds new Slang for the kernel families CUDA
 /// has and Vulkan doesn't.
 pub fn register_vulkan_kernels(table: &mut KernelBindingTable) {
-    // NB: the `use crate::fused::{ PrecisionGuarantee, VULKAN_FLOAT_POINTWISE_PRECISION,
+    // NB: the `use fuel_dispatch::fused::{ PrecisionGuarantee, VULKAN_FLOAT_POINTWISE_PRECISION,
     // VULKAN_HALF_POINTWISE_PRECISION }` seam is RETIRED — the FlashAttention family was
     // their LAST code user, and it now registers from the FKC attention contract (see
     // `register_vulkan_attention_from_contract`), which carries the corrected
@@ -6271,15 +6248,15 @@ pub fn register_vulkan_kernels(table: &mut KernelBindingTable) {
     // at `unknown_cost`; this pass upgrades them to a real cost
     // function so the optimizer's cost-ranking can admit Vulkan
     // alternatives.
-    table.fill_unset_cost_for_backend(vk, crate::cost::default_cost_for_op_kind);
+    table.fill_unset_cost_for_backend(vk, fuel_dispatch::cost::default_cost_for_op_kind);
 }
 
 // ===========================================================================
 // FKC contract-migration tests (born-red gate for the Vulkan cast family)
 // ===========================================================================
 //
-// The whole file is `#![cfg(feature = "vulkan")]`, so this module is compiled
-// only under `--features vulkan` — no device is touched (registration is pure
+// This whole crate is the Vulkan crate (the file used to carry `#![cfg(feature = "vulkan")]`), so this module always compiles
+// and no device is touched (registration is pure
 // binding-table population; `register_vulkan_kernels` never probes hardware).
 
 /// Split-KV heuristic for the Vulkan flash-attention routes (f32, bf16, f16;
@@ -6333,7 +6310,7 @@ mod decode_splits_tests {
 #[cfg(test)]
 mod cast_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// FIRST VULKAN-BACKEND FKC CONSUMER (born-red gate). `register_vulkan_kernels`
     /// registers the whole `OpKind::Cast` family (12 (SRC, DST) pairs) FROM ITS
@@ -6418,14 +6395,14 @@ mod cast_contract_tests {
 // FKC contract-migration tests (born-red gate for the Vulkan elementwise family)
 // ===========================================================================
 //
-// Same `#![cfg(feature = "vulkan")]` file gate as the cast tests above: this
-// module compiles only under `--features vulkan` and touches NO device
+// Same always-on gating (this crate IS the Vulkan crate) as the cast tests above: this
+// module always compiles (this crate has no feature gate) and touches NO device
 // (registration is pure binding-table population).
 
 #[cfg(test)]
 mod elementwise_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// SECOND VULKAN-BACKEND FKC CONSUMER (born-red gate) + the FIRST
     /// caps-through-import proof. `register_vulkan_kernels` registers the whole
@@ -7060,14 +7037,14 @@ mod elementwise_contract_tests {
 // FKC contract-migration tests (born-red gate for the Vulkan matmul family)
 // ===========================================================================
 //
-// Same `#![cfg(feature = "vulkan")]` file gate as the cast / elementwise tests
-// above: this module compiles only under `--features vulkan` and touches NO
+// Same always-on gating (this crate IS the Vulkan crate) as the cast / elementwise tests
+// above: this module always compiles (this crate has no feature gate) and touches NO
 // device (registration is pure binding-table population).
 
 #[cfg(test)]
 mod matmul_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// THIRD VULKAN-BACKEND FKC CONSUMER (born-red gate). `register_vulkan_kernels`
     /// registers the whole Vulkan matmul family (6 per-combo `(MatMul, [lhs,rhs,out])`
@@ -7167,14 +7144,14 @@ mod matmul_contract_tests {
 // FKC contract-migration tests (born-red gate for the Vulkan conv2d family)
 // ===========================================================================
 //
-// Same `#![cfg(feature = "vulkan")]` file gate as the cast/elementwise/matmul
-// tests above: this module compiles only under `--features vulkan` and touches
+// Same always-on gating (this crate IS the Vulkan crate) as the cast/elementwise/matmul
+// tests above: this module always compiles (this crate has no feature gate) and touches
 // NO device (registration is pure binding-table population).
 
 #[cfg(test)]
 mod conv_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// FOURTH VULKAN-BACKEND FKC CONSUMER (born-red gate). `register_vulkan_kernels`
     /// registers the whole Vulkan conv2d family (3 per-(op, dtype) `(Conv2D,
@@ -7267,14 +7244,13 @@ mod conv_contract_tests {
 // FKC contract-migration tests (born-red gate for the Vulkan select family)
 // ===========================================================================
 //
-// Same `#![cfg(feature = "vulkan")]` file gate: compiles only under
-// `--features vulkan` and touches NO device (registration is pure binding-table
+// Same always-on gating (this crate IS the Vulkan crate): always compiles (this crate has no feature gate) and touches NO device (registration is pure binding-table
 // population).
 
 #[cfg(test)]
 mod select_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// FIFTH VULKAN-BACKEND FKC CONSUMER (born-red gate). `register_vulkan_kernels`
     /// registers the whole Vulkan **select** family — IndexSelect (4 per-dtype
@@ -7450,7 +7426,7 @@ mod select_contract_tests {
 #[cfg(test)]
 mod scatter_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// SIXTH VULKAN-BACKEND FKC CONSUMER (born-red gate). `register_vulkan_kernels`
     /// registers the whole Vulkan **scatter** family — IndexAdd (4 per-dtype) +
@@ -7562,7 +7538,7 @@ mod scatter_contract_tests {
 #[cfg(test)]
 mod movement_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// SEVENTH VULKAN-BACKEND FKC CONSUMER (born-red gate). `register_vulkan_kernels`
     /// registers the whole Vulkan **movement** family — Concat (4 per-dtype) +
@@ -7646,7 +7622,7 @@ mod movement_contract_tests {
 #[cfg(test)]
 mod shape_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// EIGHTH VULKAN-BACKEND FKC CONSUMER (born-red gate). `register_vulkan_kernels`
     /// registers the whole Vulkan **shape** family — Triu (7 dtypes) + Tril (7) +
@@ -7730,7 +7706,7 @@ mod shape_contract_tests {
 #[cfg(test)]
 mod pad_copy_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// NINTH VULKAN-BACKEND FKC CONSUMER (born-red gate). `register_vulkan_kernels`
     /// registers the whole Vulkan **pad-copy** family — Pad (6 dtypes) +
@@ -7819,7 +7795,7 @@ mod pad_copy_contract_tests {
 #[cfg(test)]
 mod write_slice_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// TENTH VULKAN-BACKEND FKC CONSUMER (born-red gate). `register_vulkan_kernels`
     /// registers the whole Vulkan **write-slice** family — WriteSlice (9 dtypes) +
@@ -7931,7 +7907,7 @@ mod write_slice_contract_tests {
 #[cfg(test)]
 mod rope_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// ELEVENTH VULKAN-BACKEND FKC CONSUMER (born-red gate). `register_vulkan_kernels`
     /// registers the whole Vulkan **rope** family — RoPE (4 per-dtype), 4-slot key
@@ -8001,7 +7977,7 @@ mod rope_contract_tests {
 #[cfg(test)]
 mod reduce_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// TWELFTH VULKAN-BACKEND FKC CONSUMER (born-red gate). `register_vulkan_kernels`
     /// registers the whole Vulkan **reduce** family — SumReduce / MaxReduce /
@@ -8132,7 +8108,7 @@ mod reduce_contract_tests {
 #[cfg(test)]
 mod norm_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// THIRTEENTH VULKAN-BACKEND FKC CONSUMER (born-red gate). `register_vulkan_kernels`
     /// registers the whole Vulkan **norm** family — SoftmaxLastDim (4, key `[T, T]`),
@@ -8245,14 +8221,14 @@ mod norm_contract_tests {
 // FKC contract-migration tests (born-red gate for the Vulkan QMatMul family)
 // ===========================================================================
 //
-// Same `#![cfg(feature = "vulkan")]` file gate as the cast/…/norm tests above:
-// this module compiles only under `--features vulkan` and touches NO device
+// Same always-on gating (this crate IS the Vulkan crate) as the cast/…/norm tests above:
+// this module always compiles (this crate has no feature gate) and touches NO device
 // (registration is pure binding-table population).
 
 #[cfg(test)]
 mod qmatmul_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// FOURTEENTH VULKAN-BACKEND FKC CONSUMER (born-red gate). `register_vulkan_kernels`
     /// registers the single Vulkan **QMatMul** binding (`(QMatMul, [F32, U32, F32],
@@ -8322,14 +8298,14 @@ mod qmatmul_contract_tests {
 // FKC contract-migration tests (born-red gate for the Vulkan FlashAttn family)
 // ===========================================================================
 //
-// Same `#![cfg(feature = "vulkan")]` file gate as the cast/…/qmatmul tests
-// above: this module compiles only under `--features vulkan` and touches NO
+// Same always-on gating (this crate IS the Vulkan crate) as the cast/…/qmatmul tests
+// above: this module always compiles (this crate has no feature gate) and touches NO
 // device (registration is pure binding-table population).
 
 #[cfg(test)]
 mod attention_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// FIFTEENTH (and LAST) VULKAN-BACKEND FKC CONSUMER (born-red gate).
     /// `register_vulkan_kernels` registers the whole Vulkan **FlashAttention**

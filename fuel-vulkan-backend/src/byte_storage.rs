@@ -149,3 +149,56 @@ impl BackendStorage for VulkanStorageBytes {
         self.len_bytes
     }
 }
+
+// ===========================================================================
+// Native Vulkan contiguize (auto-Contiguize without a host round trip)
+// ===========================================================================
+// Moved here from `fuel-dispatch`'s Vulkan dispatch module (ROADMAP row 137 step 6.1): it uses only this
+// crate's backend API, and the executor's Vulkan arm calls it, so it must sit below `fuel-dispatch`.
+
+/// Materialize `layout` over a Vulkan storage as a fresh dense row-major Vulkan
+/// storage with the `strided_copy_signed_*` kernels: no download, no CPU walk, no
+/// upload, and no forced flush (the dispatch joins the open batch).
+///
+/// `Ok(None)` when this path does not apply and the caller must fall back to the
+/// host round trip: an element width other than 2, 4 or 8 bytes (the kernels
+/// exist for those), an empty tensor, a layout that does not fit the kernel's
+/// 32-bit offsets, or a storage without a backend handle.
+///
+/// Replaces the V.1.B host round trip in `pipelined::auto_contiguize` (download, CPU
+/// `contiguize_cpu`, upload), which on the Qwen3-0.6B decode step was about
+/// 123 round trips and 150 ms of a 300 ms step
+/// (`docs/research/qwen3-vulkan-decode-profile.md`).
+pub fn contiguize_vulkan(
+    src: &VulkanStorageBytes,
+    layout: &fuel_ir::Layout,
+    dtype_size: usize,
+) -> fuel_ir::Result<Option<VulkanStorageBytes>> {
+    if !matches!(dtype_size, 2 | 4 | 8) {
+        return Ok(None);
+    }
+    let Some(backend) = src.backend() else {
+        return Ok(None);
+    };
+    let elem_count = layout.shape().elem_count();
+    if elem_count == 0 {
+        return Ok(None);
+    }
+    let shape = layout.shape().dims();
+    let strides: Vec<i64> = layout.stride().iter().map(|&s| s as i64).collect();
+    let mut out = backend.alloc_bytes_handle(elem_count * dtype_size)?;
+    // `strided_copy_signed_bytes` errors (rather than wrapping) on a stride or
+    // offset past i32; treat that as "not applicable" and fall back.
+    match backend.strided_copy_signed_bytes(
+        dtype_size,
+        src,
+        &mut out,
+        shape,
+        &strides,
+        layout.start_offset() as i64,
+        0,
+    ) {
+        Ok(()) => Ok(Some(out)),
+        Err(_) => Ok(None),
+    }
+}

@@ -7804,8 +7804,7 @@ fn auto_contiguize(arc: &Arc<RwLock<Storage>>, layout: &Layout) -> Result<Arc<Rw
                 )
                 .bt()
             })?;
-            if let Some(native) = crate::vulkan_dispatch::contiguize_vulkan(v, layout, dtype_size)?
-            {
+            if let Some(native) = fuel_vulkan_backend::contiguize_vulkan(v, layout, dtype_size)? {
                 return Ok(Arc::new(RwLock::new(Storage::new(
                     fuel_memory::BackendStorage::Vulkan(native),
                     dtype,

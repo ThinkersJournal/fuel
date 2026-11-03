@@ -16,13 +16,11 @@
 //! 3. dispatch vs the unsplit wrapper: printed only.
 use std::sync::{Arc, RwLock};
 
-use fuel_dispatch::{
-    kernel::{KernelBindingTable, OpParams},
-    vulkan_dispatch::register_vulkan_kernels,
-};
+use fuel_dispatch::kernel::{KernelBindingTable, OpParams};
 use fuel_ir::{DType, Layout, Shape, dispatch::OpKind, probe::BackendId};
 use fuel_memory::{BackendStorage, Storage};
 use fuel_vulkan_backend::{VulkanBackend, VulkanStorageBytes};
+use fuel_vulkan_dispatch::vulkan_dispatch::register_vulkan_kernels;
 use half::{bf16, f16};
 
 #[derive(Clone, Copy)]

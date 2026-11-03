@@ -20,9 +20,9 @@ use std::sync::Arc;
 
 use fuel_cpu_backend::byte_kernels::contiguize_cpu;
 use fuel_cpu_backend::byte_storage::CpuStorageBytes;
-use fuel_dispatch::vulkan_dispatch::contiguize_vulkan;
 use fuel_ir::{Layout, Shape};
 use fuel_vulkan_backend::VulkanBackend;
+use fuel_vulkan_backend::contiguize_vulkan;
 
 fn pattern(n_bytes: usize) -> Vec<u8> {
     (0..n_bytes)

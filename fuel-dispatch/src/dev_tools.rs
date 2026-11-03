@@ -36,24 +36,58 @@ pub fn check_cuda_accuracy() {
     verify::seed_cuda_accuracy::run_check_cuda_accuracy();
 }
 
-/// Re-seed the Vulkan half of the verified ledger. Needs a live Vulkan device.
+/// Re-seed the Vulkan half of the verified ledger. Needs a live Vulkan device. `register` is the Vulkan
+/// registrar (`fuel_vulkan_dispatch::register_vulkan_kernels`); `fuel-dispatch` cannot name it, so the
+/// `fuel-vulkan-dev-tools` binary passes it in.
 #[cfg(feature = "vulkan")]
-pub fn seed_vulkan_ledger() {
-    verify::seed_vulkan_ledger::run_seed_vulkan_ledger();
+pub fn seed_vulkan_ledger(register: fn(&mut crate::kernel::KernelBindingTable)) {
+    verify::seed_vulkan_ledger::run_seed_vulkan_ledger(register);
+}
+
+/// One Vulkan verification attempt, as the cross-vendor comparison reads it (the harness's own record type is
+/// private to `fkc::verify`).
+#[cfg(feature = "vulkan")]
+pub struct VulkanVerifyAttempt {
+    pub op: String,
+    pub dtypes: Vec<fuel_ir::DType>,
+    pub outcome: String,
+}
+
+/// Run the Vulkan verification recipes on ONE adapter and return `(adapter name, gpu_id, attempts)`. VERIFY
+/// ONLY: it writes nothing (the ledger cannot represent a two-vendor claim). `force` re-verifies keys the
+/// ledger already holds. Needs a live Vulkan device; `register` is the Vulkan registrar.
+#[cfg(feature = "vulkan")]
+pub fn vulkan_verify_only_on(
+    register: fn(&mut crate::kernel::KernelBindingTable),
+    selection: fuel_vulkan_backend::DeviceSelection,
+    force: bool,
+) -> Result<(String, usize, Vec<VulkanVerifyAttempt>), String> {
+    let (name, gpu_id, _ledger, log) =
+        verify::seed_vulkan_ledger::run_vulkan_verification_on(register, selection, force)
+            .map_err(|e| format!("{e:?}"))?;
+    let attempts = log
+        .into_iter()
+        .map(|a| VulkanVerifyAttempt {
+            op: a.op,
+            dtypes: a.dtypes,
+            outcome: a.outcome,
+        })
+        .collect();
+    Ok((name, gpu_id, attempts))
 }
 
 /// Earn the Vulkan f32 matmul's `max_relative`/`max_absolute` ledger records (board 240).
 /// Needs a live Vulkan device.
 #[cfg(feature = "vulkan")]
-pub fn seed_vulkan_matmul_accuracy() {
-    verify::seed_vulkan_matmul_accuracy::run_seed_vulkan_matmul_accuracy();
+pub fn seed_vulkan_matmul_accuracy(register: fn(&mut crate::kernel::KernelBindingTable)) {
+    verify::seed_vulkan_matmul_accuracy::run_seed_vulkan_matmul_accuracy(register);
 }
 
 /// Measure the Vulkan f32 accuracy claims and print; writes nothing (board 240). Needs a live
 /// Vulkan device; `FUEL_VULKAN_TEST_ADAPTER` selects the adapter.
 #[cfg(feature = "vulkan")]
-pub fn check_vulkan_accuracy() {
-    verify::seed_vulkan_matmul_accuracy::run_check_vulkan_accuracy();
+pub fn check_vulkan_accuracy(register: fn(&mut crate::kernel::KernelBindingTable)) {
+    verify::seed_vulkan_matmul_accuracy::run_check_vulkan_accuracy(register);
 }
 
 /// GAP-228: flip the fully-backed `audited: false` CPU contract sections.

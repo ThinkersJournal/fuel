@@ -189,13 +189,5 @@ path = "src/bin/fuel-dev-tools.rs"
 required-features = ["dev-tools"]
 
 [[example]]
-name = "flash_attn_route_check"
-required-features = ["vulkan"]
-
-[[example]]
-name = "contiguize_vulkan_check"
-required-features = ["vulkan"]
-
-[[example]]
 name = "qmv_bench"
 required-features = ["vulkan"]
