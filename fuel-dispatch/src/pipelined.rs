@@ -7685,6 +7685,9 @@ fn defer_evicted_vulkan_buffer(
     // retain the buffer on the open batch itself (freed post-fence once that batch is
     // submitted and waited). This neither submits nor waits — it used to eager-submit
     // here, i.e. one queue submit per eviction (61 per Qwen3 decode step).
+    // Whether the open batch held recorded work (so the retain above actually kept a reader's
+    // buffer alive instead of blocking): read BEFORE the eager submit below empties it.
+    let retained_in_open_batch = backend.as_ref().is_some_and(|b| b.open_batch_len() > 0);
     if let Some(backend) = &backend {
         backend.retain_in_open_batch(buf.clone());
     }
@@ -7708,9 +7711,12 @@ fn defer_evicted_vulkan_buffer(
     // `drain_inflight_vulkan`); now it does not. A test reads
     // [`deferred_eviction_retains`] to assert the deferred path fired without a
     // drain (deterministic — no wall-clock, which is noisy on this box). When
-    // `inflight` is empty here there was genuinely no in-flight/open Vulkan reader
-    // to wait for, so no host block was avoided (and none was needed) — not counted.
-    if !inflight.is_empty() {
+    // `inflight` is empty AND the open batch was empty there was genuinely no in-flight/open
+    // Vulkan reader to wait for, so no host block was avoided (and none was needed) — not
+    // counted. A retain onto a non-empty OPEN batch counts (GAP-371: the counter used to look
+    // only at in-flight batches, so an eviction inside the still-open batch, which is the
+    // common single-chunk case, never advanced it even though it avoided the host block).
+    if retained_in_open_batch || !inflight.is_empty() {
         DEFERRED_EVICTION_RETAINS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
     Ok(())

@@ -1,11 +1,17 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
-## v0.37.6 - 2026-11-03
+## v0.37.9 - 2026-11-03
 
 ### Added
 
 - `fuel-ir`: `probe::resolve_identity_ordinal` and `IdentityResolveError`, the pure half of ROADMAP row 137 step 4a: resolve a `DeviceIdentity` to this process's enumeration ordinal, declining on no match and on more than one match. Unit-tested on synthetic enumerations in both orders. Nothing calls it yet; the `DeviceSelection::Identity` selectors and live oracles wait for the GPU-build hold.
+
+## v0.37.7 - 2026-11-03
+
+### Fixed
+
+- `fuel-dispatch`: `defer_evicted_vulkan_buffer` now counts a deferred eviction retained on a non-empty OPEN Vulkan batch, not only one retained on in-flight batches. The buffer was already retained correctly (no host block); only the `deferred_eviction_retains` counter missed it, so `vulkan_deferred_eviction_live::vulkan_release_open_batch_deferred_deletion_no_drain` read `before=0, after=0` (GAP-371, ROADMAP row 142). Both tests in that file pass on the RTX 4070 box with the fix; the unmodified test is red at `d9839486`. Vulkan CPU-side behaviour and values are unchanged. No CUDA code touched.
 
 ## v0.37.4 - 2026-11-01
 
