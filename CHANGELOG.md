@@ -7,6 +7,18 @@ This documents the main changes to the `fuel` workspace.
 
 - Docs: GAP-372, `scripts/provenance.py generate` crashes with a `KeyError` on any staged-but-uncommitted file (it enumerates the index and reads content from `HEAD`). No code change.
 
+## v0.37.10 - 2026-11-03
+
+### Added
+
+- `fuel-loaders`: `quantized::arch::Architecture::Qwen35` (`general.architecture = qwen35`), detected by its declared name and its own `qwen35.*` key prefix; a header fixture from the 4B file derives the generic fields. Row 118. Adding a public enum variant: only `fuel-loaders` refers to `Architecture` (`git grep` over `*.rs` at `22d3faab`), so `-p fuel-loaders --all-targets` is the gate. The derived config has no head dimension, partial-rotary or DeltaNet fields yet; no loader wiring.
+
+## v0.37.9 - 2026-11-03
+
+### Added
+
+- `fuel-ir`: `probe::resolve_identity_ordinal` and `IdentityResolveError`, the pure half of ROADMAP row 137 step 4a: resolve a `DeviceIdentity` to this process's enumeration ordinal, declining on no match and on more than one match. Unit-tested on synthetic enumerations in both orders. Nothing calls it yet; the `DeviceSelection::Identity` selectors and live oracles wait for the GPU-build hold.
+
 ## v0.37.8 - 2026-11-03
 
 ### Added
