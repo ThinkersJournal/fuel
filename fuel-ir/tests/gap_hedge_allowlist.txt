@@ -79,16 +79,16 @@ fuel-dispatch/src/runtime_fused_kernels.rs	/// both observe "not yet bound" thro
 fuel-dispatch/src/telemetry/baracuda_provider.rs	//!   and discriminating, but the output operand's structure is not yet folded in.
 fuel-dispatch/src/telemetry/sink.rs	//! flush time would need the concrete `ProfileJudgeOracle` + the hardware-keyed
 fuel-dispatch/src/telemetry/structure_key.rs	/// for now (its `SType`/`FDXQuant` refinement is a later step).
-fuel-dispatch/src/vulkan_dispatch.rs	// FlashAttnBackwardK,FlashAttnBackwardV}, …)` regs (naive single-pass SDPA;
-fuel-dispatch/src/vulkan_dispatch.rs	// For now, error: N=1 should be optimized at the graph level
-fuel-dispatch/src/vulkan_dispatch.rs	// single-last-dim case, the backend method bails and the executor
-fuel-dispatch/src/vulkan_dispatch.rs	// support it (no scalar-divide pass; would need a sum + affine
-fuel-dispatch/src/vulkan_dispatch.rs	/// AND (h_out * w_out) % 16 == 0. Bails on small shapes — route
-fuel-dispatch/src/vulkan_dispatch.rs	/// COOP-ONLY — bails on small shapes; route picker should fall
-fuel-dispatch/src/vulkan_dispatch.rs	/// Naive single-pass kernel (NOT tiled). Supports GQA, causal,
-fuel-dispatch/src/vulkan_dispatch.rs	/// audited `none(reason)`, `determinism: nondeterministic`): the naive single-pass
-fuel-dispatch/src/vulkan_dispatch.rs	/// float add (not yet wired) and fall through to CPU.
-fuel-dispatch/src/vulkan_dispatch.rs	/// output dQ (same shape as Q). Bails on window/softcap (route
+fuel-vulkan-dispatch/src/vulkan_dispatch.rs	// FlashAttnBackwardK,FlashAttnBackwardV}, …)` regs (naive single-pass SDPA;
+fuel-vulkan-dispatch/src/vulkan_dispatch.rs	// For now, error: N=1 should be optimized at the graph level
+fuel-vulkan-dispatch/src/vulkan_dispatch.rs	// single-last-dim case, the backend method bails and the executor
+fuel-vulkan-dispatch/src/vulkan_dispatch.rs	// support it (no scalar-divide pass; would need a sum + affine
+fuel-vulkan-dispatch/src/vulkan_dispatch.rs	/// AND (h_out * w_out) % 16 == 0. Bails on small shapes — route
+fuel-vulkan-dispatch/src/vulkan_dispatch.rs	/// COOP-ONLY — bails on small shapes; route picker should fall
+fuel-vulkan-dispatch/src/vulkan_dispatch.rs	/// Naive single-pass kernel (NOT tiled). Supports GQA, causal,
+fuel-vulkan-dispatch/src/vulkan_dispatch.rs	/// audited `none(reason)`, `determinism: nondeterministic`): the naive single-pass
+fuel-vulkan-dispatch/src/vulkan_dispatch.rs	/// float add (not yet wired) and fall through to CPU.
+fuel-vulkan-dispatch/src/vulkan_dispatch.rs	/// output dQ (same shape as Q). Bails on window/softcap (route
 fuel-examples/src/bs1770.rs	// TODO: Should this branch be marked cold?
 fuel-examples/src/mnist_train.rs	//! behaviour across platforms/backends is NOT yet established and must not be	required boundary statement: records what the convergence oracle does NOT prove
 fuel-formats/src/pickle.rs	// TODO: have a separate ordered dict and a separate default dict.

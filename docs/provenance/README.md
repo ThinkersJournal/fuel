@@ -60,7 +60,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-cpu-kernels` | 12 | 1 | 4 |  |  | 4 |  | 3 |
 | `fuel-cuda-backend` | 56 |  | 3 | 11 |  | 39 |  | 3 |
 | `fuel-datasets` | 13 |  | 7 |  |  | 3 |  | 3 |
-| `fuel-dispatch` | 301 |  |  | 1 |  | 297 |  | 3 |
+| `fuel-dispatch` | 272 |  |  | 1 |  | 268 |  | 3 |
 | `fuel-examples` | 250 | 56 | 162 | 21 |  | 8 |  | 3 |
 | `fuel-formats` | 11 |  | 2 | 2 |  | 4 |  | 3 |
 | `fuel-graph` | 38 |  |  | 3 |  | 32 |  | 3 |
@@ -89,13 +89,14 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-parallel` | 13 |  |  |  |  | 10 |  | 3 |
 | `fuel-posttrain` | 6 |  |  | 2 |  | 1 |  | 3 |
 | `fuel-quantized` | 15 |  | 2 | 1 | 4 | 5 |  | 3 |
-| `fuel-tensor` | 65 | 1 | 2 | 4 |  | 53 | 2 | 3 |
+| `fuel-tensor` | 66 | 1 | 2 | 4 |  | 54 | 2 | 3 |
 | `fuel-tensor-tools` | 5 |  | 1 | 1 |  |  |  | 3 |
 | `fuel-test-support` | 11 |  |  |  |  | 8 |  | 3 |
 | `fuel-training` | 9 |  |  |  |  | 6 |  | 3 |
 | `fuel-transformers` | 194 | 2 | 4 | 153 |  | 29 | 3 | 3 |
 | `fuel-vulkan-backend` | 26 |  |  |  |  | 23 |  | 3 |
+| `fuel-vulkan-dispatch` | 36 |  |  |  |  | 36 |  |  |
 | `fuel-vulkan-kernels` | 185 |  |  |  |  | 2 | 180 | 3 |
 | `scripts` | 75 |  |  | 1 |  | 74 |  |  |
-| **all** | **2090** | **112** | **216** | **258** | **4** | **1186** | **185** | **129** |
+| **all** | **2098** | **112** | **216** | **258** | **4** | **1194** | **185** | **129** |
 <!-- provenance-summary:end -->

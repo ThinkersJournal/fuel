@@ -316,7 +316,7 @@ jobs:
       #     backends — same reasons as WORKSPACE_EXCLUDES at the top of file.
       - name: Check vulkan-gated compilation (GAP-233)
         if: matrix.os == 'ubuntu-latest'
-        run: cargo check --locked -p fuel-tensor -p fuel-dispatch --features fuel-tensor/vulkan --all-targets
+        run: cargo check --locked -p fuel-tensor -p fuel-dispatch -p fuel-vulkan-dispatch --features fuel-tensor/vulkan --all-targets
       - name: Check jit-gated compilation (GAP-233)
         if: matrix.os == 'ubuntu-latest'
         run: cargo check --locked -p fuel-dispatch --features jit --all-targets
@@ -328,7 +328,7 @@ jobs:
       # fuel-cuda-backend note at the top of this file).
       - name: Check dev-tools binary (ignore retirement step 3)
         if: matrix.os == 'ubuntu-latest'
-        run: cargo check --locked -p fuel-dispatch --features dev-tools,vulkan --bins --all-targets
+        run: cargo check --locked -p fuel-dispatch -p fuel-vulkan-dispatch --features fuel-dispatch/dev-tools,fuel-dispatch/vulkan,fuel-vulkan-dispatch/dev-tools --bins --all-targets
       # `dlpack` is default-off and, before this step, NO workflow compiled a line
       # behind `--features dlpack` — so fuel-ir's exhaustive `DType`→FDX match
       # (`dlpack::convert::dtype_to_fdx`, the §6.1 wire codec) and fuel-memory's
