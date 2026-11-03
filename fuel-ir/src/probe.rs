@@ -299,9 +299,105 @@ impl DeviceIdentity {
     }
 }
 
+/// Why [`resolve_identity_ordinal`] found no single device.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IdentityResolveError {
+    /// No enumerated device is the wanted physical GPU (including: the wanted identity carries
+    /// neither a usable UUID nor a PCI address, since unknown is never "same").
+    NoMatch,
+    /// More than one enumerated device claims to be the wanted GPU (their ordinals, ascending).
+    /// Guessing the first would reintroduce the order dependence this exists to remove.
+    Ambiguous(Vec<usize>),
+}
+
+/// Resolve a [`DeviceIdentity`] to the enumeration ordinal of THIS process (ROADMAP row 137,
+/// step 4a). `enumerated[i]` is the identity of the device the process enumerates at ordinal `i`.
+/// The answer is a within-process handle and must not be stored: the next process or build may
+/// enumerate in a different order, which is the reason to ask by identity at all.
+pub fn resolve_identity_ordinal(
+    wanted: &DeviceIdentity,
+    enumerated: &[DeviceIdentity],
+) -> std::result::Result<usize, IdentityResolveError> {
+    let hits: Vec<usize> = enumerated
+        .iter()
+        .enumerate()
+        .filter(|(_, id)| wanted.same_physical_device(id))
+        .map(|(i, _)| i)
+        .collect();
+    match hits.as_slice() {
+        [] => Err(IdentityResolveError::NoMatch),
+        [one] => Ok(*one),
+        _ => Err(IdentityResolveError::Ambiguous(hits)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn res_ident(uuid_byte: u8, bus: u32) -> DeviceIdentity {
+        DeviceIdentity {
+            uuid: Some([uuid_byte; 16]),
+            pci: Some(PciAddress {
+                domain: 0,
+                bus,
+                device: 0,
+                function: None,
+            }),
+        }
+    }
+
+    #[test]
+    fn resolver_follows_the_device_across_both_enumeration_orders() {
+        let nv = res_ident(0x11, 1);
+        let amd = res_ident(0x22, 6);
+        // Vulkan-only build order vs CUDA-plus-Vulkan build order (row 125 measurement).
+        let amd_first = [amd, nv];
+        let nv_first = [nv, amd];
+        assert_eq!(resolve_identity_ordinal(&nv, &amd_first), Ok(1));
+        assert_eq!(resolve_identity_ordinal(&nv, &nv_first), Ok(0));
+        assert_eq!(resolve_identity_ordinal(&amd, &amd_first), Ok(0));
+        assert_eq!(resolve_identity_ordinal(&amd, &nv_first), Ok(1));
+    }
+
+    #[test]
+    fn resolver_declines_unknown_absent_and_ambiguous() {
+        let nv = res_ident(0x11, 1);
+        let amd = res_ident(0x22, 6);
+        assert_eq!(
+            resolve_identity_ordinal(&nv, &[amd]),
+            Err(IdentityResolveError::NoMatch)
+        );
+        assert_eq!(
+            resolve_identity_ordinal(&nv, &[]),
+            Err(IdentityResolveError::NoMatch)
+        );
+        // Neither UUID nor PCI: unknown is never "same", even against another unknown.
+        let none = DeviceIdentity {
+            uuid: None,
+            pci: None,
+        };
+        assert_eq!(
+            resolve_identity_ordinal(&none, &[none]),
+            Err(IdentityResolveError::NoMatch)
+        );
+        // An all-zero UUID is absent, so two zeroed devices on different buses stay distinct.
+        let z = |bus| DeviceIdentity {
+            uuid: Some([0; 16]),
+            pci: Some(PciAddress {
+                domain: 0,
+                bus,
+                device: 0,
+                function: None,
+            }),
+        };
+        assert_eq!(resolve_identity_ordinal(&z(1), &[z(6), z(1)]), Ok(1));
+        // Two enumerated entries for the same GPU: refuse rather than take the first.
+        assert_eq!(
+            resolve_identity_ordinal(&nv, &[nv, amd, nv]),
+            Err(IdentityResolveError::Ambiguous(vec![0, 2]))
+        );
+    }
 
     #[test]
     fn backend_id_as_str_is_stable() {
