@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.37.18 - 2026-11-03
+
+### Added
+
+- Docs: ROADMAP row 137 records step 4 (identity in place of index) as done with its PRs and versions, and states what was measured on this box and what was not (one CUDA device; no automated cross-build test; the iGPU's UUID stability unchecked). GAP-371 and row 142 now say the counter fix is merged and the row stays open until a runner executes the test. No code change.
+
 ## v0.37.17 - 2026-11-03
 
 ### Added
