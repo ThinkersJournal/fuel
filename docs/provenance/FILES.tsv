@@ -62,6 +62,7 @@ docs/design-notes/2026-11-01-seam-s3-executor-backends.md	own		no lineage; 0 of 
 docs/design-notes/2026-11-01-seams-and-cleanup-program.md	own		no lineage; 0 of 76 lines verbatim in candle (0%)
 docs/design-notes/2026-11-01-structure-measurement.md	own		no lineage; 0 of 163 lines verbatim in candle (0%)
 docs/design-notes/2026-11-02-nvidia-licence-read.md	own		no lineage; 0 of 167 lines verbatim in candle (0%)
+docs/design-notes/2026-11-03-row137-step6-plan.md	own		no lineage; 0 of 102 lines verbatim in candle (0%)
 docs/design/facade-inversion-recipe.md	own		no lineage; 0 of 216 lines verbatim in candle (0%)
 docs/design/gaps-status-conversion-table.md	own		no lineage; 0 of 80 lines verbatim in candle (0%)
 docs/design/gaps-status-vocabulary.md	own		no lineage; 0 of 213 lines verbatim in candle (0%)
@@ -236,9 +237,9 @@ fuel-backend-contract/LICENSE-MIT	copy		byte-identical packaged copy of the root
 fuel-backend-contract/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
 fuel-backend-contract/src/backend.rs	not-traced	candle-core/src/backend.rs	same file name as candle candle-core/src/backend.rs; a port or re-expression is presumed until judged
 fuel-backend-contract/src/dyn_backend.rs	own		no lineage; 3 of 178 lines verbatim in candle (2%)
-fuel-backend-contract/src/lib.rs	own		no lineage; 0 of 26 lines verbatim in candle (0%)
+fuel-backend-contract/src/lib.rs	own		no lineage; 0 of 28 lines verbatim in candle (0%)
 fuel-backend-contract/src/quantized.rs	not-traced	candle-metal-kernels/src/kernels/quantized.rs	same file name as candle candle-metal-kernels/src/kernels/quantized.rs; a port or re-expression is presumed until judged
-fuel-backend-contract/src/storage.rs	not-traced	candle-core/src/storage.rs	33 of 411 lines also appear in candle (mostly candle-core/src/storage.rs); not judged
+fuel-backend-contract/src/storage.rs	not-traced	candle-core/src/storage.rs	36 of 419 lines also appear in candle (mostly candle-core/src/storage.rs); not judged
 fuel-conv/Cargo.toml	own		no lineage; 3 of 9 lines verbatim in candle (33%)
 fuel-conv/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-conv/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT

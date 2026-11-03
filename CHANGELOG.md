@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.38.1 - 2026-11-03
+
+### Added
+
+- Docs: `docs/design-notes/2026-11-03-row137-step6-plan.md`, the read-and-plan note for ROADMAP row 137 step 6 (move backend-gated code out of `fuel-dispatch`). Measured at `origin/main` 043de464: the 266-cfg-line figure understated it; the backend-gated modules are 30,184 of 124,674 lines (24%), mostly two whole-file-gated modules (`vulkan_dispatch.rs` 8,503, `baracuda_dispatch.rs` 7,258) behind one cfg line each. The coupling cycle with `fkc` is thin (the backend modules are named from backend-gated modules except three lines). Recommends the aocl/mkl pattern (crates above `fuel-dispatch`, explicit registrars), a PR sequence Vulkan, CUDA bindings, JIT, leftovers, each with a binding-table census as its oracle and a hand CUDA compile where CUDA is touched, and lists the decisions needed first. No code change.
+
 ## v0.38.0 - 2026-11-03
 
 ### Breaking
