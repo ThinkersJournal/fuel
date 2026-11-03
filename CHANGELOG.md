@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.38.0 - 2026-11-03
+
+### Breaking
+
+- `fuel-backend-contract`: **removed `InplaceOp1`, `InplaceOp2`, `InplaceOp3`** (the `inplace_op` module and its re-exports) **and `Storage::inplace_op1`, `Storage::inplace_op2`, `Storage::inplace_op3`**. They were the trait objects behind the retired eager `Tensor::inplace_opN` API: no backend implemented them and nothing in the workspace, on crates.io (12 reverse dependencies, all Fuel members) or in the other projects on this machine (Lightbulb uses only `backend::BackendRuntime`) named them. Census, code only, from the repository root: `git grep -n -E "InplaceOp[123]|inplace_op[123]" -- '*.rs' ':!fuel-backend-contract'` finds only comments; the same command restricted to `fuel-backend-contract` at the previous commit finds the definitions (positive control). A caller that implemented or called them must stop; there is no replacement. **`BackendCapabilityProvider` is deliberately kept**: it has no implementation and no caller either, but the architecture document (`docs/architecture/05-backend-contract.md`, Tier 1) specifies it and the dlpack extension spec depends on it; amending the constitution is not part of this change. `DynBackendStorage` is also kept (it is reached from `fuel-graph`'s host-data boundary; see the S3 note).
+
 ## v0.37.18 - 2026-11-03
 
 ### Added

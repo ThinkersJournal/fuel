@@ -20,7 +20,6 @@
 //!   `BackendCapabilities`, `FitStatus` — stay in [`fuel_ir::backend`].)
 //! - [`quantized`] — [`DynQuantizedStorage`] / [`QuantizedDeviceKernels`].
 //!   (The `GgmlDType` *data* tag stays in [`fuel_ir::quantized`].)
-//! - [`inplace_op`] — [`InplaceOp1`] / [`InplaceOp2`] / [`InplaceOp3`].
 //! - [`storage`] — [`Storage`], the type-erased `Box<dyn DynBackendStorage>`
 //!   handle that carries a backend's storage, plus `allocate_bundled_storage`.
 //!   (The bundle *data* — `OutputView`, `OutputViewSpec`, `compose_bundle` —
@@ -28,7 +27,6 @@
 
 pub mod backend;
 pub mod dyn_backend;
-pub mod inplace_op;
 pub mod quantized;
 pub mod storage;
 
@@ -36,6 +34,5 @@ pub use backend::{
     BackendCapabilityProvider, BackendRuntime, BackendStorage, BackendStreams, HostStorage,
 };
 pub use dyn_backend::{DynBackendDevice, DynBackendStorage};
-pub use inplace_op::{InplaceOp1, InplaceOp2, InplaceOp3};
 pub use quantized::{DynQuantizedStorage, QuantizedDeviceKernels};
 pub use storage::{Storage, allocate_bundled_storage};

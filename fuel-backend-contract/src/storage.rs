@@ -28,7 +28,6 @@
 //! metadata lives only on the `Storage` newtype.
 
 use crate::dyn_backend::{DynBackendDevice, DynBackendStorage};
-use crate::inplace_op::{InplaceOp1, InplaceOp2, InplaceOp3};
 use fuel_ir::op::{self, BinaryOp, CmpOp, ReduceOp};
 use fuel_ir::storage::{OutputView, OutputViewSpec, compose_bundle};
 use fuel_ir::stype::SType;
@@ -368,35 +367,6 @@ impl Storage {
 
     pub fn to_cpu_storage(&self) -> Result<HostBuffer> {
         self.inner.to_host_buffer_dyn()
-    }
-
-    pub fn inplace_op1(&mut self, l: &Layout, c: &dyn InplaceOp1) -> Result<()> {
-        c.fwd(&mut *self.inner, l)
-    }
-
-    pub fn inplace_op2(
-        &mut self,
-        l1: &Layout,
-        t2: &Self,
-        l2: &Layout,
-        c: &dyn InplaceOp2,
-    ) -> Result<()> {
-        self.same_device(t2, c.name())?;
-        c.fwd(&mut *self.inner, l1, &*t2.inner, l2)
-    }
-
-    pub fn inplace_op3(
-        &mut self,
-        l1: &Layout,
-        t2: &Self,
-        l2: &Layout,
-        t3: &Self,
-        l3: &Layout,
-        c: &dyn InplaceOp3,
-    ) -> Result<()> {
-        self.same_device(t2, c.name())?;
-        self.same_device(t3, c.name())?;
-        c.fwd(&mut *self.inner, l1, &*t2.inner, l2, &*t3.inner, l3)
     }
 
     // -----------------------------------------------------------------------
