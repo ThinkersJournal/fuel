@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.37.5 - 2026-11-03
+
+### Added
+
+- `fuel-loaders`: `quantized::qwen35_names::map_qwen35_gguf_name`, the GGUF `qwen35` tensor-name -> Hugging Face name map for the text decoder (ROADMAP row 118 step two). Names come from the installed 4B file's header; value rules (norm `+1`, `ssm_a` vs `A_log`) are returned as `Unverified*` hypotheses pending the HF oracle run. Unit tests on a 426-name fixture reproducing the header note. No loader wiring, no `Architecture` variant yet.
+
 ## v0.37.4 - 2026-11-01
 
 ### Added
