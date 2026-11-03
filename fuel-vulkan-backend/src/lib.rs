@@ -591,6 +591,10 @@ pub enum DeviceSelection {
     PreferDiscrete,
     /// Match by substring in the device name (case-insensitive).
     ByName(String),
+    /// Pick the physical device with this stable identity (UUID, else PCI address; see
+    /// [`fuel_ir::probe::DeviceIdentity`]). Resolved to this process's enumeration ordinal once,
+    /// here; `gpu_id` stays the in-process handle. Fails when no device, or more than one, matches.
+    Identity(fuel_ir::probe::DeviceIdentity),
 }
 
 /// Shape and scalar arguments shared by the attention forward wrappers.
@@ -682,6 +686,17 @@ impl VulkanBackend {
                     Some((i, p)) => (i, p.clone()),
                     None => (0, physicals.into_iter().next().unwrap()),
                 }
+            }
+            DeviceSelection::Identity(ref wanted) => {
+                let ids: Vec<_> = physicals
+                    .iter()
+                    .map(|p| p.device_identity().map(crate::probe::identity_of))
+                    .collect();
+                let idx = crate::probe::ordinal_for_identity(wanted, &ids)?;
+                let p = physicals.into_iter().nth(idx).ok_or_else(|| {
+                    fuel_ir::Error::Msg(format!("Vulkan device index {idx} out of range"))
+                })?;
+                (idx, p)
             }
             DeviceSelection::ByName(ref needle) => {
                 let needle_lower = needle.to_lowercase();

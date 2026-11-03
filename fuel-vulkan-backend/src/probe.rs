@@ -228,7 +228,7 @@ pub fn enumerate_devices_uncached() -> Result<Vec<DeviceDescriptor>> {
 }
 
 /// Convert vulkane's identity record (`VkPhysicalDeviceIDProperties` plus `VK_EXT_pci_bus_info`).
-fn identity_of(id: vulkane::safe::DeviceIdentity) -> fuel_ir::probe::DeviceIdentity {
+pub(crate) fn identity_of(id: vulkane::safe::DeviceIdentity) -> fuel_ir::probe::DeviceIdentity {
     fuel_ir::probe::DeviceIdentity {
         uuid: Some(id.device_uuid),
         pci: id.pci.map(|p| fuel_ir::probe::PciAddress {
@@ -254,6 +254,31 @@ pub fn device_identities() -> Result<Vec<Option<fuel_ir::probe::DeviceIdentity>>
         .iter()
         .map(|p| p.device_identity().map(identity_of))
         .collect())
+}
+
+/// Resolve `wanted` to the enumeration ordinal of THIS process (ROADMAP row 137 step 4a).
+/// `enumerated[i]` is the identity of the physical device at ordinal `i`, `None` for one that cannot
+/// report an identity (it can never match). Fails on no match and on more than one match rather than
+/// guessing the first. The ordinal is a within-process handle: do not store it.
+pub(crate) fn ordinal_for_identity(
+    wanted: &fuel_ir::probe::DeviceIdentity,
+    enumerated: &[Option<fuel_ir::probe::DeviceIdentity>],
+) -> Result<usize> {
+    use fuel_ir::probe::{DeviceIdentity, IdentityResolveError, resolve_identity_ordinal};
+    let unknown = DeviceIdentity {
+        uuid: None,
+        pci: None,
+    };
+    let ids: Vec<DeviceIdentity> = enumerated.iter().map(|i| i.unwrap_or(unknown)).collect();
+    resolve_identity_ordinal(wanted, &ids).map_err(|e| match e {
+        IdentityResolveError::NoMatch => fuel_ir::Error::Msg(format!(
+            "no Vulkan device has identity {wanted:?} ({} device(s) enumerated)",
+            enumerated.len()
+        )),
+        IdentityResolveError::Ambiguous(ordinals) => fuel_ir::Error::Msg(format!(
+            "identity {wanted:?} matches more than one Vulkan device (ordinals {ordinals:?})"
+        )),
+    })
 }
 
 impl crate::VulkanBackend {
@@ -818,6 +843,69 @@ mod tests {
             !layouts.is_empty(),
             "no Vulkan adapters enumerated -- this test cannot report a layout \
              and must fail rather than pass having printed nothing"
+        );
+    }
+}
+
+/// `ordinal_for_identity` on synthetic enumerations: no device needed (ROADMAP row 137 step 4a).
+#[cfg(test)]
+mod identity_ordinal_tests {
+    use super::ordinal_for_identity;
+    use fuel_ir::probe::{DeviceIdentity, PciAddress};
+
+    fn id(uuid_byte: u8, bus: u32) -> DeviceIdentity {
+        DeviceIdentity {
+            uuid: Some([uuid_byte; 16]),
+            pci: Some(PciAddress {
+                domain: 0,
+                bus,
+                device: 0,
+                function: Some(0),
+            }),
+        }
+    }
+
+    #[test]
+    fn same_gpu_resolves_in_either_enumeration_order() {
+        let (nv, amd) = (id(0x11, 1), id(0x22, 6));
+        assert_eq!(
+            ordinal_for_identity(&nv, &[Some(amd), Some(nv)]).unwrap(),
+            1
+        );
+        assert_eq!(
+            ordinal_for_identity(&nv, &[Some(nv), Some(amd)]).unwrap(),
+            0
+        );
+    }
+
+    #[test]
+    fn a_device_without_an_identity_never_matches_and_does_not_shift_ordinals() {
+        let (nv, amd) = (id(0x11, 1), id(0x22, 6));
+        // The unreadable device sits at ordinal 0; the match is at ordinal 2, not 1.
+        assert_eq!(
+            ordinal_for_identity(&nv, &[None, Some(amd), Some(nv)]).unwrap(),
+            2
+        );
+        let unknown = DeviceIdentity {
+            uuid: None,
+            pci: None,
+        };
+        assert!(ordinal_for_identity(&unknown, &[None, None]).is_err());
+    }
+
+    #[test]
+    fn no_match_and_ambiguity_both_decline_with_a_named_reason() {
+        let (nv, amd) = (id(0x11, 1), id(0x22, 6));
+        let none = ordinal_for_identity(&nv, &[Some(amd)])
+            .unwrap_err()
+            .to_string();
+        assert!(none.contains("no Vulkan device has identity"), "{none}");
+        let many = ordinal_for_identity(&nv, &[Some(nv), Some(amd), Some(nv)])
+            .unwrap_err()
+            .to_string();
+        assert!(
+            many.contains("more than one") && many.contains("[0, 2]"),
+            "{many}"
         );
     }
 }
