@@ -6,6 +6,8 @@
 
 #[cfg(any(feature = "cuda", feature = "vulkan"))]
 use fuel_ir::DeviceLocation;
+#[cfg(any(feature = "cuda", feature = "vulkan", test))]
+use fuel_ir::probe::DeviceIdentity;
 #[cfg(any(feature = "cuda", feature = "vulkan"))]
 use std::collections::HashMap;
 
@@ -22,6 +24,23 @@ pub struct DeviceRegistry {
     cuda: HashMap<DeviceLocation, fuel_cuda_backend::CudaDevice>,
     #[cfg(feature = "vulkan")]
     vulkan: HashMap<DeviceLocation, std::sync::Arc<fuel_vulkan_backend::VulkanBackend>>,
+}
+
+/// The one entry whose identity is the same physical GPU as `wanted` (ROADMAP row 137 step 4b), or
+/// `None` when no entry, or more than one, matches. An entry whose identity is unknown never matches
+/// (unknown is not "same"). Never takes the first of several: that would reintroduce the order
+/// dependence this exists to remove.
+#[cfg(any(feature = "cuda", feature = "vulkan", test))]
+fn unique_by_identity<'a, T>(
+    entries: impl IntoIterator<Item = (Option<DeviceIdentity>, &'a T)>,
+    wanted: &DeviceIdentity,
+) -> Option<&'a T> {
+    let mut hits = entries
+        .into_iter()
+        .filter(|(id, _)| id.is_some_and(|i| i.same_physical_device(wanted)))
+        .map(|(_, handle)| handle);
+    let first = hits.next()?;
+    hits.next().is_none().then_some(first)
 }
 
 impl DeviceRegistry {
@@ -72,6 +91,39 @@ impl DeviceRegistry {
         self.vulkan.get(&DeviceLocation::Vulkan { gpu_id })
     }
 
+    /// The registered Vulkan backend that drives the physical GPU `wanted` names (UUID, else PCI address),
+    /// whatever ordinal this process enumerated it at (ROADMAP row 137 step 4b). `None` when no, or more
+    /// than one, registered backend is that GPU. Nothing is stored: each lookup asks the registered
+    /// backends for their identity.
+    #[cfg(feature = "vulkan")]
+    pub fn registered_vulkan_by_identity(
+        &self,
+        wanted: &DeviceIdentity,
+    ) -> Option<&std::sync::Arc<fuel_vulkan_backend::VulkanBackend>> {
+        unique_by_identity(self.vulkan.values().map(|b| (b.identity(), b)), wanted)
+    }
+
+    /// The registered CUDA device that is the physical GPU `wanted` names (see
+    /// [`Self::registered_vulkan_by_identity`]); the identity may come from another API. `None` also when
+    /// the CUDA identity query itself fails.
+    #[cfg(feature = "cuda")]
+    pub fn registered_cuda_by_identity(
+        &self,
+        wanted: &DeviceIdentity,
+    ) -> Option<&fuel_cuda_backend::CudaDevice> {
+        let ids = fuel_cuda_backend::probe::device_identities().ok()?;
+        unique_by_identity(
+            self.cuda.iter().map(|(place, device)| {
+                let id = match place {
+                    DeviceLocation::Cuda { gpu_id } => ids.get(*gpu_id).copied().flatten(),
+                    _ => None,
+                };
+                (id, device)
+            }),
+            wanted,
+        )
+    }
+
     /// The CUDA device registered for `gpu_id`, if any.
     #[cfg(feature = "cuda")]
     pub(crate) fn cuda(&self, gpu_id: usize) -> Option<fuel_cuda_backend::CudaDevice> {
@@ -85,5 +137,52 @@ impl DeviceRegistry {
         gpu_id: usize,
     ) -> Option<std::sync::Arc<fuel_vulkan_backend::VulkanBackend>> {
         self.registered_vulkan(gpu_id).cloned()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::unique_by_identity;
+    use fuel_ir::probe::DeviceIdentity;
+
+    fn id(b: u8) -> Option<DeviceIdentity> {
+        Some(DeviceIdentity {
+            uuid: Some([b; 16]),
+            pci: None,
+        })
+    }
+
+    #[test]
+    fn finds_the_entry_in_either_registration_order() {
+        let wanted = id(1).unwrap();
+        assert_eq!(
+            unique_by_identity([(id(1), &"a"), (id(2), &"b")], &wanted),
+            Some(&"a")
+        );
+        assert_eq!(
+            unique_by_identity([(id(2), &"b"), (id(1), &"a")], &wanted),
+            Some(&"a")
+        );
+    }
+
+    #[test]
+    fn unknown_entries_never_match_and_no_match_is_none() {
+        let wanted = id(1).unwrap();
+        assert_eq!(unique_by_identity([(None, &"x")], &wanted), None);
+        assert_eq!(unique_by_identity([(id(2), &"b")], &wanted), None);
+        let nobody = DeviceIdentity {
+            uuid: None,
+            pci: None,
+        };
+        assert_eq!(unique_by_identity([(None, &"x")], &nobody), None);
+    }
+
+    #[test]
+    fn two_matches_decline_instead_of_taking_the_first() {
+        let wanted = id(1).unwrap();
+        assert_eq!(
+            unique_by_identity([(id(1), &"a"), (id(2), &"b"), (id(1), &"c")], &wanted),
+            None
+        );
     }
 }
