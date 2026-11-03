@@ -47,67 +47,76 @@ pub struct Qwen35Mapping {
     pub rule: Qwen35ValueRule,
 }
 
-fn m(hf_name: String, rule: Qwen35ValueRule) -> Option<Qwen35Mapping> {
-    Some(Qwen35Mapping { hf_name, rule })
+use Qwen35ValueRule::UnverifiedSsmAMayBeNegExpOfALog as NegExpALog;
+use Qwen35ValueRule::{AsIs, UnverifiedNormGainMayIncludePlusOne as NormPlusOne};
+
+/// Names outside the repeating blocks: (GGUF name, HF name, rule).
+const GLOBAL_TENSORS: &[(&str, &str, Qwen35ValueRule)] = &[
+    ("token_embd.weight", "embed_tokens.weight", AsIs),
+    ("output_norm.weight", "norm.weight", NormPlusOne),
+];
+
+/// Names inside `blk.N.`: (GGUF tail, HF tail under `layers.N.`, rule). The DeltaNet pairings are
+/// HYPOTHESES from shapes (see the module docs).
+const BLOCK_TENSORS: &[(&str, &str, Qwen35ValueRule)] = &[
+    ("attn_norm.weight", "input_layernorm.weight", NormPlusOne),
+    (
+        "post_attention_norm.weight",
+        "post_attention_layernorm.weight",
+        NormPlusOne,
+    ),
+    ("ffn_gate.weight", "mlp.gate_proj.weight", AsIs),
+    ("ffn_up.weight", "mlp.up_proj.weight", AsIs),
+    ("ffn_down.weight", "mlp.down_proj.weight", AsIs),
+    // Full-attention layers.
+    ("attn_q.weight", "self_attn.q_proj.weight", AsIs),
+    ("attn_k.weight", "self_attn.k_proj.weight", AsIs),
+    ("attn_v.weight", "self_attn.v_proj.weight", AsIs),
+    ("attn_output.weight", "self_attn.o_proj.weight", AsIs),
+    ("attn_q_norm.weight", "self_attn.q_norm.weight", NormPlusOne),
+    ("attn_k_norm.weight", "self_attn.k_norm.weight", NormPlusOne),
+    // Gated DeltaNet layers.
+    ("attn_qkv.weight", "linear_attn.in_proj_qkv.weight", AsIs),
+    ("attn_gate.weight", "linear_attn.in_proj_z.weight", AsIs),
+    ("ssm_alpha.weight", "linear_attn.in_proj_a.weight", AsIs),
+    ("ssm_beta.weight", "linear_attn.in_proj_b.weight", AsIs),
+    ("ssm_out.weight", "linear_attn.out_proj.weight", AsIs),
+    ("ssm_conv1d.weight", "linear_attn.conv1d.weight", AsIs),
+    ("ssm_a", "linear_attn.A_log", NegExpALog),
+    ("ssm_dt.bias", "linear_attn.dt_bias", AsIs),
+    // The gated norm inside a DeltaNet layer is NOT zero-centred in the HF checkpoint.
+    ("ssm_norm.weight", "linear_attn.norm.weight", AsIs),
+];
+
+fn lookup(
+    table: &[(&'static str, &'static str, Qwen35ValueRule)],
+    key: &str,
+) -> Option<(&'static str, Qwen35ValueRule)> {
+    table
+        .iter()
+        .find(|(g, _, _)| *g == key)
+        .map(|(_, hf, rule)| (*hf, *rule))
 }
 
 /// Map one GGUF tensor name of a `qwen35` file. `None` means the name is not part of the text
 /// decoder the loader reads (for example `output.weight`, which this arch ties to the embedding,
 /// or anything unrecognised): the caller decides whether that is an error.
 pub fn map_qwen35_gguf_name(gguf: &str) -> Option<Qwen35Mapping> {
-    use Qwen35ValueRule::*;
-    match gguf {
-        "token_embd.weight" => return m("embed_tokens.weight".into(), AsIs),
-        "output_norm.weight" => {
-            return m("norm.weight".into(), UnverifiedNormGainMayIncludePlusOne);
-        }
-        _ => {}
+    if let Some((hf, rule)) = lookup(GLOBAL_TENSORS, gguf) {
+        return Some(Qwen35Mapping {
+            hf_name: hf.to_string(),
+            rule,
+        });
     }
-    let rest = gguf.strip_prefix("blk.")?;
-    let (idx, tail) = rest.split_once('.')?;
+    let (idx, tail) = gguf.strip_prefix("blk.")?.split_once('.')?;
     if idx.is_empty() || !idx.bytes().all(|b| b.is_ascii_digit()) {
         return None;
     }
-    let p = format!("layers.{idx}");
-    let (suffix, rule) = match tail {
-        "attn_norm.weight" => (
-            "input_layernorm.weight",
-            UnverifiedNormGainMayIncludePlusOne,
-        ),
-        "post_attention_norm.weight" => (
-            "post_attention_layernorm.weight",
-            UnverifiedNormGainMayIncludePlusOne,
-        ),
-        "ffn_gate.weight" => ("mlp.gate_proj.weight", AsIs),
-        "ffn_up.weight" => ("mlp.up_proj.weight", AsIs),
-        "ffn_down.weight" => ("mlp.down_proj.weight", AsIs),
-        // Full-attention layers.
-        "attn_q.weight" => ("self_attn.q_proj.weight", AsIs),
-        "attn_k.weight" => ("self_attn.k_proj.weight", AsIs),
-        "attn_v.weight" => ("self_attn.v_proj.weight", AsIs),
-        "attn_output.weight" => ("self_attn.o_proj.weight", AsIs),
-        "attn_q_norm.weight" => (
-            "self_attn.q_norm.weight",
-            UnverifiedNormGainMayIncludePlusOne,
-        ),
-        "attn_k_norm.weight" => (
-            "self_attn.k_norm.weight",
-            UnverifiedNormGainMayIncludePlusOne,
-        ),
-        // Gated DeltaNet layers. HYPOTHESIS names, from shapes (see the module docs).
-        "attn_qkv.weight" => ("linear_attn.in_proj_qkv.weight", AsIs),
-        "attn_gate.weight" => ("linear_attn.in_proj_z.weight", AsIs),
-        "ssm_alpha.weight" => ("linear_attn.in_proj_a.weight", AsIs),
-        "ssm_beta.weight" => ("linear_attn.in_proj_b.weight", AsIs),
-        "ssm_out.weight" => ("linear_attn.out_proj.weight", AsIs),
-        "ssm_conv1d.weight" => ("linear_attn.conv1d.weight", AsIs),
-        "ssm_a" => ("linear_attn.A_log", UnverifiedSsmAMayBeNegExpOfALog),
-        "ssm_dt.bias" => ("linear_attn.dt_bias", AsIs),
-        // The gated norm inside a DeltaNet layer is NOT zero-centred in the HF checkpoint.
-        "ssm_norm.weight" => ("linear_attn.norm.weight", AsIs),
-        _ => return None,
-    };
-    m(format!("{p}.{suffix}"), rule)
+    let (hf, rule) = lookup(BLOCK_TENSORS, tail)?;
+    Some(Qwen35Mapping {
+        hf_name: format!("layers.{idx}.{hf}"),
+        rule,
+    })
 }
 
 #[cfg(test)]
