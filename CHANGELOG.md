@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.37.11 - 2026-11-03
+
+### Added
+
+- Docs: GAP-372, `scripts/provenance.py generate` crashes with a `KeyError` on any staged-but-uncommitted file (it enumerates the index and reads content from `HEAD`). No code change.
+
 ## v0.37.10 - 2026-11-03
 
 ### Added
