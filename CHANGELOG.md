@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.37.9 - 2026-11-03
+
+### Added
+
+- `fuel-ir`: `probe::resolve_identity_ordinal` and `IdentityResolveError`, the pure half of ROADMAP row 137 step 4a: resolve a `DeviceIdentity` to this process's enumeration ordinal, declining on no match and on more than one match. Unit-tested on synthetic enumerations in both orders. Nothing calls it yet; the `DeviceSelection::Identity` selectors and live oracles wait for the GPU-build hold.
+
 ## v0.37.8 - 2026-11-03
 
 ### Added

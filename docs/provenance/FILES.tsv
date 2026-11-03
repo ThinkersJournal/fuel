@@ -1025,7 +1025,7 @@ fuel-ir/src/error.rs	candle-modified	candle-core/src/error.rs	rename/copy 49%; 4
 fuel-ir/src/layout.rs	candle-modified	candle-core/src/layout.rs	rename/copy 35%; 32% of 255 lines verbatim
 fuel-ir/src/lib.rs	own		no lineage; 2 of 37 lines verbatim in candle (5%)
 fuel-ir/src/op.rs	candle-modified	candle-core/src/op.rs	no git lineage; 42 of 95 lines verbatim in candle (mostly candle-core/src/op.rs)
-fuel-ir/src/probe.rs	own		no lineage; 4 of 291 lines verbatim in candle (1%)
+fuel-ir/src/probe.rs	own		no lineage; 5 of 337 lines verbatim in candle (1%)
 fuel-ir/src/quant_scale.rs	own		no lineage; 5 of 101 lines verbatim in candle (5%)
 fuel-ir/src/quantized.rs	not-traced	candle-metal-kernels/src/kernels/quantized.rs	same file name as candle candle-metal-kernels/src/kernels/quantized.rs; a port or re-expression is presumed until judged
 fuel-ir/src/scalar.rs	not-traced	candle-core/src/scalar.rs	44 of 212 lines also appear in candle (mostly candle-core/src/scalar.rs); not judged
