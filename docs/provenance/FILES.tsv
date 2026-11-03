@@ -13,7 +13,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 486 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 489 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1392 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 304 lines verbatim
@@ -58,7 +58,7 @@ docs/design-notes/2026-10-30-kquant-resident-weights.md	own		no lineage; 0 of 42
 docs/design-notes/2026-10-30-qwen35-27b-audit.md	own		no lineage; 0 of 167 lines verbatim in candle (0%)
 docs/design-notes/2026-10-30-qwen35-composed-forward-row-115.md	own		no lineage; 0 of 68 lines verbatim in candle (0%)
 docs/design-notes/2026-11-01-qwen35-gguf-header.md	own		no lineage; 0 of 51 lines verbatim in candle (0%)
-docs/design-notes/2026-11-01-seam-s3-executor-backends.md	own		no lineage; 0 of 168 lines verbatim in candle (0%)
+docs/design-notes/2026-11-01-seam-s3-executor-backends.md	own		no lineage; 0 of 213 lines verbatim in candle (0%)
 docs/design-notes/2026-11-01-seams-and-cleanup-program.md	own		no lineage; 0 of 76 lines verbatim in candle (0%)
 docs/design-notes/2026-11-01-structure-measurement.md	own		no lineage; 0 of 163 lines verbatim in candle (0%)
 docs/design-notes/2026-11-02-nvidia-licence-read.md	own		no lineage; 0 of 167 lines verbatim in candle (0%)
@@ -237,9 +237,9 @@ fuel-backend-contract/LICENSE-MIT	copy		byte-identical packaged copy of the root
 fuel-backend-contract/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
 fuel-backend-contract/src/backend.rs	not-traced	candle-core/src/backend.rs	same file name as candle candle-core/src/backend.rs; a port or re-expression is presumed until judged
 fuel-backend-contract/src/dyn_backend.rs	own		no lineage; 3 of 178 lines verbatim in candle (2%)
-fuel-backend-contract/src/lib.rs	own		no lineage; 0 of 28 lines verbatim in candle (0%)
+fuel-backend-contract/src/lib.rs	own		no lineage; 0 of 45 lines verbatim in candle (0%)
 fuel-backend-contract/src/quantized.rs	not-traced	candle-metal-kernels/src/kernels/quantized.rs	same file name as candle candle-metal-kernels/src/kernels/quantized.rs; a port or re-expression is presumed until judged
-fuel-backend-contract/src/storage.rs	not-traced	candle-core/src/storage.rs	36 of 419 lines also appear in candle (mostly candle-core/src/storage.rs); not judged
+fuel-backend-contract/src/storage.rs	not-traced	candle-core/src/storage.rs	33 of 411 lines also appear in candle (mostly candle-core/src/storage.rs); not judged
 fuel-conv/Cargo.toml	own		no lineage; 3 of 9 lines verbatim in candle (33%)
 fuel-conv/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-conv/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
@@ -268,7 +268,7 @@ fuel-cpu-backend/src/chassis/mod.rs	own		no lineage; 0 of 10 lines verbatim in c
 fuel-cpu-backend/src/chassis/reduction.rs	own		no lineage; 1 of 378 lines verbatim in candle (0%)
 fuel-cpu-backend/src/chassis/unary.rs	not-traced	candle-metal-kernels/src/kernels/unary.rs	same file name as candle candle-metal-kernels/src/kernels/unary.rs; a port or re-expression is presumed until judged
 fuel-cpu-backend/src/conv2d.rs	candle-modified	candle-core/src/cpu_backend/conv2d.rs	rename/copy 68%; 89% of 161 lines verbatim
-fuel-cpu-backend/src/dyn_impl.rs	not-traced	candle-core/src/cpu_backend/mod.rs	84 of 1046 lines also appear in candle (mostly candle-core/src/cpu_backend/mod.rs); not judged
+fuel-cpu-backend/src/dyn_impl.rs	not-traced	candle-core/src/cpu_backend/mod.rs	84 of 1052 lines also appear in candle (mostly candle-core/src/cpu_backend/mod.rs); not judged
 fuel-cpu-backend/src/host_storage/mmap.rs	own		no lineage; 3 of 181 lines verbatim in candle (2%)
 fuel-cpu-backend/src/host_storage/mod.rs	own		no lineage; 0 of 12 lines verbatim in candle (0%)
 fuel-cpu-backend/src/host_storage/shared_mem.rs	own		no lineage; 4 of 179 lines verbatim in candle (2%)
@@ -1020,7 +1020,7 @@ fuel-ir/src/dlpack/mod.rs	own		no lineage; 0 of 17 lines verbatim in candle (0%)
 fuel-ir/src/dlpack/sidecar.rs	own		no lineage; 12 of 286 lines verbatim in candle (4%)
 fuel-ir/src/dlpack/validate.rs	own		no lineage; 0 of 976 lines verbatim in candle (0%)
 fuel-ir/src/dlpack/validate/tests.rs	own		no lineage; 0 of 738 lines verbatim in candle (0%)
-fuel-ir/src/dtype.rs	not-traced	candle-core/src/dtype.rs	94 of 440 lines also appear in candle (mostly candle-core/src/dtype.rs); not judged
+fuel-ir/src/dtype.rs	not-traced	candle-core/src/dtype.rs	92 of 440 lines also appear in candle (mostly candle-core/src/dtype.rs); not judged
 fuel-ir/src/error.rs	candle-modified	candle-core/src/error.rs	rename/copy 49%; 49% of 238 lines verbatim
 fuel-ir/src/layout.rs	candle-modified	candle-core/src/layout.rs	rename/copy 35%; 32% of 255 lines verbatim
 fuel-ir/src/lib.rs	own		no lineage; 2 of 37 lines verbatim in candle (5%)
@@ -1028,6 +1028,7 @@ fuel-ir/src/op.rs	candle-modified	candle-core/src/op.rs	no git lineage; 42 of 95
 fuel-ir/src/probe.rs	own		no lineage; 5 of 337 lines verbatim in candle (1%)
 fuel-ir/src/quant_scale.rs	own		no lineage; 5 of 101 lines verbatim in candle (5%)
 fuel-ir/src/quantized.rs	not-traced	candle-metal-kernels/src/kernels/quantized.rs	same file name as candle candle-metal-kernels/src/kernels/quantized.rs; a port or re-expression is presumed until judged
+fuel-ir/src/round.rs	own		no lineage; 0 of 69 lines verbatim in candle (0%)
 fuel-ir/src/scalar.rs	not-traced	candle-core/src/scalar.rs	44 of 212 lines also appear in candle (mostly candle-core/src/scalar.rs); not judged
 fuel-ir/src/shape.rs	candle-modified	candle-core/src/shape.rs	rename/copy 42%; 44% of 540 lines verbatim
 fuel-ir/src/storage.rs	not-traced	candle-core/src/storage.rs	same file name as candle candle-core/src/storage.rs; a port or re-expression is presumed until judged
@@ -1047,6 +1048,7 @@ fuel-ir/tests/doc_declared_traits.rs	own		no lineage; 4 of 231 lines verbatim in
 fuel-ir/tests/doc_marker_consistency.rs	own		no lineage; 5 of 236 lines verbatim in candle (2%)
 fuel-ir/tests/doc_marker_consistency_allowlist.txt	own		no lineage; 0 of 4 lines verbatim in candle (0%)
 fuel-ir/tests/exhaustive_by_design_marker.rs	own		no lineage; 2 of 177 lines verbatim in candle (1%)
+fuel-ir/tests/f64_to_half_rounding.rs	own		no lineage; 0 of 168 lines verbatim in candle (0%)
 fuel-ir/tests/gap236_precondition.rs	own		no lineage; 1 of 155 lines verbatim in candle (1%)
 fuel-ir/tests/gap302_known_absent.txt	own		no lineage; 0 of 31 lines verbatim in candle (0%)
 fuel-ir/tests/gap_hedge_allowlist.txt	own		no lineage; 0 of 200 lines verbatim in candle (0%)
@@ -1525,7 +1527,7 @@ fuel-tensor/src/cpu_accel.rs	own		no lineage; 2 of 67 lines verbatim in candle (
 fuel-tensor/src/cuda_backend/mod.rs	own		no lineage; 3 of 43 lines verbatim in candle (7%)
 fuel-tensor/src/decode_shape.rs	own		no lineage; 2 of 252 lines verbatim in candle (1%)
 fuel-tensor/src/device.rs	candle-modified	candle-core/src/device.rs	rename/copy 38%; 43% of 176 lines verbatim
-fuel-tensor/src/dtype.rs	candle-modified	candle-core/src/dtype.rs	no git lineage; 35 of 52 lines verbatim in candle (mostly candle-core/src/dtype.rs)
+fuel-tensor/src/dtype.rs	candle-modified	candle-core/src/dtype.rs	no git lineage; 33 of 52 lines verbatim in candle (mostly candle-core/src/dtype.rs)
 fuel-tensor/src/factories.rs	own		no lineage; 0 of 194 lines verbatim in candle (0%)
 fuel-tensor/src/inference_context.rs	own		no lineage; 16 of 1705 lines verbatim in candle (1%)
 fuel-tensor/src/judge/cache.rs	own		no lineage; 0 of 41 lines verbatim in candle (0%)
