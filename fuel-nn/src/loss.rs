@@ -250,8 +250,10 @@ fn abs_diff_like_scalar(host: &Tensor, value: f64) -> Result<Tensor> {
             let t = host.const_f32_like(vec![value as f32; n], out_shape)?;
             t.to_dtype(DType::F64)
         }
-        DType::BF16 => host.const_bf16_like(vec![half::bf16::from_f64(value); n], out_shape),
-        DType::F16 => host.const_f16_like(vec![half::f16::from_f64(value); n], out_shape),
+        DType::BF16 => {
+            host.const_bf16_like(vec![fuel_ir::round::bf16_from_f64(value); n], out_shape)
+        }
+        DType::F16 => host.const_f16_like(vec![fuel_ir::round::f16_from_f64(value); n], out_shape),
         other => {
             Err(fuel_ir::error::Error::Msg(format!("huber: unsupported dtype {other:?}",)).bt())
         }

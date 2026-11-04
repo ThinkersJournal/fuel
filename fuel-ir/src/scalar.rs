@@ -129,8 +129,8 @@ impl Scalar {
             DType::I16 => Scalar::I16(v as i16),
             DType::I32 => Scalar::I32(v as i32),
             DType::I64 => Scalar::I64(v as i64),
-            DType::BF16 => Scalar::BF16(bf16::from_f64(v)),
-            DType::F16 => Scalar::F16(f16::from_f64(v)),
+            DType::BF16 => Scalar::BF16(crate::round::bf16_from_f64(v)),
+            DType::F16 => Scalar::F16(crate::round::f16_from_f64(v)),
             DType::F32 => Scalar::F32(v as f32),
             DType::F64 => Scalar::F64(v),
             DType::F8E4M3 => Scalar::F8E4M3(f8e4m3::from_f64(v)),
@@ -256,7 +256,7 @@ mod tests {
         assert_eq!(Scalar::one(DType::I64).unwrap(), Scalar::I64(1));
         assert_eq!(
             Scalar::from_f64(-1.0, DType::F16).unwrap(),
-            Scalar::F16(f16::from_f64(-1.0))
+            Scalar::F16(crate::round::f16_from_f64(-1.0))
         );
     }
 
