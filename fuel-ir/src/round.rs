@@ -61,23 +61,33 @@ fn round_to_bits(x: f64, m: u32, bias: i32, max_e: i32, inf: u16) -> u16 {
     let q_exp = e_top.max(emin) - m as i32;
     let s = q_exp - exp2; // always > 0: the target is much coarser than an f64
     debug_assert!(s > 0);
-    // `sig >> s` is the count of quanta; the discarded low bits decide the rounding. For s >= 54 the whole
-    // significand is below half a quantum, so the count is 0 (and `1 << s` would not fit a u64).
-    let n: u64 = if s >= 64 {
-        0
-    } else {
-        let q = sig >> s;
-        let rem = sig & ((1u64 << s) - 1);
-        let half = 1u64 << (s - 1);
-        if rem > half || (rem == half && (q & 1) == 1) {
-            q + 1
-        } else {
-            q
-        }
-    };
+    let n = rounded_quanta(sig, s as u32);
     if n == 0 {
         return sign;
     }
+    sign | encode_magnitude(n, e_top, emin, m, bias, max_e, inf)
+}
+
+/// `sig / 2^s` rounded to nearest, ties to even, as a count of quanta. For s >= 64 the whole significand is
+/// below half a quantum, so the count is 0 (and `1 << s` would not fit a u64).
+#[inline]
+fn rounded_quanta(sig: u64, s: u32) -> u64 {
+    if s >= 64 {
+        return 0;
+    }
+    let q = sig >> s;
+    let rem = sig & ((1u64 << s) - 1);
+    let half = 1u64 << (s - 1);
+    if rem > half || (rem == half && (q & 1) == 1) {
+        q + 1
+    } else {
+        q
+    }
+}
+
+/// The magnitude bits (no sign) for `n` quanta at binade `e_top`; overflow saturates to `inf`.
+#[inline]
+fn encode_magnitude(n: u64, e_top: i32, emin: i32, m: u32, bias: i32, max_e: i32, inf: u16) -> u16 {
     let mag: u64 = if e_top < emin {
         // Subnormal range: the count of quanta IS the encoding, and n == 2^m is exactly the smallest normal.
         n
@@ -89,11 +99,11 @@ fn round_to_bits(x: f64, m: u32, bias: i32, max_e: i32, inf: u16) -> u16 {
             nn = 1u64 << m;
         }
         if ee > max_e {
-            return sign | inf;
+            return inf;
         }
         (((ee + bias) as u64) << m) | (nn - (1u64 << m))
     };
-    sign | (mag as u16).min(inf)
+    (mag as u16).min(inf)
 }
 
 #[cfg(test)]
