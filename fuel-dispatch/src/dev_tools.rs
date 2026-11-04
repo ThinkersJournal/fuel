@@ -16,24 +16,26 @@ pub fn seed_cpu_ledger() {
     verify::seed_cpu_ledger::run_seed_cpu_ledger();
 }
 
-/// Re-seed the CUDA half of the verified ledger. Needs a live CUDA device.
+/// Re-seed the CUDA half of the verified ledger. Needs a live CUDA device. `register` is the baracuda
+/// registrar (`fuel_cuda_dispatch::register_baracuda_cuda_kernels`); `fuel-dispatch` cannot name it, so the
+/// `fuel-cuda-dev-tools` binary passes it in.
 #[cfg(feature = "cuda")]
-pub fn seed_cuda_ledger() {
-    verify::seed_cuda_ledger::run_seed_cuda_ledger();
+pub fn seed_cuda_ledger(register: fn(&mut crate::kernel::KernelBindingTable)) {
+    verify::seed_cuda_ledger::run_seed_cuda_ledger(register);
 }
 
 /// Earn the CUDA f32 matmul's `max_relative`/`max_absolute` ledger records (ROADMAP row 39).
 /// Needs a live CUDA device.
 #[cfg(feature = "cuda")]
-pub fn seed_cuda_accuracy() {
-    verify::seed_cuda_accuracy::run_seed_cuda_accuracy();
+pub fn seed_cuda_accuracy(register: fn(&mut crate::kernel::KernelBindingTable)) {
+    verify::seed_cuda_accuracy::run_seed_cuda_accuracy(register);
 }
 
 /// Measure the CUDA f32 accuracy claim and print; writes nothing (ROADMAP row 39). Needs a live
 /// CUDA device.
 #[cfg(feature = "cuda")]
-pub fn check_cuda_accuracy() {
-    verify::seed_cuda_accuracy::run_check_cuda_accuracy();
+pub fn check_cuda_accuracy(register: fn(&mut crate::kernel::KernelBindingTable)) {
+    verify::seed_cuda_accuracy::run_check_cuda_accuracy(register);
 }
 
 /// Re-seed the Vulkan half of the verified ledger. Needs a live Vulkan device. `register` is the Vulkan

@@ -17,7 +17,7 @@
 //!
 //! Mechanism (mirrors [`super::harness`], generalized from the single
 //! rope-apply contract to the WHOLE production CUDA binding table): register
-//! every CUDA kernel via [`crate::baracuda_dispatch::register_baracuda_cuda_kernels`],
+//! every CUDA kernel via `register` (the caller passes `fuel_cuda_dispatch::register_baracuda_cuda_kernels`),
 //! iterate `table.iter_entries()`, synthesize a per-`OpKind` probe, drive
 //! [`super::verify_bit_stability`] through a real [`super::CudaInvoker`] for
 //! `ITERS` repeat calls, and `upsert` a `pass`/`fail` record keyed on the
@@ -369,11 +369,12 @@ fn verified_at_string() -> String {
 /// `only` restricts to a subset of `OpKind`s (e.g. the decode-path set); pass
 /// `None` to sweep every registered CUDA kernel. Requires a live CUDA device.
 pub fn run_cuda_verification(
+    register: fn(&mut KernelBindingTable),
     only: Option<&[OpKind]>,
     force: bool,
 ) -> std::result::Result<(VerificationLedger, Vec<CudaSeedAttempt>), VerifyError> {
     let mut table = KernelBindingTable::new();
-    crate::baracuda_dispatch::register_baracuda_cuda_kernels(&mut table);
+    register(&mut table);
 
     let mut ledger =
         VerificationLedger::from_records(VerificationLedger::embedded().records().to_vec());
@@ -580,8 +581,8 @@ pub fn run_cuda_verification(
 ///
 /// Requires a live CUDA device (a maintenance tool, not a test). Run:
 ///   `cargo run -p fuel-dispatch --features dev-tools --bin fuel-dev-tools -- seed-cuda (with --features cuda)`
-pub(crate) fn run_seed_cuda_ledger() {
-    let (ledger, log) = run_cuda_verification(None, true).expect("cuda seeding runs");
+pub(crate) fn run_seed_cuda_ledger(register: fn(&mut KernelBindingTable)) {
+    let (ledger, log) = run_cuda_verification(register, None, true).expect("cuda seeding runs");
     for a in &log {
         println!(
             "[step3] {} {:?} (rev={}): {}",

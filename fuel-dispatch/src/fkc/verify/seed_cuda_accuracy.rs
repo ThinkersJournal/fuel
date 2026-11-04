@@ -180,9 +180,11 @@ fn device_name() -> String {
 
 /// Measure the registered CUDA f32 `MatMul`, `RmsNormLastDim` and `SoftmaxLastDim` on
 /// device 0. Returns the device name and the measurements.
-pub(crate) fn measure_cuda_f32_accuracy() -> Result<(String, Vec<OpAccuracy>), VerifyError> {
+pub(crate) fn measure_cuda_f32_accuracy(
+    register: fn(&mut KernelBindingTable),
+) -> Result<(String, Vec<OpAccuracy>), VerifyError> {
     let mut table = KernelBindingTable::new();
-    crate::baracuda_dispatch::register_baracuda_cuda_kernels(&mut table);
+    register(&mut table);
     let device = shared_device()?;
     let run = |entry: &BindingEntry, params: OpParams, inputs: &[HostTensor], shape: Vec<usize>| {
         let inv = CudaInvoker::new(device.clone(), DType::F32, shape).with_params(params);
@@ -244,10 +246,13 @@ pub(crate) fn measure_cuda_f32_accuracy() -> Result<(String, Vec<OpAccuracy>), V
 /// The registered f16 or bf16 CUDA `FlashAttn` decode kernel against the default placement
 /// bound. Evidence for `flash_decoding` only: no claim is earned, so `seed-cuda-accuracy` does
 /// not write it (`check-cuda-accuracy` prints and asserts it).
-fn measure_cuda_half_attention(dtype: DType) -> Result<OpAccuracy, VerifyError> {
+fn measure_cuda_half_attention(
+    register: fn(&mut KernelBindingTable),
+    dtype: DType,
+) -> Result<OpAccuracy, VerifyError> {
     use crate::ranker::filters::DEFAULT_ACCURACY_BOUND;
     let mut table = KernelBindingTable::new();
-    crate::baracuda_dispatch::register_baracuda_cuda_kernels(&mut table);
+    register(&mut table);
     let device = shared_device()?;
     let run = |entry: &BindingEntry, params: OpParams, inputs: &[HostTensor], shape: Vec<usize>| {
         let inv = CudaInvoker::new(device.clone(), dtype, shape).with_params(params);
@@ -293,10 +298,13 @@ fn measure_half_ops(
 
 /// The registered f16 or bf16 CUDA `MatMul`, `RmsNormLastDim` and `SoftmaxLastDim` against the
 /// default placement bound. Evidence only, like [`measure_cuda_half_attention`].
-fn measure_cuda_half_decode_ops(dtype: DType) -> Result<Vec<OpAccuracy>, VerifyError> {
+fn measure_cuda_half_decode_ops(
+    register: fn(&mut KernelBindingTable),
+    dtype: DType,
+) -> Result<Vec<OpAccuracy>, VerifyError> {
     use crate::ranker::filters::DEFAULT_ACCURACY_BOUND;
     let mut table = KernelBindingTable::new();
-    crate::baracuda_dispatch::register_baracuda_cuda_kernels(&mut table);
+    register(&mut table);
     let device = shared_device()?;
     let run = |entry: &BindingEntry, params: OpParams, inputs: &[HostTensor], shape: Vec<usize>| {
         let inv = CudaInvoker::new(device.clone(), dtype, shape).with_params(params);
@@ -334,12 +342,12 @@ fn print_run(name: &str, ops: &[OpAccuracy]) {
 /// Measure, print and WRITE the records through the one merging writer. Needs a live CUDA
 /// device. Run via `pwsh scripts/gpu-run.ps1 -Project fuel -- <fuel-dev-tools exe> seed-cuda-accuracy`.
 #[cfg(feature = "dev-tools")]
-pub(crate) fn run_seed_cuda_accuracy() {
+pub(crate) fn run_seed_cuda_accuracy(register: fn(&mut KernelBindingTable)) {
     // The dtype list is part of a section's revision hash, so splitting a section re-keyed every
     // entry of its op: earn `bit_stable_on_same_hardware` for the entries that lack
     // a pass at their current hash (`force = false` leaves every other kernel's record alone).
     let (ledger, log) =
-        super::seed_cuda_ledger::run_cuda_verification(Some(&measured_ops()), false)
+        super::seed_cuda_ledger::run_cuda_verification(register, Some(&measured_ops()), false)
             .expect("cuda bit-stability seeding runs");
     for a in &log {
         println!(
@@ -351,7 +359,8 @@ pub(crate) fn run_seed_cuda_accuracy() {
         log.iter().all(|a| !a.outcome.starts_with("fail")),
         "a kernel failed bit-stability; see the log above"
     );
-    let (name, ops) = measure_cuda_f32_accuracy().expect("cuda f32 accuracy measurement runs");
+    let (name, ops) =
+        measure_cuda_f32_accuracy(register).expect("cuda f32 accuracy measurement runs");
     print_run(&name, &ops);
     let recs = records(&name, &ops);
     assert!(
@@ -376,12 +385,15 @@ pub(crate) fn run_seed_cuda_accuracy() {
 /// Measure and print against the claims, WRITING NOTHING. Exits non-zero when any measurement
 /// exceeds its claim.
 #[cfg(feature = "dev-tools")]
-pub(crate) fn run_check_cuda_accuracy() {
-    let (name, ops) = measure_cuda_f32_accuracy().expect("cuda f32 accuracy measurement runs");
+pub(crate) fn run_check_cuda_accuracy(register: fn(&mut KernelBindingTable)) {
+    let (name, ops) =
+        measure_cuda_f32_accuracy(register).expect("cuda f32 accuracy measurement runs");
     print_run(&name, &ops);
     let attention: Vec<OpAccuracy> = [DType::F16, DType::BF16]
         .into_iter()
-        .map(|d| measure_cuda_half_attention(d).expect("cuda half attention measurement runs"))
+        .map(|d| {
+            measure_cuda_half_attention(register, d).expect("cuda half attention measurement runs")
+        })
         .collect();
     print_run(&name, &attention);
     // Printed, NOT asserted: no half-precision claim is earned (bf16 rounding alone exceeds the
@@ -391,7 +403,7 @@ pub(crate) fn run_check_cuda_accuracy() {
         println!("[row-39] dtype {d:?} decode-path ops");
         // A half gemm launch failure (GAP-370; the shared device avoids the known cause) is
         // reported, and the run goes on, since this evidence is not asserted.
-        match measure_cuda_half_decode_ops(d) {
+        match measure_cuda_half_decode_ops(register, d) {
             Ok(ops) => print_run(&name, &ops),
             Err(e) => println!("[row-39] {d:?} decode-path ops NOT MEASURED (GAP-370): {e:?}"),
         }

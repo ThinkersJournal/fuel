@@ -32,3 +32,12 @@ cuda = [
     "fuel-dispatch/cuda",
     "fuel-memory/cuda",
 ]
+
+# Maintenance tools that rewrite the committed verified ledger (the CUDA half). NOT part of the supported API:
+# semver-exempt, off by default.
+dev-tools = ["fuel-dispatch/dev-tools"]
+
+[[bin]]
+name = "fuel-cuda-dev-tools"
+path = "src/bin/fuel-cuda-dev-tools.rs"
+required-features = ["cuda", "dev-tools"]
