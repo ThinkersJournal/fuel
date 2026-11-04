@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.39.3 - 2026-11-04 (provisional; the PM allocates; was 0.38.2, then 0.39.1, before #613 took 0.39.2)
+
+### Fixed
+
+- `fuel-ir`: new `fuel_ir::round::{f16_from_f64, bf16_from_f64}`, exact round-to-nearest-even, and **every f64 -> f16 / bf16 conversion in Fuel now uses them** (26 sites in fuel-ir, fuel-graph, fuel-nn, fuel-cpu-backend, fuel-dispatch, fuel-tensor, including the two `with_dtype!` macros, `Scalar::from_f64` and the F16/BF16 oracle in `fuel-dispatch/src/fkc/verify/exact_ref.rs`). Cause: `half` 2.7.1 (`half::f16::from_f64`, `half::bf16::from_f64`) mis-rounds values that sit very close to, but not on, a tie between two neighbours (it rounds them as if on the tie). Measured on x86_64 Windows against two independent exact oracles (`fuel-ir/tests/f64_to_half_rounding.rs`, ~3.2M probes per format, the oracles agree on every probe): f16 0.0056% of ordinary random f64 inputs mis-round (45 of 800,000; 378,428 of 3,187,216 dense near-tie probes), bf16 0.0060% (48 of 800,000; 195,774 of 3,232,016); failures lie within about 6.1e-5 (f16) / 1.2e-4 (bf16) of the spacing from a tie, never exactly on one. The value reported as 0.04518128032270489 does NOT mis-round on this box (half returns 0x29c9, correct); the defect is real but is a different set of inputs. Not Breaking: no signature changes; a conversion result changes by one ulp for those rare inputs, toward the correctly rounded value. Two tests assert the `half` defect is still present and go red when upstream fixes it. Re-seeding the CPU ledger (`fuel-dev-tools seed-cpu`) with the fixed F16/BF16 oracle moved 0 of 283 `max_ulp` records; that is a null on a thin sample (random probes at a ~0.006% hit rate), not proof, and the 38 `vulkan-slang` (and any CUDA) F16/BF16 records were not reseeded (GAP-373). Which `half` path ran: f16 on this host is expected to be the f16c hardware route (f64 -> f32 -> f16, double rounding), not measured per branch; bf16 and the f16 fallback truncate the low 32 mantissa bits; the fix does not depend on the path. The f32 -> f16/bf16 path (`from_f32`) was not swept.
+
 ## v0.39.2 - 2026-11-03 (provisional; the PM allocates)
 
 ### Fixed

@@ -12135,8 +12135,8 @@ fn build_filled_const(graph: &SharedGraph, shape: Shape, dtype: DType, value: f6
     let buf = match dtype {
         DType::F32 => fuel_ir::HostBuffer::F32(vec![value as f32; n]),
         DType::F64 => fuel_ir::HostBuffer::F64(vec![value; n]),
-        DType::BF16 => fuel_ir::HostBuffer::BF16(vec![bf16::from_f64(value); n]),
-        DType::F16 => fuel_ir::HostBuffer::F16(vec![f16::from_f64(value); n]),
+        DType::BF16 => fuel_ir::HostBuffer::BF16(vec![fuel_ir::round::bf16_from_f64(value); n]),
+        DType::F16 => fuel_ir::HostBuffer::F16(vec![fuel_ir::round::f16_from_f64(value); n]),
         other => panic!(
             "backward: build_filled_const: unsupported dtype {other:?} \
              (gradients are always floats — this would indicate a bug in \

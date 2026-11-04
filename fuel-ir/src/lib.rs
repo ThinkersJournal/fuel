@@ -41,6 +41,7 @@ pub mod op;
 pub mod probe;
 pub mod quant_scale;
 pub mod quantized;
+pub mod round;
 pub mod scalar;
 pub mod shape;
 pub mod storage;
