@@ -348,6 +348,10 @@ fn judge(name: &str, f: Fmt, convert: impl Fn(f64) -> u32) -> usize {
 /// is STILL there; when upstream is fixed it goes red: delete `fuel-ir/src/round.rs`, point the sites back at
 /// `half`, and delete this pair.
 #[test]
+#[cfg_attr(
+    target_arch = "aarch64",
+    ignore = "half 2.7.1 uses the hardware fcvt on aarch64, which rounds f64->f16 exactly: the defect is x86-only (macOS CI)"
+)]
 fn half_f16_defect_is_still_present() {
     let n = judge("half::f16::from_f64", F16, |x| {
         f16::from_f64(x).to_bits() as u32
