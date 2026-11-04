@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! One-time install of the vendor CPU BLAS kernels (oneMKL behind the `onemkl` feature, AOCL behind `aocl`) into the
-//! global binding table (ROADMAP row 66).
+//! One-time install of the kernels that live ABOVE `fuel-dispatch` into the global binding table: the vendor CPU
+//! BLAS kernels (oneMKL behind the `onemkl` feature, AOCL behind `aocl`; ROADMAP row 66) and the Vulkan kernels
+//! (`fuel-vulkan-dispatch`, behind `vulkan`; ROADMAP row 137 step 6.1).
+//!
+//! **Order matters (the snapshot hazard).** [`ensure_installed`] runs immediately BEFORE the bridge takes its
+//! snapshot of the global table. An extension publishes a new table for later readers; a snapshot already taken
+//! keeps the old one, so a kernel installed after it is invisible to that realize with no error. The Vulkan
+//! install is therefore NOT optional in this function, and `tests/vulkan_install_before_snapshot.rs` fails if it is
+//! removed or moved after the snapshot.
 //!
 //! `fuel_mkl_cpu_backend::register_mkl_cpu_kernels` had no production caller: building with
 //! `--features onemkl` linked the backend and then never offered its matmul to the judge. The
@@ -49,6 +56,9 @@ static AOCL: OnceLock<AccelStatus> = OnceLock::new();
 
 /// Install every enabled vendor CPU backend, once. Cheap after the first call.
 pub(crate) fn ensure_installed() {
+    // Vulkan kernels (idempotent: `install_global` is once-only). With the `vulkan` feature off there is nothing here.
+    #[cfg(feature = "vulkan")]
+    fuel_vulkan_dispatch::install_global();
     #[cfg(feature = "onemkl")]
     {
         install_once(

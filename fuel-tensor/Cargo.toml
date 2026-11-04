@@ -38,6 +38,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 fuel-cuda-backend = { workspace = true, optional = true }
 fuel-vulkan-backend = { workspace = true, optional = true }
+fuel-vulkan-dispatch = { workspace = true, optional = true }
 fuel-metal-backend = { workspace = true, optional = true }
 fuel-metal-kernels = { workspace = true, optional = true }
 objc2-metal = { workspace = true, optional = true }
@@ -113,4 +114,4 @@ metal = [
     "fuel-memory/metal",
 ]
 
-vulkan = ["dep:fuel-vulkan-backend", "fuel-dispatch/vulkan", "fuel-memory/vulkan", "fuel-hardware/vulkan"]
+vulkan = ["dep:fuel-vulkan-backend", "dep:fuel-vulkan-dispatch", "fuel-dispatch/vulkan", "fuel-memory/vulkan", "fuel-hardware/vulkan"]

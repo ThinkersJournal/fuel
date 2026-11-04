@@ -11,17 +11,13 @@
 //! default `cargo test` stays green on CI without a GPU; run with
 //! `--include-ignored` for the GPU sweep.
 
-#![cfg(feature = "vulkan")]
-
 use std::sync::{Arc, RwLock};
 
-use fuel_dispatch::{
-    kernel::{KernelBindingTable, OpParams},
-    vulkan_dispatch::register_vulkan_kernels,
-};
+use fuel_dispatch::kernel::{KernelBindingTable, OpParams};
 use fuel_ir::{DType, Layout, Shape, dispatch::OpKind, probe::BackendId};
 use fuel_memory::{BackendStorage, Storage};
 use fuel_vulkan_backend::VulkanBackend;
+use fuel_vulkan_dispatch::vulkan_dispatch::register_vulkan_kernels;
 
 fn backend_or_skip() -> Option<Arc<VulkanBackend>> {
     VulkanBackend::new().ok().map(Arc::new)

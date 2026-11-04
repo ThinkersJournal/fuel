@@ -70,8 +70,6 @@ pub(crate) mod verify;
 // Tests exercise its guards; the `dev-tools` binary drives its two GAP-228 tools.
 #[cfg(any(test, feature = "dev-tools"))]
 pub(crate) mod contract_audit_flip;
-#[cfg(feature = "vulkan")]
-mod vulkan_link;
 mod warn;
 
 pub use caps_map::{ResolvedLayout, Tri, is_generic_contract};
@@ -119,10 +117,6 @@ pub use shape_constraint::{
     parse_shape_constraint, solve_probe_shapes,
 };
 pub use validate::{FKC_SUPPORTED_VERSIONS, validate_file, validate_kernel};
-#[cfg(feature = "vulkan")]
-pub use vulkan_link::{
-    VULKAN_CAST_ENTRY_POINTS, VULKAN_ELEMENTWISE_ENTRY_POINTS, VulkanLinkRegistry,
-};
 pub use warn::ImportWarning;
 
 #[cfg(test)]

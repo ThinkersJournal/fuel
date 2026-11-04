@@ -1307,7 +1307,7 @@ impl KernelBindingTable {
     /// Per-backend variant of [`Self::fill_unset_cpu_cost`]. Walks
     /// every alternative whose backend matches `backend` and replaces
     /// `unknown_cost` entries with the dispatcher's choice for the
-    /// op. Used by [`crate::vulkan_dispatch::register_vulkan_kernels`]
+    /// op. Used by `fuel_vulkan_dispatch::register_vulkan_kernels`
     /// to bulk-fill cost functions after per-kernel precision
     /// registration; future MKL/AOCL/Metal backends register through
     /// this same helper.

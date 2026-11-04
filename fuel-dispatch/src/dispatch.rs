@@ -8069,10 +8069,19 @@ fn register_derived_gpu_caps(table: &KernelBindingTable) {
         .filter(|b| *b != BackendId::Cpu)
         .collect();
     for backend in gpu_backends {
-        // The backend's default place (GPU ordinal 0, or the CPU); one definition in `fuel-ir`.
-        let device_location = backend.default_location();
-        register_backend_capabilities(derive_backend_caps(backend, device_location, table));
+        register_derived_caps_for(backend, table);
     }
+}
+
+/// Derive and register the `BackendCapabilities` for ONE backend from the kernels `table` holds for it
+/// (the per-backend step of [`register_derived_gpu_caps`]). A backend whose kernels are added to the
+/// global table later, through [`extend_global_bindings`], calls this once from inside its extender
+/// (ROADMAP row 137 step 6.1: `fuel-vulkan-dispatch`), because the init boundary no longer sees it.
+/// The capability registry appends and lookups pick the first match, so call it exactly once per backend.
+pub fn register_derived_caps_for(backend: BackendId, table: &KernelBindingTable) {
+    // The backend's default place (GPU ordinal 0, or the CPU); one definition in `fuel-ir`.
+    let device_location = backend.default_location();
+    register_backend_capabilities(derive_backend_caps(backend, device_location, table));
 }
 
 /// Read-lock the process-wide capability registry. CPU is auto-
@@ -8181,10 +8190,9 @@ fn register_optional_backends(table: &mut KernelBindingTable) {
         // even a *capped* CUDA candidate would price at zero.
         table.fill_unset_cost_for_backend(BackendId::Cuda, crate::cost::default_cost_for_op_kind);
     }
-    #[cfg(feature = "vulkan")]
-    {
-        crate::vulkan_dispatch::register_vulkan_kernels(table);
-    }
+    // Vulkan is NOT registered here any more (ROADMAP row 137 step 6.1): its kernels live in
+    // `fuel-vulkan-dispatch`, above this crate, and reach the global table through
+    // `extend_global_bindings` (`fuel_vulkan_dispatch::install_global`, called by `fuel-tensor`).
 
     // FKC cost unification — Part A. Now that every compiled-in
     // backend's kernels are registered (and their cost fns filled),

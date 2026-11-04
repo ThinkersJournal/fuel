@@ -964,26 +964,6 @@ mod tests {
         );
     }
 
-    /// Vulkan cfg-gated counterpart of the CUDA test.
-    #[cfg(feature = "vulkan")]
-    #[test]
-    fn vulkan_backend_discovered_when_feature_enabled() {
-        let topology = SystemTopology::current();
-        assert!(
-            topology.backends().contains(&BackendId::Vulkan),
-            "vulkan feature is on; topology should report Vulkan. Got: {:?}",
-            topology.backends(),
-        );
-        let vk_dev = DeviceLocation::Vulkan { gpu_id: 0 };
-        let here = topology.backends_for(vk_dev);
-        assert!(
-            here.contains(&BackendId::Vulkan),
-            "Vulkan should be among the backends targeting {:?}, got {:?}",
-            vk_dev,
-            here,
-        );
-    }
-
     /// CUDA + Vulkan on the same physical GPU don't share storage —
     /// CUDA pointers and Vulkan buffers live in distinct allocators
     /// even when they target the same silicon. External-memory

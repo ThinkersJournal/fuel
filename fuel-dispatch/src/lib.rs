@@ -149,7 +149,6 @@ pub mod runtime_fused_pathfinder;
 pub mod telemetry;
 pub mod topology;
 pub mod variant_bake;
-pub mod vulkan_dispatch;
 
 pub use compiled::{
     CompiledNode, Completion, CompletionHandle, compile_node, dispatched_kernel_ident,

@@ -9,17 +9,13 @@
 //! default `cargo test` doesn't require a GPU; run with
 //! `--include-ignored` for the GPU sweep.
 
-#![cfg(feature = "vulkan")]
-
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, RwLock};
 
-use fuel_dispatch::{
-    kernel::{KernelBindingTable, MatmulM, OpParams},
-    vulkan_dispatch::register_vulkan_kernels,
-};
+use fuel_dispatch::kernel::{KernelBindingTable, MatmulM, OpParams};
 use fuel_ir::{DType, Layout, Shape, dispatch::OpKind, probe::BackendId};
 use fuel_memory::{BackendStorage, Storage, alloc_cpu_zeroed};
 use fuel_vulkan_backend::VulkanBackend;
+use fuel_vulkan_dispatch::vulkan_dispatch::register_vulkan_kernels;
 
 /// A serialized handle to the shared Vulkan backend for one live test.
 ///

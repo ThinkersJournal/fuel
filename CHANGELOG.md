@@ -1,6 +1,14 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.40.0 - 2026-11-04 (provisional; the PM allocates; was 0.39.0 before #613 took 0.39.2)
+
+### Breaking
+
+- **New crate `fuel-vulkan-dispatch`** (ROADMAP row 137 step 6.1, design A of `docs/design-notes/2026-11-03-row137-step6-plan.md`): the Vulkan kernel bindings moved out of `fuel-dispatch` to a crate ABOVE it, the way `fuel-aocl-cpu-backend` and `fuel-mkl-cpu-backend` sit. Moved unchanged: `vulkan_dispatch.rs` (8,503 lines), the FKC link registry (`VulkanLinkRegistry`, `VULKAN_CAST_ENTRY_POINTS`, `VULKAN_ELEMENTWISE_ENTRY_POINTS`), the 22 `kernel-contracts/vulkan/*.fkc.md` files (so the `include_str!` paths stay valid and the crate packages), 3 live test files and 2 examples. **`fuel-dispatch` no longer registers Vulkan kernels and no longer has `vulkan_dispatch`, `fkc::VulkanLinkRegistry` or the two link constants.** A program that used them must depend on `fuel-vulkan-dispatch` and call `fuel_vulkan_dispatch::install_global()` once before the global binding table is read (`fuel-tensor` does it in `cpu_accel::ensure_installed`, right before the bridge's snapshot); one that builds its own `KernelBindingTable` calls `fuel_vulkan_dispatch::register_vulkan_kernels(&mut table)`.
+- **Breaking, smaller:** `fuel_dispatch::dev_tools::{seed_vulkan_ledger, seed_vulkan_matmul_accuracy, check_vulkan_accuracy}` now take the registrar as a parameter (the three `seed-vulkan*` subcommands of `fuel-dev-tools` moved to the new `fuel-vulkan-dev-tools` binary); `fuel_dispatch::dispatch::register_derived_caps_for(backend, table)` is new and public (the per-backend step the init boundary used to run for Vulkan); `fuel_dispatch::dev_tools::vulkan_verify_only_on` is new (hidden, `dev-tools`); `fuel_vulkan_backend::contiguize_vulkan` is new (moved from `vulkan_dispatch`: it uses only backend APIs and the executor calls it).
+- **Verified, not argued:** the binding table is byte-identical before and after (275 Vulkan entries, same SHA-256 of the sorted `op dtypes backend source generic revision-hash` dump; kept as `fuel-vulkan-dispatch/tests/golden/vulkan_binding_census.txt` with a test); test-name parity against the base commit (0 tests lost, 5 new); `fuel-tensor/tests/vulkan_install_before_snapshot.rs` fails if the install is removed or runs after the snapshot (each sabotage applied and seen red); 203 live tests, 2 examples and the `fuel-tensor` Vulkan bridge test pass under `gpu-run` on an RTX 4070 + AMD iGPU box. **Not CUDA-touching, so no CUDA hand compile.** The new tests moved with the code carried `#![cfg(feature = "vulkan")]`; that gate was removed (this crate has no such feature) or they would have compiled to nothing.
+
 ## v0.39.3 - 2026-11-04 (provisional; the PM allocates; was 0.38.2, then 0.39.1, before #613 took 0.39.2)
 
 ### Fixed

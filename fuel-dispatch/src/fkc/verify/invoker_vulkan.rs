@@ -169,11 +169,33 @@ mod tests {
             }
         };
         let backend = Arc::new(backend);
-        // The real Vulkan add wrapper (`fkc::vulkan_link::VULKAN_BINARY_ENTRY_POINTS`'s
-        // `add_f32` entry point) — NOT the CPU wrapper, which would error on
-        // Vulkan-resident storage.
+        // A Vulkan add kernel — NOT the CPU wrapper, which would error on Vulkan-resident storage. It is
+        // a local copy of the body of `fuel-vulkan-dispatch`'s `binary::add_f32` (that module sits above
+        // this crate since ROADMAP row 137 step 6.1, so this test cannot name it); the point here is the
+        // invoker's upload, call and download path, not the wrapper.
+        fn add_f32_via_backend(
+            inputs: &[std::sync::Arc<std::sync::RwLock<fuel_memory::Storage>>],
+            outputs: &mut [std::sync::Arc<std::sync::RwLock<fuel_memory::Storage>>],
+            layouts: &[fuel_ir::Layout],
+            _params: &crate::kernel::OpParams,
+        ) -> fuel_ir::Result<()> {
+            use crate::dispatch::{read_storage, write_storage};
+            use fuel_memory::BackendStorage as B;
+            let (a_guard, b_guard) = (read_storage(&inputs[0])?, read_storage(&inputs[1])?);
+            let mut out_guard = write_storage(&outputs[0])?;
+            let (B::Vulkan(a), B::Vulkan(b)) = (&a_guard.inner, &b_guard.inner) else {
+                return Err(fuel_ir::Error::Msg("test add kernel: non-Vulkan input".into()).bt());
+            };
+            let B::Vulkan(out) = &mut out_guard.inner else {
+                return Err(fuel_ir::Error::Msg("test add kernel: non-Vulkan output".into()).bt());
+            };
+            let backend = a.backend().ok_or_else(|| {
+                fuel_ir::Error::Msg("test add kernel: input has no backend handle".into()).bt()
+            })?;
+            backend.binary_f32_bytes(0, "binary_add_f32", a, b, out, &layouts[0], &layouts[1])
+        }
         let e = crate::kernel::BindingEntry {
-            kernel: crate::vulkan_dispatch::binary::add_f32,
+            kernel: add_f32_via_backend,
             caps: crate::kernel::KernelCaps::empty(),
             precision: crate::fused::PrecisionGuarantee::UNAUDITED,
             cost: crate::kernel::unknown_cost,

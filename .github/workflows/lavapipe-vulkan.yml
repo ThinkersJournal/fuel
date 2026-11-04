@@ -16,7 +16,7 @@ on:
       - "fuel-kernels-source/**"
       - "fuel-vulkan-kernels/**"
       - "fuel-vulkan-backend/**"
-      - "fuel-dispatch/tests/vulkan_dispatch_live.rs"
+      - "fuel-vulkan-dispatch/**"
 
 permissions:
   contents: read
@@ -53,7 +53,7 @@ jobs:
       - name: cargo test (live Vulkan tests, every one, failures do not stop the run)
         run: |
           set -o pipefail
-          cargo test -j 2 --locked -p fuel-dispatch --features vulkan --test vulkan_dispatch_live --no-fail-fast -- --ignored --test-threads=1             --skip vulkan_dispatch_conv2d_bf16 --skip vulkan_dispatch_conv2d_f16 2>&1 | tee lavapipe.log
+          cargo test -j 2 --locked -p fuel-vulkan-dispatch --test vulkan_dispatch_live --no-fail-fast -- --ignored --test-threads=1             --skip vulkan_dispatch_conv2d_bf16 --skip vulkan_dispatch_conv2d_f16 2>&1 | tee lavapipe.log
           grep -E "^test result" lavapipe.log
 
       - name: The two skipped tests still fail on Lavapipe (a skip must redden when its cause goes)
@@ -61,7 +61,7 @@ jobs:
         run: |
           still_failing=0
           for t in vulkan_dispatch_conv2d_bf16 vulkan_dispatch_conv2d_f16; do
-            if cargo test -j 2 --locked -p fuel-dispatch --features vulkan --test vulkan_dispatch_live -- --ignored --exact "$t"; then
+            if cargo test -j 2 --locked -p fuel-vulkan-dispatch --test vulkan_dispatch_live -- --ignored --exact "$t"; then
               echo "::error::$t PASSES on Lavapipe now: remove its --skip from the step above and this list"
               still_failing=1
             else

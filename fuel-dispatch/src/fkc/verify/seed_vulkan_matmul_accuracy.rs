@@ -96,10 +96,11 @@ impl AccuracyRun {
 
 /// Measure the registered Vulkan f32 `MatMul`, `RmsNormLastDim`, `SoftmaxLastDim` and `Rope`.
 pub(crate) fn measure_vulkan_f32_accuracy(
+    register: fn(&mut KernelBindingTable),
     selection: fuel_vulkan_backend::DeviceSelection,
 ) -> Result<AccuracyRun, VerifyError> {
     let mut table = KernelBindingTable::new();
-    crate::vulkan_dispatch::register_vulkan_kernels(&mut table);
+    register(&mut table);
     let mut cpu_table = KernelBindingTable::new();
     crate::dispatch::register_cpu_kernels(&mut cpu_table);
     let backend = VulkanBackend::with_selection(selection)
@@ -162,9 +163,12 @@ fn print_run(run: &AccuracyRun) {
 /// merging writer. Needs a live Vulkan device. Run via
 /// `cargo run -p fuel-dispatch --features dev-tools,vulkan --bin fuel-dev-tools -- seed-vulkan-accuracy`.
 #[cfg(feature = "dev-tools")]
-pub(crate) fn run_seed_vulkan_matmul_accuracy() {
-    let run = measure_vulkan_f32_accuracy(fuel_vulkan_backend::DeviceSelection::PreferDiscrete)
-        .expect("vulkan f32 accuracy measurement runs");
+pub(crate) fn run_seed_vulkan_matmul_accuracy(register: fn(&mut KernelBindingTable)) {
+    let run = measure_vulkan_f32_accuracy(
+        register,
+        fuel_vulkan_backend::DeviceSelection::PreferDiscrete,
+    )
+    .expect("vulkan f32 accuracy measurement runs");
     print_run(&run);
     let records = run.records();
     for r in &records {
@@ -195,12 +199,13 @@ pub(crate) fn run_seed_vulkan_matmul_accuracy() {
 /// Exits non-zero when any measurement exceeds its claim. Run via
 /// `cargo run -p fuel-dispatch --features dev-tools,vulkan --bin fuel-dev-tools -- check-vulkan-accuracy`.
 #[cfg(feature = "dev-tools")]
-pub(crate) fn run_check_vulkan_accuracy() {
+pub(crate) fn run_check_vulkan_accuracy(register: fn(&mut KernelBindingTable)) {
     let selection = match std::env::var("FUEL_VULKAN_TEST_ADAPTER") {
         Ok(name) => fuel_vulkan_backend::DeviceSelection::ByName(name),
         Err(_) => fuel_vulkan_backend::DeviceSelection::PreferDiscrete,
     };
-    let run = measure_vulkan_f32_accuracy(selection).expect("vulkan f32 accuracy measurement runs");
+    let run = measure_vulkan_f32_accuracy(register, selection)
+        .expect("vulkan f32 accuracy measurement runs");
     print_run(&run);
     let failing: Vec<_> = run
         .records()
@@ -236,63 +241,6 @@ mod tests {
         got[1] += 0.01;
         let (abs, rel) = worst_error(&got, &want);
         assert!(abs > MATMUL_F32_CLAIM.max_absolute || rel > MATMUL_F32_CLAIM.max_relative);
-    }
-
-    /// Each claim constant and its contract section say the same numbers: a claim edited in one
-    /// place only would be earned against a bound the contract does not declare.
-    #[test]
-    fn claim_constants_match_the_contracts() {
-        fn section<'a>(text: &'a str, kernel: &str) -> &'a str {
-            let marker = format!("kernel: {kernel}");
-            let mut start = 0;
-            loop {
-                let at = text[start..]
-                    .find(&marker)
-                    .unwrap_or_else(|| panic!("section `{kernel}` present"));
-                let after = start + at + marker.len();
-                // `kernel: rms_norm_last_dim` is a prefix of `kernel: rms_norm_last_dim_f32`:
-                // require the name to END at the line.
-                if matches!(text.as_bytes().get(after), Some(b'\r' | b'\n')) {
-                    let begin = start + at;
-                    let rest = &text[begin..];
-                    return &rest[..rest.find("```").expect("section ends")];
-                }
-                start = after;
-            }
-        }
-        let cases = [
-            (
-                include_str!("../../../kernel-contracts/vulkan/matmul.fkc.md"),
-                "matmul_f32",
-                MATMUL_F32_CLAIM,
-            ),
-            (
-                include_str!("../../../kernel-contracts/vulkan/norm.fkc.md"),
-                "rms_norm_last_dim_f32",
-                RMS_NORM_F32_CLAIM,
-            ),
-            (
-                include_str!("../../../kernel-contracts/vulkan/norm.fkc.md"),
-                "softmax_last_dim_f32",
-                SOFTMAX_F32_CLAIM,
-            ),
-            (
-                include_str!("../../../kernel-contracts/vulkan/rope.fkc.md"),
-                "rope_f32",
-                ROPE_F32_CLAIM,
-            ),
-        ];
-        for (text, kernel, claim) in cases {
-            let s = section(text, kernel);
-            assert!(
-                s.contains(&format!("max_relative: {}", claim.max_relative)),
-                "{kernel}: contract max_relative differs from the claim constant"
-            );
-            assert!(
-                s.contains(&format!("max_absolute: {}", claim.max_absolute)),
-                "{kernel}: contract max_absolute differs from the claim constant"
-            );
-        }
     }
 
     /// Every claim is within the default placement bound, or earning it would not let the

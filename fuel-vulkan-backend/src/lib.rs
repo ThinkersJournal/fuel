@@ -17,7 +17,7 @@ mod recorder;
 pub mod residency;
 pub mod spirv_caps;
 
-pub use byte_storage::VulkanStorageBytes;
+pub use byte_storage::{VulkanStorageBytes, contiguize_vulkan};
 pub use capture::CapturedRun;
 pub use dyn_impl::VulkanBackendDevice;
 pub use mapped_meter::{
