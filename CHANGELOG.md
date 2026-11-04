@@ -1,6 +1,12 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.39.2 - 2026-11-03 (provisional; the PM allocates)
+
+### Fixed
+
+- `fuel-dispatch` verification ledger (GAP-374): the record key now includes the op name (`kernel_ref`). Before, `(backend, dtypes, kernel_revision_hash, claim)` was the whole key, and `kernel_revision_hash` is 0 for `ArgMaxDim`/`ArgMinDim` and for `Tril`/`Triu`/`Copy`, so the later writer erased the earlier op's verdict and one op's pass could stand for another. `VerificationLedger::upsert` keys on the op name too; `merge` drops a same-key record whose op is not in the fresh batch (a stale label); `has_pass` answers true only when every record under the key passes; new `has_pass_for(kernel_ref, ...)` is the exact per-op question. The checked-in `fkc-verified-ledger.json` was re-seeded (`fuel-dev-tools seed-cpu`): 1847 -> 1863 records (the 6 colliding keys now hold one record per op), the 16 records carrying pre-#279 gelu names are relabelled, no verdict changed (same result on all 1847 old keys). Records were also reordered (upsert appends), so the file diff is large. New tests fail when two ops share a key (`the_embedded_ledger_has_one_verdict_per_op`) and when a sibling's verdict can stand in for another op's. Not Breaking: `has_pass` is stricter only where records disagree.
+
 ## v0.38.1 - 2026-11-03
 
 ### Added
