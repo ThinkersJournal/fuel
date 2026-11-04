@@ -182,6 +182,10 @@ impl VerificationLedger {
 
     /// Like [`Self::has_pass`] but for ONE named op/kernel (`kernel_ref`): only that op's own
     /// record answers. A sibling op's pass under the same hash does not count (GAP-374).
+    ///
+    /// Test-only for now: no production caller knows a ledger `kernel_ref` (it is `vulkan-slang` or
+    /// `baracuda` for GPU records, an op name only for CPU ones), so non-test builds would flag it dead.
+    #[cfg(test)]
     pub fn has_pass_for(
         &self,
         kernel_ref: &str,
