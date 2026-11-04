@@ -11,7 +11,6 @@
 //! macros — adding a new (op, dtype) entry is one manifest line
 //! here + one matching line in `fuel-cuda-backend::baracuda`.
 
-#![cfg(feature = "cuda")]
 
 use std::sync::{Arc, RwLock};
 
@@ -19,12 +18,12 @@ use fuel_ir::DType;
 use fuel_ir::dispatch::OpKind;
 use fuel_ir::{Error, Layout, Result, probe::BackendId};
 
-use crate::kernel::{KernelBindingTable, OpParams};
+use fuel_dispatch::kernel::{KernelBindingTable, OpParams};
 use fuel_memory::Storage;
 
 // Re-use the storage-helpers from dispatch.rs so we read/write
 // CudaStorageBytes the same way the PTX wrappers do.
-use crate::dispatch::{cuda_input, cuda_output, read_storage, write_storage};
+use fuel_dispatch::dispatch::{cuda_input, cuda_output, read_storage, write_storage};
 
 /// Generate one CUDA unary dispatch wrapper that adapts a baracuda
 /// `fn(&CudaStorageBytes, Option<&Layout>) -> Result<CudaStorageBytes>`
@@ -923,7 +922,7 @@ pub mod qmatmul {
                     .checked_mul(std::mem::size_of::<f32>())
                     .ok_or_else(overflow)?,
             );
-            crate::dispatch::qmatmul_cpu_by_type(
+            fuel_dispatch::dispatch::qmatmul_cpu_by_type(
                 q,
                 &act_cpu,
                 &w_cpu,
@@ -2693,7 +2692,7 @@ pub mod affine {
 // `fuel_cuda_backend::baracuda::cast::dispatch`, which picks the right
 // FFI symbol from the 8×8 baracuda surface. One wrapper, many
 // (per-pair) binding-table entries — same pattern as the PTX-backed
-// `cast_cuda_wrapper` in [`crate::dispatch`].
+// `cast_cuda_wrapper` in `fuel_dispatch::dispatch`.
 
 pub mod cast {
     use super::*;
@@ -3471,7 +3470,7 @@ const CUDA_CAST_CONTRACT: &str = include_str!("../kernel-contracts/cuda/cast.fkc
 /// fanning its `src` operand over the accepted sources (§3.4 dtype fan-out) and
 /// pinning a `fixed(DST)` output, so the importer resolves
 /// `cast_to_<dst>_<src_suffix>` through the production
-/// [`crate::fkc::CudaLinkRegistry`] and keys `[SRC, DST]` — byte-for-byte the
+/// [`crate::link::CudaLinkRegistry`] and keys `[SRC, DST]` — byte-for-byte the
 /// deleted regs. Because the CUDA cast is a SINGLE wrapper (it reads both dtypes
 /// off the in/out Storage and dispatches into baracuda's 8×8 FFI), every one of
 /// the 70 fanned symbols resolves to the SAME fn-pointer — a synthetic-base
@@ -3495,7 +3494,7 @@ const CUDA_CAST_CONTRACT: &str = include_str!("../kernel-contracts/cuda/cast.fkc
 /// here via `expect` (mirroring the CPU / Vulkan convention); it cannot fail for a
 /// runtime-data reason.
 fn register_cuda_cast_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(CUDA_CAST_CONTRACT, &crate::fkc::CudaLinkRegistry)
+    let provider = fuel_dispatch::fkc::import_bundle_str(CUDA_CAST_CONTRACT, &crate::link::CudaLinkRegistry)
         .expect(
             "authored CUDA cast contract must import \
                  (embedded via include_str!, resolved through CudaLinkRegistry)",
@@ -3504,7 +3503,7 @@ fn register_cuda_cast_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda cast contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA cast contract must register into the binding table");
@@ -3522,7 +3521,7 @@ const CUDA_FLASH_DECODING_CONTRACT: &str =
 ///
 /// **This is the §4.4 cost-fn trampoline (Task-F) consumer.** The contract's
 /// `cost.cost_fn: cost_flash_decoding_cuda` is resolved through
-/// [`crate::fkc::CudaLinkRegistry`]'s `CUDA_COST_FNS` table and pinned on the
+/// [`crate::link::CudaLinkRegistry`]'s `CUDA_COST_FNS` table and pinned on the
 /// binding, so the CUSTOM static infeasibility gate (`cost_flash_decoding_cuda`:
 /// INFEASIBLE cost for `seq_q != 1` / `head_dim` outside `[1, 128]`) SURVIVES
 /// the `fill_unset_cost_for_backend(Cuda, …)` pass — exactly the guarantee the
@@ -3541,7 +3540,7 @@ const CUDA_FLASH_DECODING_CONTRACT: &str =
 /// `register_optional_backends` (dispatch.rs). Init-boundary fail-fast `expect`.
 fn register_cuda_flash_decoding_from_contract(table: &mut KernelBindingTable) {
     let provider =
-        crate::fkc::import_bundle_str(CUDA_FLASH_DECODING_CONTRACT, &crate::fkc::CudaLinkRegistry)
+        fuel_dispatch::fkc::import_bundle_str(CUDA_FLASH_DECODING_CONTRACT, &crate::link::CudaLinkRegistry)
             .expect(
                 "authored CUDA flash_decoding contract must import \
                  (embedded via include_str!, resolved through CudaLinkRegistry)",
@@ -3550,7 +3549,7 @@ fn register_cuda_flash_decoding_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda flash_decoding contract declares no fused ops",
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA flash_decoding contract must register into the binding table");
@@ -3580,32 +3579,32 @@ const CUDA_COMPARE_CONTRACT: &str = include_str!("../kernel-contracts/cuda/compa
 /// recipe off the device.
 fn register_cuda_compare_from_contract(table: &mut KernelBindingTable) {
     let provider =
-        crate::fkc::import_bundle_str(CUDA_COMPARE_CONTRACT, &crate::fkc::CudaLinkRegistry).expect(
+        fuel_dispatch::fkc::import_bundle_str(CUDA_COMPARE_CONTRACT, &crate::link::CudaLinkRegistry).expect(
             "authored CUDA compare contract must import (embedded include_str!, CudaLinkRegistry)",
         );
     debug_assert!(
         provider.fused.is_empty(),
         "cuda compare contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA compare contract must register into the binding table");
 }
 
 /// Register the CUDA binary family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_binary_from_contract(table: &mut KernelBindingTable) {
     let provider =
-        crate::fkc::import_bundle_str(CUDA_BINARY_CONTRACT, &crate::fkc::CudaLinkRegistry).expect(
+        fuel_dispatch::fkc::import_bundle_str(CUDA_BINARY_CONTRACT, &crate::link::CudaLinkRegistry).expect(
             "authored CUDA binary contract must import (embedded include_str!, CudaLinkRegistry)",
         );
     debug_assert!(
         provider.fused.is_empty(),
         "cuda binary contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA binary contract must register into the binding table");
@@ -3616,18 +3615,18 @@ fn register_cuda_binary_from_contract(table: &mut KernelBindingTable) {
 const CUDA_REDUCE_CONTRACT: &str = include_str!("../kernel-contracts/cuda/reduce.fkc.md");
 
 /// Register the CUDA reduce family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_reduce_from_contract(table: &mut KernelBindingTable) {
     let provider =
-        crate::fkc::import_bundle_str(CUDA_REDUCE_CONTRACT, &crate::fkc::CudaLinkRegistry).expect(
+        fuel_dispatch::fkc::import_bundle_str(CUDA_REDUCE_CONTRACT, &crate::link::CudaLinkRegistry).expect(
             "authored CUDA reduce contract must import (embedded include_str!, CudaLinkRegistry)",
         );
     debug_assert!(
         provider.fused.is_empty(),
         "cuda reduce contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA reduce contract must register into the binding table");
@@ -3638,10 +3637,10 @@ fn register_cuda_reduce_from_contract(table: &mut KernelBindingTable) {
 const CUDA_NORM_CONTRACT: &str = include_str!("../kernel-contracts/cuda/norm.fkc.md");
 
 /// Register the CUDA norm family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_norm_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(CUDA_NORM_CONTRACT, &crate::fkc::CudaLinkRegistry)
+    let provider = fuel_dispatch::fkc::import_bundle_str(CUDA_NORM_CONTRACT, &crate::link::CudaLinkRegistry)
         .expect(
             "authored CUDA norm contract must import (embedded include_str!, CudaLinkRegistry)",
         );
@@ -3649,7 +3648,7 @@ fn register_cuda_norm_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda norm contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA norm contract must register into the binding table");
@@ -3660,18 +3659,18 @@ fn register_cuda_norm_from_contract(table: &mut KernelBindingTable) {
 const CUDA_SOFTMAX_CONTRACT: &str = include_str!("../kernel-contracts/cuda/softmax.fkc.md");
 
 /// Register the CUDA softmax family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_softmax_from_contract(table: &mut KernelBindingTable) {
     let provider =
-        crate::fkc::import_bundle_str(CUDA_SOFTMAX_CONTRACT, &crate::fkc::CudaLinkRegistry).expect(
+        fuel_dispatch::fkc::import_bundle_str(CUDA_SOFTMAX_CONTRACT, &crate::link::CudaLinkRegistry).expect(
             "authored CUDA softmax contract must import (embedded include_str!, CudaLinkRegistry)",
         );
     debug_assert!(
         provider.fused.is_empty(),
         "cuda softmax contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA softmax contract must register into the binding table");
@@ -3682,10 +3681,10 @@ fn register_cuda_softmax_from_contract(table: &mut KernelBindingTable) {
 const CUDA_POWI_CONTRACT: &str = include_str!("../kernel-contracts/cuda/powi.fkc.md");
 
 /// Register the CUDA powi family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_powi_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(CUDA_POWI_CONTRACT, &crate::fkc::CudaLinkRegistry)
+    let provider = fuel_dispatch::fkc::import_bundle_str(CUDA_POWI_CONTRACT, &crate::link::CudaLinkRegistry)
         .expect(
             "authored CUDA powi contract must import (embedded include_str!, CudaLinkRegistry)",
         );
@@ -3693,7 +3692,7 @@ fn register_cuda_powi_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda powi contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA powi contract must register into the binding table");
@@ -3705,16 +3704,16 @@ const CUDA_POWI_BACKWARD_CONTRACT: &str =
     include_str!("../kernel-contracts/cuda/powi_backward.fkc.md");
 
 /// Register the CUDA powi_backward family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_powi_backward_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(CUDA_POWI_BACKWARD_CONTRACT, &crate::fkc::CudaLinkRegistry)
+    let provider = fuel_dispatch::fkc::import_bundle_str(CUDA_POWI_BACKWARD_CONTRACT, &crate::link::CudaLinkRegistry)
         .expect("authored CUDA powi_backward contract must import (embedded include_str!, CudaLinkRegistry)");
     debug_assert!(
         provider.fused.is_empty(),
         "cuda powi_backward contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA powi_backward contract must register into the binding table");
@@ -3725,18 +3724,18 @@ fn register_cuda_powi_backward_from_contract(table: &mut KernelBindingTable) {
 const CUDA_CLAMP_CONTRACT: &str = include_str!("../kernel-contracts/cuda/clamp.fkc.md");
 
 /// Register the CUDA clamp family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_clamp_from_contract(table: &mut KernelBindingTable) {
     let provider =
-        crate::fkc::import_bundle_str(CUDA_CLAMP_CONTRACT, &crate::fkc::CudaLinkRegistry).expect(
+        fuel_dispatch::fkc::import_bundle_str(CUDA_CLAMP_CONTRACT, &crate::link::CudaLinkRegistry).expect(
             "authored CUDA clamp contract must import (embedded include_str!, CudaLinkRegistry)",
         );
     debug_assert!(
         provider.fused.is_empty(),
         "cuda clamp contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA clamp contract must register into the binding table");
@@ -3747,10 +3746,10 @@ fn register_cuda_clamp_from_contract(table: &mut KernelBindingTable) {
 const CUDA_FLIP_CONTRACT: &str = include_str!("../kernel-contracts/cuda/flip.fkc.md");
 
 /// Register the CUDA flip family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_flip_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(CUDA_FLIP_CONTRACT, &crate::fkc::CudaLinkRegistry)
+    let provider = fuel_dispatch::fkc::import_bundle_str(CUDA_FLIP_CONTRACT, &crate::link::CudaLinkRegistry)
         .expect(
             "authored CUDA flip contract must import (embedded include_str!, CudaLinkRegistry)",
         );
@@ -3758,7 +3757,7 @@ fn register_cuda_flip_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda flip contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA flip contract must register into the binding table");
@@ -3769,10 +3768,10 @@ fn register_cuda_flip_from_contract(table: &mut KernelBindingTable) {
 const CUDA_ROLL_CONTRACT: &str = include_str!("../kernel-contracts/cuda/roll.fkc.md");
 
 /// Register the CUDA roll family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_roll_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(CUDA_ROLL_CONTRACT, &crate::fkc::CudaLinkRegistry)
+    let provider = fuel_dispatch::fkc::import_bundle_str(CUDA_ROLL_CONTRACT, &crate::link::CudaLinkRegistry)
         .expect(
             "authored CUDA roll contract must import (embedded include_str!, CudaLinkRegistry)",
         );
@@ -3780,7 +3779,7 @@ fn register_cuda_roll_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda roll contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA roll contract must register into the binding table");
@@ -3791,18 +3790,18 @@ fn register_cuda_roll_from_contract(table: &mut KernelBindingTable) {
 const CUDA_CUMSUM_CONTRACT: &str = include_str!("../kernel-contracts/cuda/cumsum.fkc.md");
 
 /// Register the CUDA cumsum family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_cumsum_from_contract(table: &mut KernelBindingTable) {
     let provider =
-        crate::fkc::import_bundle_str(CUDA_CUMSUM_CONTRACT, &crate::fkc::CudaLinkRegistry).expect(
+        fuel_dispatch::fkc::import_bundle_str(CUDA_CUMSUM_CONTRACT, &crate::link::CudaLinkRegistry).expect(
             "authored CUDA cumsum contract must import (embedded include_str!, CudaLinkRegistry)",
         );
     debug_assert!(
         provider.fused.is_empty(),
         "cuda cumsum contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA cumsum contract must register into the binding table");
@@ -3813,12 +3812,12 @@ fn register_cuda_cumsum_from_contract(table: &mut KernelBindingTable) {
 const CUDA_TRIANGULAR_CONTRACT: &str = include_str!("../kernel-contracts/cuda/triangular.fkc.md");
 
 /// Register the CUDA triangular family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_triangular_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(
+    let provider = fuel_dispatch::fkc::import_bundle_str(
         CUDA_TRIANGULAR_CONTRACT,
-        &crate::fkc::CudaLinkRegistry,
+        &crate::link::CudaLinkRegistry,
     )
     .expect(
         "authored CUDA triangular contract must import (embedded include_str!, CudaLinkRegistry)",
@@ -3827,7 +3826,7 @@ fn register_cuda_triangular_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda triangular contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA triangular contract must register into the binding table");
@@ -3838,12 +3837,12 @@ fn register_cuda_triangular_from_contract(table: &mut KernelBindingTable) {
 const CUDA_ARG_REDUCE_CONTRACT: &str = include_str!("../kernel-contracts/cuda/arg_reduce.fkc.md");
 
 /// Register the CUDA arg_reduce family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_arg_reduce_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(
+    let provider = fuel_dispatch::fkc::import_bundle_str(
         CUDA_ARG_REDUCE_CONTRACT,
-        &crate::fkc::CudaLinkRegistry,
+        &crate::link::CudaLinkRegistry,
     )
     .expect(
         "authored CUDA arg_reduce contract must import (embedded include_str!, CudaLinkRegistry)",
@@ -3852,7 +3851,7 @@ fn register_cuda_arg_reduce_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda arg_reduce contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA arg_reduce contract must register into the binding table");
@@ -3863,12 +3862,12 @@ fn register_cuda_arg_reduce_from_contract(table: &mut KernelBindingTable) {
 const CUDA_REDUCE_TO_CONTRACT: &str = include_str!("../kernel-contracts/cuda/reduce_to.fkc.md");
 
 /// Register the CUDA reduce_to family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_reduce_to_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(
+    let provider = fuel_dispatch::fkc::import_bundle_str(
         CUDA_REDUCE_TO_CONTRACT,
-        &crate::fkc::CudaLinkRegistry,
+        &crate::link::CudaLinkRegistry,
     )
     .expect(
         "authored CUDA reduce_to contract must import (embedded include_str!, CudaLinkRegistry)",
@@ -3877,7 +3876,7 @@ fn register_cuda_reduce_to_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda reduce_to contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA reduce_to contract must register into the binding table");
@@ -3888,10 +3887,10 @@ fn register_cuda_reduce_to_from_contract(table: &mut KernelBindingTable) {
 const CUDA_ROPE_CONTRACT: &str = include_str!("../kernel-contracts/cuda/rope.fkc.md");
 
 /// Register the CUDA rope family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_rope_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(CUDA_ROPE_CONTRACT, &crate::fkc::CudaLinkRegistry)
+    let provider = fuel_dispatch::fkc::import_bundle_str(CUDA_ROPE_CONTRACT, &crate::link::CudaLinkRegistry)
         .expect(
             "authored CUDA rope contract must import (embedded include_str!, CudaLinkRegistry)",
         );
@@ -3899,7 +3898,7 @@ fn register_cuda_rope_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda rope contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA rope contract must register into the binding table");
@@ -3930,18 +3929,18 @@ fn register_cuda_rope_from_contract(table: &mut KernelBindingTable) {
 const CUDA_UNARY_CONTRACT: &str = include_str!("../kernel-contracts/cuda/unary.fkc.md");
 
 /// Register the CUDA unary family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_unary_from_contract(table: &mut KernelBindingTable) {
     let provider =
-        crate::fkc::import_bundle_str(CUDA_UNARY_CONTRACT, &crate::fkc::CudaLinkRegistry).expect(
+        fuel_dispatch::fkc::import_bundle_str(CUDA_UNARY_CONTRACT, &crate::link::CudaLinkRegistry).expect(
             "authored CUDA unary contract must import (embedded include_str!, CudaLinkRegistry)",
         );
     debug_assert!(
         provider.fused.is_empty(),
         "cuda unary contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA unary contract must register into the binding table");
@@ -3957,16 +3956,16 @@ const CUDA_CLAMP_INPLACE_CONTRACT: &str =
     include_str!("../kernel-contracts/cuda/clamp_inplace.fkc.md");
 
 /// Register the CUDA clamp_inplace family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_clamp_inplace_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(CUDA_CLAMP_INPLACE_CONTRACT, &crate::fkc::CudaLinkRegistry)
+    let provider = fuel_dispatch::fkc::import_bundle_str(CUDA_CLAMP_INPLACE_CONTRACT, &crate::link::CudaLinkRegistry)
         .expect("authored CUDA clamp_inplace contract must import (embedded include_str!, CudaLinkRegistry)");
     debug_assert!(
         provider.fused.is_empty(),
         "cuda clamp_inplace contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA clamp_inplace contract must register into the binding table");
@@ -3978,12 +3977,12 @@ const CUDA_POWI_INPLACE_CONTRACT: &str =
     include_str!("../kernel-contracts/cuda/powi_inplace.fkc.md");
 
 /// Register the CUDA powi_inplace family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_powi_inplace_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(
+    let provider = fuel_dispatch::fkc::import_bundle_str(
         CUDA_POWI_INPLACE_CONTRACT,
-        &crate::fkc::CudaLinkRegistry,
+        &crate::link::CudaLinkRegistry,
     )
     .expect(
         "authored CUDA powi_inplace contract must import (embedded include_str!, CudaLinkRegistry)",
@@ -3992,7 +3991,7 @@ fn register_cuda_powi_inplace_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda powi_inplace contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA powi_inplace contract must register into the binding table");
@@ -4004,16 +4003,16 @@ const CUDA_INPLACE_UNARY_CONTRACT: &str =
     include_str!("../kernel-contracts/cuda/inplace_unary.fkc.md");
 
 /// Register the CUDA inplace_unary family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_inplace_unary_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(CUDA_INPLACE_UNARY_CONTRACT, &crate::fkc::CudaLinkRegistry)
+    let provider = fuel_dispatch::fkc::import_bundle_str(CUDA_INPLACE_UNARY_CONTRACT, &crate::link::CudaLinkRegistry)
         .expect("authored CUDA inplace_unary contract must import (embedded include_str!, CudaLinkRegistry)");
     debug_assert!(
         provider.fused.is_empty(),
         "cuda inplace_unary contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA inplace_unary contract must register into the binding table");
@@ -4028,12 +4027,12 @@ fn register_cuda_inplace_unary_from_contract(table: &mut KernelBindingTable) {
 const CUDA_WRITE_SLICE_CONTRACT: &str = include_str!("../kernel-contracts/cuda/write_slice.fkc.md");
 
 /// Register the CUDA write_slice family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_write_slice_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(
+    let provider = fuel_dispatch::fkc::import_bundle_str(
         CUDA_WRITE_SLICE_CONTRACT,
-        &crate::fkc::CudaLinkRegistry,
+        &crate::link::CudaLinkRegistry,
     )
     .expect(
         "authored CUDA write_slice contract must import (embedded include_str!, CudaLinkRegistry)",
@@ -4042,7 +4041,7 @@ fn register_cuda_write_slice_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda write_slice contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA write_slice contract must register into the binding table");
@@ -4054,16 +4053,16 @@ const CUDA_WRITE_SLICE_ROTATING_CONTRACT: &str =
     include_str!("../kernel-contracts/cuda/write_slice_rotating.fkc.md");
 
 /// Register the CUDA write_slice_rotating family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_write_slice_rotating_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(CUDA_WRITE_SLICE_ROTATING_CONTRACT, &crate::fkc::CudaLinkRegistry)
+    let provider = fuel_dispatch::fkc::import_bundle_str(CUDA_WRITE_SLICE_ROTATING_CONTRACT, &crate::link::CudaLinkRegistry)
         .expect("authored CUDA write_slice_rotating contract must import (embedded include_str!, CudaLinkRegistry)");
     debug_assert!(
         provider.fused.is_empty(),
         "cuda write_slice_rotating contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA write_slice_rotating contract must register into the binding table");
@@ -4075,16 +4074,16 @@ const CUDA_WRITE_SLICE_DOFF_CONTRACT: &str =
     include_str!("../kernel-contracts/cuda/write_slice_doff.fkc.md");
 
 /// Register the CUDA write_slice_doff family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the b1/b2/b4/b8 production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the b1/b2/b4/b8 production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_write_slice_doff_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(CUDA_WRITE_SLICE_DOFF_CONTRACT, &crate::fkc::CudaLinkRegistry)
+    let provider = fuel_dispatch::fkc::import_bundle_str(CUDA_WRITE_SLICE_DOFF_CONTRACT, &crate::link::CudaLinkRegistry)
         .expect("authored CUDA write_slice_doff contract must import (embedded include_str!, CudaLinkRegistry)");
     debug_assert!(
         provider.fused.is_empty(),
         "cuda write_slice_doff contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA write_slice_doff contract must register into the binding table");
@@ -4099,18 +4098,18 @@ fn register_cuda_write_slice_doff_from_contract(table: &mut KernelBindingTable) 
 const CUDA_CONCAT_CONTRACT: &str = include_str!("../kernel-contracts/cuda/concat.fkc.md");
 
 /// Register the CUDA concat family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_concat_from_contract(table: &mut KernelBindingTable) {
     let provider =
-        crate::fkc::import_bundle_str(CUDA_CONCAT_CONTRACT, &crate::fkc::CudaLinkRegistry).expect(
+        fuel_dispatch::fkc::import_bundle_str(CUDA_CONCAT_CONTRACT, &crate::link::CudaLinkRegistry).expect(
             "authored CUDA concat contract must import (embedded include_str!, CudaLinkRegistry)",
         );
     debug_assert!(
         provider.fused.is_empty(),
         "cuda concat contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA concat contract must register into the binding table");
@@ -4121,18 +4120,18 @@ fn register_cuda_concat_from_contract(table: &mut KernelBindingTable) {
 const CUDA_AFFINE_CONTRACT: &str = include_str!("../kernel-contracts/cuda/affine.fkc.md");
 
 /// Register the CUDA affine family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_affine_from_contract(table: &mut KernelBindingTable) {
     let provider =
-        crate::fkc::import_bundle_str(CUDA_AFFINE_CONTRACT, &crate::fkc::CudaLinkRegistry).expect(
+        fuel_dispatch::fkc::import_bundle_str(CUDA_AFFINE_CONTRACT, &crate::link::CudaLinkRegistry).expect(
             "authored CUDA affine contract must import (embedded include_str!, CudaLinkRegistry)",
         );
     debug_assert!(
         provider.fused.is_empty(),
         "cuda affine contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA affine contract must register into the binding table");
@@ -4144,16 +4143,16 @@ const CUDA_INPLACE_AFFINE_CONTRACT: &str =
     include_str!("../kernel-contracts/cuda/inplace_affine.fkc.md");
 
 /// Register the CUDA inplace_affine family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_inplace_affine_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(CUDA_INPLACE_AFFINE_CONTRACT, &crate::fkc::CudaLinkRegistry)
+    let provider = fuel_dispatch::fkc::import_bundle_str(CUDA_INPLACE_AFFINE_CONTRACT, &crate::link::CudaLinkRegistry)
         .expect("authored CUDA inplace_affine contract must import (embedded include_str!, CudaLinkRegistry)");
     debug_assert!(
         provider.fused.is_empty(),
         "cuda inplace_affine contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA inplace_affine contract must register into the binding table");
@@ -4164,16 +4163,16 @@ fn register_cuda_inplace_affine_from_contract(table: &mut KernelBindingTable) {
 const CUDA_PAD_CONTRACT: &str = include_str!("../kernel-contracts/cuda/pad.fkc.md");
 
 /// Register the CUDA pad family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_pad_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(CUDA_PAD_CONTRACT, &crate::fkc::CudaLinkRegistry)
+    let provider = fuel_dispatch::fkc::import_bundle_str(CUDA_PAD_CONTRACT, &crate::link::CudaLinkRegistry)
         .expect("authored CUDA pad contract must import (embedded include_str!, CudaLinkRegistry)");
     debug_assert!(
         provider.fused.is_empty(),
         "cuda pad contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA pad contract must register into the binding table");
@@ -4185,12 +4184,12 @@ const CUDA_PAD_BACKWARD_CONTRACT: &str =
     include_str!("../kernel-contracts/cuda/pad_backward.fkc.md");
 
 /// Register the CUDA pad_backward family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_pad_backward_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(
+    let provider = fuel_dispatch::fkc::import_bundle_str(
         CUDA_PAD_BACKWARD_CONTRACT,
-        &crate::fkc::CudaLinkRegistry,
+        &crate::link::CudaLinkRegistry,
     )
     .expect(
         "authored CUDA pad_backward contract must import (embedded include_str!, CudaLinkRegistry)",
@@ -4199,7 +4198,7 @@ fn register_cuda_pad_backward_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda pad_backward contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA pad_backward contract must register into the binding table");
@@ -4211,16 +4210,16 @@ const CUDA_CAUSAL_CONV1D_CONTRACT: &str =
     include_str!("../kernel-contracts/cuda/causal_conv1d.fkc.md");
 
 /// Register the CUDA causal_conv1d family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_causal_conv1d_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(CUDA_CAUSAL_CONV1D_CONTRACT, &crate::fkc::CudaLinkRegistry)
+    let provider = fuel_dispatch::fkc::import_bundle_str(CUDA_CAUSAL_CONV1D_CONTRACT, &crate::link::CudaLinkRegistry)
         .expect("authored CUDA causal_conv1d contract must import (embedded include_str!, CudaLinkRegistry)");
     debug_assert!(
         provider.fused.is_empty(),
         "cuda causal_conv1d contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA causal_conv1d contract must register into the binding table");
@@ -4234,14 +4233,14 @@ const CUDA_QMATMUL_CONTRACT: &str = include_str!("../kernel-contracts/cuda/qmatm
 /// `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_qmatmul_from_contract(table: &mut KernelBindingTable) {
     let provider =
-        crate::fkc::import_bundle_str(CUDA_QMATMUL_CONTRACT, &crate::fkc::CudaLinkRegistry).expect(
+        fuel_dispatch::fkc::import_bundle_str(CUDA_QMATMUL_CONTRACT, &crate::link::CudaLinkRegistry).expect(
             "authored CUDA qmatmul contract must import (embedded include_str!, CudaLinkRegistry)",
         );
     debug_assert!(
         provider.fused.is_empty(),
         "cuda qmatmul contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA qmatmul contract must register into the binding table");
@@ -4254,9 +4253,9 @@ const CUDA_AWQ_MATMUL_CONTRACT: &str = include_str!("../kernel-contracts/cuda/aw
 /// Register the CUDA AwqMatmul kernel (F16 activations; ROADMAP row 31a) FROM its FKC contract.
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_awq_matmul_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(
+    let provider = fuel_dispatch::fkc::import_bundle_str(
         CUDA_AWQ_MATMUL_CONTRACT,
-        &crate::fkc::CudaLinkRegistry,
+        &crate::link::CudaLinkRegistry,
     )
     .expect(
         "authored CUDA awq_matmul contract must import (embedded include_str!, CudaLinkRegistry)",
@@ -4265,7 +4264,7 @@ fn register_cuda_awq_matmul_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda awq_matmul contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA awq_matmul contract must register into the binding table");
@@ -4280,12 +4279,12 @@ fn register_cuda_awq_matmul_from_contract(table: &mut KernelBindingTable) {
 const CUDA_GEMM_DENSE_CONTRACT: &str = include_str!("../kernel-contracts/cuda/gemm_dense.fkc.md");
 
 /// Register the CUDA gemm_dense family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_gemm_dense_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(
+    let provider = fuel_dispatch::fkc::import_bundle_str(
         CUDA_GEMM_DENSE_CONTRACT,
-        &crate::fkc::CudaLinkRegistry,
+        &crate::link::CudaLinkRegistry,
     )
     .expect(
         "authored CUDA gemm_dense contract must import (embedded include_str!, CudaLinkRegistry)",
@@ -4294,7 +4293,7 @@ fn register_cuda_gemm_dense_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda gemm_dense contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA gemm_dense contract must register into the binding table");
@@ -4305,12 +4304,12 @@ fn register_cuda_gemm_dense_from_contract(table: &mut KernelBindingTable) {
 const CUDA_GEMM_INT_CONTRACT: &str = include_str!("../kernel-contracts/cuda/gemm_int.fkc.md");
 
 /// Register the CUDA gemm_int family FROM its FKC contract (per-(op,dtype), fanned
-/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::fkc::CudaLinkRegistry`]).
+/// `<op>_<dtype>` -> the distinct production wrappers via [`crate::link::CudaLinkRegistry`]).
 /// Runs BEFORE `fill_unset_cost_for_backend(Cuda, ..)`; caps/precision ride through the import.
 fn register_cuda_gemm_int_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(
+    let provider = fuel_dispatch::fkc::import_bundle_str(
         CUDA_GEMM_INT_CONTRACT,
-        &crate::fkc::CudaLinkRegistry,
+        &crate::link::CudaLinkRegistry,
     )
     .expect(
         "authored CUDA gemm_int contract must import (embedded include_str!, CudaLinkRegistry)",
@@ -4319,7 +4318,7 @@ fn register_cuda_gemm_int_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda gemm_int contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA gemm_int contract must register into the binding table");
@@ -4336,7 +4335,7 @@ const CUDA_INDEXING_CONTRACT: &str = include_str!("../kernel-contracts/cuda/inde
 /// (§3.4 base `entry_point` → `<op>_<dtype>`) with the `U32` index / `U8` mask
 /// as a FIXED single-dtype slot (no independent fan axis, no
 /// `FanoutDtypeMismatch`), each fanned symbol resolving to its OWN per-dtype
-/// baracuda wrapper via [`crate::fkc::CudaLinkRegistry`]; ScatterAdd is
+/// baracuda wrapper via [`crate::link::CudaLinkRegistry`]; ScatterAdd is
 /// per-dtype (single-dtype `entry_point` resolved AS-IS). Keys `[T, U32, T]` /
 /// `[T, U8, T]` / `[T, U32, T, T]` — byte-for-byte the deleted hand-written
 /// `table.register(IndexSelect/Gather/MaskedFill/ScatterAdd, …)` regs. Runs
@@ -4344,9 +4343,9 @@ const CUDA_INDEXING_CONTRACT: &str = include_str!("../kernel-contracts/cuda/inde
 /// (`requires_contiguous` ⇒ `strided_input == false`) + UNAUDITED precision seed
 /// ride through the import.
 fn register_cuda_indexing_from_contract(table: &mut KernelBindingTable) {
-    let provider = crate::fkc::import_bundle_str(
+    let provider = fuel_dispatch::fkc::import_bundle_str(
         CUDA_INDEXING_CONTRACT,
-        &crate::fkc::CudaLinkRegistry,
+        &crate::link::CudaLinkRegistry,
     )
     .expect(
         "authored CUDA indexing contract must import (embedded include_str!, CudaLinkRegistry)",
@@ -4355,7 +4354,7 @@ fn register_cuda_indexing_from_contract(table: &mut KernelBindingTable) {
         provider.fused.is_empty(),
         "cuda indexing contract declares no fused ops"
     );
-    let mut fused = crate::fused::FusedKernelRegistry::new();
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
     provider
         .register_into(table, &mut fused)
         .expect("CUDA indexing contract must register into the binding table");
@@ -4377,7 +4376,7 @@ pub fn register_baracuda_cuda_kernels(table: &mut KernelBindingTable) {
     // the LAST CUDA family to migrate off its hand-written regs (CUDA now
     // 31/31 contract-sourced). Baracuda `flash_decoding_{f16,bf16}` (alpha.72),
     // NO-alibi decode arm keyed [q, k, v, out] = [T;4] over {F16, BF16}, is now
-    // registered FROM `fuel-dispatch/kernel-contracts/cuda/flash_decoding.fkc.md` via
+    // registered FROM `fuel-cuda-dispatch/kernel-contracts/cuda/flash_decoding.fkc.md` via
     // register_cuda_flash_decoding_from_contract — the SOLE path. The two
     // hand-written `table.register_full(FlashAttn, [f16;4]/[bf16;4], …,
     // cost_flash_decoding_cuda)` regs are DELETED.
@@ -4408,7 +4407,7 @@ pub fn register_baracuda_cuda_kernels(table: &mut KernelBindingTable) {
     register_cuda_flash_decoding_from_contract(table);
 
     // ----- IndexSelect / Gather / MaskedFill / ScatterAdd are now registered
-    // FROM the cuda indexing FKC contract (fuel-dispatch/kernel-contracts/cuda/indexing.fkc.md)
+    // FROM the cuda indexing FKC contract (fuel-cuda-dispatch/kernel-contracts/cuda/indexing.fkc.md)
     // via register_cuda_indexing_from_contract in the GROUP 5 block below — the
     // SOLE path. The hand-written table.register(IndexSelect/Gather/MaskedFill/
     // ScatterAdd, …) regs (keys [T,U32,T] / [T,U8,T] / [T,U32,T,T], plain
@@ -4428,7 +4427,7 @@ pub fn register_baracuda_cuda_kernels(table: &mut KernelBindingTable) {
     // synthetic-base umbrella; contiguous-only (default caps ⇒ strided_input
     // == false). The full per-destination numeric detail (RNE/saturate,
     // int↔float, F8E4M3 decode/saturate) is contracted in
-    // `fuel-dispatch/kernel-contracts/cuda/cast.fkc.md`. -----
+    // `fuel-cuda-dispatch/kernel-contracts/cuda/cast.fkc.md`. -----
     register_cuda_cast_from_contract(table);
 
     // ----- GROUP 1 CUDA FKC families (per-(op,dtype) strided): each
@@ -4501,11 +4500,11 @@ pub fn register_baracuda_cuda_kernels(table: &mut KernelBindingTable) {
 #[cfg(test)]
 mod cast_contract_tests {
     use super::*;
-    use crate::kernel::{KernelBindingTable, KernelRef};
+    use fuel_dispatch::kernel::{KernelBindingTable, KernelRef};
 
     /// FIRST CUDA-BACKEND FKC CONSUMER (born-red gate). `register_baracuda_cuda_kernels`
     /// registers the whole `OpKind::Cast` family (70 `(SRC, DST)` pairs) FROM ITS
-    /// KERNEL CONTRACT (`fuel-dispatch/kernel-contracts/cuda/cast.fkc.md`) via
+    /// KERNEL CONTRACT (`fuel-cuda-dispatch/kernel-contracts/cuda/cast.fkc.md`) via
     /// `register_cuda_cast_from_contract` — the sole registration path, now that the
     /// hand-written `table.register(OpKind::Cast, &[src, dst], …)` calls (the 8×8
     /// double-loop + the F8E4M3 legs) are DELETED.
@@ -4590,7 +4589,7 @@ mod cast_contract_tests {
     /// GROUP 1 (born-red gate). Every trivial per-(op,dtype) STRIDED CUDA family
     /// (binary / reduce / norm / softmax / powi / powi_backward / clamp / flip /
     /// roll / cumsum / triangular / arg_reduce / reduce_to / rope) is registered
-    /// FROM its FKC contract (`fuel-dispatch/kernel-contracts/cuda/<fam>.fkc.md`) via the
+    /// FROM its FKC contract (`fuel-cuda-dispatch/kernel-contracts/cuda/<fam>.fkc.md`) via the
     /// `register_cuda_<fam>_from_contract` importers - the SOLE path (hand-written
     /// `register_with_caps(..., strided)` regs DELETED). For each `(op, dtypes,
     /// Cuda)` key this asserts the EXACT production wrapper is bound,
@@ -6992,7 +6991,7 @@ mod cast_contract_tests {
     /// INDEXING (born-red gate). The LAST clean CUDA family — IndexSelect /
     /// Gather / MaskedFill over `{F32, F64, I32}` (9 keys) + ScatterAdd over
     /// `{F32, F64}` (2 keys) = 11 bindings — is registered FROM its FKC contract
-    /// (`fuel-dispatch/kernel-contracts/cuda/indexing.fkc.md`) via
+    /// (`fuel-cuda-dispatch/kernel-contracts/cuda/indexing.fkc.md`) via
     /// `register_cuda_indexing_from_contract` — the SOLE path, now that the
     /// hand-written `table.register(IndexSelect/Gather/MaskedFill/ScatterAdd, …)`
     /// regs are DELETED.
@@ -7105,7 +7104,7 @@ mod cast_contract_tests {
     /// TASK-F born-red gate (the §4.4 cost-fn trampoline consumer). The
     /// FlashDecoding decode arm (`OpKind::FlashAttn`, `[f16;4]` / `[bf16;4]`,
     /// Cuda) is now registered FROM its FKC contract
-    /// (`fuel-dispatch/kernel-contracts/cuda/flash_decoding.fkc.md`) via
+    /// (`fuel-cuda-dispatch/kernel-contracts/cuda/flash_decoding.fkc.md`) via
     /// `register_cuda_flash_decoding_from_contract` — the SOLE path (the two
     /// hand-written `register_full(FlashAttn, …)` regs DELETED). CUDA is now
     /// 31/31 contract-sourced.
@@ -7183,7 +7182,7 @@ mod cast_contract_tests {
             // identity) AND still returns INFEASIBLE for unsupported shapes.
             assert_eq!(
                 entry.cost as usize,
-                crate::cost::cost_flash_decoding_cuda as usize,
+                fuel_dispatch::cost::cost_flash_decoding_cuda as usize,
                 "FlashAttn {key:?}: the contract-pinned cost_flash_decoding_cuda must survive \
                  fill_unset (Task-F trampoline) — else fill_unset clobbered the gate",
             );

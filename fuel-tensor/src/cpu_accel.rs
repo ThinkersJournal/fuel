@@ -59,6 +59,9 @@ pub(crate) fn ensure_installed() {
     // Vulkan kernels (idempotent: `install_global` is once-only). With the `vulkan` feature off there is nothing here.
     #[cfg(feature = "vulkan")]
     fuel_vulkan_dispatch::install_global();
+    // CUDA kernels (row 137 step 6.2), same once-only install and same snapshot rule as Vulkan above.
+    #[cfg(feature = "cuda")]
+    fuel_cuda_dispatch::install_global();
     #[cfg(feature = "onemkl")]
     {
         install_once(

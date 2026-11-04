@@ -2466,7 +2466,7 @@ cpu_rope_wrapper!(
 /// The per-`QuantType` host kernel choice shared by [`qmatmul_f32_cpu_wrapper`] and the CUDA
 /// wrapper's host fallback (`baracuda_dispatch`).
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn qmatmul_cpu_by_type(
+pub fn qmatmul_cpu_by_type(
     quant_type: fuel_graph::QuantType,
     act_cpu: &fuel_cpu_backend::CpuStorageBytes,
     w_cpu: &fuel_cpu_backend::CpuStorageBytes,
@@ -7404,7 +7404,7 @@ pub fn register_cpu_kernels(table: &mut KernelBindingTable) {
 /// Helper: extract `&CudaStorageBytes` from `&Storage`. Returns
 /// Err if the variant isn't `BackendStorage::Cuda`.
 #[cfg(feature = "cuda")]
-pub(crate) fn cuda_input(s: &Storage) -> Result<&fuel_cuda_backend::CudaStorageBytes> {
+pub fn cuda_input(s: &Storage) -> Result<&fuel_cuda_backend::CudaStorageBytes> {
     match &s.inner {
         BackendStorage::Cuda(c) => Ok(c),
         #[allow(unreachable_patterns)]
@@ -7414,7 +7414,7 @@ pub(crate) fn cuda_input(s: &Storage) -> Result<&fuel_cuda_backend::CudaStorageB
 
 /// Helper: extract `&mut CudaStorageBytes` from `&mut Storage`.
 #[cfg(feature = "cuda")]
-pub(crate) fn cuda_output(s: &mut Storage) -> Result<&mut fuel_cuda_backend::CudaStorageBytes> {
+pub fn cuda_output(s: &mut Storage) -> Result<&mut fuel_cuda_backend::CudaStorageBytes> {
     match &mut s.inner {
         BackendStorage::Cuda(c) => Ok(c),
         #[allow(unreachable_patterns)]
@@ -8175,21 +8175,10 @@ pub fn global_bindings() -> Arc<KernelBindingTable> {
 /// always present (registered above); CUDA and Vulkan paths are
 /// conditionally added. Future Metal / etc. paths hook in here.
 fn register_optional_backends(table: &mut KernelBindingTable) {
-    #[cfg(feature = "cuda")]
-    {
-        register_cuda_kernels(table);
-        crate::baracuda_dispatch::register_baracuda_cuda_kernels(table);
-        // FKC cost unification — Part A. The CUDA registrations above
-        // use `table.register(...)`, defaulting cost to `unknown_cost`
-        // (→ zero cost). Bulk-fill the OpKind-family FLOP/byte cost fn
-        // for every CUDA entry still on the sentinel — the same pass
-        // Vulkan already runs at the end of `register_vulkan_kernels`,
-        // and the same `default_cost_for_op_kind` families the CPU fill
-        // uses (op FLOPs/bytes are backend-agnostic; per-backend
-        // throughput is a Layer-2 / Part-C refinement). Without this,
-        // even a *capped* CUDA candidate would price at zero.
-        table.fill_unset_cost_for_backend(BackendId::Cuda, crate::cost::default_cost_for_op_kind);
-    }
+    // CUDA is NOT registered here any more (ROADMAP row 137 step 6.2): the baracuda kernels live in
+    // `fuel-cuda-dispatch`, above this crate, and reach the global table through `extend_global_bindings`
+    // (`fuel_cuda_dispatch::install_global`, called by `fuel-tensor`), which also runs the CUDA cost fill
+    // and the derived-capabilities step this function used to run.
     // Vulkan is NOT registered here any more (ROADMAP row 137 step 6.1): its kernels live in
     // `fuel-vulkan-dispatch`, above this crate, and reach the global table through
     // `extend_global_bindings` (`fuel_vulkan_dispatch::install_global`, called by `fuel-tensor`).

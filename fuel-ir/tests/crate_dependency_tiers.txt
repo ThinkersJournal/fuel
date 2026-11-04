@@ -152,6 +152,7 @@ fuel-dispatch	80	runtime
 fuel-aocl-cpu-backend	90	vendor backends
 fuel-mkl-cpu-backend	90	vendor backends
 fuel-vulkan-dispatch	90	backend dispatch bindings
+fuel-cuda-dispatch	90	backend dispatch bindings
 
 fuel-core	100	aggregate
 fuel-tensor	100	tensor / user-facing handle

@@ -101,7 +101,6 @@
 #![allow(unreachable_patterns)]
 #![allow(clippy::identity_op)]
 
-pub mod baracuda_dispatch;
 pub mod cast_fusion;
 pub mod compiled;
 pub mod cost;
