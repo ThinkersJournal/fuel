@@ -1,11 +1,17 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
-## v0.38.2 - 2026-11-03
+## v0.39.3 - 2026-11-04 (provisional; the PM allocates; was 0.38.2, then 0.39.1, before #613 took 0.39.2)
 
 ### Fixed
 
 - `fuel-ir`: new `fuel_ir::round::{f16_from_f64, bf16_from_f64}`, exact round-to-nearest-even, and **every f64 -> f16 / bf16 conversion in Fuel now uses them** (26 sites in fuel-ir, fuel-graph, fuel-nn, fuel-cpu-backend, fuel-dispatch, fuel-tensor, including the two `with_dtype!` macros, `Scalar::from_f64` and the F16/BF16 oracle in `fuel-dispatch/src/fkc/verify/exact_ref.rs`). Cause: `half` 2.7.1 (`half::f16::from_f64`, `half::bf16::from_f64`) mis-rounds values that sit very close to, but not on, a tie between two neighbours (it rounds them as if on the tie). Measured on x86_64 Windows against two independent exact oracles (`fuel-ir/tests/f64_to_half_rounding.rs`, ~3.2M probes per format, the oracles agree on every probe): f16 0.0056% of ordinary random f64 inputs mis-round (45 of 800,000; 378,428 of 3,187,216 dense near-tie probes), bf16 0.0060% (48 of 800,000; 195,774 of 3,232,016); failures lie within about 6.1e-5 (f16) / 1.2e-4 (bf16) of the spacing from a tie, never exactly on one. The value reported as 0.04518128032270489 does NOT mis-round on this box (half returns 0x29c9, correct); the defect is real but is a different set of inputs. Not Breaking: no signature changes; a conversion result changes by one ulp for those rare inputs, toward the correctly rounded value. Two tests assert the `half` defect is still present and go red when upstream fixes it. Re-seeding the CPU ledger (`fuel-dev-tools seed-cpu`) with the fixed F16/BF16 oracle moved 0 of 283 `max_ulp` records; that is a null on a thin sample (random probes at a ~0.006% hit rate), not proof, and the 38 `vulkan-slang` (and any CUDA) F16/BF16 records were not reseeded (GAP-373). Which `half` path ran: f16 on this host is expected to be the f16c hardware route (f64 -> f32 -> f16, double rounding), not measured per branch; bf16 and the f16 fallback truncate the low 32 mantissa bits; the fix does not depend on the path. The f32 -> f16/bf16 path (`from_f32`) was not swept.
+
+## v0.39.2 - 2026-11-03 (provisional; the PM allocates)
+
+### Fixed
+
+- `fuel-dispatch` verification ledger (GAP-374): the record key now includes the op name (`kernel_ref`). Before, `(backend, dtypes, kernel_revision_hash, claim)` was the whole key, and `kernel_revision_hash` is 0 for `ArgMaxDim`/`ArgMinDim` and for `Tril`/`Triu`/`Copy`, so the later writer erased the earlier op's verdict and one op's pass could stand for another. `VerificationLedger::upsert` keys on the op name too; `merge` drops a same-key record whose op is not in the fresh batch (a stale label); `has_pass` answers true only when every record under the key passes; new `has_pass_for(kernel_ref, ...)` is the exact per-op question. The checked-in `fkc-verified-ledger.json` was re-seeded (`fuel-dev-tools seed-cpu`): 1847 -> 1863 records (the 6 colliding keys now hold one record per op), the 16 records carrying pre-#279 gelu names are relabelled, no verdict changed (same result on all 1847 old keys). Records were also reordered (upsert appends), so the file diff is large. New tests fail when two ops share a key (`the_embedded_ledger_has_one_verdict_per_op`) and when a sibling's verdict can stand in for another op's. Not Breaking: `has_pass` is stricter only where records disagree.
 
 ## v0.38.1 - 2026-11-03
 

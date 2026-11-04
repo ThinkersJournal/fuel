@@ -109,8 +109,8 @@ impl VerificationLedger {
     }
 
     /// Insert `r`, first removing any existing record with the same
-    /// verification key `(backend, dtypes, kernel_revision_hash, claim)` — the
-    /// same tuple `has_pass` matches on. This makes re-verification idempotent:
+    /// key `(kernel_ref, backend, dtypes, kernel_revision_hash, claim)` (GAP-374:
+    /// the op name is part of the key). This makes re-verification idempotent:
     /// a re-run of a seeding/acceptance harness UPDATES an op's entry in place
     /// rather than appending a duplicate (a verification ledger records the
     /// latest verdict per key, not a history of runs).
@@ -119,12 +119,11 @@ impl VerificationLedger {
         reason = "GAP-236 (unpublished verify API): fkc::verify's modules are private, so nothing outside this crate can reach it. Does NOT retire itself -- the expiry lives in GAP-236 and in Unpopped's handback precondition guard, which fires on their side when the API is named."
     )]
     pub fn upsert(&mut self, r: LedgerRecord) {
-        self.records.retain(|e| {
-            !(e.backend == r.backend
-                && e.dtypes == r.dtypes
-                && e.kernel_revision_hash == r.kernel_revision_hash
-                && e.claim == r.claim)
-        });
+        // The key includes `kernel_ref` (GAP-374): two ops can share `(backend, dtypes,
+        // kernel_revision_hash, claim)` -- `kernel_revision_hash` is 0 for ArgMaxDim/ArgMinDim and
+        // Tril/Triu/Copy -- and a four-part key let the later writer erase the earlier op's verdict.
+        self.records
+            .retain(|e| !(same_verification_key(e, &r) && e.kernel_ref == r.kernel_ref));
         self.records.push(r);
     }
 
@@ -156,20 +155,62 @@ impl VerificationLedger {
         L.get_or_init(|| VerificationLedger::from_json(LEDGER_JSON).unwrap_or_default())
     }
 
-    /// True iff the ledger has a `"pass"` record matching all four
-    /// components: `backend`, `dtypes` (positional), `kernel_revision_hash`,
-    /// and `claim`. Any single mismatched component is a miss — the ledger
-    /// is deliberately narrow (revision-hash-keyed) so a kernel edit that
-    /// changes the hash invalidates all prior verification for it.
+    /// True iff the ledger has at least one record matching `backend`, `dtypes` (positional),
+    /// `kernel_revision_hash` and `claim`, and EVERY such record is a `"pass"`. Any single
+    /// mismatched component is a miss -- the ledger is deliberately narrow (revision-hash-keyed) so
+    /// a kernel edit that changes the hash invalidates all prior verification for it.
+    ///
+    /// **Several ops can match one key** (GAP-374: hash 0 is shared by ArgMaxDim/ArgMinDim and by
+    /// Tril/Triu/Copy), and this lookup cannot tell them apart, so it answers only when all of them
+    /// agree: one op's pass can no longer vouch for a sibling that failed. A caller that knows the
+    /// op uses [`Self::has_pass_for`], which is the exact question.
     pub fn has_pass(&self, backend: BackendId, dtypes: &[DType], rev: u64, claim: &str) -> bool {
+        let mut any = false;
+        for r in self.records.iter().filter(|r| {
+            r.kernel_revision_hash == rev
+                && r.claim == claim
+                && backend_label(backend) == r.backend
+                && dtypes_match(&r.dtypes, dtypes)
+        }) {
+            if r.result != "pass" {
+                return false;
+            }
+            any = true;
+        }
+        any
+    }
+
+    /// Like [`Self::has_pass`] but for ONE named op/kernel (`kernel_ref`): only that op's own
+    /// record answers. A sibling op's pass under the same hash does not count (GAP-374).
+    ///
+    /// Test-only: no production caller knows a ledger `kernel_ref` (it is `vulkan-slang` or
+    /// `baracuda` for GPU records, an op name only for CPU ones), so non-test builds would flag it dead.
+    #[cfg(test)]
+    pub fn has_pass_for(
+        &self,
+        kernel_ref: &str,
+        backend: BackendId,
+        dtypes: &[DType],
+        rev: u64,
+        claim: &str,
+    ) -> bool {
         self.records.iter().any(|r| {
             r.result == "pass"
+                && r.kernel_ref == kernel_ref
                 && r.kernel_revision_hash == rev
                 && r.claim == claim
                 && backend_label(backend) == r.backend
                 && dtypes_match(&r.dtypes, dtypes)
         })
     }
+}
+
+/// The four-part key every lookup matches on; the op name (`kernel_ref`) is the fifth part.
+fn same_verification_key(a: &LedgerRecord, b: &LedgerRecord) -> bool {
+    a.backend == b.backend
+        && a.dtypes == b.dtypes
+        && a.kernel_revision_hash == b.kernel_revision_hash
+        && a.claim == b.claim
 }
 
 /// Where the checked-in ledger lives, relative to this crate's manifest.
@@ -189,7 +230,7 @@ fn checked_in_ledger_path() -> std::path::PathBuf {
 /// Merge `fresh` into the CHECKED-IN ledger, WITHOUT writing anything.
 ///
 /// Every record already in the file survives; a `fresh` record whose
-/// verification key `(backend, dtypes, kernel_revision_hash, claim)` matches
+/// key `(kernel_ref, backend, dtypes, kernel_revision_hash, claim)` matches
 /// an existing one REPLACES it in place (see [`VerificationLedger::upsert`]),
 /// so re-running a seeder updates its own verdicts and touches nobody else's.
 ///
@@ -198,8 +239,26 @@ fn checked_in_ledger_path() -> std::path::PathBuf {
 /// without destroying the thing it is guarding.
 #[cfg(any(test, feature = "dev-tools"))]
 fn merge_into_checked_in(fresh: &[LedgerRecord]) -> VerificationLedger {
-    let mut ledger =
-        VerificationLedger::from_records(VerificationLedger::embedded().records().to_vec());
+    merge_records(
+        VerificationLedger::from_records(VerificationLedger::embedded().records().to_vec()),
+        fresh,
+    )
+}
+
+/// The merge itself, on an explicit base (so a test can drive the real logic, not a copy of it).
+#[cfg(any(test, feature = "dev-tools"))]
+fn merge_records(mut ledger: VerificationLedger, fresh: &[LedgerRecord]) -> VerificationLedger {
+    // A fresh record is the authority for its four-part key: an existing record under the same key
+    // whose op name is NOT among the fresh ones for that key is a stale label (GAP-374: the #279
+    // gelu/gelu_erf rename left the old names behind), so it goes. Records of ops that ARE fresh
+    // are replaced one by one below, so siblings sharing a key (hash 0) keep their own verdicts.
+    ledger.records.retain(|e| {
+        let mut fresh_same_key = fresh
+            .iter()
+            .filter(|f| same_verification_key(e, f))
+            .peekable();
+        fresh_same_key.peek().is_none() || fresh_same_key.any(|f| f.kernel_ref == e.kernel_ref)
+    });
     for r in fresh {
         ledger.upsert(r.clone());
     }
@@ -676,6 +735,157 @@ mod gate_tests {
         assert!(
             offenders.is_empty(),
             "{offenders:?} open the verification ledger directly instead of going through `write_merged_ledger`. A seeder that writes its own results over this file destroys the CUDA and Vulkan records it cannot re-earn — that is GAP-210, and it is the reason there is exactly one writer."
+        );
+    }
+
+    // ---- GAP-374: the op name is part of the ledger key ----
+
+    fn rec(kernel_ref: &str, rev: u64, result: &str) -> LedgerRecord {
+        LedgerRecord {
+            kernel_ref: kernel_ref.to_string(),
+            backend: "Cpu".to_string(),
+            dtypes: vec!["F32".to_string(), "U32".to_string()],
+            kernel_revision_hash: rev,
+            claim: "bit_stable_on_same_hardware".to_string(),
+            result: result.to_string(),
+            verified_at: "epoch:1".to_string(),
+            protocol_version: 1,
+            evidence: serde_json::Value::Null,
+        }
+    }
+
+    #[test]
+    fn two_ops_sharing_a_four_part_key_each_keep_their_own_verdict() {
+        let mut l = VerificationLedger::default();
+        l.upsert(rec("ArgMaxDim", 0, "pass"));
+        l.upsert(rec("ArgMinDim", 0, "fail"));
+        assert_eq!(
+            l.len(),
+            2,
+            "the second op's upsert erased the first op's verdict"
+        );
+        // Re-verifying one op replaces ITS record only.
+        l.upsert(rec("ArgMinDim", 0, "pass"));
+        assert_eq!(l.len(), 2);
+        let d = [DType::F32, DType::U32];
+        let q =
+            |name: &str| l.has_pass_for(name, BackendId::Cpu, &d, 0, "bit_stable_on_same_hardware");
+        assert!(q("ArgMaxDim") && q("ArgMinDim"));
+        assert!(
+            !q("Tril"),
+            "an op with no record of its own was reported verified by a sibling"
+        );
+    }
+
+    #[test]
+    fn a_siblings_pass_cannot_vouch_for_an_op_that_failed() {
+        let d = [DType::F32, DType::U32];
+        let mut l = VerificationLedger::default();
+        l.upsert(rec("ArgMaxDim", 0, "pass"));
+        l.upsert(rec("ArgMinDim", 0, "fail"));
+        // Key-only lookup: the two disagree, so it must NOT answer "verified".
+        assert!(!l.has_pass(BackendId::Cpu, &d, 0, "bit_stable_on_same_hardware"));
+        assert!(l.has_pass_for(
+            "ArgMaxDim",
+            BackendId::Cpu,
+            &d,
+            0,
+            "bit_stable_on_same_hardware"
+        ));
+        assert!(!l.has_pass_for(
+            "ArgMinDim",
+            BackendId::Cpu,
+            &d,
+            0,
+            "bit_stable_on_same_hardware"
+        ));
+        // Sabotage sibling: with only passes, the key-only lookup answers true.
+        let mut ok = VerificationLedger::default();
+        ok.upsert(rec("ArgMaxDim", 0, "pass"));
+        ok.upsert(rec("ArgMinDim", 0, "pass"));
+        assert!(ok.has_pass(BackendId::Cpu, &d, 0, "bit_stable_on_same_hardware"));
+    }
+
+    #[test]
+    fn merge_replaces_a_stale_op_label_and_keeps_siblings() {
+        // The committed file carries a stale name for hash 7 and a still-current sibling at hash 0.
+        let stale = rec("GeluErfInplace", 7, "pass");
+        let sib = rec("Triu", 0, "pass");
+        let mut base = VerificationLedger::default();
+        base.upsert(stale);
+        base.upsert(sib.clone());
+        let fresh = [
+            rec("GeluInplace", 7, "pass"),
+            rec("Tril", 0, "pass"),
+            rec("Triu", 0, "pass"),
+        ];
+        let merged = merge_records(base, &fresh);
+        let names: Vec<&str> = merged
+            .records()
+            .iter()
+            .map(|r| r.kernel_ref.as_str())
+            .collect();
+        assert!(
+            !names.contains(&"GeluErfInplace"),
+            "stale label survived: {names:?}"
+        );
+        assert!(
+            names.contains(&"GeluInplace") && names.contains(&"Tril") && names.contains(&"Triu")
+        );
+        // A same-key record whose op is NOT in the fresh batch is indistinguishable from a stale label
+        // and goes (the CPU seeders always run the whole CPU population, so this is the intended rule).
+        let partial = merge_records(merged, &[rec("Tril", 0, "pass")]);
+        let names: Vec<&str> = partial
+            .records()
+            .iter()
+            .map(|r| r.kernel_ref.as_str())
+            .collect();
+        assert!(
+            !names.contains(&"Triu"),
+            "unlisted same-key record kept: {names:?}"
+        );
+    }
+
+    /// The checked-in ledger holds one verdict per OP: no two records share the five-part key
+    /// `(kernel_ref, backend, dtypes, kernel_revision_hash, claim)`, and the six ops that share
+    /// hash 0 (GAP-374) each carry a record of their own.
+    #[test]
+    fn the_embedded_ledger_has_one_verdict_per_op() {
+        let recs = VerificationLedger::embedded().records();
+        assert!(
+            recs.len() > 1000,
+            "embedded ledger suspiciously small: {}",
+            recs.len()
+        );
+        let mut seen = std::collections::HashSet::new();
+        for r in recs {
+            let k = (
+                r.kernel_ref.clone(),
+                r.backend.clone(),
+                r.dtypes.clone(),
+                r.kernel_revision_hash,
+                r.claim.clone(),
+            );
+            assert!(
+                seen.insert(k),
+                "two records share one op key: {} {:?} {:?}",
+                r.kernel_ref,
+                r.backend,
+                r.dtypes
+            );
+        }
+        for op in ["ArgMaxDim", "ArgMinDim", "Tril", "Triu", "Copy"] {
+            assert!(
+                recs.iter().any(|r| r.kernel_ref == op
+                    && r.kernel_revision_hash == 0
+                    && r.backend == "Cpu"),
+                "{op} has no hash-0 CPU record of its own"
+            );
+        }
+        assert!(
+            !recs.iter().any(|r| r.kernel_ref == "GeluErfInplace"
+                && r.kernel_revision_hash == 9335141407671418025),
+            "a stale pre-#279 label survived"
         );
     }
 }
