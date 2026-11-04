@@ -17,8 +17,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, OpParams},
 };
@@ -106,7 +106,7 @@ fn run_cast(
         table,
         OpKind::Cast,
         &[src_dt, dst_dt],
-        fuel_dispatch::baracuda_dispatch::cast::cast_baracuda_wrapper,
+        fuel_cuda_dispatch::baracuda_dispatch::cast::cast_baracuda_wrapper,
     );
     kernel(
         &[src_arc.clone()],

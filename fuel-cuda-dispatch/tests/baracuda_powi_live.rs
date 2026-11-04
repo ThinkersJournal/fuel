@@ -11,8 +11,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, OpParams},
 };
@@ -102,7 +102,7 @@ fn baracuda_powi_f32_exp_3() {
         &table,
         DType::F32,
         4,
-        fuel_dispatch::baracuda_dispatch::powi::powi_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::powi::powi_f32,
         &input,
         3,
     );
@@ -121,7 +121,7 @@ fn baracuda_powi_f32_exp_neg_2() {
         &table,
         DType::F32,
         4,
-        fuel_dispatch::baracuda_dispatch::powi::powi_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::powi::powi_f32,
         &input,
         -2,
     );
@@ -142,7 +142,7 @@ fn baracuda_powi_f64_exp_4() {
         &table,
         DType::F64,
         8,
-        fuel_dispatch::baracuda_dispatch::powi::powi_f64,
+        fuel_cuda_dispatch::baracuda_dispatch::powi::powi_f64,
         &input,
         4,
     );
@@ -160,7 +160,7 @@ fn baracuda_powi_f32_exp_0_returns_ones() {
         &table,
         DType::F32,
         4,
-        fuel_dispatch::baracuda_dispatch::powi::powi_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::powi::powi_f32,
         &input,
         0,
     );
@@ -186,7 +186,7 @@ fn baracuda_powi_backward_f32_exp_3() {
         &table,
         OpKind::PowIElementwiseBackward,
         &[DType::F32, DType::F32, DType::F32],
-        fuel_dispatch::baracuda_dispatch::powi_backward::powi_backward_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::powi_backward::powi_backward_f32,
     );
     let layout = fuel_ir::Layout::contiguous(fuel_ir::Shape::from_dims(&[x.len()]));
     kernel(

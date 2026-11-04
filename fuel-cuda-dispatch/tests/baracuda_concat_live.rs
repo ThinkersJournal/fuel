@@ -10,8 +10,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, OpParams},
 };
@@ -95,7 +95,7 @@ fn run_concat_f32(
         table,
         OpKind::Concat,
         &[DType::F32, DType::F32],
-        fuel_dispatch::baracuda_dispatch::concat::concat_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::concat::concat_f32,
     );
     let params = OpParams::Concat {
         outer_count,

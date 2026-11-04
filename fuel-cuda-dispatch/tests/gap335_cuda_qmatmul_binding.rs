@@ -159,7 +159,10 @@ fn the_source_predicate_flags_only_cuda_qmatmul() {
 
 #[test]
 fn the_cuda_registration_file_loads_the_contract_and_nothing_registers_qmatmul_by_hand() {
-    let files = indexed("fuel-dispatch/src", ".rs");
+    // The registration file moved to `fuel-cuda-dispatch` (row 137 step 6.2); scan both crates so a hand
+    // registration left behind in `fuel-dispatch` is still found.
+    let mut files = indexed("fuel-dispatch/src", ".rs");
+    files.extend(indexed("fuel-cuda-dispatch/src", ".rs"));
     assert!(files.len() > 50, "only {} source files found", files.len());
 
     let mut registration_file_gated = false;

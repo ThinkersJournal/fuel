@@ -16,8 +16,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, OpParams},
 };
@@ -88,7 +88,7 @@ fn baracuda_relu_inplace_f32() {
         &table,
         OpKind::ReluInplace,
         DType::F32,
-        fuel_dispatch::baracuda_dispatch::unary::relu_inplace_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::unary::relu_inplace_f32,
         &input,
     );
     let got: &[f32] = bytemuck::cast_slice(&out);
@@ -105,7 +105,7 @@ fn baracuda_silu_inplace_f32() {
         &table,
         OpKind::SiluInplace,
         DType::F32,
-        fuel_dispatch::baracuda_dispatch::unary::silu_inplace_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::unary::silu_inplace_f32,
         &input,
     );
     let got: &[f32] = bytemuck::cast_slice(&out);
@@ -125,7 +125,7 @@ fn baracuda_gelu_inplace_f32() {
         &table,
         OpKind::GeluTanhInplace,
         DType::F32,
-        fuel_dispatch::baracuda_dispatch::unary::gelu_inplace_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::unary::gelu_inplace_f32,
         &input,
     );
     let got: &[f32] = bytemuck::cast_slice(&out);
@@ -145,7 +145,7 @@ fn baracuda_tanh_inplace_f32() {
         &table,
         OpKind::TanhInplace,
         DType::F32,
-        fuel_dispatch::baracuda_dispatch::unary::tanh_inplace_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::unary::tanh_inplace_f32,
         &input,
     );
     let got: &[f32] = bytemuck::cast_slice(&out);
@@ -165,7 +165,7 @@ fn baracuda_sigmoid_inplace_f32() {
         &table,
         OpKind::SigmoidInplace,
         DType::F32,
-        fuel_dispatch::baracuda_dispatch::unary::sigmoid_inplace_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::unary::sigmoid_inplace_f32,
         &input,
     );
     let got: &[f32] = bytemuck::cast_slice(&out);
@@ -193,7 +193,7 @@ fn baracuda_relu_inplace_f64() {
         &table,
         OpKind::ReluInplace,
         DType::F64,
-        fuel_dispatch::baracuda_dispatch::unary::relu_inplace_f64,
+        fuel_cuda_dispatch::baracuda_dispatch::unary::relu_inplace_f64,
         &input,
     );
     let got: &[f64] = bytemuck::cast_slice(&out);
@@ -215,7 +215,7 @@ fn baracuda_silu_inplace_bf16() {
         &table,
         OpKind::SiluInplace,
         DType::BF16,
-        fuel_dispatch::baracuda_dispatch::unary::silu_inplace_bf16,
+        fuel_cuda_dispatch::baracuda_dispatch::unary::silu_inplace_bf16,
         &input,
     );
     let got: &[bf16] = bytemuck::cast_slice(&out);
@@ -237,7 +237,7 @@ fn baracuda_sigmoid_inplace_f16() {
         &table,
         OpKind::SigmoidInplace,
         DType::F16,
-        fuel_dispatch::baracuda_dispatch::unary::sigmoid_inplace_f16,
+        fuel_cuda_dispatch::baracuda_dispatch::unary::sigmoid_inplace_f16,
         &input,
     );
     let got: &[f16] = bytemuck::cast_slice(&out);

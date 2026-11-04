@@ -7,8 +7,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, OpParams},
 };
@@ -96,7 +96,7 @@ fn baracuda_binary_add_f32_runs_through_binding_table() {
     }
     let got = run_binary_f32(
         OpKind::AddElementwise,
-        fuel_dispatch::baracuda_dispatch::binary::add_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::binary::add_f32,
         &[1.0_f32, 2.0, 3.0, 4.0],
         &[10.0_f32, 20.0, 30.0, 40.0],
     )
@@ -112,7 +112,7 @@ fn baracuda_binary_mul_f32_runs_through_binding_table() {
     }
     let got = run_binary_f32(
         OpKind::MulElementwise,
-        fuel_dispatch::baracuda_dispatch::binary::mul_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::binary::mul_f32,
         &[1.0_f32, 2.0, 3.0, 4.0],
         &[10.0_f32, 20.0, 30.0, 40.0],
     )
@@ -128,7 +128,7 @@ fn baracuda_binary_div_f32_runs_through_binding_table() {
     }
     let got = run_binary_f32(
         OpKind::DivElementwise,
-        fuel_dispatch::baracuda_dispatch::binary::div_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::binary::div_f32,
         &[10.0_f32, 20.0, 30.0, 40.0],
         &[1.0_f32, 2.0, 3.0, 4.0],
     )
@@ -144,7 +144,7 @@ fn baracuda_binary_maximum_f32_runs_through_binding_table() {
     }
     let got = run_binary_f32(
         OpKind::MaximumElementwise,
-        fuel_dispatch::baracuda_dispatch::binary::maximum_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::binary::maximum_f32,
         &[1.0_f32, 20.0, 3.0, 40.0],
         &[10.0_f32, 2.0, 30.0, 4.0],
     )
@@ -212,8 +212,12 @@ fn baracuda_compare_ge_f32_matches_cpu_semantics() {
     }
     let a = [1.0_f32, 2.0, 3.0, 2.0, f32::NAN, 0.0];
     let b = [2.0_f32, 2.0, 1.0, 3.0, 1.0, -0.0];
-    let got = run_compare_f32(fuel_dispatch::baracuda_dispatch::binary::ge_f32_u8, &a, &b)
-        .expect("ge kernel call");
+    let got = run_compare_f32(
+        fuel_cuda_dispatch::baracuda_dispatch::binary::ge_f32_u8,
+        &a,
+        &b,
+    )
+    .expect("ge kernel call");
 
     // Computed from IEEE-754 semantics, NOT from the kernel: 1>=2 false;
     // 2>=2 TRUE (inclusive); 3>=1 true; 2>=3 false; NaN>=1 FALSE (ordered
@@ -246,7 +250,7 @@ fn baracuda_compare_ne_f32_returns_one_on_nan() {
         return;
     }
     let got = run_compare_f32(
-        fuel_dispatch::baracuda_dispatch::binary::ne_f32_u8,
+        fuel_cuda_dispatch::baracuda_dispatch::binary::ne_f32_u8,
         &[f32::NAN, 1.0, 1.0],
         &[f32::NAN, 1.0, 2.0],
     )
@@ -268,7 +272,7 @@ fn baracuda_binary_add_f32_still_correct_after_width_split() {
     }
     let got = run_binary_f32(
         OpKind::AddElementwise,
-        fuel_dispatch::baracuda_dispatch::binary::add_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::binary::add_f32,
         &[1.0_f32, -2.5, 3.0, 1e30],
         &[10.0_f32, 20.0, -30.0, 1e30],
     )

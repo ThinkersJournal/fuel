@@ -7,8 +7,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, OpParams},
 };
@@ -94,7 +94,7 @@ fn baracuda_reduce_sum_f32_axis1_runs() {
     // [[1, 2, 3], [4, 5, 6]] reduce axis 1 → [6, 15]
     let got = run_reduce_f32(
         OpKind::SumReduce,
-        fuel_dispatch::baracuda_dispatch::reduce::sum_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::reduce::sum_f32,
         &[1.0_f32, 2.0, 3.0, 4.0, 5.0, 6.0],
         &[2, 3],
         vec![1],
@@ -113,7 +113,7 @@ fn baracuda_reduce_max_f32_axis0_runs() {
     // [[1, 5, 2], [4, 3, 6]] reduce axis 0 → [4, 5, 6]
     let got = run_reduce_f32(
         OpKind::MaxReduce,
-        fuel_dispatch::baracuda_dispatch::reduce::max_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::reduce::max_f32,
         &[1.0_f32, 5.0, 2.0, 4.0, 3.0, 6.0],
         &[2, 3],
         vec![0],
@@ -131,7 +131,7 @@ fn baracuda_reduce_mean_f32_axis1_runs() {
     }
     let got = run_reduce_f32(
         OpKind::MeanReduce,
-        fuel_dispatch::baracuda_dispatch::reduce::mean_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::reduce::mean_f32,
         &[1.0_f32, 2.0, 3.0, 4.0, 5.0, 6.0],
         &[2, 3],
         vec![1],
@@ -151,7 +151,7 @@ fn baracuda_reduce_sum_f32_multi_axis_runs() {
     // 1 and 2 → scalar per outer batch [10, 26]
     let got = run_reduce_f32(
         OpKind::SumReduce,
-        fuel_dispatch::baracuda_dispatch::reduce::sum_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::reduce::sum_f32,
         &[1.0_f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
         &[2, 2, 2],
         vec![1, 2],

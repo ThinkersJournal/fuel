@@ -11,8 +11,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, OpParams},
 };
@@ -118,7 +118,7 @@ fn baracuda_argmax_dim_f32_last_axis() {
         &table,
         OpKind::ArgMaxDim,
         DType::F32,
-        fuel_dispatch::baracuda_dispatch::arg_reduce::argmax_dim_u32_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::arg_reduce::argmax_dim_u32_f32,
         &input,
         &[2, 3],
         1,
@@ -136,7 +136,7 @@ fn baracuda_argmin_dim_f32_last_axis() {
         &table,
         OpKind::ArgMinDim,
         DType::F32,
-        fuel_dispatch::baracuda_dispatch::arg_reduce::argmin_dim_u32_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::arg_reduce::argmin_dim_u32_f32,
         &input,
         &[2, 3],
         1,
@@ -157,7 +157,7 @@ fn baracuda_argmax_dim_f32_first_axis() {
         &table,
         OpKind::ArgMaxDim,
         DType::F32,
-        fuel_dispatch::baracuda_dispatch::arg_reduce::argmax_dim_u32_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::arg_reduce::argmax_dim_u32_f32,
         &input,
         &[3, 2],
         0,
@@ -176,7 +176,7 @@ fn baracuda_argmax_dim_f64_ties_break_to_smallest_index() {
         &table,
         OpKind::ArgMaxDim,
         DType::F64,
-        fuel_dispatch::baracuda_dispatch::arg_reduce::argmax_dim_u32_f64,
+        fuel_cuda_dispatch::baracuda_dispatch::arg_reduce::argmax_dim_u32_f64,
         &input,
         &[2, 3],
         1,

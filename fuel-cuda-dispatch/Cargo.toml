@@ -41,3 +41,6 @@ dev-tools = ["fuel-dispatch/dev-tools"]
 name = "fuel-cuda-dev-tools"
 path = "src/bin/fuel-cuda-dev-tools.rs"
 required-features = ["cuda", "dev-tools"]
+
+[dev-dependencies]
+fuel-test-support = { path = "../fuel-test-support" }

@@ -7,8 +7,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, OpParams},
 };
@@ -73,7 +73,7 @@ fn baracuda_rope_f32_at_seq_position_zero_is_identity() {
     let kernel = pick_alt(
         &table,
         OpKind::Rope,
-        fuel_dispatch::baracuda_dispatch::attention::rope_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::attention::rope_f32,
     );
     kernel(
         &[src_arc.clone()],
@@ -120,7 +120,7 @@ fn baracuda_rope_f32_at_seq_position_one_rotates_pair() {
     let kernel = pick_alt(
         &table,
         OpKind::Rope,
-        fuel_dispatch::baracuda_dispatch::attention::rope_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::attention::rope_f32,
     );
     kernel(
         &[src_arc.clone()],
@@ -284,8 +284,8 @@ fn register_baracuda_binds_flash_decoding_f16_bf16() {
         &[DType::F16, DType::F16, DType::F16, DType::F16],
         BackendId::Cuda,
     );
-    let want_f16 =
-        fuel_dispatch::baracuda_dispatch::flash_decoding::flash_decoding_f16 as *const () as usize;
+    let want_f16 = fuel_cuda_dispatch::baracuda_dispatch::flash_decoding::flash_decoding_f16
+        as *const () as usize;
     assert!(
         f16_alts.iter().any(|a| (a.kernel as usize) == want_f16),
         "flash_decoding_f16 must register at (FlashAttn, [F16;4], Cuda)",
@@ -296,8 +296,8 @@ fn register_baracuda_binds_flash_decoding_f16_bf16() {
         &[DType::BF16, DType::BF16, DType::BF16, DType::BF16],
         BackendId::Cuda,
     );
-    let want_bf16 =
-        fuel_dispatch::baracuda_dispatch::flash_decoding::flash_decoding_bf16 as *const () as usize;
+    let want_bf16 = fuel_cuda_dispatch::baracuda_dispatch::flash_decoding::flash_decoding_bf16
+        as *const () as usize;
     assert!(
         bf16_alts.iter().any(|a| (a.kernel as usize) == want_bf16),
         "flash_decoding_bf16 must register at (FlashAttn, [BF16;4], Cuda)",
@@ -393,7 +393,7 @@ fn flash_decoding_f16_gqa_matches_base_map() {
     let kernel = pick_flash(
         &table,
         DType::F16,
-        fuel_dispatch::baracuda_dispatch::flash_decoding::flash_decoding_f16,
+        fuel_cuda_dispatch::baracuda_dispatch::flash_decoding::flash_decoding_f16,
     );
     // (cap, k_len): single-split cases {1,37,128} + a multi-split case
     // (cap=384, k_len=300 ⇒ 2 splits) that exercises the combine kernel.
@@ -432,7 +432,7 @@ fn flash_decoding_bf16_gqa_matches_base_map() {
     let kernel = pick_flash(
         &table,
         DType::BF16,
-        fuel_dispatch::baracuda_dispatch::flash_decoding::flash_decoding_bf16,
+        fuel_cuda_dispatch::baracuda_dispatch::flash_decoding::flash_decoding_bf16,
     );
     for &k_len in &[1usize, 37, 128] {
         let diff = run_flash_decode_case(
@@ -470,7 +470,7 @@ fn flash_decoding_f16_klen_zero_is_zeros() {
     let kernel = pick_flash(
         &table,
         DType::F16,
-        fuel_dispatch::baracuda_dispatch::flash_decoding::flash_decoding_f16,
+        fuel_cuda_dispatch::baracuda_dispatch::flash_decoding::flash_decoding_f16,
     );
     let (b, hq, hkv, d, sk) = (2usize, 4, 2, 32, 64);
     let q_f32: Vec<f16> = (0..b * hq * d)
@@ -537,7 +537,7 @@ fn flash_decoding_reuses_per_device_workspace() {
     let kernel = pick_flash(
         &table,
         DType::F16,
-        fuel_dispatch::baracuda_dispatch::flash_decoding::flash_decoding_f16,
+        fuel_cuda_dispatch::baracuda_dispatch::flash_decoding::flash_decoding_f16,
     );
 
     // Part 1 — end-to-end reuse through the wrapper. Same capacity (cap=384,
@@ -642,7 +642,7 @@ fn flash_decoding_f16_rejects_unsupported_shapes() {
     let kernel = pick_flash(
         &table,
         DType::F16,
-        fuel_dispatch::baracuda_dispatch::flash_decoding::flash_decoding_f16,
+        fuel_cuda_dispatch::baracuda_dispatch::flash_decoding::flash_decoding_f16,
     );
     let mk = |b: usize, hq: usize, hkv: usize, sq: usize, sk: usize, d: usize| {
         let q = Arc::new(RwLock::new(upload(

@@ -7,8 +7,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, OpParams},
 };
@@ -133,7 +133,7 @@ fn baracuda_softmax_last_dim_f32_matches_reference() {
     let expected = cpu_softmax(&input, 2, 4);
     let got = run_softmax_f32(
         OpKind::SoftmaxLastDim,
-        fuel_dispatch::baracuda_dispatch::softmax::softmax_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::softmax::softmax_f32,
         OpParams::SoftmaxLastDim {
             outer_count: 2,
             last_dim: 4,
@@ -156,7 +156,7 @@ fn baracuda_log_softmax_last_dim_f32_matches_reference() {
     let expected = cpu_log_softmax(&input, 2, 4);
     let got = run_softmax_f32(
         OpKind::LogSoftmaxLastDim,
-        fuel_dispatch::baracuda_dispatch::softmax::log_softmax_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::softmax::log_softmax_f32,
         OpParams::LogSoftmaxLastDim {
             outer_count: 2,
             last_dim: 4,

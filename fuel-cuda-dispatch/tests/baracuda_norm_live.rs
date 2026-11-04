@@ -7,8 +7,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, OpParams},
 };
@@ -131,7 +131,7 @@ fn baracuda_rms_norm_last_dim_f32_matches_reference() {
     let expected = cpu_rms_norm(&input, 2, 4, 1e-5);
     let got = run_norm_f32(
         OpKind::RmsNormLastDim,
-        fuel_dispatch::baracuda_dispatch::norm::rms_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::norm::rms_f32,
         &input,
         2,
         4,
@@ -151,7 +151,7 @@ fn baracuda_layer_norm_last_dim_f32_matches_reference() {
     let expected = cpu_layer_norm(&input, 2, 4, 1e-5);
     let got = run_norm_f32(
         OpKind::LayerNormLastDim,
-        fuel_dispatch::baracuda_dispatch::norm::layer_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::norm::layer_f32,
         &input,
         2,
         4,

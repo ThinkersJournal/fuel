@@ -25,8 +25,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, OpParams},
 };
@@ -125,7 +125,7 @@ fn baracuda_unary_neg_f32_runs_through_binding_table() {
     let got = run_unary_f32(
         &table,
         OpKind::NegElementwise,
-        fuel_dispatch::baracuda_dispatch::unary::neg_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::unary::neg_f32,
         &[1.0_f32, -2.0, 3.0, -4.0],
     )
     .expect("kernel call");
@@ -140,7 +140,7 @@ fn baracuda_unary_abs_f32_runs_through_binding_table() {
     let got = run_unary_f32(
         &table,
         OpKind::AbsElementwise,
-        fuel_dispatch::baracuda_dispatch::unary::abs_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::unary::abs_f32,
         &[1.0_f32, -2.0, 3.0, -4.0],
     )
     .expect("kernel call");
@@ -155,7 +155,7 @@ fn baracuda_unary_sqrt_f32_runs_through_binding_table() {
     let got = run_unary_f32(
         &table,
         OpKind::SqrtElementwise,
-        fuel_dispatch::baracuda_dispatch::unary::sqrt_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::unary::sqrt_f32,
         &[1.0_f32, 4.0, 9.0, 16.0],
     )
     .expect("kernel call");
@@ -170,7 +170,7 @@ fn baracuda_unary_relu_f32_runs_through_binding_table() {
     let got = run_unary_f32(
         &table,
         OpKind::ReluElementwise,
-        fuel_dispatch::baracuda_dispatch::unary::relu_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::unary::relu_f32,
         &[1.0_f32, -2.0, 0.0, 3.0],
     )
     .expect("kernel call");

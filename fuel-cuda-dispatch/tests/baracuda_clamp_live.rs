@@ -10,8 +10,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, OpParams},
 };
@@ -103,7 +103,7 @@ fn baracuda_clamp_f32() {
         &table,
         DType::F32,
         4,
-        fuel_dispatch::baracuda_dispatch::clamp::clamp_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::clamp::clamp_f32,
         &input,
         0.0,
         2.0,
@@ -122,7 +122,7 @@ fn baracuda_clamp_f64() {
         &table,
         DType::F64,
         8,
-        fuel_dispatch::baracuda_dispatch::clamp::clamp_f64,
+        fuel_cuda_dispatch::baracuda_dispatch::clamp::clamp_f64,
         &input,
         0.0,
         2.0,

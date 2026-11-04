@@ -13,8 +13,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, OpParams},
 };
@@ -105,7 +105,7 @@ fn baracuda_affine_f32() {
         &table,
         DType::F32,
         4,
-        fuel_dispatch::baracuda_dispatch::affine::affine_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::affine::affine_f32,
         &input,
         2.0,
         1.0,
@@ -124,7 +124,7 @@ fn baracuda_affine_f64() {
         &table,
         DType::F64,
         8,
-        fuel_dispatch::baracuda_dispatch::affine::affine_f64,
+        fuel_cuda_dispatch::baracuda_dispatch::affine::affine_f64,
         &input,
         2.0,
         1.0,
@@ -143,7 +143,7 @@ fn baracuda_affine_i32() {
         &table,
         DType::I32,
         4,
-        fuel_dispatch::baracuda_dispatch::affine::affine_i32,
+        fuel_cuda_dispatch::baracuda_dispatch::affine::affine_i32,
         &input,
         3.0,
         10.0,
@@ -162,7 +162,7 @@ fn baracuda_affine_i64() {
         &table,
         DType::I64,
         8,
-        fuel_dispatch::baracuda_dispatch::affine::affine_i64,
+        fuel_cuda_dispatch::baracuda_dispatch::affine::affine_i64,
         &input,
         -2.0,
         100.0,
@@ -181,7 +181,7 @@ fn baracuda_affine_u8() {
         &table,
         DType::U8,
         1,
-        fuel_dispatch::baracuda_dispatch::affine::affine_u8,
+        fuel_cuda_dispatch::baracuda_dispatch::affine::affine_u8,
         &input,
         2.0,
         10.0,
@@ -259,7 +259,7 @@ fn baracuda_affine_inplace_f32() {
     let out = run_affine_inplace(
         &table,
         DType::F32,
-        fuel_dispatch::baracuda_dispatch::affine::affine_inplace_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::affine::affine_inplace_f32,
         &input,
         2.0,
         0.5,
@@ -278,7 +278,7 @@ fn baracuda_affine_inplace_f64() {
     let out = run_affine_inplace(
         &table,
         DType::F64,
-        fuel_dispatch::baracuda_dispatch::affine::affine_inplace_f64,
+        fuel_cuda_dispatch::baracuda_dispatch::affine::affine_inplace_f64,
         &input,
         2.0,
         0.5,
@@ -302,7 +302,7 @@ fn baracuda_affine_inplace_bf16() {
     let out = run_affine_inplace(
         &table,
         DType::BF16,
-        fuel_dispatch::baracuda_dispatch::affine::affine_inplace_bf16,
+        fuel_cuda_dispatch::baracuda_dispatch::affine::affine_inplace_bf16,
         &input,
         2.0,
         0.5,
@@ -334,7 +334,7 @@ fn baracuda_affine_inplace_f16() {
     let out = run_affine_inplace(
         &table,
         DType::F16,
-        fuel_dispatch::baracuda_dispatch::affine::affine_inplace_f16,
+        fuel_cuda_dispatch::baracuda_dispatch::affine::affine_inplace_f16,
         &input,
         2.0,
         0.5,

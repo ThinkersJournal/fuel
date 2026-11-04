@@ -6,8 +6,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, OpParams},
 };
@@ -91,7 +91,7 @@ fn baracuda_index_select_f32_picks_rows() {
         &table,
         OpKind::IndexSelect,
         &[DType::F32, DType::U32, DType::F32],
-        fuel_dispatch::baracuda_dispatch::indexing::index_select_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::indexing::index_select_f32,
     );
 
     kernel(
@@ -150,7 +150,7 @@ fn baracuda_masked_fill_f32_replaces_masked_positions() {
         &table,
         OpKind::MaskedFill,
         &[DType::F32, DType::U8, DType::F32],
-        fuel_dispatch::baracuda_dispatch::indexing::masked_fill_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::indexing::masked_fill_f32,
     );
 
     kernel(
@@ -201,7 +201,7 @@ fn baracuda_index_select_f32_with_outer_batch() {
         &table,
         OpKind::IndexSelect,
         &[DType::F32, DType::U32, DType::F32],
-        fuel_dispatch::baracuda_dispatch::indexing::index_select_f32,
+        fuel_cuda_dispatch::baracuda_dispatch::indexing::index_select_f32,
     );
 
     kernel(

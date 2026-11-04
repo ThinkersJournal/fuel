@@ -11,6 +11,8 @@
 //! macros — adding a new (op, dtype) entry is one manifest line
 //! here + one matching line in `fuel-cuda-backend::baracuda`.
 
+#![cfg(feature = "cuda")]
+
 use std::sync::{Arc, RwLock};
 
 use fuel_ir::DType;

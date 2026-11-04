@@ -15,8 +15,8 @@
 use std::sync::{Arc, RwLock};
 
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::register_baracuda_cuda_kernels;
 use fuel_dispatch::{
-    baracuda_dispatch::register_baracuda_cuda_kernels,
     dispatch::register_cuda_kernels,
     kernel::{KernelBindingTable, MatmulM, OpParams},
 };
@@ -137,7 +137,7 @@ fn baracuda_gemm_s8_rrr_identity_matches_reference() {
         &table,
         OpKind::MatMul,
         &[DType::I8, DType::I8, DType::I8],
-        fuel_dispatch::baracuda_dispatch::gemm_int::gemm_s8_rrr,
+        fuel_cuda_dispatch::baracuda_dispatch::gemm_int::gemm_s8_rrr,
     );
     kernel(
         &[lhs_arc.clone(), rhs_arc.clone()],
@@ -186,7 +186,7 @@ fn baracuda_gemm_u8_rrr_identity_matches_reference() {
         &table,
         OpKind::MatMul,
         &[DType::U8, DType::U8, DType::U8],
-        fuel_dispatch::baracuda_dispatch::gemm_int::gemm_u8_rrr,
+        fuel_cuda_dispatch::baracuda_dispatch::gemm_int::gemm_u8_rrr,
     );
     kernel(
         &[lhs_arc.clone(), rhs_arc.clone()],
