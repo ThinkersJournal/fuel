@@ -13,7 +13,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 508 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 513 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1394 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 306 lines verbatim
@@ -75,7 +75,7 @@ docs/frontier-paradigms-vision.md	own		no lineage; 0 of 155 lines verbatim in ca
 docs/fuel-consumer-seam.md	own		no lineage; 0 of 1061 lines verbatim in candle (0%)
 docs/fused-op-registry.md	own		no lineage; 0 of 311 lines verbatim in candle (0%)
 docs/gap-015-handoff.md	own		no lineage; 0 of 183 lines verbatim in candle (0%)
-docs/gaps.md	own		no lineage; 0 of 419 lines verbatim in candle (0%)
+docs/gaps.md	own		no lineage; 0 of 420 lines verbatim in candle (0%)
 docs/interchange/stablehlo-to-fuel-op-map.md	own		no lineage; 0 of 157 lines verbatim in candle (0%)
 docs/kernel-contracts/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
 docs/method-rules-drafts-issue-159.md	own		no lineage; 0 of 286 lines verbatim in candle (0%)
@@ -970,7 +970,7 @@ fuel-inference/src/hybrid_state.rs	own		no lineage; 0 of 98 lines verbatim in ca
 fuel-inference/src/kv_compress.rs	own		no lineage; 2 of 327 lines verbatim in candle (1%)
 fuel-inference/src/lib.rs	own		no lineage; 1 of 90 lines verbatim in candle (1%)
 fuel-inference/src/moe_routing.rs	own		no lineage; 2 of 238 lines verbatim in candle (1%)
-fuel-inference/src/multi_session.rs	own		no lineage; 10 of 2914 lines verbatim in candle (0%)
+fuel-inference/src/multi_session.rs	own		no lineage; 10 of 2915 lines verbatim in candle (0%)
 fuel-inference/src/ngram_draft.rs	own		no lineage; 1 of 112 lines verbatim in candle (1%)
 fuel-inference/src/prefix_cache.rs	own		no lineage; 6 of 182 lines verbatim in candle (3%)
 fuel-inference/src/scheduler.rs	not-traced	candle-transformers/src/models/z_image/scheduler.rs	same file name as candle candle-transformers/src/models/z_image/scheduler.rs; a port or re-expression is presumed until judged
@@ -1696,7 +1696,7 @@ fuel-transformers/src/models/lazy_quantized_t5.rs	not-traced		lives in a directo
 fuel-transformers/src/models/lazy_quantized_whisper.rs	not-traced		names candle in its text; not judged
 fuel-transformers/src/models/lazy_qwen2.rs	not-traced	candle-transformers/src/models/llama.rs	44 of 961 lines also appear in candle (mostly candle-transformers/src/models/llama.rs); not judged
 fuel-transformers/src/models/lazy_qwen2_moe.rs	not-traced	candle-transformers/src/models/qwen2_moe.rs	same file name as candle candle-transformers/src/models/qwen2_moe.rs; a port or re-expression is presumed until judged
-fuel-transformers/src/models/lazy_qwen3.rs	not-traced	candle-transformers/src/models/llama.rs	50 of 1141 lines also appear in candle (mostly candle-transformers/src/models/llama.rs); not judged
+fuel-transformers/src/models/lazy_qwen3.rs	not-traced	candle-transformers/src/models/llama.rs	50 of 1464 lines also appear in candle (mostly candle-transformers/src/models/llama.rs); not judged
 fuel-transformers/src/models/lazy_qwen3_5.rs	not-traced	candle-transformers/src/models/granitemoehybrid.rs	24 of 342 lines also appear in candle (mostly candle-transformers/src/models/granitemoehybrid.rs); not judged
 fuel-transformers/src/models/lazy_qwen3_5_attn.rs	not-traced		lives in a directory that mirrors candle-transformers/src/models/; no same-name file; not judged
 fuel-transformers/src/models/lazy_qwen3_5_decode.rs	not-traced		lives in a directory that mirrors candle-transformers/src/models/; no same-name file; not judged

@@ -3,6 +3,15 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.41.5 - 2026-11-05 (provisional; the PM allocated 0.41.5)
+
+### Fixed
+
+- **Qwen3 paged decode now plans once (GAP-359 closed for its plan-once half).** `Qwen3Model::forward_paged_step_persistent` (and so `QuantizedQwen3Model`, which delegates to it) ignored `PagedDecodePlan::PlanOnce` and re-built and re-optimized the whole decode graph for every token, in prefill and in decode alike; the paged scheduler feeds a prompt one token at a time, so a 61-token prompt paid the optimizer 61 times. It now builds the single-token graph once, holds it in a `PagedDecodeSession` and rebinds only the token id, RoPE row, capacity-padded block table, context length and KV-write offset. The pool is advanced exactly once per token (validate, reserve, run), a held plan is dropped on a different cap, geometry, dtype, weights or pool, and a `TopologyChanged` rebuilds the plan for the same token. Found by lightbulb (Qwen3-0.6B Q8_0, paged scheduler 15 to 35x slower per step than the contiguous path).
+- **Measured, CPU, lightbulb's `bench_served_driver_steps`** (Qwen3-0.6B Q8_0, 61-token prompt, `KvBudget` 16 x 64, `max_batch` 1, F32 KV, one run per arm, same box): step 0 (prefill + first tokens) 151.1 s -> 15.64 s (9.7x); decode mean over 4 steps 2.572 s -> 0.268 s (9.6x); about 89.7% less, the ~90% re-plan share predicted from lightbulb's own earlier measurement. Box load: 73% -> 18% before, 76% -> 64% after (the AFTER run had more contention, not less). There is no variance estimate.
+- **Tests:** `persistent_paged_entry_equals_the_single_step` now asserts a held session, one optimizer run on the first token only, logits within 1e-6 of the re-planning step on every token across a block boundary, and a stable graph size (it failed first with "token 0: PlanOnce must hold a session"); `replan_flag_optimizes_every_token_and_holds_no_session` is the control that shows the optimizer counter sees a re-plan; four tests cover a different pool, a changed block cap, different weights and validate-first (a rejected cap or token leaves the session unadvanced), each with a separation assertion so it can fail. With the validity check disabled, 4 tests fail as designed. The whole Qwen3 module: 24 passed, 0 failed.
+- **NOT covered:** a `TopologyChanged` rebuild (hard to trigger from a unit test), a bf16 or f16 pool, and the CUDA arm: `Op::PagedAttn` has no CUDA kernel (ROADMAP row 106), so CUDA is expected to stay slower than CPU, which is NOT measured here; it is reported on the PR as a follow-up. The sliding-window decline is unchanged and is now GAP-377.
+
 ## v0.41.3 - 2026-11-05 (provisional; the PM allocated 0.41.3, CI-only patch)
 
 ### Changed

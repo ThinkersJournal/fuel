@@ -1001,6 +1001,31 @@ struct Qwen3PagedLayerInputs<'a> {
     step: &'a Qwen3PagedStep,
 }
 
+/// One layer's plan-once paged bindings: the pool K/V placeholders plus the
+/// step-wide re-bindable data placeholders.
+struct Qwen3PagedOffInputs<'a> {
+    pool: &'a fuel_tensor::kv_block_pool_device::DeviceKvPool,
+    k_pool_ph: &'a Tensor,
+    v_pool_ph: &'a Tensor,
+    rope_cos: &'a Tensor,
+    rope_sin: &'a Tensor,
+    block_table: &'a Tensor,
+    context_lens: &'a Tensor,
+    write_off: Option<&'a Tensor>,
+    write_sym: fuel_ir::SymId,
+    scale: f32,
+}
+
+/// What [`reserve_paged_slot_padded`] reserved for one plan-once step.
+struct Qwen3PagedAdvance {
+    /// The absolute position the new token lands at.
+    tok_pos: usize,
+    /// `phys * block_size + slot`: the flattened KV-write offset.
+    linear: usize,
+    /// The capacity-padded page table.
+    pt: fuel_tensor::kv_block_pool_device::PageTableHost,
+}
+
 /// What [`reserve_paged_slots`] reserved for one step.
 struct Qwen3PagedReservation {
     positions: Vec<usize>,
@@ -1026,6 +1051,48 @@ fn reserve_paged_slots(
     Ok(Qwen3PagedReservation {
         positions,
         writes,
+        pt,
+    })
+}
+
+/// Reserve one plan-once step's KV slot for ONE session: the position, the
+/// flattened write offset and the capacity-padded page table. Same discipline as
+/// [`reserve_paged_slots`]: every rejection (unknown session, a cap too small to
+/// hold the token's block, a pool without the blocks it needs) happens BEFORE the
+/// session is advanced, so a failed step leaves the session where it was.
+fn reserve_paged_slot_padded(
+    who: &str,
+    pool: &mut fuel_tensor::kv_block_pool_device::DeviceKvPool,
+    session: fuel_kv_pool::SessionHandle,
+    max_blocks_cap: usize,
+) -> Result<Qwen3PagedAdvance> {
+    let sessions = [session];
+    let positions = paged_positions(who, pool, &sessions)?;
+    let tok_pos = positions[0];
+    let block_size = pool.geometry().block_size;
+    let blocks_after = (tok_pos + 1).div_ceil(block_size);
+    if blocks_after > max_blocks_cap {
+        return Err(fuel_ir::error::Error::Msg(format!(
+            "{who}: the session needs {blocks_after} blocks after this token but max_blocks_cap is {max_blocks_cap}"
+        ))
+        .bt());
+    }
+    let needed = paged_blocks_needed(who, pool, &sessions, &positions)?;
+    check_paged_capacity(who, pool, needed)?;
+    let writes = claim_paged_writes(who, pool, &sessions, &positions)?;
+    let (phys, slot) = writes[0];
+    let linear = phys as usize * block_size + slot;
+    let pt = pool
+        .materialize_block_table_padded(&sessions, max_blocks_cap)
+        .map_err(|e| {
+            fuel_ir::error::Error::Msg(format!(
+                "{who}: padded block-table materialize failed: {e:?}"
+            ))
+            .bt()
+        })?;
+    Ok(Qwen3PagedAdvance {
+        tok_pos,
+        linear,
         pt,
     })
 }
@@ -1223,22 +1290,321 @@ impl Qwen3Model {
         })
     }
 
-    /// Plan-once entry required by `PagedDecodeModel`. Qwen3 has no held-plan
-    /// paged graph (GAP-359), so every plan setting re-plans the token via
-    /// [`Self::forward_paged_step`] -- the documented `Replan` behaviour, and
-    /// numerically identical. Any held session is dropped so nothing stale
-    /// lingers.
+    /// Plan-once entry required by `PagedDecodeModel`.
+    ///
+    /// `Replan` drops any held session and re-plans the token via
+    /// [`Self::forward_paged_step`] -- the explicit opt-out, numerically
+    /// identical. `PlanOnce`, the driver default, builds the single-token paged
+    /// decode graph and its optimized plan ONCE, holds it in a
+    /// [`PagedDecodeSession`](fuel_tensor::inference_context::PagedDecodeSession)
+    /// and per token only re-binds shape-stable data (token id, RoPE row,
+    /// capacity-padded block table, context length, KV-write offset) into a clone
+    /// of the held cache, so the optimizer (about 90% of a paged step, measured)
+    /// runs once instead of per token. The Qwen3 twin of
+    /// `LlamaModel::forward_paged_step_persistent`.
+    ///
+    /// Order is validate, then reserve, then run: everything that can be rejected
+    /// without touching the pool is checked first (a typed `Err`, the session NOT
+    /// advanced), the pool is advanced exactly ONCE, and a `TopologyChanged` from
+    /// the held plan rebuilds it for the SAME already-advanced token instead of
+    /// re-running the step, which would advance the session a second time.
+    ///
+    /// `max_blocks_cap` pins the held graph's block-table shape and must cover the
+    /// session's eventual block count (a smaller cap is a typed `Err`, never a
+    /// truncation). Single session (B = 1); the ragged batched arm stays on
+    /// [`Self::forward_paged_step_batched`].
     pub fn forward_paged_step_persistent(
         &self,
         token: u32,
         pool: &mut fuel_tensor::kv_block_pool_device::DeviceKvPool,
         session: fuel_kv_pool::SessionHandle,
-        _max_blocks_cap: usize,
-        _plan: fuel_tensor::inference_context::PagedDecodePlan,
+        max_blocks_cap: usize,
+        plan: fuel_tensor::inference_context::PagedDecodePlan,
         decode_session: &mut Option<fuel_tensor::inference_context::PagedDecodeSession>,
     ) -> Result<Vec<f32>> {
-        *decode_session = None;
-        self.forward_paged_step(token, pool, session)
+        const WHO: &str = "Qwen3Model::forward_paged_step_persistent";
+        if matches!(
+            plan,
+            fuel_tensor::inference_context::PagedDecodePlan::Replan
+        ) {
+            *decode_session = None;
+            return self.forward_paged_step(token, pool, session);
+        }
+        self.check_paged_step(WHO, &[token], pool)?;
+        // A held session is valid only for the same cap / geometry / dtype, the
+        // same weights (`decode_shape_key` carries weight identity) and the same
+        // POOL (`alloc_id`: the held cache bakes this pool's block buffers).
+        let (n_layers, block_size) = {
+            let g = pool.geometry();
+            (g.n_layers, g.block_size)
+        };
+        if let Some(s) = decode_session.as_ref()
+            && !s.is_valid_for(
+                max_blocks_cap,
+                n_layers,
+                block_size,
+                pool.dtype(),
+                self.decode_shape_key(),
+                pool.alloc_id(),
+            )
+        {
+            *decode_session = None;
+        }
+        let adv = reserve_paged_slot_padded(WHO, pool, session, max_blocks_cap)?;
+        if let Some(s) = decode_session.as_ref() {
+            match self.rebind_and_realize_paged_prebuilt(token, pool, &adv, s) {
+                Err(fuel_ir::error::Error::TopologyChanged { .. }) => *decode_session = None,
+                other => return other,
+            }
+        }
+        self.build_and_realize_first_paged_token(token, pool, &adv, max_blocks_cap, decode_session)
+    }
+
+    /// The per-token data Arcs for one plan-once paged step. Uploaded through the
+    /// same path `KvCache::with_capacity` uses (a host wrap on CPU, a tiny H2D
+    /// copy on a GPU); the bytes change per token, the held graph's Const NodeIds
+    /// do not.
+    fn build_paged_token_data(
+        &self,
+        dev: &fuel_tensor::Device,
+        token: u32,
+        adv: &Qwen3PagedAdvance,
+        use_device_offset: bool,
+    ) -> Result<fuel_tensor::inference_context::PagedDecodeTokenData> {
+        let cfg = &self.config;
+        let upload = fuel_tensor::pipelined_bridge::upload_host_buffer_to_device;
+        let (cos, sin) =
+            fuel_graph::build_rope_tables(cfg.rope_theta, adv.tok_pos, 1, cfg.head_dim);
+        Ok(fuel_tensor::inference_context::PagedDecodeTokenData {
+            token_ids: upload(dev, fuel_ir::HostBuffer::U32(vec![token]))?,
+            rope_cos: upload(dev, fuel_ir::HostBuffer::F32(cos))?,
+            rope_sin: upload(dev, fuel_ir::HostBuffer::F32(sin))?,
+            block_table: upload(dev, fuel_ir::HostBuffer::U32(adv.pt.block_table.clone()))?,
+            context_lens: upload(dev, fuel_ir::HostBuffer::U32(adv.pt.context_lens.clone()))?,
+            offset: if use_device_offset {
+                Some(upload(
+                    dev,
+                    fuel_ir::HostBuffer::I64(vec![adv.linear as i64]),
+                )?)
+            } else {
+                None
+            },
+        })
+    }
+
+    /// Re-bind one token's data into a clone of the held session's cache and
+    /// realize via the prebuilt seam (no prepare, no optimize).
+    fn rebind_and_realize_paged_prebuilt(
+        &self,
+        token: u32,
+        pool: &fuel_tensor::kv_block_pool_device::DeviceKvPool,
+        adv: &Qwen3PagedAdvance,
+        held: &fuel_tensor::inference_context::PagedDecodeSession,
+    ) -> Result<Vec<f32>> {
+        let dev = pool.device().clone();
+        // What the graph was built with is the source of truth for the offset
+        // carrier, so build and rebind cannot disagree.
+        let use_device_offset = held.offset_node().is_some();
+        let data = self.build_paged_token_data(&dev, token, adv, use_device_offset)?;
+        let sym_env = held.per_token_sym_env(adv.linear)?;
+        held.realize_token(&dev, data, &sym_env)
+    }
+
+    /// Build the held paged decode graph ONCE with stable re-bindable
+    /// placeholders, optimize it once, store the session and return this first
+    /// token's logits.
+    fn build_and_realize_first_paged_token(
+        &self,
+        token: u32,
+        pool: &fuel_tensor::kv_block_pool_device::DeviceKvPool,
+        adv: &Qwen3PagedAdvance,
+        max_blocks_cap: usize,
+        decode_session: &mut Option<fuel_tensor::inference_context::PagedDecodeSession>,
+    ) -> Result<Vec<f32>> {
+        const WHO: &str = "Qwen3Model::forward_paged_step_persistent";
+        let cfg = &self.config;
+        let dev = pool.device().clone();
+        let act_dtype = pool.dtype();
+        let (n_layers, block_size) = {
+            let g = pool.geometry();
+            (g.n_layers, g.block_size)
+        };
+        let scale = (1.0_f64 / (cfg.head_dim as f64).sqrt()) as f32;
+        // Device-offset write (`WriteSliceDoff`) on CPU/CUDA, SymEnv on Vulkan --
+        // the split the Llama plan-once arm and the contiguous persistent path use.
+        let use_device_offset = dev.is_cpu() || dev.is_cuda();
+        let write_sym = fuel_ir::SymId(0);
+
+        // The embedding table stays f32 (CUDA IndexSelect has no bf16 key); the
+        // lookup is cast to the activation dtype.
+        let embed = Tensor::from_f32(
+            self.weights.token_embedding.clone(),
+            Shape::from_dims(&[cfg.vocab_size, cfg.hidden_size]),
+            &dev,
+        )?;
+        let token_ids = embed.const_placeholder_like(Shape::from_dims(&[1]), DType::U32);
+        let mut h = embed
+            .index_select(0, &token_ids)?
+            .reshape(Shape::from_dims(&[1, 1, cfg.hidden_size]))?
+            .to_dtype(act_dtype)?;
+
+        // `[1, 1, 1, head_dim]`: the shape `rope_tables_const_batched` carries at
+        // B = 1, so `rope_batched` runs the same ops in the same order as the
+        // re-planning path.
+        let rope_shape = Shape::from_dims(&[1, 1, 1, cfg.head_dim]);
+        let rope_cos = h.const_placeholder_like(rope_shape.clone(), DType::F32);
+        let rope_sin = h.const_placeholder_like(rope_shape, DType::F32);
+        let block_table =
+            h.const_placeholder_like(Shape::from_dims(&[1, max_blocks_cap.max(1)]), DType::U32);
+        let context_lens = h.const_placeholder_like(Shape::from_dims(&[1]), DType::U32);
+        let offset_tensor =
+            use_device_offset.then(|| h.const_placeholder_like(Shape::from_dims(&[]), DType::I64));
+        let token_ids_node = token_ids.graph_tensor().id();
+        let rope_cos_node = rope_cos.graph_tensor().id();
+        let rope_sin_node = rope_sin.graph_tensor().id();
+        let block_table_node = block_table.graph_tensor().id();
+        let context_lens_node = context_lens.graph_tensor().id();
+        let offset_node = offset_tensor.as_ref().map(|t| t.graph_tensor().id());
+
+        // Per layer: stable pool K/V placeholders (viewed flat so the KV write is
+        // ONE dynamic axis-0 offset), bound once to the pool buffers and mutated
+        // in place each token.
+        let mut cache = fuel_dispatch::pipelined::StorageCache::new();
+        let mut kv_nodes: Vec<(fuel_graph::NodeId, fuel_graph::NodeId)> =
+            Vec::with_capacity(n_layers);
+        let flat_shape = pool.pool_shape_flat();
+        for (li, (layer, extras)) in self
+            .weights
+            .layers
+            .iter()
+            .zip(self.weights.layer_extras.iter())
+            .enumerate()
+        {
+            let k_ph = h.const_placeholder_like(flat_shape.clone(), act_dtype);
+            let v_ph = h.const_placeholder_like(flat_shape.clone(), act_dtype);
+            let (k_arc, v_arc) = match (pool.k_pool(li), pool.v_pool(li)) {
+                (Some(k), Some(v)) => (k, v),
+                _ => {
+                    return Err(fuel_ir::error::Error::Msg(format!(
+                        "{WHO}: no K/V pool buffer for layer {li}"
+                    ))
+                    .bt());
+                }
+            };
+            let (k_id, v_id) = (k_ph.graph_tensor().id(), v_ph.graph_tensor().id());
+            cache.insert(k_id, Arc::clone(k_arc));
+            cache.insert(v_id, Arc::clone(v_arc));
+            kv_nodes.push((k_id, v_id));
+            h = self.apply_layer_paged_off(
+                &h,
+                layer,
+                extras,
+                &Qwen3PagedOffInputs {
+                    pool,
+                    k_pool_ph: &k_ph,
+                    v_pool_ph: &v_ph,
+                    rope_cos: &rope_cos,
+                    rope_sin: &rope_sin,
+                    block_table: &block_table,
+                    context_lens: &context_lens,
+                    write_off: offset_tensor.as_ref(),
+                    write_sym,
+                    scale,
+                },
+            )?;
+        }
+
+        let h_norm =
+            h.rms_norm_affine(Arc::clone(&self.weights.final_norm_gain), cfg.rms_norm_eps)?;
+        let logits = self.apply_lm_head(&h_norm)?; // [1, 1, vocab]
+        // Cast to f32 before the f32 realize (a bf16 root would be half the width).
+        let logits_root = logits
+            .reshape(Shape::from_dims(&[cfg.vocab_size]))?
+            .to_dtype(DType::F32)?;
+        let logits_node = logits_root.graph_tensor().id();
+        let graph = logits_root.graph_tensor().graph().clone();
+
+        // Bind this token's data, then realize and optimize ONCE.
+        let data = self.build_paged_token_data(&dev, token, adv, use_device_offset)?;
+        cache.insert(token_ids_node, Arc::clone(&data.token_ids));
+        cache.insert(rope_cos_node, Arc::clone(&data.rope_cos));
+        cache.insert(rope_sin_node, Arc::clone(&data.rope_sin));
+        cache.insert(block_table_node, Arc::clone(&data.block_table));
+        cache.insert(context_lens_node, Arc::clone(&data.context_lens));
+        if let (Some(node), Some(off)) = (offset_node, data.offset.as_ref()) {
+            cache.insert(node, Arc::clone(off));
+        }
+        let mut sym_env = fuel_ir::SymEnv::new();
+        sym_env.bind(write_sym, adv.linear)?;
+        let (effective_target, optimized, base_cache, logits_vec) =
+            fuel_tensor::pipelined_bridge::prebuild_optimized_env_capturing_cache::<f32>(
+                &graph,
+                logits_node,
+                &dev,
+                cache,
+                &sym_env,
+            )?;
+        *decode_session = Some(fuel_tensor::inference_context::PagedDecodeSession::new(
+            graph,
+            optimized,
+            effective_target,
+            logits_node,
+            token_ids_node,
+            rope_cos_node,
+            rope_sin_node,
+            block_table_node,
+            context_lens_node,
+            kv_nodes,
+            offset_node,
+            write_sym,
+            base_cache,
+            max_blocks_cap,
+            n_layers,
+            block_size,
+            act_dtype,
+            self.decode_shape_key(),
+            // Which POOL's block buffers the held cache bakes in: the rebind never
+            // re-binds them, so a same-geometry pool swap must invalidate the plan.
+            pool.alloc_id(),
+        ));
+        Ok(logits_vec)
+    }
+
+    /// One Qwen3 layer of the plan-once paged step: the same projections,
+    /// QK-norm, RoPE and FFN as [`Self::apply_layer_paged_batched`], with the KV
+    /// write and attention going through `DeviceKvPool::build_decode_attn_off`
+    /// (one flattened dynamic write offset, so the graph is step-invariant).
+    fn apply_layer_paged_off(
+        &self,
+        x: &Tensor,
+        layer: &LayerWeights,
+        extras: &Qwen3LayerExtras,
+        p: &Qwen3PagedOffInputs<'_>,
+    ) -> Result<Tensor> {
+        let cfg = &self.config;
+        let q_dim = cfg.num_attention_heads * cfg.head_dim;
+        let x_norm = x.rms_norm_affine(Arc::clone(&layer.attn_norm_gain), cfg.rms_norm_eps)?;
+        let (q, k, v_h) = self.paged_qkv_heads(&x_norm, layer)?;
+        let (q_r, k_r) = self.paged_qk_norm_rope(q, k, extras, p.rope_cos, p.rope_sin)?;
+        let attn = p.pool.build_decode_attn_off(
+            p.k_pool_ph,
+            p.v_pool_ph,
+            &q_r,
+            &k_r,
+            &v_h,
+            p.block_table,
+            p.context_lens,
+            p.write_off,
+            p.write_sym,
+            p.scale,
+        )?;
+        let merged = attn
+            .permute([0, 2, 1, 3_usize])?
+            .reshape(Shape::from_dims(&[1, 1, q_dim]))?;
+        let attn_out = layer.attn_o.apply_linear(&merged, q_dim, cfg.hidden_size)?;
+        let h1 = x.add(&attn_out)?;
+        let ffn_out = self.paged_ffn(&h1, layer)?;
+        h1.add(&ffn_out)
     }
 
     /// Batched (`B = K`) paged forward: one decode step over K sessions in a
@@ -1396,7 +1762,8 @@ impl Qwen3Model {
         let cfg = &self.config;
         let x_norm = x.rms_norm_affine(Arc::clone(&layer.attn_norm_gain), cfg.rms_norm_eps)?;
         let (q, k, v_h) = self.paged_qkv_heads(&x_norm, layer)?;
-        let (q_r, k_r) = self.paged_qk_norm_rope(q, k, extras, p.step)?;
+        let (q_r, k_r) =
+            self.paged_qk_norm_rope(q, k, extras, &p.step.rope_cos, &p.step.rope_sin)?;
         let attn_out = self.paged_attend(&q_r, &k_r, &v_h, layer, p)?;
         let h1 = x.add(&attn_out)?;
         let ffn_out = self.paged_ffn(&h1, layer)?;
@@ -1458,7 +1825,8 @@ impl Qwen3Model {
         q: Tensor,
         k: Tensor,
         extras: &Qwen3LayerExtras,
-        step: &Qwen3PagedStep,
+        rope_cos: &Tensor,
+        rope_sin: &Tensor,
     ) -> Result<(Tensor, Tensor)> {
         let cfg = &self.config;
         let act_dtype = q.dtype();
@@ -1466,7 +1834,7 @@ impl Qwen3Model {
         let k = k.rms_norm_affine(Arc::clone(&extras.k_norm_gain), cfg.rms_norm_eps)?;
         let rope = |t: Tensor| -> Result<Tensor> {
             t.to_dtype(DType::F32)?
-                .rope_batched(&step.rope_cos, &step.rope_sin)?
+                .rope_batched(rope_cos, rope_sin)?
                 .to_dtype(act_dtype)
         };
         Ok((rope(q)?, rope(k)?))
@@ -1677,18 +2045,29 @@ mod tests {
         }
     }
 
-    /// Every plan setting re-plans (GAP-359) and so equals the single step.
+    /// `PlanOnce` builds the paged decode graph ONCE, holds it in a
+    /// `PagedDecodeSession`, and rebinds it per token. Three claims, each with
+    /// teeth (the `Replan` control below shows the counter sees a re-plan):
+    ///  1. a session is held after the first token, and the optimizer runs on
+    ///     the first token only;
+    ///  2. every token's logits equal the re-planning single step on an
+    ///     identical pool, across a block boundary (7 tokens, block_size 4);
+    ///  3. the held graph does not grow after the first token (no re-splice).
     #[test]
     fn persistent_paged_entry_equals_the_single_step() {
         use fuel_tensor::inference_context::PagedDecodePlan;
+        use fuel_tensor::pipelined_bridge::optimize_calls_thread_local;
         let m = paged_model(0.4);
-        let want = full_last(&m, &PAGED_SEQ);
+        let mut ref_pool = paged_pool(&m);
+        let rs = ref_pool.core_mut().open();
         let mut pool = paged_pool(&m);
         let s = pool.core_mut().open();
         let mut ds = None;
-        let mut got = Vec::new();
-        for &t in &PAGED_SEQ {
-            got = m
+        let mut nodes_after_first = 0usize;
+        for (i, &t) in PAGED_SEQ.iter().enumerate() {
+            let want = m.forward_paged_step(t, &mut ref_pool, rs).unwrap();
+            let before = optimize_calls_thread_local();
+            let got = m
                 .forward_paged_step_persistent(
                     t,
                     &mut pool,
@@ -1698,11 +2077,241 @@ mod tests {
                     &mut ds,
                 )
                 .unwrap();
+            let optimized = optimize_calls_thread_local() - before;
+            assert!(
+                max_diff(&got, &want) < PAGED_TOL,
+                "token {i}: plan-once logits diverged from the single step by {}",
+                max_diff(&got, &want)
+            );
+            assert!(ds.is_some(), "token {i}: PlanOnce must hold a session");
+            let nodes = ds.as_ref().unwrap().graph_node_count();
+            if i == 0 {
+                assert!(
+                    optimized >= 1,
+                    "the first token builds and optimizes the plan"
+                );
+                nodes_after_first = nodes;
+            } else {
+                assert_eq!(
+                    optimized, 0,
+                    "token {i}: must REUSE the held plan, not re-optimize"
+                );
+                assert_eq!(
+                    nodes, nodes_after_first,
+                    "token {i}: the held graph must not grow"
+                );
+            }
         }
+    }
+
+    /// Control for the reuse detector above (kept permanently): the explicit
+    /// `Replan` opt-out optimizes on EVERY token and holds no session, and still
+    /// equals the single step. If the optimizer counter could not see a re-plan,
+    /// the plan-once test's "zero re-optimize" claim would be vacuous.
+    #[test]
+    fn replan_flag_optimizes_every_token_and_holds_no_session() {
+        use fuel_tensor::inference_context::PagedDecodePlan;
+        use fuel_tensor::pipelined_bridge::optimize_calls_thread_local;
+        let m = paged_model(0.4);
+        let mut ref_pool = paged_pool(&m);
+        let rs = ref_pool.core_mut().open();
+        let mut pool = paged_pool(&m);
+        let s = pool.core_mut().open();
+        let mut ds = None;
+        for (i, &t) in PAGED_SEQ.iter().enumerate() {
+            let want = m.forward_paged_step(t, &mut ref_pool, rs).unwrap();
+            let before = optimize_calls_thread_local();
+            let got = m
+                .forward_paged_step_persistent(t, &mut pool, s, 4, PagedDecodePlan::Replan, &mut ds)
+                .unwrap();
+            assert!(
+                optimize_calls_thread_local() - before >= 1,
+                "token {i}: Replan must optimize on every token"
+            );
+            assert!(ds.is_none(), "token {i}: Replan holds no session");
+            assert!(max_diff(&got, &want) < PAGED_TOL);
+        }
+    }
+
+    /// Drive `tokens` through the re-planning single step on a fresh pool and
+    /// return the pool, its session and the last logits: the reference stream a
+    /// plan-once stream is compared against.
+    fn single_step_stream(
+        m: &Qwen3Model,
+        tokens: &[u32],
+    ) -> (
+        fuel_tensor::kv_block_pool_device::DeviceKvPool,
+        fuel_kv_pool::SessionHandle,
+        Vec<f32>,
+    ) {
+        let mut pool = paged_pool(m);
+        let s = pool.core_mut().open();
+        let mut last = Vec::new();
+        for &t in tokens {
+            last = m.forward_paged_step(t, &mut pool, s).unwrap();
+        }
+        (pool, s, last)
+    }
+
+    /// Run one plan-once token and report whether the optimizer ran.
+    fn plan_once_token(
+        m: &Qwen3Model,
+        token: u32,
+        pool: &mut fuel_tensor::kv_block_pool_device::DeviceKvPool,
+        s: fuel_kv_pool::SessionHandle,
+        cap: usize,
+        ds: &mut Option<fuel_tensor::inference_context::PagedDecodeSession>,
+    ) -> (Vec<f32>, usize) {
+        use fuel_tensor::inference_context::PagedDecodePlan;
+        use fuel_tensor::pipelined_bridge::optimize_calls_thread_local;
+        let before = optimize_calls_thread_local();
+        let got = m
+            .forward_paged_step_persistent(token, pool, s, cap, PagedDecodePlan::PlanOnce, ds)
+            .unwrap();
+        (got, optimize_calls_thread_local() - before)
+    }
+
+    /// A held plan bakes ONE pool's block buffers into its cache; the rebind never
+    /// re-binds them. Continuing a different stream on a different pool must
+    /// REBUILD, not reuse. The two histories differ, so a stale plan (which would
+    /// attend pool A's KV) produces different logits: the separation assertion
+    /// proves this test can fail.
+    #[test]
+    fn a_held_plan_is_not_reused_over_a_different_pool() {
+        let m = paged_model(0.4);
+        let (hist_a, hist_b, next) = ([1u32, 2, 3], [9u32, 8, 7], 4u32);
+        let mut pool_a = paged_pool(&m);
+        let sa = pool_a.core_mut().open();
+        let mut ds = None;
+        for &t in &hist_a {
+            plan_once_token(&m, t, &mut pool_a, sa, 4, &mut ds);
+        }
+        assert!(ds.is_some(), "the plan is built on pool A");
+
+        let (mut pool_b, sb, _) = single_step_stream(&m, &hist_b);
+        let (_, _, want) = single_step_stream(&m, &[9, 8, 7, next]);
+        let (_, _, stale) = single_step_stream(&m, &[1, 2, 3, next]);
         assert!(
-            ds.is_none(),
-            "no held session: the plan is re-built per token"
+            max_diff(&want, &stale) > PAGED_SEPARATION,
+            "the two histories must be distinguishable, else this test is vacuous"
         );
+
+        let (got, optimized) = plan_once_token(&m, next, &mut pool_b, sb, 4, &mut ds);
+        assert!(optimized >= 1, "a different pool must rebuild the plan");
+        assert!(
+            max_diff(&got, &want) < PAGED_TOL,
+            "pool B's stream must read pool B's KV, off by {}",
+            max_diff(&got, &want)
+        );
+    }
+
+    /// The block table's shape is `[1, max_blocks_cap]`; a changed cap makes the
+    /// held graph's shapes stale, so the plan must be rebuilt, not rebound.
+    #[test]
+    fn a_changed_block_cap_rebuilds_the_plan() {
+        let m = paged_model(0.4);
+        let (_, _, want) = single_step_stream(&m, &PAGED_SEQ[..4]);
+        let mut pool = paged_pool(&m);
+        let s = pool.core_mut().open();
+        let mut ds = None;
+        for &t in &PAGED_SEQ[..3] {
+            plan_once_token(&m, t, &mut pool, s, 4, &mut ds);
+        }
+        let (got, optimized) = plan_once_token(&m, PAGED_SEQ[3], &mut pool, s, 5, &mut ds);
+        assert!(optimized >= 1, "a different cap must rebuild the plan");
+        assert!(max_diff(&got, &want) < PAGED_TOL);
+    }
+
+    /// `decode_shape_key` carries weight IDENTITY: a plan baked against one
+    /// model's weight Consts must not run another model's step. The models differ
+    /// in their QK-norm gains, and the separation assertion proves it.
+    #[test]
+    fn a_held_plan_is_not_reused_across_models_with_different_weights() {
+        let (a, b) = (paged_model(0.4), paged_model(0.9));
+        let mut pool_a = paged_pool(&a);
+        let sa = pool_a.core_mut().open();
+        let mut ds = None;
+        for &t in &PAGED_SEQ[..3] {
+            plan_once_token(&a, t, &mut pool_a, sa, 4, &mut ds);
+        }
+        let (mut pool_b, sb, _) = single_step_stream(&b, &PAGED_SEQ[..3]);
+        let (_, _, want_b) = single_step_stream(&b, &PAGED_SEQ[..4]);
+        let (_, _, want_a) = single_step_stream(&a, &PAGED_SEQ[..4]);
+        assert!(
+            max_diff(&want_a, &want_b) > PAGED_SEPARATION,
+            "the two models must be distinguishable, else this test is vacuous"
+        );
+        let (got, optimized) = plan_once_token(&b, PAGED_SEQ[3], &mut pool_b, sb, 4, &mut ds);
+        assert!(optimized >= 1, "different weights must rebuild the plan");
+        assert!(
+            max_diff(&got, &want_b) < PAGED_TOL,
+            "model B must run B's weights, off by {}",
+            max_diff(&got, &want_b)
+        );
+    }
+
+    /// Validate first, mutate last: a cap too small to hold the token's block, or
+    /// a token outside the vocabulary, is a typed `Err` that leaves the session
+    /// where it was, and the stream then continues correctly with a valid call.
+    #[test]
+    fn plan_once_rejects_bad_inputs_before_advancing_the_session() {
+        use fuel_tensor::inference_context::PagedDecodePlan;
+        let m = paged_model(0.4);
+        let (_, _, want) = single_step_stream(&m, &PAGED_SEQ);
+        let mut pool = paged_pool(&m);
+        let s = pool.core_mut().open();
+        let mut ds = None;
+        for &t in &PAGED_SEQ[..4] {
+            plan_once_token(&m, t, &mut pool, s, 1, &mut ds);
+        }
+        let filled =
+            |p: &fuel_tensor::kv_block_pool_device::DeviceKvPool| p.core().filled_tokens(s);
+        assert_eq!(
+            filled(&pool),
+            Some(4),
+            "four tokens fill the one allowed block"
+        );
+
+        // The fifth token needs a second block, but the cap is 1.
+        let e = m
+            .forward_paged_step_persistent(
+                PAGED_SEQ[4],
+                &mut pool,
+                s,
+                1,
+                PagedDecodePlan::PlanOnce,
+                &mut ds,
+            )
+            .unwrap_err();
+        assert!(format!("{e}").contains("max_blocks_cap"), "got: {e}");
+        assert_eq!(
+            filled(&pool),
+            Some(4),
+            "a rejected cap must not advance the session"
+        );
+
+        let e = m
+            .forward_paged_step_persistent(
+                m.config.vocab_size as u32,
+                &mut pool,
+                s,
+                4,
+                PagedDecodePlan::PlanOnce,
+                &mut ds,
+            )
+            .unwrap_err();
+        assert!(format!("{e}").contains("out of range"), "got: {e}");
+        assert_eq!(
+            filled(&pool),
+            Some(4),
+            "a rejected token must not advance the session"
+        );
+
+        // The stream continues with a valid cap and matches the reference.
+        let mut got = Vec::new();
+        for &t in &PAGED_SEQ[4..] {
+            got = plan_once_token(&m, t, &mut pool, s, 4, &mut ds).0;
+        }
         assert!(max_diff(&got, &want) < PAGED_TOL);
     }
 
