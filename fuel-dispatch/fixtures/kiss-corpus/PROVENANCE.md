@@ -21,11 +21,11 @@ vendoring (2026-10-14) added `ops-narrow-move-nan`, `ops-narrow-select-nan`,
 
 | file | pinned at | KISS blob (`git ls-tree <pin> conformance/corpus/`) | schema |
 |------|-----------|-------------------------------------------------------|--------|
-| `op_manifest.json` | **`5b28bf51`** | `f656b625ab8e5371c7a4a73df92863d193c31b74` | `kiss-op-manifest-v1` |
+| `op_manifest.json` | **`e786097`** (was `5b28bf51`) | `ccaa50a6bdeeacc19ed40018cc1730573df48cfe` | `kiss-op-manifest-v1` |
 | `ops-arith.json` | `f4952b4c` (same blob at `5b28bf51`) | `aee2de79a709e722f3c439047bf90c638aec9b24` | `kiss-oracle-vectors-v1.json` |
 | `ops-minmax-ordinary.json` | `f4952b4c` (same blob at `5b28bf51`) | `7bd6cc394bd247f9ca34edfc957d70a37432af97` | `kiss-oracle-vectors-v1.json` |
 | `ops-minmax-signed-zero.json` | `f4952b4c` (same blob at `5b28bf51`) | `d06bdb85c8e626750318b61585b4af3ea5c8d4b4` | `kiss-oracle-vectors-v1.json` |
-| `dtype_manifest.json` | **`bafbe07`** (was `86196f7`) | `7aa676d9324b800241ddcb31d294ddce8e70af0a` | `kiss-dtype-manifest` |
+| `dtype_manifest.json` | **`e786097`** (was `bafbe07`) | `129690fe20618e3c2b702c008e1e730369d72de9` | `kiss-dtype-manifest` |
 | `structure_key_vectors.json` | **`bafbe07`** (was `86196f7`) | `05c7a99bff4451dad318393c3360ac254d598da1` | `kiss-structure-key-vectors` |
 | `structure_key_derivation_vectors.json` | **`86196f7`** (sk6) | `393138b0540bfec0e81e78666ecf1c18f6c665f9` | derivation vectors |
 | `ops-narrow-move-nan.json` | **`5b28bf51`** | `c108226af556aa1c6a45e8e43b85ab29b96dec2d` | `kiss-oracle-vectors-v1.json` |
@@ -105,6 +105,22 @@ except ctr" to "every cell class, ctr included": 37 vectors now carry caller-dec
 contraction roles (M/N/K as operand axes, batch axes, weight/scale slots) that
 `kiss_derivation_vectors.rs` cannot feed yet (run against the new file: 37 vectors
 diverge from the pinned sets). Adopting it is harness work, tracked in ROADMAP row 109.
+
+## The `e786097` re-vendor (2026-11-05): `generated_from` names the emitting tool (KISS#772 / #218)
+
+`dtype_manifest.json` and `op_manifest.json` re-vendored byte-for-byte via
+`git show e786097:conformance/corpus/<file>` in response to KISS's `re-vendor-dtype_manifest-op_manifest`
+notice. The blobs above were verified with `git hash-object --no-filters` against
+`git rev-parse e786097:conformance/corpus/<file>`; the same two blobs are at KISS `main`
+`b506222` (read 2026-11-05), so nothing moved after `e786097`. Positive control: the
+unchanged `ops-arith.json` hashes to its pinned `aee2de79...` in the same shell.
+Delta against the previous vendoring (diff of the whole file, both ways): ONLY the
+`generated_from` member changed (`spec/classify.md` -> `tools/kiss_dtypes.py (...)`;
+`spec/ops.md` -> `tools/kiss_ops.py (...)`); no entry, count or schema member moved. KISS's
+notice says not to rely on the value of `generated_from`; checked here by search of
+`fuel-dispatch/src/kiss_corpus.rs`, `fuel-dispatch/tests`, `fuel-dispatch/src/telemetry`,
+`fuel-ir` and `scripts` at `2247bfb23`: no code reads or pins it (the only mention is a comment
+in `kiss_structure_key_byte_match.rs`).
 
 **2026-10-14 -- the paragraph that stood here is superseded.** It said `op_manifest.json`
 was left at `f4952b4c` on purpose and that the NaN files were "not vendored and not
