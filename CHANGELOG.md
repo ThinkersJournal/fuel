@@ -3,6 +3,12 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.41.2 - 2026-11-05 (provisional; the PM allocates)
+
+### Fixed
+
+- **GAP-375 closed: `baracuda_masked_fill_f32_replaces_masked_positions` looked up the pre-Bool key.** The live CUDA test in `fuel-cuda-dispatch/tests/baracuda_indexing_live.rs` asked for `(MaskedFill, [F32, U8, F32], Cuda)`; the registered key has been `[F32, Bool, F32]` since the Bool dtype migration, so the lookup was empty and the test panicked. The key is now `Bool` and the mask storage is built as `DType::Bool`. Test-only, no library change. Verified on the RTX 4070 under `gpu-run`: `baracuda_indexing_live` 3 passed, 0 failed (that one file). The file is still `#[ignore]`d and in no runner job, because no self-hosted runner exists yet.
+
 ## v0.41.1 - 2026-11-05 (provisional; the PM allocates)
 
 ### Fixed
