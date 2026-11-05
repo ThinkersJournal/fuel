@@ -59,7 +59,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-cpu-backend` | 30 | 2 | 3 | 5 |  | 17 |  | 3 |
 | `fuel-cpu-kernels` | 12 | 1 | 4 |  |  | 4 |  | 3 |
 | `fuel-cuda-backend` | 56 |  | 3 | 11 |  | 39 |  | 3 |
-| `fuel-cuda-dispatch` | 74 |  |  |  |  | 72 |  | 2 |
+| `fuel-cuda-dispatch` | 75 |  |  |  |  | 73 |  | 2 |
 | `fuel-datasets` | 13 |  | 7 |  |  | 3 |  | 3 |
 | `fuel-dispatch` | 207 |  |  | 1 |  | 203 |  | 3 |
 | `fuel-examples` | 250 | 56 | 162 | 21 |  | 8 |  | 3 |
@@ -99,5 +99,5 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-vulkan-dispatch` | 41 |  |  |  |  | 38 |  | 3 |
 | `fuel-vulkan-kernels` | 185 |  |  |  |  | 2 | 180 | 3 |
 | `scripts` | 75 |  |  | 1 |  | 74 |  |  |
-| **all** | **2114** | **112** | **216** | **258** | **4** | **1205** | **185** | **134** |
+| **all** | **2115** | **112** | **216** | **258** | **4** | **1206** | **185** | **134** |
 <!-- provenance-summary:end -->
