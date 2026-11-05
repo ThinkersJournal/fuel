@@ -3,6 +3,12 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.41.1 - 2026-11-05 (provisional; the PM allocates)
+
+### Fixed
+
+- **Re-vendored KISS `dtype_manifest.json` and `op_manifest.json` at `e786097`** (KISS#772 / #218), byte-for-byte; only the `generated_from` member changed (it now names the emitting tool). No entry, count or schema moved, and no code reads `generated_from`. `fuel-dispatch/fixtures/kiss-corpus/PROVENANCE.md` and `docs/provenance/FILES.tsv` updated.
+
 ## v0.41.0 - 2026-11-04 (provisional; the PM allocates)
 
 ### Breaking
