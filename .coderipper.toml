@@ -8,6 +8,11 @@ needs = "xcrun"
 reason = "compiles to nothing off macOS, so coderipper's per-run positive controls (sentinel functions) cannot fire"
 owner = "fuel lane"
 
+[[skip_member]]
+name = "fuel-cuda-dispatch"
+reason = "lib.rs is #![cfg(feature = \"cuda\")] and no CI job builds the cuda feature (the forge cannot run on GitHub), so the crate compiles to nothing here and coderipper's per-run positive controls (sentinel functions in src/lib.rs) cannot fire; CUDA code is compiled by hand before release"
+owner = "fuel lane"
+
 [[allow]]
 check = "SEC-002"
 file = "fuel-dispatch/src/dispatch.rs"
