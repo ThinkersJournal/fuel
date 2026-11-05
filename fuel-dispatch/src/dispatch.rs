@@ -12840,55 +12840,8 @@ mod tests {
         );
     }
 
-    /// When the `cuda` feature is on, `register_cuda_kernels` (the
-    /// post-retirement residue: cuBLAS MatMul / ReduceTo / Copy /
-    /// CausalConv1d) AND `register_baracuda_cuda_kernels` are both
-    /// auto-registered into the global table. The PTX-duplicate
-    /// unary/binary registrations were stripped in the
-    /// fuel-cuda-kernels retirement (commit d9898fec), so elementwise
-    /// keys carry exactly ONE alternative — baracuda's.
-    #[cfg(feature = "cuda")]
-    #[test]
-    fn global_bindings_auto_registers_cuda_paths() {
-        let b = global_bindings();
-        // register_cuda_kernels residue: F32 MatMul via cuBLAS.
-        let cublas = b.lookup(
-            OpKind::MatMul,
-            &[DType::F32, DType::F32, DType::F32],
-            BackendId::Cuda,
-        );
-        assert!(
-            cublas.is_ok(),
-            "cuBLAS F32 MatMul should be auto-registered on Cuda"
-        );
-
-        // Baracuda path: int8 MatMul exists only via baracuda. If this
-        // resolves, both paths fired.
-        let baracuda_int8 = b.lookup(
-            OpKind::MatMul,
-            &[DType::I8, DType::I8, DType::I8],
-            BackendId::Cuda,
-        );
-        assert!(
-            baracuda_int8.is_ok(),
-            "baracuda int8 MatMul should be auto-registered on Cuda",
-        );
-
-        // Post-strip invariant: F32 unary Neg resolves with exactly
-        // one alternative (baracuda is the single source of truth for
-        // CUDA elementwise; a second entry would mean a duplicate
-        // registration crept back in).
-        let alts = b.lookup_alternatives(
-            OpKind::NegElementwise,
-            &[DType::F32, DType::F32],
-            BackendId::Cuda,
-        );
-        assert!(
-            alts.len() == 1,
-            "expected exactly 1 CUDA Neg F32 alternative (baracuda); got {}",
-            alts.len(),
-        );
-    }
+    // `global_bindings_auto_registers_cuda_paths` moved to `fuel-cuda-dispatch/tests/cuda_global_install.rs` (row 137 step 6.2):
+    // it needs the CUDA kernels in the global table, and they are registered above this crate now.
 
     /// Picker-alternatives audit harness: enumerates the global binding
     /// table and prints every `(op, dtypes)` key with `>1` registered
