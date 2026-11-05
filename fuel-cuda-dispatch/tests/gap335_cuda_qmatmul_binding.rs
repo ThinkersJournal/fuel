@@ -66,7 +66,10 @@ fn names_qmatmul(kind: Option<&str>) -> bool {
 
 #[test]
 fn exactly_one_cuda_contract_kernel_binds_qmatmul() {
-    let files = indexed("fuel-dispatch/kernel-contracts", ".fkc.md");
+    // The CUDA contracts moved to `fuel-cuda-dispatch` (row 137 step 6.2); the Metal one and `rope-apply` stay in
+    // `fuel-dispatch`. Scan both trees so the CUDA arm and the Metal control each see their files.
+    let mut files = indexed("fuel-dispatch/kernel-contracts", ".fkc.md");
+    files.extend(indexed("fuel-cuda-dispatch/kernel-contracts", ".fkc.md"));
     assert!(
         files.len() > 50,
         "only {} contract files found",
