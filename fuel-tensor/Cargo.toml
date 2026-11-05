@@ -39,6 +39,7 @@ serde_json = { workspace = true }
 fuel-cuda-backend = { workspace = true, optional = true }
 fuel-vulkan-backend = { workspace = true, optional = true }
 fuel-vulkan-dispatch = { workspace = true, optional = true }
+fuel-cuda-dispatch = { workspace = true, optional = true }
 fuel-metal-backend = { workspace = true, optional = true }
 fuel-metal-kernels = { workspace = true, optional = true }
 objc2-metal = { workspace = true, optional = true }
@@ -85,6 +86,8 @@ telemetry = ["fuel-dispatch/telemetry"]
 
 cuda = [
     "dep:fuel-cuda-backend",
+    "dep:fuel-cuda-dispatch",
+    "fuel-cuda-dispatch/cuda",
     "dep:baracuda-types",
     "dep:baracuda-core",
     "dep:baracuda-driver",

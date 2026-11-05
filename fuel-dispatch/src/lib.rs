@@ -101,10 +101,11 @@
 #![allow(unreachable_patterns)]
 #![allow(clippy::identity_op)]
 
-pub mod baracuda_dispatch;
 pub mod cast_fusion;
 pub mod compiled;
 pub mod cost;
+#[cfg(all(test, feature = "cuda"))]
+pub(crate) mod cuda_test_kernels;
 pub mod decode_flash;
 #[cfg(feature = "dev-tools")]
 #[doc(hidden)]

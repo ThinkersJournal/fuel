@@ -44,7 +44,7 @@ fuel-cuda-backend/src/lib.rs	// The baracuda FA2 launcher (`flash_attn::launch`)
 fuel-cuda-backend/src/probe.rs	// TODO(cuda): CUDA *can* report this — it is
 fuel-cuda-backend/src/storage.rs	// stays on PTX for now because baracuda's interpolate-bilinear FFI
 fuel-cuda-backend/src/storage.rs	/// supported on CUDA today. Prefill (m > 1) bails; the caller
-fuel-dispatch/src/baracuda_dispatch.rs	// Bias / BiasRelu / BiasGelu / BiasSilu epilogues are not yet wired
+fuel-cuda-dispatch/src/baracuda_dispatch.rs	// Bias / BiasRelu / BiasGelu / BiasSilu epilogues are not yet wired
 fuel-dispatch/src/dispatch.rs	// dtype). Registered DIRECTLY (not yet FKC-contract-sourced): the
 fuel-dispatch/src/dispatch.rs	/// SUBMITTED but not yet observed completed, per device. It is a
 fuel-dispatch/src/dispatch.rs	/// TEMPORARY GAP-015 DIAGNOSTIC — env-gated (`FUEL_LOCK_TRACE=1`), off by

@@ -1,0 +1,49 @@
+[package]
+categories.workspace = true
+description = "CUDA (baracuda) kernel bindings for fuel-dispatch: the CUDA dispatch wrappers, the FKC link registry and the one-call registrar (above fuel-dispatch, like fuel-vulkan-dispatch)"
+edition.workspace = true
+keywords.workspace = true
+license.workspace = true
+name = "fuel-cuda-dispatch"
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+fuel-dispatch = { workspace = true }
+fuel-graph = { workspace = true }
+fuel-ir = { workspace = true }
+fuel-memory = { workspace = true }
+fuel-cpu-backend = { workspace = true, optional = true }
+fuel-cuda-backend = { workspace = true, optional = true }
+fuel-quantized = { workspace = true, optional = true }
+half = { workspace = true, optional = true }
+bytemuck = { workspace = true, optional = true }
+
+[features]
+# Everything in this crate is CUDA code, and compiling it runs the baracuda kernel forge (56-93 min cold), so
+# the whole body is behind this feature, exactly as it was behind `fuel-dispatch/cuda`: a default workspace
+# build compiles an empty crate.
+cuda = [
+    "dep:fuel-cuda-backend",
+    "dep:fuel-cpu-backend",
+    "dep:fuel-quantized",
+    "dep:half",
+    "dep:bytemuck",
+    "fuel-dispatch/cuda",
+    "fuel-memory/cuda",
+]
+
+# Maintenance tools that rewrite the committed verified ledger (the CUDA half). NOT part of the supported API:
+# semver-exempt, off by default.
+dev-tools = ["fuel-dispatch/dev-tools"]
+
+[[bin]]
+name = "fuel-cuda-dev-tools"
+path = "src/bin/fuel-cuda-dev-tools.rs"
+required-features = ["cuda", "dev-tools"]
+
+[dev-dependencies]
+# The hidden, semver-exempt `dev_tools` module (`cuda_accuracy_claim_rows`) for the claims-vs-contracts tests.
+# Path-only, as scripts/check-dev-dep-publish-cycles.py requires of every workspace dev-dependency.
+fuel-dispatch = { path = "../fuel-dispatch", features = ["dev-tools"] }
+fuel-test-support = { path = "../fuel-test-support" }

@@ -311,7 +311,9 @@ jobs:
       # STILL UNCOVERED, named so a green badge does not imply otherwise:
       #   * `cuda` — `baracuda-kernels-sys` forges UNCONDITIONALLY, so any job
       #     merely selecting fuel-cuda-backend pays a ~1h forge and needs nvcc.
-      #     A runner question (GAP-181), not a third flag here.
+      #     A runner question (GAP-181), not a third flag here. The CUDA bindings are the crate
+      #     `fuel-cuda-dispatch` since row 137 step 6.2; its whole body is behind its `cuda` feature, so the
+      #     workspace job builds its manifest and an empty lib, NOT its code (hand compile before each release).
       #   * `metal` off Apple, and the mkl/aocl/accelerate/onemkl SDK-gated
       #     backends — same reasons as WORKSPACE_EXCLUDES at the top of file.
       - name: Check vulkan-gated compilation (GAP-233)

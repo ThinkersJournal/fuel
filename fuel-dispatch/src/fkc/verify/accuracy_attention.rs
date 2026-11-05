@@ -221,12 +221,6 @@ mod tests {
         max_absolute: 1.0e-3,
     };
 
-    fn entry_table() -> KernelBindingTable {
-        let mut table = KernelBindingTable::new();
-        crate::baracuda_dispatch::register_baracuda_cuda_kernels(&mut table);
-        table
-    }
-
     #[test]
     fn reference_attends_the_live_prefix_with_grouped_heads() {
         // One batch, two query heads sharing one kv head, d = 1, sk = 3 but k_len = 2: the
@@ -244,9 +238,7 @@ mod tests {
     /// would pass every bound.
     #[test]
     fn the_measurement_sees_a_perturbed_output() {
-        let table = entry_table();
-        let entry = find_entry(&table, OpKind::FlashAttn, &[DType::F16; 4], BackendId::Cuda)
-            .expect("f16 flash_decoding entry");
+        let entry = &crate::cuda_test_kernels::stub_entry();
         let host = |perturb: f32| {
             move |_e: &BindingEntry,
                   p: OpParams,

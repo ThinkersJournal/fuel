@@ -67,18 +67,7 @@ fn domains_keep_every_reference_finite() {
 fn the_measurement_sees_a_perturbed_output() {
     use super::super::bit_stability::HostTensor;
     let spec = &UNARY_SPECS[0];
-    let table = {
-        let mut t = crate::kernel::KernelBindingTable::new();
-        crate::baracuda_dispatch::register_baracuda_cuda_kernels(&mut t);
-        t
-    };
-    let entry = super::super::accuracy_common::find_entry(
-        &table,
-        OpKind::NegElementwise,
-        &[DType::F32, DType::F32],
-        fuel_ir::probe::BackendId::Cuda,
-    )
-    .expect("neg f32 entry");
+    let entry = &crate::cuda_test_kernels::stub_entry();
     let host = |perturb: f32| {
         move |_e: &BindingEntry,
               _p: OpParams,

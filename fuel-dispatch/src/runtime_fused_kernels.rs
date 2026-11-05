@@ -615,22 +615,8 @@ mod tests {
 
     // ---- flash-arm registry-seam bridge (dd-shapes, 2026-07-08) -----------
 
-    /// GREEN target (cuda build only): the CUDA `flash_decoding` kernel
-    /// registers only into `KernelBindingTable`, so before the bridge this was
-    /// unconditionally `false` on every host. Forces `global_bindings()` to
-    /// initialize (which runs the CUDA registration under
-    /// `#[cfg(feature = "cuda")]`) then asserts the static-id bridge sees it.
-    #[test]
-    #[cfg(feature = "cuda")]
-    fn fused_kernel_available_bridges_static_flash_attn_from_binding_table_on_cuda() {
-        let _guard = crate::dispatch::global_bindings();
-        drop(_guard);
-        assert!(
-            fused_kernel_available(FusedOps::FLASH_ATTN, BackendId::Cuda),
-            "the CUDA flash_decoding binding registers only into KernelBindingTable; \
-             fused_kernel_available must bridge to it for the static FLASH_ATTN id",
-        );
-    }
+    // `fused_kernel_available_bridges_static_flash_attn_from_binding_table_on_cuda` moved to `fuel-cuda-dispatch/tests/cuda_global_install.rs` (row 137 step 6.2):
+    // it needs the CUDA kernels in the global table, and they are registered above this crate now.
 
     /// GUARD (non-cuda build only): with no CUDA registration ever run, the
     /// static-id bridge has nothing to find.

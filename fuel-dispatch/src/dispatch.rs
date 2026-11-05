@@ -2466,7 +2466,7 @@ cpu_rope_wrapper!(
 /// The per-`QuantType` host kernel choice shared by [`qmatmul_f32_cpu_wrapper`] and the CUDA
 /// wrapper's host fallback (`baracuda_dispatch`).
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn qmatmul_cpu_by_type(
+pub fn qmatmul_cpu_by_type(
     quant_type: fuel_graph::QuantType,
     act_cpu: &fuel_cpu_backend::CpuStorageBytes,
     w_cpu: &fuel_cpu_backend::CpuStorageBytes,
@@ -7404,7 +7404,7 @@ pub fn register_cpu_kernels(table: &mut KernelBindingTable) {
 /// Helper: extract `&CudaStorageBytes` from `&Storage`. Returns
 /// Err if the variant isn't `BackendStorage::Cuda`.
 #[cfg(feature = "cuda")]
-pub(crate) fn cuda_input(s: &Storage) -> Result<&fuel_cuda_backend::CudaStorageBytes> {
+pub fn cuda_input(s: &Storage) -> Result<&fuel_cuda_backend::CudaStorageBytes> {
     match &s.inner {
         BackendStorage::Cuda(c) => Ok(c),
         #[allow(unreachable_patterns)]
@@ -7414,7 +7414,7 @@ pub(crate) fn cuda_input(s: &Storage) -> Result<&fuel_cuda_backend::CudaStorageB
 
 /// Helper: extract `&mut CudaStorageBytes` from `&mut Storage`.
 #[cfg(feature = "cuda")]
-pub(crate) fn cuda_output(s: &mut Storage) -> Result<&mut fuel_cuda_backend::CudaStorageBytes> {
+pub fn cuda_output(s: &mut Storage) -> Result<&mut fuel_cuda_backend::CudaStorageBytes> {
     match &mut s.inner {
         BackendStorage::Cuda(c) => Ok(c),
         #[allow(unreachable_patterns)]
@@ -8175,21 +8175,10 @@ pub fn global_bindings() -> Arc<KernelBindingTable> {
 /// always present (registered above); CUDA and Vulkan paths are
 /// conditionally added. Future Metal / etc. paths hook in here.
 fn register_optional_backends(table: &mut KernelBindingTable) {
-    #[cfg(feature = "cuda")]
-    {
-        register_cuda_kernels(table);
-        crate::baracuda_dispatch::register_baracuda_cuda_kernels(table);
-        // FKC cost unification — Part A. The CUDA registrations above
-        // use `table.register(...)`, defaulting cost to `unknown_cost`
-        // (→ zero cost). Bulk-fill the OpKind-family FLOP/byte cost fn
-        // for every CUDA entry still on the sentinel — the same pass
-        // Vulkan already runs at the end of `register_vulkan_kernels`,
-        // and the same `default_cost_for_op_kind` families the CPU fill
-        // uses (op FLOPs/bytes are backend-agnostic; per-backend
-        // throughput is a Layer-2 / Part-C refinement). Without this,
-        // even a *capped* CUDA candidate would price at zero.
-        table.fill_unset_cost_for_backend(BackendId::Cuda, crate::cost::default_cost_for_op_kind);
-    }
+    // CUDA is NOT registered here any more (ROADMAP row 137 step 6.2): the baracuda kernels live in
+    // `fuel-cuda-dispatch`, above this crate, and reach the global table through `extend_global_bindings`
+    // (`fuel_cuda_dispatch::install_global`, called by `fuel-tensor`), which also runs the CUDA cost fill
+    // and the derived-capabilities step this function used to run.
     // Vulkan is NOT registered here any more (ROADMAP row 137 step 6.1): its kernels live in
     // `fuel-vulkan-dispatch`, above this crate, and reach the global table through
     // `extend_global_bindings` (`fuel_vulkan_dispatch::install_global`, called by `fuel-tensor`).
@@ -12851,55 +12840,8 @@ mod tests {
         );
     }
 
-    /// When the `cuda` feature is on, `register_cuda_kernels` (the
-    /// post-retirement residue: cuBLAS MatMul / ReduceTo / Copy /
-    /// CausalConv1d) AND `register_baracuda_cuda_kernels` are both
-    /// auto-registered into the global table. The PTX-duplicate
-    /// unary/binary registrations were stripped in the
-    /// fuel-cuda-kernels retirement (commit d9898fec), so elementwise
-    /// keys carry exactly ONE alternative — baracuda's.
-    #[cfg(feature = "cuda")]
-    #[test]
-    fn global_bindings_auto_registers_cuda_paths() {
-        let b = global_bindings();
-        // register_cuda_kernels residue: F32 MatMul via cuBLAS.
-        let cublas = b.lookup(
-            OpKind::MatMul,
-            &[DType::F32, DType::F32, DType::F32],
-            BackendId::Cuda,
-        );
-        assert!(
-            cublas.is_ok(),
-            "cuBLAS F32 MatMul should be auto-registered on Cuda"
-        );
-
-        // Baracuda path: int8 MatMul exists only via baracuda. If this
-        // resolves, both paths fired.
-        let baracuda_int8 = b.lookup(
-            OpKind::MatMul,
-            &[DType::I8, DType::I8, DType::I8],
-            BackendId::Cuda,
-        );
-        assert!(
-            baracuda_int8.is_ok(),
-            "baracuda int8 MatMul should be auto-registered on Cuda",
-        );
-
-        // Post-strip invariant: F32 unary Neg resolves with exactly
-        // one alternative (baracuda is the single source of truth for
-        // CUDA elementwise; a second entry would mean a duplicate
-        // registration crept back in).
-        let alts = b.lookup_alternatives(
-            OpKind::NegElementwise,
-            &[DType::F32, DType::F32],
-            BackendId::Cuda,
-        );
-        assert!(
-            alts.len() == 1,
-            "expected exactly 1 CUDA Neg F32 alternative (baracuda); got {}",
-            alts.len(),
-        );
-    }
+    // `global_bindings_auto_registers_cuda_paths` moved to `fuel-cuda-dispatch/tests/cuda_global_install.rs` (row 137 step 6.2):
+    // it needs the CUDA kernels in the global table, and they are registered above this crate now.
 
     /// Picker-alternatives audit harness: enumerates the global binding
     /// table and prints every `(op, dtypes)` key with `>1` registered

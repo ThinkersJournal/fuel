@@ -1,0 +1,476 @@
+AbsElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=184b05e3361d7663
+AbsElementwise [F16, F16] Cuda src=baracuda generic=true rev=184b05e3361d7663
+AbsElementwise [F32, F32] Cuda src=baracuda generic=true rev=77dbff9e9548624e
+AbsElementwise [F64, F64] Cuda src=baracuda generic=true rev=184b05e3361d7663
+AbsInplace [BF16, BF16] Cuda src=baracuda generic=false rev=84019b100bf21085
+AbsInplace [F16, F16] Cuda src=baracuda generic=false rev=84019b100bf21085
+AbsInplace [F32, F32] Cuda src=baracuda generic=false rev=84019b100bf21085
+AbsInplace [F64, F64] Cuda src=baracuda generic=false rev=84019b100bf21085
+AddElementwise [BF16, BF16, BF16] Cuda src=baracuda generic=true rev=55ccc258aee227e0
+AddElementwise [F16, F16, F16] Cuda src=baracuda generic=true rev=55ccc258aee227e0
+AddElementwise [F32, F32, F32] Cuda src=baracuda generic=true rev=3f183e49dc1c04d0
+AddElementwise [F64, F64, F64] Cuda src=baracuda generic=true rev=55ccc258aee227e0
+Affine [BF16, BF16] Cuda src=baracuda generic=true rev=e3876c26c1961eec
+Affine [F16, F16] Cuda src=baracuda generic=true rev=e3876c26c1961eec
+Affine [F32, F32] Cuda src=baracuda generic=true rev=e3876c26c1961eec
+Affine [F64, F64] Cuda src=baracuda generic=true rev=e3876c26c1961eec
+Affine [I32, I32] Cuda src=baracuda generic=true rev=e3876c26c1961eec
+Affine [I64, I64] Cuda src=baracuda generic=true rev=e3876c26c1961eec
+Affine [U8, U8] Cuda src=baracuda generic=true rev=e3876c26c1961eec
+ArgMaxDim [BF16, U32] Cuda src=baracuda generic=true rev=ea0d442e913d9015
+ArgMaxDim [F16, U32] Cuda src=baracuda generic=true rev=ea0d442e913d9015
+ArgMaxDim [F32, U32] Cuda src=baracuda generic=true rev=ea0d442e913d9015
+ArgMaxDim [F64, U32] Cuda src=baracuda generic=true rev=ea0d442e913d9015
+ArgMinDim [BF16, U32] Cuda src=baracuda generic=true rev=7d45e006e6a7d3e3
+ArgMinDim [F16, U32] Cuda src=baracuda generic=true rev=7d45e006e6a7d3e3
+ArgMinDim [F32, U32] Cuda src=baracuda generic=true rev=7d45e006e6a7d3e3
+ArgMinDim [F64, U32] Cuda src=baracuda generic=true rev=7d45e006e6a7d3e3
+AwqMatmul [F16, U32, U32, F16, F16] Cuda src=baracuda generic=false rev=29e1f811f2c9830e
+Cast [BF16, BF16] Cuda src=baracuda generic=false rev=0cae114ba2276975
+Cast [BF16, F16] Cuda src=baracuda generic=false rev=1c0d0ea01ce93beb
+Cast [BF16, F32] Cuda src=baracuda generic=false rev=427ad9817220bb4b
+Cast [BF16, F64] Cuda src=baracuda generic=false rev=a1c5cd6f05531508
+Cast [BF16, F8E4M3] Cuda src=baracuda generic=false rev=f93fc188dd0abbf4
+Cast [BF16, I32] Cuda src=baracuda generic=false rev=b080800fa61ea078
+Cast [BF16, I64] Cuda src=baracuda generic=false rev=49da491584fce5b0
+Cast [BF16, U32] Cuda src=baracuda generic=false rev=985a5af268050200
+Cast [BF16, U8] Cuda src=baracuda generic=false rev=d616aafcc39142d6
+Cast [F16, BF16] Cuda src=baracuda generic=false rev=0cae114ba2276975
+Cast [F16, F16] Cuda src=baracuda generic=false rev=1c0d0ea01ce93beb
+Cast [F16, F32] Cuda src=baracuda generic=false rev=427ad9817220bb4b
+Cast [F16, F64] Cuda src=baracuda generic=false rev=a1c5cd6f05531508
+Cast [F16, F8E4M3] Cuda src=baracuda generic=false rev=f93fc188dd0abbf4
+Cast [F16, I32] Cuda src=baracuda generic=false rev=b080800fa61ea078
+Cast [F16, I64] Cuda src=baracuda generic=false rev=49da491584fce5b0
+Cast [F16, U32] Cuda src=baracuda generic=false rev=985a5af268050200
+Cast [F16, U8] Cuda src=baracuda generic=false rev=d616aafcc39142d6
+Cast [F32, BF16] Cuda src=baracuda generic=false rev=0cae114ba2276975
+Cast [F32, F16] Cuda src=baracuda generic=false rev=1c0d0ea01ce93beb
+Cast [F32, F32] Cuda src=baracuda generic=false rev=427ad9817220bb4b
+Cast [F32, F64] Cuda src=baracuda generic=false rev=a1c5cd6f05531508
+Cast [F32, F8E4M3] Cuda src=baracuda generic=false rev=f93fc188dd0abbf4
+Cast [F32, I32] Cuda src=baracuda generic=false rev=b080800fa61ea078
+Cast [F32, I64] Cuda src=baracuda generic=false rev=49da491584fce5b0
+Cast [F32, U32] Cuda src=baracuda generic=false rev=985a5af268050200
+Cast [F32, U8] Cuda src=baracuda generic=false rev=d616aafcc39142d6
+Cast [F64, BF16] Cuda src=baracuda generic=false rev=0cae114ba2276975
+Cast [F64, F16] Cuda src=baracuda generic=false rev=1c0d0ea01ce93beb
+Cast [F64, F32] Cuda src=baracuda generic=false rev=427ad9817220bb4b
+Cast [F64, F64] Cuda src=baracuda generic=false rev=a1c5cd6f05531508
+Cast [F64, I32] Cuda src=baracuda generic=false rev=b080800fa61ea078
+Cast [F64, I64] Cuda src=baracuda generic=false rev=49da491584fce5b0
+Cast [F64, U32] Cuda src=baracuda generic=false rev=985a5af268050200
+Cast [F64, U8] Cuda src=baracuda generic=false rev=d616aafcc39142d6
+Cast [F8E4M3, BF16] Cuda src=baracuda generic=false rev=0cae114ba2276975
+Cast [F8E4M3, F16] Cuda src=baracuda generic=false rev=1c0d0ea01ce93beb
+Cast [F8E4M3, F32] Cuda src=baracuda generic=false rev=427ad9817220bb4b
+Cast [I32, BF16] Cuda src=baracuda generic=false rev=0cae114ba2276975
+Cast [I32, F16] Cuda src=baracuda generic=false rev=1c0d0ea01ce93beb
+Cast [I32, F32] Cuda src=baracuda generic=false rev=427ad9817220bb4b
+Cast [I32, F64] Cuda src=baracuda generic=false rev=a1c5cd6f05531508
+Cast [I32, I32] Cuda src=baracuda generic=false rev=b080800fa61ea078
+Cast [I32, I64] Cuda src=baracuda generic=false rev=49da491584fce5b0
+Cast [I32, U32] Cuda src=baracuda generic=false rev=985a5af268050200
+Cast [I32, U8] Cuda src=baracuda generic=false rev=d616aafcc39142d6
+Cast [I64, BF16] Cuda src=baracuda generic=false rev=0cae114ba2276975
+Cast [I64, F16] Cuda src=baracuda generic=false rev=1c0d0ea01ce93beb
+Cast [I64, F32] Cuda src=baracuda generic=false rev=427ad9817220bb4b
+Cast [I64, F64] Cuda src=baracuda generic=false rev=a1c5cd6f05531508
+Cast [I64, I32] Cuda src=baracuda generic=false rev=b080800fa61ea078
+Cast [I64, I64] Cuda src=baracuda generic=false rev=49da491584fce5b0
+Cast [I64, U32] Cuda src=baracuda generic=false rev=985a5af268050200
+Cast [I64, U8] Cuda src=baracuda generic=false rev=d616aafcc39142d6
+Cast [U32, BF16] Cuda src=baracuda generic=false rev=0cae114ba2276975
+Cast [U32, F16] Cuda src=baracuda generic=false rev=1c0d0ea01ce93beb
+Cast [U32, F32] Cuda src=baracuda generic=false rev=427ad9817220bb4b
+Cast [U32, F64] Cuda src=baracuda generic=false rev=a1c5cd6f05531508
+Cast [U32, I32] Cuda src=baracuda generic=false rev=b080800fa61ea078
+Cast [U32, I64] Cuda src=baracuda generic=false rev=49da491584fce5b0
+Cast [U32, U32] Cuda src=baracuda generic=false rev=985a5af268050200
+Cast [U32, U8] Cuda src=baracuda generic=false rev=d616aafcc39142d6
+Cast [U8, BF16] Cuda src=baracuda generic=false rev=0cae114ba2276975
+Cast [U8, F16] Cuda src=baracuda generic=false rev=1c0d0ea01ce93beb
+Cast [U8, F32] Cuda src=baracuda generic=false rev=427ad9817220bb4b
+Cast [U8, F64] Cuda src=baracuda generic=false rev=a1c5cd6f05531508
+Cast [U8, I32] Cuda src=baracuda generic=false rev=b080800fa61ea078
+Cast [U8, I64] Cuda src=baracuda generic=false rev=49da491584fce5b0
+Cast [U8, U32] Cuda src=baracuda generic=false rev=985a5af268050200
+Cast [U8, U8] Cuda src=baracuda generic=false rev=d616aafcc39142d6
+CausalConv1d [BF16, BF16, BF16, BF16] Cuda src=baracuda generic=false rev=56bcedf2c62e17fa
+CausalConv1d [F16, F16, F16, F16] Cuda src=baracuda generic=false rev=56bcedf2c62e17fa
+CausalConv1d [F32, F32, F32, F32] Cuda src=baracuda generic=false rev=56bcedf2c62e17fa
+CausalConv1d [F64, F64, F64, F64] Cuda src=baracuda generic=false rev=56bcedf2c62e17fa
+CeilElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=00855733dfd9df72
+CeilElementwise [F16, F16] Cuda src=baracuda generic=true rev=00855733dfd9df72
+CeilElementwise [F32, F32] Cuda src=baracuda generic=true rev=5ae044bb99f4e551
+CeilElementwise [F64, F64] Cuda src=baracuda generic=true rev=00855733dfd9df72
+CeilInplace [BF16, BF16] Cuda src=baracuda generic=false rev=fe451b91e6ed44ee
+CeilInplace [F16, F16] Cuda src=baracuda generic=false rev=fe451b91e6ed44ee
+CeilInplace [F32, F32] Cuda src=baracuda generic=false rev=fe451b91e6ed44ee
+CeilInplace [F64, F64] Cuda src=baracuda generic=false rev=fe451b91e6ed44ee
+ClampElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=00e2b66981111d30
+ClampElementwise [F16, F16] Cuda src=baracuda generic=true rev=00e2b66981111d30
+ClampElementwise [F32, F32] Cuda src=baracuda generic=true rev=00e2b66981111d30
+ClampElementwise [F64, F64] Cuda src=baracuda generic=true rev=00e2b66981111d30
+ClampInplace [BF16, BF16] Cuda src=baracuda generic=false rev=c7d363352fa4eaab
+ClampInplace [F16, F16] Cuda src=baracuda generic=false rev=c7d363352fa4eaab
+ClampInplace [F32, F32] Cuda src=baracuda generic=false rev=c7d363352fa4eaab
+ClampInplace [F64, F64] Cuda src=baracuda generic=false rev=c7d363352fa4eaab
+Concat [BF16, BF16] Cuda src=baracuda generic=true rev=4a94df1e57102d9e
+Concat [F16, F16] Cuda src=baracuda generic=true rev=4a94df1e57102d9e
+Concat [F32, F32] Cuda src=baracuda generic=true rev=4a94df1e57102d9e
+Concat [F64, F64] Cuda src=baracuda generic=true rev=4a94df1e57102d9e
+Copy [BF16, BF16] Cuda src= generic=false rev=0000000000000000
+Copy [Bool, Bool] Cuda src= generic=false rev=0000000000000000
+Copy [F16, F16] Cuda src= generic=false rev=0000000000000000
+Copy [F32, F32] Cuda src= generic=false rev=0000000000000000
+Copy [F64, F64] Cuda src= generic=false rev=0000000000000000
+Copy [I16, I16] Cuda src= generic=false rev=0000000000000000
+Copy [I32, I32] Cuda src= generic=false rev=0000000000000000
+Copy [I64, I64] Cuda src= generic=false rev=0000000000000000
+Copy [U32, U32] Cuda src= generic=false rev=0000000000000000
+Copy [U8, U8] Cuda src= generic=false rev=0000000000000000
+CosElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=b7c3fda39d272fba
+CosElementwise [F16, F16] Cuda src=baracuda generic=true rev=b7c3fda39d272fba
+CosElementwise [F32, F32] Cuda src=baracuda generic=true rev=488f78ea84091059
+CosElementwise [F64, F64] Cuda src=baracuda generic=true rev=b7c3fda39d272fba
+CosInplace [BF16, BF16] Cuda src=baracuda generic=false rev=585052dcd10714de
+CosInplace [F16, F16] Cuda src=baracuda generic=false rev=585052dcd10714de
+CosInplace [F32, F32] Cuda src=baracuda generic=false rev=585052dcd10714de
+CosInplace [F64, F64] Cuda src=baracuda generic=false rev=585052dcd10714de
+CumSum [BF16, BF16] Cuda src=baracuda generic=true rev=13733547e2c74756
+CumSum [F16, F16] Cuda src=baracuda generic=true rev=13733547e2c74756
+CumSum [F32, F32] Cuda src=baracuda generic=true rev=13733547e2c74756
+CumSum [F64, F64] Cuda src=baracuda generic=true rev=13733547e2c74756
+DivElementwise [BF16, BF16, BF16] Cuda src=baracuda generic=true rev=fa92732c58e9f0d8
+DivElementwise [F16, F16, F16] Cuda src=baracuda generic=true rev=fa92732c58e9f0d8
+DivElementwise [F32, F32, F32] Cuda src=baracuda generic=true rev=5c17f8fc4d5557a8
+DivElementwise [F64, F64, F64] Cuda src=baracuda generic=true rev=fa92732c58e9f0d8
+EqualElementwise [BF16, BF16, Bool] Cuda src=baracuda generic=true rev=a64218da53e8f48b
+EqualElementwise [F16, F16, Bool] Cuda src=baracuda generic=true rev=f7362a37d37b5295
+EqualElementwise [F32, F32, Bool] Cuda src=baracuda generic=true rev=cdcb8ae10ec2eadb
+EqualElementwise [F64, F64, Bool] Cuda src=baracuda generic=true rev=de56062960547451
+ErfElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=ddcd6cec0fa8fcfa
+ErfElementwise [F16, F16] Cuda src=baracuda generic=true rev=ddcd6cec0fa8fcfa
+ErfElementwise [F32, F32] Cuda src=baracuda generic=true rev=6f2861347130d069
+ErfElementwise [F64, F64] Cuda src=baracuda generic=true rev=ddcd6cec0fa8fcfa
+ErfInplace [BF16, BF16] Cuda src=baracuda generic=false rev=f1ebc4be2aedc586
+ErfInplace [F16, F16] Cuda src=baracuda generic=false rev=f1ebc4be2aedc586
+ErfInplace [F32, F32] Cuda src=baracuda generic=false rev=f1ebc4be2aedc586
+ErfInplace [F64, F64] Cuda src=baracuda generic=false rev=f1ebc4be2aedc586
+ExpElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=210824537db1762a
+ExpElementwise [F16, F16] Cuda src=baracuda generic=true rev=210824537db1762a
+ExpElementwise [F32, F32] Cuda src=baracuda generic=true rev=7a98b648b1f518a9
+ExpElementwise [F64, F64] Cuda src=baracuda generic=true rev=210824537db1762a
+ExpInplace [BF16, BF16] Cuda src=baracuda generic=false rev=17c9474203995e9e
+ExpInplace [F16, F16] Cuda src=baracuda generic=false rev=17c9474203995e9e
+ExpInplace [F32, F32] Cuda src=baracuda generic=false rev=17c9474203995e9e
+ExpInplace [F64, F64] Cuda src=baracuda generic=false rev=17c9474203995e9e
+FlashAttn [BF16, BF16, BF16, BF16] Cuda src=baracuda generic=true rev=f2b0c633d915f1f7
+FlashAttn [F16, F16, F16, F16] Cuda src=baracuda generic=true rev=f2b0c633d915f1f7
+Flip [BF16, BF16] Cuda src=baracuda generic=true rev=6ba2874225facea2
+Flip [F16, F16] Cuda src=baracuda generic=true rev=6ba2874225facea2
+Flip [F32, F32] Cuda src=baracuda generic=true rev=6ba2874225facea2
+Flip [F64, F64] Cuda src=baracuda generic=true rev=6ba2874225facea2
+FloorElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=5b5b329685db8305
+FloorElementwise [F16, F16] Cuda src=baracuda generic=true rev=5b5b329685db8305
+FloorElementwise [F32, F32] Cuda src=baracuda generic=true rev=35e37600478baae4
+FloorElementwise [F64, F64] Cuda src=baracuda generic=true rev=5b5b329685db8305
+FloorInplace [BF16, BF16] Cuda src=baracuda generic=false rev=28df3999e37f1dbb
+FloorInplace [F16, F16] Cuda src=baracuda generic=false rev=28df3999e37f1dbb
+FloorInplace [F32, F32] Cuda src=baracuda generic=false rev=28df3999e37f1dbb
+FloorInplace [F64, F64] Cuda src=baracuda generic=false rev=28df3999e37f1dbb
+Gather [F32, U32, F32] Cuda src=baracuda generic=false rev=34a403a71bdc7c69
+Gather [F64, U32, F64] Cuda src=baracuda generic=false rev=34a403a71bdc7c69
+Gather [I32, U32, I32] Cuda src=baracuda generic=false rev=34a403a71bdc7c69
+GeluElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=e2aad9381895dcf9
+GeluElementwise [F16, F16] Cuda src=baracuda generic=true rev=e2aad9381895dcf9
+GeluElementwise [F32, F32] Cuda src=baracuda generic=true rev=5790d776375c9c10
+GeluElementwise [F64, F64] Cuda src=baracuda generic=true rev=e2aad9381895dcf9
+GeluInplace [BF16, BF16] Cuda src=baracuda generic=false rev=7c9a45779ff5ce0d
+GeluInplace [F16, F16] Cuda src=baracuda generic=false rev=7c9a45779ff5ce0d
+GeluInplace [F32, F32] Cuda src=baracuda generic=false rev=7c9a45779ff5ce0d
+GeluInplace [F64, F64] Cuda src=baracuda generic=false rev=7c9a45779ff5ce0d
+GeluTanhElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=92bac863fc2b3ca2
+GeluTanhElementwise [F16, F16] Cuda src=baracuda generic=true rev=92bac863fc2b3ca2
+GeluTanhElementwise [F32, F32] Cuda src=baracuda generic=true rev=37d5ff1d5ebecb61
+GeluTanhElementwise [F64, F64] Cuda src=baracuda generic=true rev=92bac863fc2b3ca2
+GeluTanhInplace [BF16, BF16] Cuda src=baracuda generic=false rev=96e01555d39efb84
+GeluTanhInplace [F16, F16] Cuda src=baracuda generic=false rev=96e01555d39efb84
+GeluTanhInplace [F32, F32] Cuda src=baracuda generic=false rev=96e01555d39efb84
+GeluTanhInplace [F64, F64] Cuda src=baracuda generic=false rev=96e01555d39efb84
+GreaterElementwise [BF16, BF16, Bool] Cuda src=baracuda generic=true rev=17c638ac537532f3
+GreaterElementwise [F16, F16, Bool] Cuda src=baracuda generic=true rev=a996f70d2bda2093
+GreaterElementwise [F32, F32, Bool] Cuda src=baracuda generic=true rev=df2b88bd6a8e5c71
+GreaterElementwise [F64, F64, Bool] Cuda src=baracuda generic=true rev=6da0d4530e7bd7fb
+GreaterEqualElementwise [BF16, BF16, Bool] Cuda src=baracuda generic=true rev=171c592de689c2b3
+GreaterEqualElementwise [F16, F16, Bool] Cuda src=baracuda generic=true rev=049ca7c998dd71c5
+GreaterEqualElementwise [F32, F32, Bool] Cuda src=baracuda generic=true rev=00c01df1f3866063
+GreaterEqualElementwise [F64, F64, Bool] Cuda src=baracuda generic=true rev=954cc387ad3bd7eb
+IndexSelect [F32, U32, F32] Cuda src=baracuda generic=false rev=1a3e242d3a7f894a
+IndexSelect [F64, U32, F64] Cuda src=baracuda generic=false rev=1a3e242d3a7f894a
+IndexSelect [I32, U32, I32] Cuda src=baracuda generic=false rev=1a3e242d3a7f894a
+InplaceAffine [BF16, BF16] Cuda src=baracuda generic=false rev=186df47892ff4ec7
+InplaceAffine [F16, F16] Cuda src=baracuda generic=false rev=186df47892ff4ec7
+InplaceAffine [F32, F32] Cuda src=baracuda generic=false rev=186df47892ff4ec7
+InplaceAffine [F64, F64] Cuda src=baracuda generic=false rev=186df47892ff4ec7
+LayerNormLastDim [BF16, BF16] Cuda src=baracuda generic=true rev=90b6e45f3c1ccce1
+LayerNormLastDim [F16, F16] Cuda src=baracuda generic=true rev=90b6e45f3c1ccce1
+LayerNormLastDim [F32, F32] Cuda src=baracuda generic=true rev=90b6e45f3c1ccce1
+LayerNormLastDim [F64, F64] Cuda src=baracuda generic=true rev=90b6e45f3c1ccce1
+LessElementwise [BF16, BF16, Bool] Cuda src=baracuda generic=true rev=e439814309fbb738
+LessElementwise [F16, F16, Bool] Cuda src=baracuda generic=true rev=fa5e89bceb65c254
+LessElementwise [F32, F32, Bool] Cuda src=baracuda generic=true rev=2481cff66b240532
+LessElementwise [F64, F64, Bool] Cuda src=baracuda generic=true rev=64044d47f5ba0196
+LessEqualElementwise [BF16, BF16, Bool] Cuda src=baracuda generic=true rev=14fb20a88f0ef2b2
+LessEqualElementwise [F16, F16, Bool] Cuda src=baracuda generic=true rev=f1e08f53ec45b344
+LessEqualElementwise [F32, F32, Bool] Cuda src=baracuda generic=true rev=41531c3420d69502
+LessEqualElementwise [F64, F64, Bool] Cuda src=baracuda generic=true rev=8bade816c19baa94
+LogElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=89f5f592a96b93c9
+LogElementwise [F16, F16] Cuda src=baracuda generic=true rev=89f5f592a96b93c9
+LogElementwise [F32, F32] Cuda src=baracuda generic=true rev=d7255ccf267894b0
+LogElementwise [F64, F64] Cuda src=baracuda generic=true rev=89f5f592a96b93c9
+LogInplace [BF16, BF16] Cuda src=baracuda generic=false rev=261e83926b6556e7
+LogInplace [F16, F16] Cuda src=baracuda generic=false rev=261e83926b6556e7
+LogInplace [F32, F32] Cuda src=baracuda generic=false rev=261e83926b6556e7
+LogInplace [F64, F64] Cuda src=baracuda generic=false rev=261e83926b6556e7
+LogSoftmaxLastDim [BF16, BF16] Cuda src=baracuda generic=true rev=5756402924269d1c
+LogSoftmaxLastDim [F16, F16] Cuda src=baracuda generic=true rev=5756402924269d1c
+LogSoftmaxLastDim [F32, F32] Cuda src=baracuda generic=true rev=5756402924269d1c
+LogSoftmaxLastDim [F64, F64] Cuda src=baracuda generic=true rev=5756402924269d1c
+MaskedFill [F32, Bool, F32] Cuda src=baracuda generic=false rev=57efe22f5159665a
+MaskedFill [F64, Bool, F64] Cuda src=baracuda generic=false rev=57efe22f5159665a
+MaskedFill [I32, Bool, I32] Cuda src=baracuda generic=false rev=57efe22f5159665a
+MatMul [BF16, BF16, BF16] Cuda src=baracuda generic=false rev=c07ac1f51702745b
+MatMul [F16, F16, F16] Cuda src=baracuda generic=false rev=c07ac1f51702745b
+MatMul [F32, F32, F32] Cuda src=baracuda generic=false rev=471c8128936ef7ff
+MatMul [F64, F64, F64] Cuda src=baracuda generic=false rev=c07ac1f51702745b
+MatMul [I8, I8, I8] Cuda src=baracuda generic=false rev=c45475a98aaa5575
+MatMul [U8, U8, U8] Cuda src=baracuda generic=false rev=c45475a98aaa5575
+MaxReduce [BF16, BF16] Cuda src=baracuda generic=true rev=838a0846973189b5
+MaxReduce [F16, F16] Cuda src=baracuda generic=true rev=838a0846973189b5
+MaxReduce [F32, F32] Cuda src=baracuda generic=true rev=ea40815abdf7fa54
+MaxReduce [F64, F64] Cuda src=baracuda generic=true rev=838a0846973189b5
+MaximumElementwise [BF16, BF16, BF16] Cuda src=baracuda generic=true rev=eebce20d865e66d9
+MaximumElementwise [F16, F16, F16] Cuda src=baracuda generic=true rev=eebce20d865e66d9
+MaximumElementwise [F32, F32, F32] Cuda src=baracuda generic=true rev=51e8f4718f1f4d21
+MaximumElementwise [F64, F64, F64] Cuda src=baracuda generic=true rev=eebce20d865e66d9
+MeanReduce [BF16, BF16] Cuda src=baracuda generic=true rev=2ce49e9817f1e0da
+MeanReduce [F16, F16] Cuda src=baracuda generic=true rev=2ce49e9817f1e0da
+MeanReduce [F32, F32] Cuda src=baracuda generic=true rev=7f33ec3c58c2178d
+MeanReduce [F64, F64] Cuda src=baracuda generic=true rev=2ce49e9817f1e0da
+MinReduce [BF16, BF16] Cuda src=baracuda generic=true rev=380a356e6c97eb07
+MinReduce [F16, F16] Cuda src=baracuda generic=true rev=380a356e6c97eb07
+MinReduce [F32, F32] Cuda src=baracuda generic=true rev=171880c6bd40efb2
+MinReduce [F64, F64] Cuda src=baracuda generic=true rev=380a356e6c97eb07
+MinimumElementwise [BF16, BF16, BF16] Cuda src=baracuda generic=true rev=feaff0b60a832bbb
+MinimumElementwise [F16, F16, F16] Cuda src=baracuda generic=true rev=feaff0b60a832bbb
+MinimumElementwise [F32, F32, F32] Cuda src=baracuda generic=true rev=4f50c5c3afb97f43
+MinimumElementwise [F64, F64, F64] Cuda src=baracuda generic=true rev=feaff0b60a832bbb
+MulElementwise [BF16, BF16, BF16] Cuda src=baracuda generic=true rev=f19a00fa5c8ce111
+MulElementwise [F16, F16, F16] Cuda src=baracuda generic=true rev=f19a00fa5c8ce111
+MulElementwise [F32, F32, F32] Cuda src=baracuda generic=true rev=62680d91c2ae28d9
+MulElementwise [F64, F64, F64] Cuda src=baracuda generic=true rev=f19a00fa5c8ce111
+NegElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=cab0f3940be5d0ad
+NegElementwise [F16, F16] Cuda src=baracuda generic=true rev=cab0f3940be5d0ad
+NegElementwise [F32, F32] Cuda src=baracuda generic=true rev=b5b80fe76c67557c
+NegElementwise [F64, F64] Cuda src=baracuda generic=true rev=cab0f3940be5d0ad
+NegInplace [BF16, BF16] Cuda src=baracuda generic=false rev=3131607decce4763
+NegInplace [F16, F16] Cuda src=baracuda generic=false rev=3131607decce4763
+NegInplace [F32, F32] Cuda src=baracuda generic=false rev=3131607decce4763
+NegInplace [F64, F64] Cuda src=baracuda generic=false rev=3131607decce4763
+NotEqualElementwise [BF16, BF16, Bool] Cuda src=baracuda generic=true rev=076e7e26035f2566
+NotEqualElementwise [F16, F16, Bool] Cuda src=baracuda generic=true rev=b1c4d516a136a250
+NotEqualElementwise [F32, F32, Bool] Cuda src=baracuda generic=true rev=d43fb52420ec440a
+NotEqualElementwise [F64, F64, Bool] Cuda src=baracuda generic=true rev=d2775a2d9ca72a8e
+Pad [BF16, BF16] Cuda src=baracuda generic=false rev=8ebd50d792d11dd0
+Pad [F16, F16] Cuda src=baracuda generic=false rev=8ebd50d792d11dd0
+Pad [F32, F32] Cuda src=baracuda generic=false rev=8ebd50d792d11dd0
+Pad [F64, F64] Cuda src=baracuda generic=false rev=8ebd50d792d11dd0
+PadBackward [BF16, BF16] Cuda src=baracuda generic=false rev=50f95cc4cb936bfe
+PadBackward [F16, F16] Cuda src=baracuda generic=false rev=50f95cc4cb936bfe
+PadBackward [F32, F32] Cuda src=baracuda generic=false rev=50f95cc4cb936bfe
+PadBackward [F64, F64] Cuda src=baracuda generic=false rev=50f95cc4cb936bfe
+PowElementwise [BF16, BF16, BF16] Cuda src=baracuda generic=true rev=67b6359bbe288649
+PowElementwise [F16, F16, F16] Cuda src=baracuda generic=true rev=67b6359bbe288649
+PowElementwise [F32, F32, F32] Cuda src=baracuda generic=true rev=28353b612a8bd831
+PowElementwise [F64, F64, F64] Cuda src=baracuda generic=true rev=67b6359bbe288649
+PowIElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=53610863d331cd74
+PowIElementwise [F16, F16] Cuda src=baracuda generic=true rev=53610863d331cd74
+PowIElementwise [F32, F32] Cuda src=baracuda generic=true rev=53610863d331cd74
+PowIElementwise [F64, F64] Cuda src=baracuda generic=true rev=53610863d331cd74
+PowIElementwiseBackward [BF16, BF16, BF16] Cuda src=baracuda generic=true rev=0834205adff96483
+PowIElementwiseBackward [F16, F16, F16] Cuda src=baracuda generic=true rev=0834205adff96483
+PowIElementwiseBackward [F32, F32, F32] Cuda src=baracuda generic=true rev=0834205adff96483
+PowIElementwiseBackward [F64, F64, F64] Cuda src=baracuda generic=true rev=0834205adff96483
+PowIInplace [BF16, BF16] Cuda src=baracuda generic=false rev=ccc6c3113c3d0795
+PowIInplace [F16, F16] Cuda src=baracuda generic=false rev=ccc6c3113c3d0795
+PowIInplace [F32, F32] Cuda src=baracuda generic=false rev=ccc6c3113c3d0795
+PowIInplace [F64, F64] Cuda src=baracuda generic=false rev=ccc6c3113c3d0795
+QMatMul [F32, U32, F32] Cuda src=baracuda generic=false rev=f6bab6b885a5b953
+RecipElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=1ac375f76317fba2
+RecipElementwise [F16, F16] Cuda src=baracuda generic=true rev=1ac375f76317fba2
+RecipElementwise [F32, F32] Cuda src=baracuda generic=true rev=2838363dd02acbb1
+RecipElementwise [F64, F64] Cuda src=baracuda generic=true rev=1ac375f76317fba2
+RecipInplace [BF16, BF16] Cuda src=baracuda generic=false rev=629589e464400c26
+RecipInplace [F16, F16] Cuda src=baracuda generic=false rev=629589e464400c26
+RecipInplace [F32, F32] Cuda src=baracuda generic=false rev=629589e464400c26
+RecipInplace [F64, F64] Cuda src=baracuda generic=false rev=629589e464400c26
+ReduceMaxTo [BF16, BF16] Cuda src=baracuda generic=true rev=1a9122eb10b22890
+ReduceMaxTo [F16, F16] Cuda src=baracuda generic=true rev=1a9122eb10b22890
+ReduceMaxTo [F32, F32] Cuda src=baracuda generic=true rev=1a9122eb10b22890
+ReduceMaxTo [F64, F64] Cuda src=baracuda generic=true rev=1a9122eb10b22890
+ReduceSumTo [BF16, BF16] Cuda src=baracuda generic=true rev=44e0a93769dfd894
+ReduceSumTo [F16, F16] Cuda src=baracuda generic=true rev=44e0a93769dfd894
+ReduceSumTo [F32, F32] Cuda src=baracuda generic=true rev=44e0a93769dfd894
+ReduceSumTo [F64, F64] Cuda src=baracuda generic=true rev=44e0a93769dfd894
+ReluElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=483cf181b1e6c489
+ReluElementwise [F16, F16] Cuda src=baracuda generic=true rev=483cf181b1e6c489
+ReluElementwise [F32, F32] Cuda src=baracuda generic=true rev=75a7fe5ea6d35c20
+ReluElementwise [F64, F64] Cuda src=baracuda generic=true rev=483cf181b1e6c489
+ReluInplace [BF16, BF16] Cuda src=baracuda generic=false rev=2ff3df375b8b84c3
+ReluInplace [F16, F16] Cuda src=baracuda generic=false rev=2ff3df375b8b84c3
+ReluInplace [F32, F32] Cuda src=baracuda generic=false rev=2ff3df375b8b84c3
+ReluInplace [F64, F64] Cuda src=baracuda generic=false rev=2ff3df375b8b84c3
+RemElementwise [BF16, BF16, BF16] Cuda src=baracuda generic=true rev=ccf6a97e3b678373
+RemElementwise [F16, F16, F16] Cuda src=baracuda generic=true rev=ccf6a97e3b678373
+RemElementwise [F32, F32, F32] Cuda src=baracuda generic=true rev=f34d7ffc0248babb
+RemElementwise [F64, F64, F64] Cuda src=baracuda generic=true rev=ccf6a97e3b678373
+RmsNormLastDim [BF16, BF16] Cuda src=baracuda generic=true rev=3e1b5deaf0ba5431
+RmsNormLastDim [F16, F16] Cuda src=baracuda generic=true rev=3e1b5deaf0ba5431
+RmsNormLastDim [F32, F32] Cuda src=baracuda generic=true rev=ed27cc83f8372b72
+RmsNormLastDim [F64, F64] Cuda src=baracuda generic=true rev=3e1b5deaf0ba5431
+Roll [BF16, BF16] Cuda src=baracuda generic=true rev=f9811c661d272d32
+Roll [F16, F16] Cuda src=baracuda generic=true rev=f9811c661d272d32
+Roll [F32, F32] Cuda src=baracuda generic=true rev=f9811c661d272d32
+Roll [F64, F64] Cuda src=baracuda generic=true rev=f9811c661d272d32
+Rope [BF16, BF16] Cuda src=baracuda generic=true rev=fe0d7c0db5fa19ae
+Rope [F16, F16] Cuda src=baracuda generic=true rev=fe0d7c0db5fa19ae
+Rope [F32, F32] Cuda src=baracuda generic=true rev=fe0d7c0db5fa19ae
+Rope [F64, F64] Cuda src=baracuda generic=true rev=fe0d7c0db5fa19ae
+RoundElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=af8e144c5e31f1f7
+RoundElementwise [F16, F16] Cuda src=baracuda generic=true rev=af8e144c5e31f1f7
+RoundElementwise [F32, F32] Cuda src=baracuda generic=true rev=1d28529c2667703a
+RoundElementwise [F64, F64] Cuda src=baracuda generic=true rev=af8e144c5e31f1f7
+RoundInplace [BF16, BF16] Cuda src=baracuda generic=false rev=a4cc54398bb0e529
+RoundInplace [F16, F16] Cuda src=baracuda generic=false rev=a4cc54398bb0e529
+RoundInplace [F32, F32] Cuda src=baracuda generic=false rev=a4cc54398bb0e529
+RoundInplace [F64, F64] Cuda src=baracuda generic=false rev=a4cc54398bb0e529
+RsqrtElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=1987fbab003fb673
+RsqrtElementwise [F16, F16] Cuda src=baracuda generic=true rev=1987fbab003fb673
+RsqrtElementwise [F32, F32] Cuda src=baracuda generic=true rev=f54a345ce933ae0e
+RsqrtElementwise [F64, F64] Cuda src=baracuda generic=true rev=1987fbab003fb673
+RsqrtInplace [BF16, BF16] Cuda src=baracuda generic=false rev=32ba805c961b225d
+RsqrtInplace [F16, F16] Cuda src=baracuda generic=false rev=32ba805c961b225d
+RsqrtInplace [F32, F32] Cuda src=baracuda generic=false rev=32ba805c961b225d
+RsqrtInplace [F64, F64] Cuda src=baracuda generic=false rev=32ba805c961b225d
+ScatterAdd [F32, U32, F32, F32] Cuda src=baracuda generic=false rev=9fb7bdc393fbaae9
+ScatterAdd [F64, U32, F64, F64] Cuda src=baracuda generic=false rev=222ec95e001a49a5
+SigmoidElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=dd41023c326a2b9f
+SigmoidElementwise [F16, F16] Cuda src=baracuda generic=true rev=dd41023c326a2b9f
+SigmoidElementwise [F32, F32] Cuda src=baracuda generic=true rev=f48c1e9fa2428ef2
+SigmoidElementwise [F64, F64] Cuda src=baracuda generic=true rev=dd41023c326a2b9f
+SigmoidInplace [BF16, BF16] Cuda src=baracuda generic=false rev=7e81d1277b7e2641
+SigmoidInplace [F16, F16] Cuda src=baracuda generic=false rev=7e81d1277b7e2641
+SigmoidInplace [F32, F32] Cuda src=baracuda generic=false rev=7e81d1277b7e2641
+SigmoidInplace [F64, F64] Cuda src=baracuda generic=false rev=7e81d1277b7e2641
+SignElementwise [F32, F32] Cuda src=baracuda generic=true rev=be4fed154d5b0515
+SignInplace [BF16, BF16] Cuda src=baracuda generic=false rev=c09836a88049d93a
+SignInplace [F16, F16] Cuda src=baracuda generic=false rev=c09836a88049d93a
+SignInplace [F32, F32] Cuda src=baracuda generic=false rev=c09836a88049d93a
+SignInplace [F64, F64] Cuda src=baracuda generic=false rev=c09836a88049d93a
+SiluElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=63df4cf57c52dae4
+SiluElementwise [F16, F16] Cuda src=baracuda generic=true rev=63df4cf57c52dae4
+SiluElementwise [F32, F32] Cuda src=baracuda generic=true rev=25d98e7976eaa947
+SiluElementwise [F64, F64] Cuda src=baracuda generic=true rev=63df4cf57c52dae4
+SiluInplace [BF16, BF16] Cuda src=baracuda generic=false rev=fd6a9b040006ce5c
+SiluInplace [F16, F16] Cuda src=baracuda generic=false rev=fd6a9b040006ce5c
+SiluInplace [F32, F32] Cuda src=baracuda generic=false rev=fd6a9b040006ce5c
+SiluInplace [F64, F64] Cuda src=baracuda generic=false rev=fd6a9b040006ce5c
+SinElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=444191c9062f48d1
+SinElementwise [F16, F16] Cuda src=baracuda generic=true rev=444191c9062f48d1
+SinElementwise [F32, F32] Cuda src=baracuda generic=true rev=31bc8f27a59b8f38
+SinElementwise [F64, F64] Cuda src=baracuda generic=true rev=444191c9062f48d1
+SinInplace [BF16, BF16] Cuda src=baracuda generic=false rev=5419d1b50f2cff8f
+SinInplace [F16, F16] Cuda src=baracuda generic=false rev=5419d1b50f2cff8f
+SinInplace [F32, F32] Cuda src=baracuda generic=false rev=5419d1b50f2cff8f
+SinInplace [F64, F64] Cuda src=baracuda generic=false rev=5419d1b50f2cff8f
+SoftmaxLastDim [BF16, BF16] Cuda src=baracuda generic=true rev=d8c92b4d8016abdd
+SoftmaxLastDim [F16, F16] Cuda src=baracuda generic=true rev=d8c92b4d8016abdd
+SoftmaxLastDim [F32, F32] Cuda src=baracuda generic=true rev=1814a315f9b835ac
+SoftmaxLastDim [F64, F64] Cuda src=baracuda generic=true rev=d8c92b4d8016abdd
+SqrElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=fab658674f18b1dd
+SqrElementwise [F16, F16] Cuda src=baracuda generic=true rev=fab658674f18b1dd
+SqrElementwise [F32, F32] Cuda src=baracuda generic=true rev=240bcaffb5fe1c5c
+SqrElementwise [F64, F64] Cuda src=baracuda generic=true rev=fab658674f18b1dd
+SqrInplace [BF16, BF16] Cuda src=baracuda generic=false rev=7c860d84f80df923
+SqrInplace [F16, F16] Cuda src=baracuda generic=false rev=7c860d84f80df923
+SqrInplace [F32, F32] Cuda src=baracuda generic=false rev=7c860d84f80df923
+SqrInplace [F64, F64] Cuda src=baracuda generic=false rev=7c860d84f80df923
+SqrtElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=96131ae6c36c82b5
+SqrtElementwise [F16, F16] Cuda src=baracuda generic=true rev=96131ae6c36c82b5
+SqrtElementwise [F32, F32] Cuda src=baracuda generic=true rev=3c2fd669958dcdc4
+SqrtElementwise [F64, F64] Cuda src=baracuda generic=true rev=96131ae6c36c82b5
+SqrtInplace [BF16, BF16] Cuda src=baracuda generic=false rev=75e932da0852501b
+SqrtInplace [F16, F16] Cuda src=baracuda generic=false rev=75e932da0852501b
+SqrtInplace [F32, F32] Cuda src=baracuda generic=false rev=75e932da0852501b
+SqrtInplace [F64, F64] Cuda src=baracuda generic=false rev=75e932da0852501b
+StepElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=87e69511c84c7f4d
+StepElementwise [F16, F16] Cuda src=baracuda generic=true rev=87e69511c84c7f4d
+StepElementwise [F32, F32] Cuda src=baracuda generic=true rev=0749422e9e6c134c
+StepElementwise [F64, F64] Cuda src=baracuda generic=true rev=87e69511c84c7f4d
+SubElementwise [BF16, BF16, BF16] Cuda src=baracuda generic=true rev=597c2b8d1c16194d
+SubElementwise [F16, F16, F16] Cuda src=baracuda generic=true rev=597c2b8d1c16194d
+SubElementwise [F32, F32, F32] Cuda src=baracuda generic=true rev=080c3628600e2355
+SubElementwise [F64, F64, F64] Cuda src=baracuda generic=true rev=597c2b8d1c16194d
+SumReduce [BF16, BF16] Cuda src=baracuda generic=true rev=bd7c9deed869153a
+SumReduce [F16, F16] Cuda src=baracuda generic=true rev=bd7c9deed869153a
+SumReduce [F32, F32] Cuda src=baracuda generic=true rev=5732d37642c57fcd
+SumReduce [F64, F64] Cuda src=baracuda generic=true rev=bd7c9deed869153a
+TanhElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=d088de6e7590caca
+TanhElementwise [F16, F16] Cuda src=baracuda generic=true rev=d088de6e7590caca
+TanhElementwise [F32, F32] Cuda src=baracuda generic=true rev=235626ce262457d9
+TanhElementwise [F64, F64] Cuda src=baracuda generic=true rev=d088de6e7590caca
+TanhInplace [BF16, BF16] Cuda src=baracuda generic=false rev=e8a0b70b1c01f2ee
+TanhInplace [F16, F16] Cuda src=baracuda generic=false rev=e8a0b70b1c01f2ee
+TanhInplace [F32, F32] Cuda src=baracuda generic=false rev=e8a0b70b1c01f2ee
+TanhInplace [F64, F64] Cuda src=baracuda generic=false rev=e8a0b70b1c01f2ee
+Tril [BF16, BF16] Cuda src=baracuda generic=true rev=028d1599e581656b
+Tril [F16, F16] Cuda src=baracuda generic=true rev=028d1599e581656b
+Tril [F32, F32] Cuda src=baracuda generic=true rev=028d1599e581656b
+Tril [F64, F64] Cuda src=baracuda generic=true rev=028d1599e581656b
+Tril [I32, I32] Cuda src=baracuda generic=true rev=028d1599e581656b
+Tril [I64, I64] Cuda src=baracuda generic=true rev=028d1599e581656b
+Triu [BF16, BF16] Cuda src=baracuda generic=true rev=9b90e928b1a6f1b0
+Triu [F16, F16] Cuda src=baracuda generic=true rev=9b90e928b1a6f1b0
+Triu [F32, F32] Cuda src=baracuda generic=true rev=9b90e928b1a6f1b0
+Triu [F64, F64] Cuda src=baracuda generic=true rev=9b90e928b1a6f1b0
+Triu [I32, I32] Cuda src=baracuda generic=true rev=9b90e928b1a6f1b0
+Triu [I64, I64] Cuda src=baracuda generic=true rev=9b90e928b1a6f1b0
+WriteSlice [BF16, BF16] Cuda src=baracuda generic=false rev=c45848cf774ece7a
+WriteSlice [F16, F16] Cuda src=baracuda generic=false rev=c45848cf774ece7a
+WriteSlice [F32, F32] Cuda src=baracuda generic=false rev=c45848cf774ece7a
+WriteSlice [F64, F64] Cuda src=baracuda generic=false rev=c45848cf774ece7a
+WriteSlice [I32, I32] Cuda src=baracuda generic=false rev=c45848cf774ece7a
+WriteSlice [I64, I64] Cuda src=baracuda generic=false rev=c45848cf774ece7a
+WriteSlice [I8, I8] Cuda src=baracuda generic=false rev=c45848cf774ece7a
+WriteSlice [U32, U32] Cuda src=baracuda generic=false rev=c45848cf774ece7a
+WriteSlice [U8, U8] Cuda src=baracuda generic=false rev=c45848cf774ece7a
+WriteSliceDoff [BF16, BF16] Cuda src=baracuda generic=false rev=b9439a2843d99bbe
+WriteSliceDoff [F16, F16] Cuda src=baracuda generic=false rev=b9439a2843d99bbe
+WriteSliceDoff [F32, F32] Cuda src=baracuda generic=false rev=b9439a2843d99bbe
+WriteSliceDoff [F64, F64] Cuda src=baracuda generic=false rev=b9439a2843d99bbe
+WriteSliceDoff [I32, I32] Cuda src=baracuda generic=false rev=b9439a2843d99bbe
+WriteSliceDoff [I64, I64] Cuda src=baracuda generic=false rev=b9439a2843d99bbe
+WriteSliceDoff [I8, I8] Cuda src=baracuda generic=false rev=b9439a2843d99bbe
+WriteSliceDoff [U32, U32] Cuda src=baracuda generic=false rev=b9439a2843d99bbe
+WriteSliceDoff [U8, U8] Cuda src=baracuda generic=false rev=b9439a2843d99bbe
+WriteSliceRotating [BF16, BF16] Cuda src=baracuda generic=false rev=3ad032af3c67f2f8
+WriteSliceRotating [F16, F16] Cuda src=baracuda generic=false rev=3ad032af3c67f2f8
+WriteSliceRotating [F32, F32] Cuda src=baracuda generic=false rev=3ad032af3c67f2f8
+WriteSliceRotating [F64, F64] Cuda src=baracuda generic=false rev=3ad032af3c67f2f8
+WriteSliceRotating [I32, I32] Cuda src=baracuda generic=false rev=3ad032af3c67f2f8
+WriteSliceRotating [I64, I64] Cuda src=baracuda generic=false rev=3ad032af3c67f2f8
+WriteSliceRotating [I8, I8] Cuda src=baracuda generic=false rev=3ad032af3c67f2f8
+WriteSliceRotating [U32, U32] Cuda src=baracuda generic=false rev=3ad032af3c67f2f8
+WriteSliceRotating [U8, U8] Cuda src=baracuda generic=false rev=3ad032af3c67f2f8

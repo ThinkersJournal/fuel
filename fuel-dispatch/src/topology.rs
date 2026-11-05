@@ -937,32 +937,8 @@ mod tests {
         }
     }
 
-    /// CUDA cfg-gated check: when the cuda feature is on, the
-    /// topology must report Cuda as a backend and CUDA's device must
-    /// be in `backends_for(Cuda { gpu_id: 0 })`. We don't assume the
-    /// host actually has a CUDA-capable GPU — the binding-table walk
-    /// is what surfaces the backend (kernels are auto-registered at
-    /// `global_bindings()` init unconditionally on the cuda feature).
-    #[cfg(feature = "cuda")]
-    #[test]
-    fn cuda_backend_discovered_when_feature_enabled() {
-        let topology = SystemTopology::current();
-        assert!(
-            topology.backends().contains(&BackendId::Cuda),
-            "cuda feature is on; topology should report Cuda. Got: {:?}",
-            topology.backends(),
-        );
-        // CUDA's default device gets a slot in backends_for even if
-        // probe found nothing (synthetic fallback).
-        let cuda_dev = DeviceLocation::Cuda { gpu_id: 0 };
-        let here = topology.backends_for(cuda_dev);
-        assert!(
-            here.contains(&BackendId::Cuda),
-            "Cuda should be among the backends targeting {:?}, got {:?}",
-            cuda_dev,
-            here,
-        );
-    }
+    // `cuda_backend_discovered_when_feature_enabled` moved to `fuel-cuda-dispatch/tests/cuda_global_install.rs` (row 137 step 6.2):
+    // it needs the CUDA kernels in the global table, and they are registered above this crate now.
 
     /// CUDA + Vulkan on the same physical GPU don't share storage —
     /// CUDA pointers and Vulkan buffers live in distinct allocators

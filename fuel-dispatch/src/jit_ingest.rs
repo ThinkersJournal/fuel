@@ -954,7 +954,7 @@ mod flag_not_verdict_tests {
         let od = OperandDesc::new(1, &[4], &[1], ElementKind::F32, 16);
         let cand = CandidateKernel {
             entry_point: "test::kiss_advisory::add_f32".to_string(),
-            kernel: crate::baracuda_dispatch::binary::add_f32,
+            kernel: crate::cuda_test_kernels::add_f32,
             op_params: crate::kernel::OpParams::None,
             decompose: Some(decompose),
             operands: vec![od, od],
@@ -1019,7 +1019,7 @@ mod flag_not_verdict_tests {
             entry_point: "test::multi_node_advisory::relu_add".to_string(),
             // Plain add kernel offered for a relu(add) region — it disagrees
             // with the composed reference wherever the sum is negative.
-            kernel: crate::baracuda_dispatch::binary::add_f32,
+            kernel: crate::cuda_test_kernels::add_f32,
             op_params: crate::kernel::OpParams::None,
             decompose: Some(decompose),
             operands: vec![od, od],
@@ -1086,7 +1086,7 @@ mod flag_not_verdict_tests {
         let od = OperandDesc::new(1, &[4], &[1], ElementKind::F32, 16);
         let cand = CandidateKernel {
             entry_point: "test::claimed_op_advisory::add_f32".to_string(),
-            kernel: crate::baracuda_dispatch::binary::add_f32,
+            kernel: crate::cuda_test_kernels::add_f32,
             op_params: crate::kernel::OpParams::None,
             decompose: None,
             operands: vec![od, od],
@@ -2779,7 +2779,7 @@ mod tests {
         let od = OperandDesc::new(1, &[4], &[1], ElementKind::F32, 16);
         let cand = CandidateKernel {
             entry_point: "add_f32".to_string(),
-            kernel: crate::baracuda_dispatch::binary::add_f32,
+            kernel: crate::cuda_test_kernels::add_f32,
             op_params: crate::kernel::OpParams::None,
             decompose: Some(decompose),
             operands: vec![od, od],
@@ -2870,7 +2870,7 @@ mod tests {
         let od = OperandDesc::new(1, &[4], &[1], ElementKind::Bf16, 16);
         let cand = CandidateKernel {
             entry_point: "matmul_bf16".to_string(),
-            kernel: crate::baracuda_dispatch::binary::add_f32,
+            kernel: crate::cuda_test_kernels::add_f32,
             op_params: crate::kernel::OpParams::None,
             decompose: Some(decompose),
             operands: vec![od, od],
@@ -2947,7 +2947,7 @@ mod tests {
         let od = OperandDesc::new(1, &[4], &[1], ElementKind::F64, 32);
         let cand = CandidateKernel {
             entry_point: "test::t5_escalate::add_f64".to_string(),
-            kernel: crate::baracuda_dispatch::binary::add_f64,
+            kernel: crate::cuda_test_kernels::add_f64,
             op_params: crate::kernel::OpParams::None,
             decompose: Some(decompose),
             operands: vec![od, od],
@@ -3035,7 +3035,7 @@ mod tests {
         let od = OperandDesc::new(1, &[4], &[1], ElementKind::F32, 16);
         let cand = CandidateKernel {
             entry_point: "test::ingest::mul_for_add_region".to_string(),
-            kernel: crate::baracuda_dispatch::binary::mul_f32,
+            kernel: crate::cuda_test_kernels::mul_f32,
             op_params: crate::kernel::OpParams::None,
             decompose: Some(decompose),
             operands: vec![od, od],
@@ -3107,7 +3107,7 @@ mod tests {
         let od = OperandDesc::new(1, &[4], &[1], ElementKind::F32, 16);
         let cand = CandidateKernel {
             entry_point: "test::ingest::add_for_add_region::run_1nge_5702".to_string(),
-            kernel: crate::baracuda_dispatch::binary::add_f32,
+            kernel: crate::cuda_test_kernels::add_f32,
             op_params: crate::kernel::OpParams::None,
             decompose: Some(decompose),
             operands: vec![od, od],
@@ -3373,7 +3373,7 @@ mod tests {
         let od = OperandDesc::new(1, &[4], &[1], ElementKind::F32, 16);
         let cand = CandidateKernel {
             entry_point: "test::rope_oracle::adopt::add_f32::run_r0pe_0004".to_string(),
-            kernel: crate::baracuda_dispatch::binary::add_f32,
+            kernel: crate::cuda_test_kernels::add_f32,
             op_params: crate::kernel::OpParams::None,
             decompose: Some(add_region),
             operands: vec![od, od],
@@ -3427,7 +3427,7 @@ mod tests {
         let od = OperandDesc::new(1, &[4], &[1], ElementKind::F32, 16);
         let cand = CandidateKernel {
             entry_point: "test::adopt_verified::no_decompose".to_string(),
-            kernel: crate::baracuda_dispatch::binary::add_f32,
+            kernel: crate::cuda_test_kernels::add_f32,
             op_params: crate::kernel::OpParams::None,
             decompose: None,
             operands: vec![od, od],
@@ -3480,7 +3480,7 @@ mod tests {
         let od = OperandDesc::new(1, &[4], &[1], ElementKind::F32, 16);
         let cand = CandidateKernel {
             entry_point: "test::adopt_verified::non_contiguous_binds::run_9002".to_string(),
-            kernel: crate::baracuda_dispatch::binary::add_f32,
+            kernel: crate::cuda_test_kernels::add_f32,
             op_params: crate::kernel::OpParams::None,
             decompose: Some(region),
             operands: vec![od, od],
@@ -4043,7 +4043,7 @@ mod tests {
         let od = OperandDesc::new(1, &[4], &[1], ElementKind::F32, 16);
         CandidateKernel {
             entry_point: "test::e2e::add_for_add_region::run_e2e_8801".to_string(),
-            kernel: crate::baracuda_dispatch::binary::add_f32,
+            kernel: crate::cuda_test_kernels::add_f32,
             op_params: crate::kernel::OpParams::None,
             decompose: Some(decompose),
             operands: vec![od, od],
@@ -4081,7 +4081,7 @@ mod tests {
         let od = OperandDesc::new(1, &[4], &[1], ElementKind::F32, 16);
         CandidateKernel {
             entry_point: "test::e2e::mul_for_add_region::run_e2e_8802".to_string(),
-            kernel: crate::baracuda_dispatch::binary::mul_f32,
+            kernel: crate::cuda_test_kernels::mul_f32,
             op_params: crate::kernel::OpParams::None,
             decompose: Some(decompose),
             operands: vec![od, od],
@@ -4120,7 +4120,7 @@ mod tests {
         let od = OperandDesc::new(1, &[4], &[1], ElementKind::F64, 32);
         CandidateKernel {
             entry_point: "test::e2e::add_f64_escalate::run_e2e_8803".to_string(),
-            kernel: crate::baracuda_dispatch::binary::add_f64,
+            kernel: crate::cuda_test_kernels::add_f64,
             op_params: crate::kernel::OpParams::None,
             decompose: Some(decompose),
             operands: vec![od, od],

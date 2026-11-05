@@ -180,9 +180,11 @@ fn device_name() -> String {
 
 /// Measure the registered CUDA f32 `MatMul`, `RmsNormLastDim` and `SoftmaxLastDim` on
 /// device 0. Returns the device name and the measurements.
-pub(crate) fn measure_cuda_f32_accuracy() -> Result<(String, Vec<OpAccuracy>), VerifyError> {
+pub(crate) fn measure_cuda_f32_accuracy(
+    register: fn(&mut KernelBindingTable),
+) -> Result<(String, Vec<OpAccuracy>), VerifyError> {
     let mut table = KernelBindingTable::new();
-    crate::baracuda_dispatch::register_baracuda_cuda_kernels(&mut table);
+    register(&mut table);
     let device = shared_device()?;
     let run = |entry: &BindingEntry, params: OpParams, inputs: &[HostTensor], shape: Vec<usize>| {
         let inv = CudaInvoker::new(device.clone(), DType::F32, shape).with_params(params);
@@ -244,10 +246,13 @@ pub(crate) fn measure_cuda_f32_accuracy() -> Result<(String, Vec<OpAccuracy>), V
 /// The registered f16 or bf16 CUDA `FlashAttn` decode kernel against the default placement
 /// bound. Evidence for `flash_decoding` only: no claim is earned, so `seed-cuda-accuracy` does
 /// not write it (`check-cuda-accuracy` prints and asserts it).
-fn measure_cuda_half_attention(dtype: DType) -> Result<OpAccuracy, VerifyError> {
+fn measure_cuda_half_attention(
+    register: fn(&mut KernelBindingTable),
+    dtype: DType,
+) -> Result<OpAccuracy, VerifyError> {
     use crate::ranker::filters::DEFAULT_ACCURACY_BOUND;
     let mut table = KernelBindingTable::new();
-    crate::baracuda_dispatch::register_baracuda_cuda_kernels(&mut table);
+    register(&mut table);
     let device = shared_device()?;
     let run = |entry: &BindingEntry, params: OpParams, inputs: &[HostTensor], shape: Vec<usize>| {
         let inv = CudaInvoker::new(device.clone(), dtype, shape).with_params(params);
@@ -293,10 +298,13 @@ fn measure_half_ops(
 
 /// The registered f16 or bf16 CUDA `MatMul`, `RmsNormLastDim` and `SoftmaxLastDim` against the
 /// default placement bound. Evidence only, like [`measure_cuda_half_attention`].
-fn measure_cuda_half_decode_ops(dtype: DType) -> Result<Vec<OpAccuracy>, VerifyError> {
+fn measure_cuda_half_decode_ops(
+    register: fn(&mut KernelBindingTable),
+    dtype: DType,
+) -> Result<Vec<OpAccuracy>, VerifyError> {
     use crate::ranker::filters::DEFAULT_ACCURACY_BOUND;
     let mut table = KernelBindingTable::new();
-    crate::baracuda_dispatch::register_baracuda_cuda_kernels(&mut table);
+    register(&mut table);
     let device = shared_device()?;
     let run = |entry: &BindingEntry, params: OpParams, inputs: &[HostTensor], shape: Vec<usize>| {
         let inv = CudaInvoker::new(device.clone(), dtype, shape).with_params(params);
@@ -334,12 +342,12 @@ fn print_run(name: &str, ops: &[OpAccuracy]) {
 /// Measure, print and WRITE the records through the one merging writer. Needs a live CUDA
 /// device. Run via `pwsh scripts/gpu-run.ps1 -Project fuel -- <fuel-dev-tools exe> seed-cuda-accuracy`.
 #[cfg(feature = "dev-tools")]
-pub(crate) fn run_seed_cuda_accuracy() {
+pub(crate) fn run_seed_cuda_accuracy(register: fn(&mut KernelBindingTable)) {
     // The dtype list is part of a section's revision hash, so splitting a section re-keyed every
     // entry of its op: earn `bit_stable_on_same_hardware` for the entries that lack
     // a pass at their current hash (`force = false` leaves every other kernel's record alone).
     let (ledger, log) =
-        super::seed_cuda_ledger::run_cuda_verification(Some(&measured_ops()), false)
+        super::seed_cuda_ledger::run_cuda_verification(register, Some(&measured_ops()), false)
             .expect("cuda bit-stability seeding runs");
     for a in &log {
         println!(
@@ -351,7 +359,8 @@ pub(crate) fn run_seed_cuda_accuracy() {
         log.iter().all(|a| !a.outcome.starts_with("fail")),
         "a kernel failed bit-stability; see the log above"
     );
-    let (name, ops) = measure_cuda_f32_accuracy().expect("cuda f32 accuracy measurement runs");
+    let (name, ops) =
+        measure_cuda_f32_accuracy(register).expect("cuda f32 accuracy measurement runs");
     print_run(&name, &ops);
     let recs = records(&name, &ops);
     assert!(
@@ -376,12 +385,15 @@ pub(crate) fn run_seed_cuda_accuracy() {
 /// Measure and print against the claims, WRITING NOTHING. Exits non-zero when any measurement
 /// exceeds its claim.
 #[cfg(feature = "dev-tools")]
-pub(crate) fn run_check_cuda_accuracy() {
-    let (name, ops) = measure_cuda_f32_accuracy().expect("cuda f32 accuracy measurement runs");
+pub(crate) fn run_check_cuda_accuracy(register: fn(&mut KernelBindingTable)) {
+    let (name, ops) =
+        measure_cuda_f32_accuracy(register).expect("cuda f32 accuracy measurement runs");
     print_run(&name, &ops);
     let attention: Vec<OpAccuracy> = [DType::F16, DType::BF16]
         .into_iter()
-        .map(|d| measure_cuda_half_attention(d).expect("cuda half attention measurement runs"))
+        .map(|d| {
+            measure_cuda_half_attention(register, d).expect("cuda half attention measurement runs")
+        })
         .collect();
     print_run(&name, &attention);
     // Printed, NOT asserted: no half-precision claim is earned (bf16 rounding alone exceeds the
@@ -391,7 +403,7 @@ pub(crate) fn run_check_cuda_accuracy() {
         println!("[row-39] dtype {d:?} decode-path ops");
         // A half gemm launch failure (GAP-370; the shared device avoids the known cause) is
         // reported, and the run goes on, since this evidence is not asserted.
-        match measure_cuda_half_decode_ops(d) {
+        match measure_cuda_half_decode_ops(register, d) {
             Ok(ops) => print_run(&name, &ops),
             Err(e) => println!("[row-39] {d:?} decode-path ops NOT MEASURED (GAP-370): {e:?}"),
         }
@@ -404,51 +416,56 @@ pub(crate) fn run_check_cuda_accuracy() {
     assert!(failing == 0, "{failing} measurement(s) exceed their claim");
 }
 
+/// `(contract file stem under kernel-contracts/cuda, kernel name, claim, op, number of dtypes of the F32 entry)`
+/// for each claimed op. The tests that read the contracts themselves (claim == contract section, and the
+/// registered entry carries the claim) moved to `fuel-cuda-dispatch/tests/cuda_claims_match_contracts.rs`
+/// with the contracts (row 137 step 6.2); they get these rows through `dev_tools::cuda_accuracy_claim_rows`.
+#[cfg(any(test, feature = "dev-tools"))]
+pub(crate) fn claim_rows() -> Vec<(&'static str, &'static str, Claim, OpKind, usize)> {
+    let mut v = vec![
+        (
+            "gemm_dense",
+            "matmul_f32",
+            MATMUL_F32_CLAIM,
+            OpKind::MatMul,
+            3,
+        ),
+        (
+            "norm",
+            "rms_f32",
+            RMS_NORM_F32_CLAIM,
+            OpKind::RmsNormLastDim,
+            2,
+        ),
+        (
+            "softmax",
+            "softmax_f32",
+            SOFTMAX_F32_CLAIM,
+            OpKind::SoftmaxLastDim,
+            2,
+        ),
+    ];
+    v.extend(
+        UNARY_CLAIMS
+            .iter()
+            .map(|&(op, k, c)| ("unary", k, c, op, 2)),
+    );
+    v.extend(
+        BINARY_CLAIMS
+            .iter()
+            .map(|&(op, k, c)| ("binary", k, c, op, 3)),
+    );
+    v.extend(
+        REDUCE_CLAIMS
+            .iter()
+            .map(|&(op, k, c)| ("reduce", k, c, op, 2)),
+    );
+    v
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// `(contract text, kernel name, claim, op, dtypes of the F32 entry)` for each claimed op.
-    fn cases() -> Vec<(&'static str, &'static str, Claim, OpKind, usize)> {
-        let mut v = vec![
-            (
-                include_str!("../../../kernel-contracts/cuda/gemm_dense.fkc.md"),
-                "matmul_f32",
-                MATMUL_F32_CLAIM,
-                OpKind::MatMul,
-                3,
-            ),
-            (
-                include_str!("../../../kernel-contracts/cuda/norm.fkc.md"),
-                "rms_f32",
-                RMS_NORM_F32_CLAIM,
-                OpKind::RmsNormLastDim,
-                2,
-            ),
-            (
-                include_str!("../../../kernel-contracts/cuda/softmax.fkc.md"),
-                "softmax_f32",
-                SOFTMAX_F32_CLAIM,
-                OpKind::SoftmaxLastDim,
-                2,
-            ),
-        ];
-        let unary = include_str!("../../../kernel-contracts/cuda/unary.fkc.md");
-        let binary = include_str!("../../../kernel-contracts/cuda/binary.fkc.md");
-        v.extend(UNARY_CLAIMS.iter().map(|&(op, k, c)| (unary, k, c, op, 2)));
-        v.extend(
-            BINARY_CLAIMS
-                .iter()
-                .map(|&(op, k, c)| (binary, k, c, op, 3)),
-        );
-        let reduce = include_str!("../../../kernel-contracts/cuda/reduce.fkc.md");
-        v.extend(
-            REDUCE_CLAIMS
-                .iter()
-                .map(|&(op, k, c)| (reduce, k, c, op, 2)),
-        );
-        v
-    }
 
     /// Every claimed op has a measurement recipe and every recipe a claim: a spec added without
     /// a claim would be measured against a panic, and a claim without a spec would never be
@@ -463,104 +480,12 @@ mod tests {
         assert_eq!(spec_ops, claim_ops, "binary");
     }
 
-    /// The claim constants and their contract sections say the same numbers: a claim edited in
-    /// one place only would be earned against a bound the contract does not declare.
-    #[test]
-    fn claim_constants_match_the_contracts() {
-        for (text, kernel, claim, _, _) in cases() {
-            let text = text.replace("\r\n", "\n");
-            let marker = format!("kernel: {kernel}\n");
-            let at = text
-                .find(&marker)
-                .unwrap_or_else(|| panic!("section `{kernel}` present"));
-            let rest = &text[at..];
-            let prec = &rest[rest.find("precision:").expect("precision block")..];
-            let prec = &prec[..prec.find("audited:").expect("precision block ends")];
-            assert!(
-                prec.contains(&format!("max_relative: {}", claim.max_relative)),
-                "{kernel}: contract max_relative differs from the claim constant"
-            );
-            assert!(
-                prec.contains(&format!("max_absolute: {}", claim.max_absolute)),
-                "{kernel}: contract max_absolute differs from the claim constant"
-            );
-        }
-    }
-
-    /// `qmatmul_f32` is not bit-stable, so it is outside `cases()` (which asserts that). Its claim
-    /// constant must equal the contract's numbers, and once the ledger backs them the registered
-    /// entry must carry them and meet the planner's default accuracy bound; otherwise the importer
-    /// downgrades it to UNAUDITED and the planner prefers the CPU kernel (ROADMAP row 128).
-    #[test]
-    fn the_qmatmul_claim_matches_the_contract_and_reaches_the_entry() {
-        let text =
-            include_str!("../../../kernel-contracts/cuda/qmatmul.fkc.md").replace("\r\n", "\n");
-        let at = text.find("kernel: qmatmul_f32\n").expect("section present");
-        let rest = &text[at..];
-        let prec = &rest[rest.find("precision:").expect("precision block")..];
-        let prec = &prec[..prec.find("audited:").expect("precision block ends")];
-        assert!(prec.contains(&format!("max_relative: {}", QMATMUL_F32_CLAIM.max_relative)));
-        assert!(prec.contains(&format!("max_absolute: {}", QMATMUL_F32_CLAIM.max_absolute)));
-        let mut table = KernelBindingTable::new();
-        crate::baracuda_dispatch::register_baracuda_cuda_kernels(&mut table);
-        let e = find_entry(
-            &table,
-            OpKind::QMatMul,
-            &[DType::F32, DType::U32, DType::F32],
-            BackendId::Cuda,
-        )
-        .expect("QMatMul entry");
-        assert_eq!(
-            e.precision.max_relative,
-            Some(QMATMUL_F32_CLAIM.max_relative)
-        );
-        assert_eq!(
-            e.precision.max_absolute,
-            Some(QMATMUL_F32_CLAIM.max_absolute)
-        );
-        assert!(crate::ranker::filters::meets_accuracy_bound(
-            &e.precision,
-            &crate::ranker::filters::DEFAULT_ACCURACY_BOUND
-        ));
-    }
-
-    /// What the import gate leaves on the registered entries once the ledger backs the claims:
-    /// each F32 entry carries its numeric claim AND keeps `bit_stable`, and the F16 entry of the
-    /// same op (a different section, no numeric claim) is not collapsed to UNAUDITED by it.
-    #[test]
-    fn the_ledger_backs_the_f32_claims_and_leaves_the_other_dtypes_audited() {
-        let mut table = KernelBindingTable::new();
-        crate::baracuda_dispatch::register_baracuda_cuda_kernels(&mut table);
-        for (_, kernel, claim, op, arity) in cases() {
-            let f32e = find_entry(&table, op, &vec![DType::F32; arity], BackendId::Cuda)
-                .unwrap_or_else(|e| panic!("{kernel}: {e:?}"));
-            assert!(f32e.precision.bit_stable_on_same_hardware, "{kernel}");
-            assert_eq!(
-                f32e.precision.max_relative,
-                Some(claim.max_relative),
-                "{kernel}"
-            );
-            assert_eq!(
-                f32e.precision.max_absolute,
-                Some(claim.max_absolute),
-                "{kernel}"
-            );
-            if kernel == "sign" {
-                continue; // F32-only op: there is no other-dtype section to keep audited
-            }
-            let f16e = find_entry(&table, op, &vec![DType::F16; arity], BackendId::Cuda)
-                .unwrap_or_else(|e| panic!("{kernel} f16: {e:?}"));
-            assert!(f16e.precision.bit_stable_on_same_hardware, "{kernel} f16");
-            assert_eq!(f16e.precision.max_relative, None, "{kernel} f16");
-        }
-    }
-
     /// Every claim is within the default placement bound, or earning it would not let the kernel
     /// win by default.
     #[test]
     fn every_claim_is_within_the_default_bound() {
         use crate::ranker::filters::DEFAULT_ACCURACY_BOUND;
-        for (_, _, c, _, _) in cases() {
+        for (_, _, c, _, _) in claim_rows() {
             assert!(c.max_relative <= DEFAULT_ACCURACY_BOUND.max_relative);
             assert!(c.max_absolute <= DEFAULT_ACCURACY_BOUND.max_absolute);
         }
