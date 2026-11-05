@@ -111,9 +111,9 @@ fn baracuda_index_select_f32_picks_rows() {
     assert_eq!(got, expected);
 }
 
-fn upload_u8(dev: &CudaDevice, host: &[u8]) -> Storage {
+fn upload_bool(dev: &CudaDevice, host: &[u8]) -> Storage {
     let cuda_bytes = CudaStorageBytes::from_cpu_bytes(dev, host).expect("h2d");
-    Storage::new(BackendStorage::Cuda(cuda_bytes), DType::U8)
+    Storage::new(BackendStorage::Cuda(cuda_bytes), DType::Bool)
 }
 
 #[test]
@@ -138,7 +138,7 @@ fn baracuda_masked_fill_f32_replaces_masked_positions() {
     let expected: Vec<f32> = vec![1.0, -99.0, 3.0, -99.0, 5.0, -99.0];
 
     let src_storage = upload_f32(&dev, &src);
-    let mask_storage = upload_u8(&dev, &mask);
+    let mask_storage = upload_bool(&dev, &mask);
     let out_bytes = CudaStorageBytes::alloc(&dev, src.len() * 4).expect("alloc");
     let out_storage = Storage::new(BackendStorage::Cuda(out_bytes), DType::F32);
 
@@ -149,7 +149,7 @@ fn baracuda_masked_fill_f32_replaces_masked_positions() {
     let kernel = pick_alt(
         &table,
         OpKind::MaskedFill,
-        &[DType::F32, DType::U8, DType::F32],
+        &[DType::F32, DType::Bool, DType::F32],
         fuel_cuda_dispatch::baracuda_dispatch::indexing::masked_fill_f32,
     );
 
