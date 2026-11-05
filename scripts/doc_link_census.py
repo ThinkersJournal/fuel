@@ -177,7 +177,7 @@ DISPOSITIONS = {
              "a --features cuda doc build (the forge). The sibling fuel-vulkan-dispatch crate has "
              "no such gate, which is why its identical links resolve."),
     "register_cuda_kernels": (CORRECT,
-             "fuel-cuda-dispatch/src/lib.rs crate docs; same cfg gate and same reason as "
+             "fuel-cuda-dispatch/src/lib.rs crate docs; same `cfg(feature = \"cuda\")` gate and same reason as "
              "`install_global` above. NOT the same item as "
              "`fuel_dispatch::dispatch::register_cuda_kernels`, which this crate's function wraps."),
 
