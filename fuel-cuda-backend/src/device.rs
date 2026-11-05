@@ -124,7 +124,7 @@ impl DeviceId {
 
 /// Process-global set of `DeviceId`s that currently have at least one live
 /// `CudaDevice` clone. **GAP-214 increment 3**: the JIT slot bank
-/// (`fuel_dispatch::jit_cuda_load`) reclaims a slot whose recorded `DeviceId`
+/// (`fuel_cuda_dispatch::jit_cuda_load`) reclaims a slot whose recorded `DeviceId`
 /// is no longer in this set.
 ///
 /// Keyed on the monotonic `DeviceId` (never reused), NOT on the device ordinal:
@@ -144,7 +144,7 @@ fn live_devices() -> &'static Mutex<std::collections::HashSet<DeviceId>> {
 
 /// True iff at least one `CudaDevice` clone with this id is currently alive.
 /// A JIT slot whose recorded id is NOT live may be reclaimed — see GAP-214
-/// increment 3 (`fuel_dispatch::jit_cuda_load::claim_slot`).
+/// increment 3 (`fuel_cuda_dispatch::jit_cuda_load::claim_slot`).
 pub fn is_device_live(id: DeviceId) -> bool {
     live_devices().lock().unwrap().contains(&id)
 }

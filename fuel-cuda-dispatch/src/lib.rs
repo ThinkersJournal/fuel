@@ -16,10 +16,14 @@
 //! - `baracuda_dispatch`: the baracuda-backed wrappers and `register_baracuda_cuda_kernels` (moved
 //!   unchanged; the module keeps its name so the paths inside it and in `link` did not change).
 //! - `link`: the FKC link registry that binds contract entry points to those wrappers.
+//! - `jit_cuda_load` (feature `jit`, which implies `cuda`): the live CUDA `load_kernel` for a JIT-synthesized
+//!   kernel (ROADMAP row 137 step 6.3a moved it here from `fuel-dispatch`, where it was behind `cuda` + `jit`).
 
 #![cfg(feature = "cuda")]
 
 pub mod baracuda_dispatch;
+#[cfg(feature = "jit")]
+pub mod jit_cuda_load;
 pub mod link;
 
 pub use baracuda_dispatch::register_baracuda_cuda_kernels;

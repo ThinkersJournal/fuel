@@ -453,6 +453,8 @@ jobs:
       #   * 20 cells behind `cuda`/`cudnn`/`nccl`/`jit-synth` — measured with
       #     `cargo tree -e features` to pull `baracuda-kernels-sys`, which forges
       #     UNCONDITIONALLY (~93 min under load). A runner question, GAP-181.
+      #     (2026-11-05: ROADMAP row 137 step 6.3a moved the `jit-synth` feature from `fuel-dispatch`
+      #     to `fuel-cuda-dispatch`; the count above predates that move and was not re-measured.)
       #   * 6 `accelerate` cells — Apple hardware, unbuildable anywhere here.
       #   * `fuel-quantized --features neon-dotprod` has no leg, and the reason
       #     recorded here has now been wrong TWICE, in OPPOSITE directions. The
