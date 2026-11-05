@@ -3,6 +3,10 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.43.0 - 2026-11-05 (SEAM-ONLY release, published from the `seam-release-0430` branch; the `main` stamp lands later in its own PR)
+
+0.43.0 is first a crates.io release of **two** crates, `fuel-kernel-seam-types` and `fuel-kernel-seam`, cut from the branch `seam-release-0430` (based on `main` at `441b9528`, 0.41.0). Their `src/` is byte-identical to the published 0.42.0 (`git diff 71bf7a485 441b9528 -- fuel-kernel-seam/src fuel-kernel-seam-types/src` is empty); only the version moves, because `baracuda-cuda-seam` must re-release on `fuel-kernel-seam{,-types}` `^0.43` (PM ruling 2026-11-05, option C: a 0.43.0 `main` cannot satisfy the `^0.42.0` that baracuda alpha.93 requires). The other 45 workspace crates are stamped 0.43.0 on this branch only because the workspace shares one version; they are not published from it.
+
 ## v0.41.0 - 2026-11-04 (provisional; the PM allocates)
 
 ### Breaking
