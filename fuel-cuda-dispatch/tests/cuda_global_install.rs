@@ -8,12 +8,13 @@
 #![cfg(feature = "cuda")]
 
 use fuel_dispatch::dispatch::global_bindings;
-use fuel_dispatch::fused::FusedOps;
 use fuel_dispatch::runtime_fused_kernels::fused_kernel_available;
 use fuel_dispatch::topology::SystemTopology;
+use fuel_graph::registry::FusedOps;
 use fuel_ir::DType;
+use fuel_ir::DeviceLocation;
 use fuel_ir::dispatch::OpKind;
-use fuel_ir::probe::{BackendId, DeviceLocation};
+use fuel_ir::probe::BackendId;
 
 /// `register_cuda_kernels` (the cuBLAS F32 MatMul that stays in `fuel-dispatch`) AND
 /// `register_baracuda_cuda_kernels` both land in the global table. The PTX-duplicate unary/binary registrations
