@@ -3,6 +3,12 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.41.3 - 2026-11-05 (provisional; the PM allocated 0.41.3, CI-only patch)
+
+### Changed
+
+- **CI: the two self-hosted workflows, `cuda-metal-compile-check` and `checkpoint-tests`, now ask for `runs-on: [self-hosted, Windows, X64, gpu, fuel]`** (was `[self-hosted, Windows, X64]`), to match the labels of the new self-hosted runner `TUF-LAPTOP-fuel-gpu` (PM notice, 2026-11-05), so a different self-hosted Windows runner cannot pick them up. Workflow-only, no Rust change. Verified locally: both files parse as YAML and `runs-on` reads back as the five labels. NOT verified: a run on the labelled runner (that shows on the next run of each job).
+
 ## v0.41.2 - 2026-11-05 (provisional; the PM allocates)
 
 ### Fixed
