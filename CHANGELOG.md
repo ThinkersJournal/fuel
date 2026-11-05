@@ -3,6 +3,12 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.41.4 - 2026-11-05 (provisional; the PM allocated 0.41.4, docs-only patch)
+
+### Documented
+
+- **GAP-376 recorded (`docs/gaps.md`, Tier P, OPEN, owner Fuel 1): a kernel's declared `bytes_moved` never reaches its `CostEstimate`.** Measured at `c879efd05`: 113 `.fkc.md` contracts declare a `bytes_moved:` expression, `compile_cost` parses it into `_bytes_moved` and holds only the `flops` AST, and `cost_estimate` / `fused_cost_estimate` return `bytes_moved = 0`, which `ranker/cost.rs` then uses instead of the hand-written estimator for any entry with a declared expression (so its `memory_ns`, the cost vector's memory tiers and the VRAM-pressure selector see 0). A second, smaller defect: with `flops` unknown, a bytes formula is evaluated into the `flops` field. Registry row only, no code change; how many entries and rankings are affected is stated in the row as NOT measured.
+
 ## v0.41.3 - 2026-11-05 (provisional; the PM allocated 0.41.3, CI-only patch)
 
 ### Changed
