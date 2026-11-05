@@ -169,6 +169,17 @@ DISPOSITIONS = {
              "optional = true dep (fuel-metal-backend, behind fuel-core's `metal` feature) "
              "and also a CI-excluded crate; `pub mod metal_backend` is UNGATED. "
              "STRUCTURAL, not build-verified: confirming needs an Apple target."),
+    "install_global": (CORRECT,
+             "fuel-cuda-dispatch/src/lib.rs crate docs (row 137 step 6.2). The whole crate body, "
+             "including `pub fn install_global`, is behind the crate's `cuda` feature "
+             '(`#![cfg(feature = "cuda")]`), and compiling that feature runs the baracuda '
+             "forge, so no CI doc build has it. STRUCTURAL, not build-verified: confirming needs "
+             "a --features cuda doc build (the forge). The sibling fuel-vulkan-dispatch crate has "
+             "no such gate, which is why its identical links resolve."),
+    "register_cuda_kernels": (CORRECT,
+             "fuel-cuda-dispatch/src/lib.rs crate docs; same cfg gate and same reason as "
+             "`install_global` above. NOT the same item as "
+             "`fuel_dispatch::dispatch::register_cuda_kernels`, which this crate's function wraps."),
 
     "fuel_dispatch::pipelined::CapturedDecodeSession::capture": (CORRECT,
              'cfg(feature = "cuda") on `pub struct CapturedDecodeSession` in '

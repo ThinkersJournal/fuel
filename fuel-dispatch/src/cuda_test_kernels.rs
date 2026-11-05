@@ -4,7 +4,7 @@
 //! step 6.2). They forward to the same `fuel_cuda_backend::baracuda::binary` drivers as the production
 //! wrappers and are NOT registered anywhere.
 //!
-//! Temporary: the tests that use them (`jit_ingest`'s kiss-advisory / verify-candidate fixtures and
+//! Removed with the JIT move (row 137 step 6.3): the tests that use them (`jit_ingest`'s kiss-advisory / verify-candidate fixtures and
 //! `CudaInvoker`'s end-to-end add) move to `fuel-cuda-dispatch` with the JIT modules in step 6.3, and this
 //! file goes with them.
 
