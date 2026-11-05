@@ -1,6 +1,16 @@
 # Changelog
 This documents the main changes to the `fuel` workspace.
 
+## v0.42.0 - 2026-11-05 (SEAM-ONLY release, published from the `seam-vocab-043` branch; NEVER stamped on `main`)
+
+0.42.0 exists only as a crates.io release of **two** crates, `fuel-kernel-seam-types` and `fuel-kernel-seam`, cut from the branch `seam-vocab-043` (based on `main` at `2247bfb23`, 0.40.0). `main` does not carry this version: it goes 0.41.0 (the CUDA move) then 0.43.0 (the vocabulary bump). The other 44 workspace crates are stamped 0.42.0 on the branch only because the workspace shares one version; they are not published.
+
+### Breaking
+
+- **`fuel-kernel-seam` now depends on `unpopped-vocab` `^0.43.2`** (was `^0.40.0`), so the published seam crates and Unpopped 0.43.x name ONE copy of the vocabulary types. The seam's public surface re-exposes `OperandDesc` and friends from that crate, so a consumer on the older vocabulary gets two distinct types and a type error (the case that blocks `baracuda-cuda-emit` from leaving 0.40.0). Context and the lockstep plan: the PM's seam-vocab lockstep with the baracuda lane, 2026-11-04.
+- **Verified, on this branch:** `cargo test --locked -p fuel-kernel-seam -p fuel-kernel-seam-types` passes against `unpopped-vocab` 0.43.2 (seam 3, seam-types 38 + 7). `cargo tree -i unpopped-vocab@0.43.2 -p fuel-kernel-seam` shows the seam as its only dependent.
+- **Not verified, and not expected to work on this branch:** `fuel-dispatch`'s `jit` and `cuda` builds. They still name baracuda alpha.80 (`baracuda-kernels-types`, `baracuda-cuda-seam`), which requires `unpopped-vocab` `^0.40.0`, so the lockfile carries both 0.40.12 and 0.43.2 and a build enabling both would see two vocabulary copies. That is the gap the joint baracuda release closes; `main` picks it up in the 0.43.0 PR.
+
 ## v0.40.0 - 2026-11-04 (provisional; the PM allocates; was 0.39.0 before #613 took 0.39.2)
 
 ### Breaking
