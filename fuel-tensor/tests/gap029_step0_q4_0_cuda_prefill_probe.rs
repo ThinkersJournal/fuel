@@ -33,7 +33,7 @@
 
 use std::sync::atomic::Ordering::Relaxed;
 
-use fuel_dispatch::baracuda_dispatch::qmatmul;
+use fuel_cuda_dispatch::baracuda_dispatch::qmatmul;
 use fuel_graph::QuantType;
 use fuel_ir::Shape;
 use fuel_quantized::{BlockQ4_0, GgmlType};
