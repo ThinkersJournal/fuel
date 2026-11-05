@@ -33,7 +33,7 @@ env:
 jobs:
   cuda-compile:
     name: cargo check (cuda, jit) on the self-hosted runner
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Windows, X64, gpu, fuel]
     timeout-minutes: 300
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
