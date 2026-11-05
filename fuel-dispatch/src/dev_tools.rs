@@ -38,6 +38,31 @@ pub fn check_cuda_accuracy(register: fn(&mut crate::kernel::KernelBindingTable))
     verify::seed_cuda_accuracy::run_check_cuda_accuracy(register);
 }
 
+/// The CUDA accuracy claims, one row per claimed op: `(contract file stem under kernel-contracts/cuda, kernel
+/// section name, max_relative, max_absolute, op, number of dtypes of the F32 entry)`. The test that keeps
+/// these in step with the contracts moved to `fuel-cuda-dispatch` with the contracts (row 137 step 6.2).
+#[cfg(feature = "cuda")]
+pub fn cuda_accuracy_claim_rows() -> Vec<(
+    &'static str,
+    &'static str,
+    f64,
+    f64,
+    fuel_ir::dispatch::OpKind,
+    usize,
+)> {
+    verify::seed_cuda_accuracy::claim_rows()
+        .into_iter()
+        .map(|(stem, k, c, op, n)| (stem, k, c.max_relative, c.max_absolute, op, n))
+        .collect()
+}
+
+/// The CUDA f32 `qmatmul` claim `(max_relative, max_absolute)` (see [`cuda_accuracy_claim_rows`]).
+#[cfg(feature = "cuda")]
+pub fn cuda_qmatmul_f32_claim() -> (f64, f64) {
+    let c = verify::seed_cuda_accuracy::QMATMUL_F32_CLAIM;
+    (c.max_relative, c.max_absolute)
+}
+
 /// Re-seed the Vulkan half of the verified ledger. Needs a live Vulkan device. `register` is the Vulkan
 /// registrar (`fuel_vulkan_dispatch::register_vulkan_kernels`); `fuel-dispatch` cannot name it, so the
 /// `fuel-vulkan-dev-tools` binary passes it in.

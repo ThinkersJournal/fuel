@@ -1920,6 +1920,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-cuda-dispatch"
+version = "0.40.0"
+dependencies = [
+ "bytemuck",
+ "fuel-cpu-backend",
+ "fuel-cuda-backend",
+ "fuel-dispatch",
+ "fuel-graph",
+ "fuel-ir",
+ "fuel-memory",
+ "fuel-quantized",
+ "fuel-test-support",
+ "half",
+]
+
+[[package]]
 name = "fuel-datasets"
 version = "0.40.0"
 dependencies = [
@@ -2400,6 +2416,7 @@ dependencies = [
  "fuel-cpu-backend",
  "fuel-cpu-kernels",
  "fuel-cuda-backend",
+ "fuel-cuda-dispatch",
  "fuel-dispatch",
  "fuel-formats",
  "fuel-graph",

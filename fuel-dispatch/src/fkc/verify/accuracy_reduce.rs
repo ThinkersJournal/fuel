@@ -188,15 +188,7 @@ mod tests {
     #[test]
     fn the_measurement_sees_a_perturbed_output() {
         use super::super::bit_stability::HostTensor;
-        let mut table = crate::kernel::KernelBindingTable::new();
-        crate::baracuda_dispatch::register_baracuda_cuda_kernels(&mut table);
-        let entry = super::super::accuracy_common::find_entry(
-            &table,
-            OpKind::MaxReduce,
-            &[DType::F32, DType::F32],
-            fuel_ir::probe::BackendId::Cuda,
-        )
-        .expect("max f32 entry");
+        let entry = &crate::cuda_test_kernels::stub_entry();
         let host = |perturb: f32| {
             move |_e: &BindingEntry,
                   p: OpParams,

@@ -138,7 +138,7 @@ mod tests {
         // CUDA-resident storage (`cuda kernel wrapper called with non-CUDA
         // input`-shaped failure).
         let e = crate::kernel::BindingEntry {
-            kernel: crate::baracuda_dispatch::binary::add_f32,
+            kernel: crate::cuda_test_kernels::add_f32,
             caps: crate::kernel::KernelCaps::empty(),
             precision: crate::fused::PrecisionGuarantee::UNAUDITED,
             cost: crate::kernel::unknown_cost,

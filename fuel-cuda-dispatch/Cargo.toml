@@ -43,4 +43,7 @@ path = "src/bin/fuel-cuda-dev-tools.rs"
 required-features = ["cuda", "dev-tools"]
 
 [dev-dependencies]
+# The hidden, semver-exempt `dev_tools` module (`cuda_accuracy_claim_rows`) for the claims-vs-contracts tests.
+# Path-only, as scripts/check-dev-dep-publish-cycles.py requires of every workspace dev-dependency.
+fuel-dispatch = { path = "../fuel-dispatch", features = ["dev-tools"] }
 fuel-test-support = { path = "../fuel-test-support" }
