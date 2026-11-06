@@ -12,6 +12,12 @@ This documents the main changes to the `fuel` workspace.
 - **Tests:** `persistent_paged_entry_equals_the_single_step` now asserts a held session, one optimizer run on the first token only, logits within 1e-6 of the re-planning step on every token across a block boundary, and a stable graph size (it failed first with "token 0: PlanOnce must hold a session"); `replan_flag_optimizes_every_token_and_holds_no_session` is the control that shows the optimizer counter sees a re-plan; four tests cover a different pool, a changed block cap, different weights and validate-first (a rejected cap or token leaves the session unadvanced), each with a separation assertion so it can fail. With the validity check disabled, 4 tests fail as designed. The whole Qwen3 module: 24 passed, 0 failed.
 - **NOT covered:** a `TopologyChanged` rebuild (hard to trigger from a unit test), a bf16 or f16 pool, and the CUDA arm: `Op::PagedAttn` has no CUDA kernel (ROADMAP row 106), so CUDA is expected to stay slower than CPU, which is NOT measured here; it is reported on the PR as a follow-up. The sliding-window decline is unchanged and is now GAP-377.
 
+## v0.41.4 - 2026-11-05 (provisional; the PM allocated 0.41.4, docs-only patch)
+
+### Documented
+
+- **GAP-376 recorded (`docs/gaps.md`, Tier A, OPEN, owner Fuel 1; raised from P after review, because the VRAM-pressure guard cannot fire for these candidates): a kernel's declared `bytes_moved` never reaches its `CostEstimate`.** Measured at `c879efd05`: 113 `.fkc.md` contracts declare a `bytes_moved:` expression, `compile_cost` parses it into `_bytes_moved` and holds only the `flops` AST, and `cost_estimate` / `fused_cost_estimate` return `bytes_moved = 0`, which `ranker/cost.rs` then uses instead of the hand-written estimator for any entry whose declared expression evaluates (a failed evaluation falls back to the estimator, which sets it) (so its `memory_ns`, the cost vector's memory tiers and the VRAM-pressure selector see 0). A second, smaller defect: with `flops` unknown, a bytes formula is evaluated into the `flops` field. Registry row only, no code change; how many entries and rankings are affected is stated in the row as NOT measured.
+
 ## v0.41.3 - 2026-11-05 (provisional; the PM allocated 0.41.3, CI-only patch)
 
 ### Changed
