@@ -1040,6 +1040,70 @@ impl Qwen3StepPlaceholders {
     }
 }
 
+/// The held graph before its first token is bound.
+struct Qwen3HeldGraph {
+    graph: Arc<std::sync::RwLock<fuel_graph::Graph>>,
+    logits_node: fuel_graph::NodeId,
+    ph: Qwen3StepPlaceholders,
+    kv_nodes: Vec<(fuel_graph::NodeId, fuel_graph::NodeId)>,
+    cache: fuel_dispatch::pipelined::StorageCache,
+}
+
+impl Qwen3HeldGraph {
+    /// Bind the first token's data, realize and optimize ONCE, and hold the
+    /// result as a [`fuel_tensor::inference_context::PagedDecodeSession`].
+    fn realize_into_session(
+        self,
+        pool: &fuel_tensor::kv_block_pool_device::DeviceKvPool,
+        data: &fuel_tensor::inference_context::PagedDecodeTokenData,
+        linear: usize,
+        shape_key: u64,
+        max_blocks_cap: usize,
+    ) -> Result<(fuel_tensor::inference_context::PagedDecodeSession, Vec<f32>)> {
+        let write_sym = fuel_ir::SymId(0);
+        let offset_node = self.ph.offset.as_ref().map(|t| t.graph_tensor().id());
+        let nodes = self.ph.data_nodes();
+        let mut cache = self.cache;
+        bind_token_data(&mut cache, nodes, offset_node, data);
+        let mut sym_env = fuel_ir::SymEnv::new();
+        sym_env.bind(write_sym, linear)?;
+        let (effective_target, optimized, base_cache, logits) =
+            fuel_tensor::pipelined_bridge::prebuild_optimized_env_capturing_cache::<f32>(
+                &self.graph,
+                self.logits_node,
+                &pool.device().clone(),
+                cache,
+                &sym_env,
+            )?;
+        let g = pool.geometry();
+        let [token_ids, rope_cos, rope_sin, block_table, context_lens] = nodes;
+        let session = fuel_tensor::inference_context::PagedDecodeSession::new(
+            self.graph,
+            optimized,
+            effective_target,
+            self.logits_node,
+            token_ids,
+            rope_cos,
+            rope_sin,
+            block_table,
+            context_lens,
+            self.kv_nodes,
+            offset_node,
+            write_sym,
+            base_cache,
+            max_blocks_cap,
+            g.n_layers,
+            g.block_size,
+            pool.dtype(),
+            shape_key,
+            // Which POOL's block buffers the held cache bakes in: the rebind never
+            // re-binds them, so a same-geometry pool swap must invalidate the plan.
+            pool.alloc_id(),
+        );
+        Ok((session, logits))
+    }
+}
+
 /// Bind layer `li`'s pool K/V buffers to the two placeholders, returning their
 /// node ids. A layer with no pool buffer is a typed `Err`.
 fn bind_pool_layer(
@@ -1528,13 +1592,13 @@ impl Qwen3Model {
     /// the final hidden state and each layer's `(k, v)` placeholder nodes.
     fn build_paged_layers(
         &self,
-        who: &str,
         mut h: Tensor,
         pool: &fuel_tensor::kv_block_pool_device::DeviceKvPool,
         ph: &Qwen3StepPlaceholders,
         (scale, write_sym): (f32, fuel_ir::SymId),
         cache: &mut fuel_dispatch::pipelined::StorageCache,
     ) -> Result<(Tensor, Vec<(fuel_graph::NodeId, fuel_graph::NodeId)>)> {
+        const WHO: &str = "Qwen3Model::forward_paged_step_persistent";
         let act_dtype = pool.dtype();
         let flat_shape = pool.pool_shape_flat();
         let mut kv_nodes = Vec::with_capacity(self.weights.layers.len());
@@ -1547,7 +1611,7 @@ impl Qwen3Model {
         {
             let k_ph = h.const_placeholder_like(flat_shape.clone(), act_dtype);
             let v_ph = h.const_placeholder_like(flat_shape.clone(), act_dtype);
-            kv_nodes.push(bind_pool_layer(who, pool, li, &k_ph, &v_ph, cache)?);
+            kv_nodes.push(bind_pool_layer(WHO, pool, li, &k_ph, &v_ph, cache)?);
             h = self.apply_layer_paged_off(
                 &h,
                 layer,
@@ -1581,6 +1645,31 @@ impl Qwen3Model {
             .to_dtype(DType::F32)
     }
 
+    /// Build the held single-token paged decode graph: embedding, placeholders,
+    /// every layer (pool buffers bound into `cache`), final norm and LM head.
+    fn build_paged_graph(
+        &self,
+        pool: &fuel_tensor::kv_block_pool_device::DeviceKvPool,
+        max_blocks_cap: usize,
+        use_device_offset: bool,
+    ) -> Result<Qwen3HeldGraph> {
+        let dev = pool.device().clone();
+        let scale = (1.0_f64 / (self.config.head_dim as f64).sqrt()) as f32;
+        let (token_ids, h) = self.embed_paged_placeholder(&dev, pool.dtype())?;
+        let ph = self.paged_step_placeholders(&h, token_ids, max_blocks_cap, use_device_offset);
+        let mut cache = fuel_dispatch::pipelined::StorageCache::new();
+        let (h, kv_nodes) =
+            self.build_paged_layers(h, pool, &ph, (scale, fuel_ir::SymId(0)), &mut cache)?;
+        let logits_root = self.paged_logits_root(&h)?;
+        Ok(Qwen3HeldGraph {
+            logits_node: logits_root.graph_tensor().id(),
+            graph: logits_root.graph_tensor().graph().clone(),
+            ph,
+            kv_nodes,
+            cache,
+        })
+    }
+
     /// Build the held paged decode graph ONCE with stable re-bindable
     /// placeholders, optimize it once, store the session and return this first
     /// token's logits.
@@ -1592,79 +1681,20 @@ impl Qwen3Model {
         max_blocks_cap: usize,
         decode_session: &mut Option<fuel_tensor::inference_context::PagedDecodeSession>,
     ) -> Result<Vec<f32>> {
-        const WHO: &str = "Qwen3Model::forward_paged_step_persistent";
-        let cfg = &self.config;
         let dev = pool.device().clone();
-        let act_dtype = pool.dtype();
-        let (n_layers, block_size) = {
-            let g = pool.geometry();
-            (g.n_layers, g.block_size)
-        };
-        let scale = (1.0_f64 / (cfg.head_dim as f64).sqrt()) as f32;
-        // Device-offset write (`WriteSliceDoff`) on CPU/CUDA, SymEnv on Vulkan --
-        // the split the Llama plan-once arm and the contiguous persistent path use.
         let use_device_offset = dev.is_cpu() || dev.is_cuda();
-        let write_sym = fuel_ir::SymId(0);
-
-        // The embedding table stays f32 (CUDA IndexSelect has no bf16 key); the
-        // lookup is cast to the activation dtype.
-        let (token_ids, h) = self.embed_paged_placeholder(&dev, act_dtype)?;
-
-        let ph = self.paged_step_placeholders(&h, token_ids, max_blocks_cap, use_device_offset);
-        let [
-            token_ids_node,
-            rope_cos_node,
-            rope_sin_node,
-            block_table_node,
-            context_lens_node,
-        ] = ph.data_nodes();
-        let offset_node = ph.offset.as_ref().map(|t| t.graph_tensor().id());
-
-        let mut cache = fuel_dispatch::pipelined::StorageCache::new();
-        let (h, kv_nodes) =
-            self.build_paged_layers(WHO, h, pool, &ph, (scale, write_sym), &mut cache)?;
-
-        let logits_root = self.paged_logits_root(&h)?;
-        let logits_node = logits_root.graph_tensor().id();
-        let graph = logits_root.graph_tensor().graph().clone();
-
+        let hg = self.build_paged_graph(pool, max_blocks_cap, use_device_offset)?;
         // Bind this token's data, then realize and optimize ONCE.
         let data = self.build_paged_token_data(&dev, token, adv, use_device_offset)?;
-        bind_token_data(&mut cache, ph.data_nodes(), offset_node, &data);
-        let mut sym_env = fuel_ir::SymEnv::new();
-        sym_env.bind(write_sym, adv.linear)?;
-        let (effective_target, optimized, base_cache, logits_vec) =
-            fuel_tensor::pipelined_bridge::prebuild_optimized_env_capturing_cache::<f32>(
-                &graph,
-                logits_node,
-                &dev,
-                cache,
-                &sym_env,
-            )?;
-        *decode_session = Some(fuel_tensor::inference_context::PagedDecodeSession::new(
-            graph,
-            optimized,
-            effective_target,
-            logits_node,
-            token_ids_node,
-            rope_cos_node,
-            rope_sin_node,
-            block_table_node,
-            context_lens_node,
-            kv_nodes,
-            offset_node,
-            write_sym,
-            base_cache,
-            max_blocks_cap,
-            n_layers,
-            block_size,
-            act_dtype,
+        let (session, logits) = hg.realize_into_session(
+            pool,
+            &data,
+            adv.linear,
             self.decode_shape_key(),
-            // Which POOL's block buffers the held cache bakes in: the rebind never
-            // re-binds them, so a same-geometry pool swap must invalidate the plan.
-            pool.alloc_id(),
-        ));
-        Ok(logits_vec)
+            max_blocks_cap,
+        )?;
+        *decode_session = Some(session);
+        Ok(logits)
     }
 
     /// One Qwen3 layer of the plan-once paged step: the same projections,
@@ -1679,7 +1709,6 @@ impl Qwen3Model {
         p: &Qwen3PagedOffInputs<'_>,
     ) -> Result<Tensor> {
         let cfg = &self.config;
-        let q_dim = cfg.num_attention_heads * cfg.head_dim;
         let x_norm = x.rms_norm_affine(Arc::clone(&layer.attn_norm_gain), cfg.rms_norm_eps)?;
         let (q, k, v_h) = self.paged_qkv_heads(&x_norm, layer)?;
         let (q_r, k_r) = self.paged_qk_norm_rope(q, k, extras, p.rope_cos, p.rope_sin)?;
@@ -1695,6 +1724,18 @@ impl Qwen3Model {
             p.write_sym,
             p.scale,
         )?;
+        self.paged_attn_out_and_ffn(x, &attn, layer)
+    }
+
+    /// Output projection of the merged heads, residual, FFN, residual.
+    fn paged_attn_out_and_ffn(
+        &self,
+        x: &Tensor,
+        attn: &Tensor,
+        layer: &LayerWeights,
+    ) -> Result<Tensor> {
+        let cfg = &self.config;
+        let q_dim = cfg.num_attention_heads * cfg.head_dim;
         let merged = attn
             .permute([0, 2, 1, 3_usize])?
             .reshape(Shape::from_dims(&[1, 1, q_dim]))?;
