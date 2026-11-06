@@ -3,7 +3,7 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
-## v0.41.5 - 2026-11-05 (provisional; the PM allocated 0.41.5)
+## v0.41.6 - 2026-11-05 (provisional; the PM allocated 0.41.6)
 
 ### Fixed
 
@@ -11,6 +11,12 @@ This documents the main changes to the `fuel` workspace.
 - **Measured, CPU, lightbulb's `bench_served_driver_steps`** (Qwen3-0.6B Q8_0, 61-token prompt, `KvBudget` 16 x 64, `max_batch` 1, F32 KV, one run per arm, same box): step 0 (prefill + first tokens) 151.1 s -> 15.64 s (9.7x); decode mean over 4 steps 2.572 s -> 0.268 s (9.6x); about 89.7% less, the ~90% re-plan share predicted from lightbulb's own earlier measurement. Box load: 73% -> 18% before, 76% -> 64% after (the AFTER run had more contention, not less). There is no variance estimate.
 - **Tests:** `persistent_paged_entry_equals_the_single_step` now asserts a held session, one optimizer run on the first token only, logits within 1e-6 of the re-planning step on every token across a block boundary, and a stable graph size (it failed first with "token 0: PlanOnce must hold a session"); `replan_flag_optimizes_every_token_and_holds_no_session` is the control that shows the optimizer counter sees a re-plan; four tests cover a different pool, a changed block cap, different weights and validate-first (a rejected cap or token leaves the session unadvanced), each with a separation assertion so it can fail. With the validity check disabled, 4 tests fail as designed. The whole Qwen3 module: 24 passed, 0 failed.
 - **NOT covered:** a `TopologyChanged` rebuild (hard to trigger from a unit test), a bf16 or f16 pool, and the CUDA arm: `Op::PagedAttn` has no CUDA kernel (ROADMAP row 106), so CUDA is expected to stay slower than CPU, which is NOT measured here; it is reported on the PR as a follow-up. The sliding-window decline is unchanged and is now GAP-377.
+
+## v0.41.5 - 2026-11-06 (provisional; the PM allocated 0.41.5, CI-only patch)
+
+### Changed
+
+- **CI: the `cuda-metal-compile-check` self-hosted job now prints the compiler errors into the job log when the CUDA compile fails.** Step 5 (`cargo check` with cuda; cuda+jit; llama cuda) wrote its rendered JSON diagnostics only to a file on the runner, so a red run said `failure` and nothing else (job 127463908032: the first error line was unreadable without elevation, and a later run overwrote the file). On a non-zero exit the step now parses that output and prints up to 20 rendered errors, ending with `---- end of compiler errors (N shown) ----`. No source change; version stamp only.
 
 ## v0.41.4 - 2026-11-05 (provisional; the PM allocated 0.41.4, docs-only patch)
 
