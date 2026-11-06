@@ -1064,9 +1064,9 @@ impl LlamaModel {
     /// block_table shape: the paged driver passes the session's decode capacity
     /// `ceil(max_seq_len / block_size)`; it MUST be ≥ the session's eventual
     /// block count (else the padded materialize errors — never truncates). On a
-    /// validity-key mismatch (cap / geometry / dtype) or a `TopologyChanged`,
-    /// the held session is dropped and this token falls back to the re-planning
-    /// [`Self::forward_paged_step`] (the session rebuilds on the next token).
+    /// validity-key mismatch (cap / geometry / dtype) the held session is dropped
+    /// and rebuilt for this token. A `TopologyChanged` on a rebind also drops it and
+    /// rebuilds for this SAME token without advancing the pool a second time.
     /// f32/bf16/f16; CPU-verifiable (the win is CPU-side planning).
     ///
     /// `plan` is the runtime flag ([`fuel_tensor::inference_context::PagedDecodePlan`]):
@@ -1134,38 +1134,44 @@ impl LlamaModel {
             }
         }
 
+        // Advance the pool EXACTLY ONCE for this token. Every arm below (build, rebind,
+        // and the rebuild after a `TopologyChanged`) consumes this one advance; none may
+        // advance again, or a single token would occupy two KV slots.
+        let adv = Self::advance_paged_session(pool, session, max_blocks_cap)?;
+
         if decode_session.is_none() {
             // First paged decode token (or post-invalidation): build + optimize
             // the held graph ONCE.
             return self.build_and_realize_first_paged_token(
                 token,
                 pool,
-                session,
                 max_blocks_cap,
                 decode_session,
                 rope_inv_freq,
+                &adv,
             );
         }
 
         // Subsequent token: re-bind data + skip optimize.
         let res = {
             let s = decode_session.as_ref().expect("session is_some");
-            self.rebind_and_realize_paged_prebuilt(
-                token,
-                pool,
-                session,
-                max_blocks_cap,
-                s,
-                rope_inv_freq,
-            )
+            self.rebind_and_realize_paged_prebuilt(token, pool, s, rope_inv_freq, &adv)
         };
         match res {
             Ok(logits) => Ok(logits),
             Err(fuel_ir::error::Error::TopologyChanged { .. }) => {
-                // Stale cached generation — drop the session and re-plan this
-                // token via the D1 paged path; the session rebuilds next token.
+                // Stale cached generation: drop the session and rebuild the plan for
+                // THIS token with the SAME advance (the pool already moved; re-running
+                // the step would advance it a second time).
                 *decode_session = None;
-                self.forward_paged_step_inv_freq(token, pool, session, rope_inv_freq)
+                self.build_and_realize_first_paged_token(
+                    token,
+                    pool,
+                    max_blocks_cap,
+                    decode_session,
+                    rope_inv_freq,
+                    &adv,
+                )
             }
             Err(e) => Err(e),
         }
@@ -1335,10 +1341,14 @@ impl LlamaModel {
         &self,
         token: u32,
         pool: &mut fuel_tensor::kv_block_pool_device::DeviceKvPool,
-        session: fuel_kv_pool::SessionHandle,
         max_blocks_cap: usize,
         decode_session: &mut Option<fuel_tensor::inference_context::PagedDecodeSession>,
         rope_inv_freq: Option<&[f64]>,
+        adv: &(
+            usize,
+            usize,
+            fuel_tensor::kv_block_pool_device::PageTableHost,
+        ),
     ) -> fuel_ir::error::Result<Vec<f32>> {
         let cfg = &self.config;
         let weights = &self.weights;
@@ -1354,9 +1364,8 @@ impl LlamaModel {
         let use_device_offset = dev.is_cpu() || dev.is_cuda();
         let write_sym = fuel_ir::SymId(0);
 
-        // Advance the pool for THIS token (same bookkeeping the re-planning
-        // path does); releases the &mut borrow before the immutable build.
-        let (tok_pos, linear, pt) = Self::advance_paged_session(pool, session, max_blocks_cap)?;
+        // The pool was already advanced for THIS token by the caller (`adv`).
+        let (tok_pos, linear, pt) = (adv.0, adv.1, &adv.2);
 
         // ---- Build the held graph ONCE with STABLE re-bindable placeholders. ----
         // Embed table stays f32 (CUDA IndexSelect has no bf16 key); cast to the
@@ -1459,7 +1468,7 @@ impl LlamaModel {
             token,
             tok_pos,
             linear,
-            &pt,
+            pt,
             use_device_offset,
             rope_inv_freq,
         )?;
@@ -1514,28 +1523,31 @@ impl LlamaModel {
 
     /// Re-bind one paged decode token's data into a clone of the held session's
     /// `base_cache` and realize via the prebuilt seam (SKIP prepare + optimize).
-    /// The pool bookkeeping runs the same as the build arm; only the plan is
-    /// reused. `TopologyChanged` surfaces typed (the caller invalidates).
+    /// The caller has already advanced the pool (`adv`); only the plan is reused.
+    /// `TopologyChanged` surfaces typed (the caller rebuilds for the same `adv`).
     fn rebind_and_realize_paged_prebuilt(
         &self,
         token: u32,
-        pool: &mut fuel_tensor::kv_block_pool_device::DeviceKvPool,
-        session: fuel_kv_pool::SessionHandle,
-        max_blocks_cap: usize,
+        pool: &fuel_tensor::kv_block_pool_device::DeviceKvPool,
         decode_session: &fuel_tensor::inference_context::PagedDecodeSession,
         rope_inv_freq: Option<&[f64]>,
+        adv: &(
+            usize,
+            usize,
+            fuel_tensor::kv_block_pool_device::PageTableHost,
+        ),
     ) -> fuel_ir::error::Result<Vec<f32>> {
         let dev = pool.device().clone();
         // Source of truth for the offset carrier = what the graph was built
         // with (its offset_node presence), so build + rebind never disagree.
         let use_device_offset = decode_session.offset_node().is_some();
-        let (tok_pos, linear, pt) = Self::advance_paged_session(pool, session, max_blocks_cap)?;
+        let (tok_pos, linear, pt) = (adv.0, adv.1, &adv.2);
         let data = self.build_paged_token_data(
             &dev,
             token,
             tok_pos,
             linear,
-            &pt,
+            pt,
             use_device_offset,
             rope_inv_freq,
         )?;
