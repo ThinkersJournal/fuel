@@ -1016,6 +1016,72 @@ struct Qwen3PagedOffInputs<'a> {
     scale: f32,
 }
 
+/// The re-bindable per-token placeholders of the held paged decode graph.
+struct Qwen3StepPlaceholders {
+    token_ids: Tensor,
+    rope_cos: Tensor,
+    rope_sin: Tensor,
+    block_table: Tensor,
+    context_lens: Tensor,
+    /// The device write-offset carrier (`None` where the offset rides a SymEnv).
+    offset: Option<Tensor>,
+}
+
+impl Qwen3StepPlaceholders {
+    /// `[token_ids, rope_cos, rope_sin, block_table, context_lens]` node ids.
+    fn data_nodes(&self) -> [fuel_graph::NodeId; 5] {
+        [
+            self.token_ids.graph_tensor().id(),
+            self.rope_cos.graph_tensor().id(),
+            self.rope_sin.graph_tensor().id(),
+            self.block_table.graph_tensor().id(),
+            self.context_lens.graph_tensor().id(),
+        ]
+    }
+}
+
+/// Bind layer `li`'s pool K/V buffers to the two placeholders, returning their
+/// node ids. A layer with no pool buffer is a typed `Err`.
+fn bind_pool_layer(
+    who: &str,
+    pool: &fuel_tensor::kv_block_pool_device::DeviceKvPool,
+    li: usize,
+    k_ph: &Tensor,
+    v_ph: &Tensor,
+    cache: &mut fuel_dispatch::pipelined::StorageCache,
+) -> Result<(fuel_graph::NodeId, fuel_graph::NodeId)> {
+    let (Some(k_arc), Some(v_arc)) = (pool.k_pool(li), pool.v_pool(li)) else {
+        return Err(fuel_ir::error::Error::Msg(format!(
+            "{who}: no K/V pool buffer for layer {li}"
+        ))
+        .bt());
+    };
+    let (k_id, v_id) = (k_ph.graph_tensor().id(), v_ph.graph_tensor().id());
+    cache.insert(k_id, Arc::clone(k_arc));
+    cache.insert(v_id, Arc::clone(v_arc));
+    Ok((k_id, v_id))
+}
+
+/// Bind one token's data to the placeholder nodes
+/// (`[token_ids, rope_cos, rope_sin, block_table, context_lens]`, plus the
+/// offset carrier when the graph was built with one).
+fn bind_token_data(
+    cache: &mut fuel_dispatch::pipelined::StorageCache,
+    nodes: [fuel_graph::NodeId; 5],
+    offset_node: Option<fuel_graph::NodeId>,
+    data: &fuel_tensor::inference_context::PagedDecodeTokenData,
+) {
+    let [token_ids, rope_cos, rope_sin, block_table, context_lens] = nodes;
+    cache.insert(token_ids, Arc::clone(&data.token_ids));
+    cache.insert(rope_cos, Arc::clone(&data.rope_cos));
+    cache.insert(rope_sin, Arc::clone(&data.rope_sin));
+    cache.insert(block_table, Arc::clone(&data.block_table));
+    cache.insert(context_lens, Arc::clone(&data.context_lens));
+    if let (Some(node), Some(off)) = (offset_node, data.offset.as_ref()) {
+        cache.insert(node, Arc::clone(off));
+    }
+}
+
 /// What [`reserve_paged_slot_padded`] reserved for one plan-once step.
 struct Qwen3PagedAdvance {
     /// The absolute position the new token lands at.
@@ -1410,6 +1476,111 @@ impl Qwen3Model {
         held.realize_token(&dev, data, &sym_env)
     }
 
+    /// The single-token embedding lookup behind a token-id placeholder:
+    /// `(token_ids, hidden [1, 1, hidden] in the activation dtype)`. The table
+    /// stays f32 (CUDA IndexSelect has no bf16 key) and the lookup is cast.
+    fn embed_paged_placeholder(
+        &self,
+        dev: &fuel_tensor::Device,
+        act_dtype: DType,
+    ) -> Result<(Tensor, Tensor)> {
+        let cfg = &self.config;
+        let embed = Tensor::from_f32(
+            self.weights.token_embedding.clone(),
+            Shape::from_dims(&[cfg.vocab_size, cfg.hidden_size]),
+            dev,
+        )?;
+        let token_ids = embed.const_placeholder_like(Shape::from_dims(&[1]), DType::U32);
+        let h = embed
+            .index_select(0, &token_ids)?
+            .reshape(Shape::from_dims(&[1, 1, cfg.hidden_size]))?
+            .to_dtype(act_dtype)?;
+        Ok((token_ids, h))
+    }
+
+    /// The per-token placeholders of the held graph. RoPE tables are
+    /// `[1, 1, 1, head_dim]`, the shape `rope_tables_const_batched` carries at
+    /// B = 1, so `rope_batched` runs the same ops in the same order as the
+    /// re-planning path.
+    fn paged_step_placeholders(
+        &self,
+        h: &Tensor,
+        token_ids: Tensor,
+        max_blocks_cap: usize,
+        use_device_offset: bool,
+    ) -> Qwen3StepPlaceholders {
+        let rope_shape = Shape::from_dims(&[1, 1, 1, self.config.head_dim]);
+        Qwen3StepPlaceholders {
+            token_ids,
+            rope_cos: h.const_placeholder_like(rope_shape.clone(), DType::F32),
+            rope_sin: h.const_placeholder_like(rope_shape, DType::F32),
+            block_table: h
+                .const_placeholder_like(Shape::from_dims(&[1, max_blocks_cap.max(1)]), DType::U32),
+            context_lens: h.const_placeholder_like(Shape::from_dims(&[1]), DType::U32),
+            offset: use_device_offset
+                .then(|| h.const_placeholder_like(Shape::from_dims(&[]), DType::I64)),
+        }
+    }
+
+    /// Every layer of the plan-once step. Per layer: stable pool K/V
+    /// placeholders (viewed flat so the KV write is ONE dynamic axis-0 offset),
+    /// bound once to the pool buffers and mutated in place each token. Returns
+    /// the final hidden state and each layer's `(k, v)` placeholder nodes.
+    fn build_paged_layers(
+        &self,
+        who: &str,
+        mut h: Tensor,
+        pool: &fuel_tensor::kv_block_pool_device::DeviceKvPool,
+        ph: &Qwen3StepPlaceholders,
+        (scale, write_sym): (f32, fuel_ir::SymId),
+        cache: &mut fuel_dispatch::pipelined::StorageCache,
+    ) -> Result<(Tensor, Vec<(fuel_graph::NodeId, fuel_graph::NodeId)>)> {
+        let act_dtype = pool.dtype();
+        let flat_shape = pool.pool_shape_flat();
+        let mut kv_nodes = Vec::with_capacity(self.weights.layers.len());
+        for (li, (layer, extras)) in self
+            .weights
+            .layers
+            .iter()
+            .zip(self.weights.layer_extras.iter())
+            .enumerate()
+        {
+            let k_ph = h.const_placeholder_like(flat_shape.clone(), act_dtype);
+            let v_ph = h.const_placeholder_like(flat_shape.clone(), act_dtype);
+            kv_nodes.push(bind_pool_layer(who, pool, li, &k_ph, &v_ph, cache)?);
+            h = self.apply_layer_paged_off(
+                &h,
+                layer,
+                extras,
+                &Qwen3PagedOffInputs {
+                    pool,
+                    k_pool_ph: &k_ph,
+                    v_pool_ph: &v_ph,
+                    rope_cos: &ph.rope_cos,
+                    rope_sin: &ph.rope_sin,
+                    block_table: &ph.block_table,
+                    context_lens: &ph.context_lens,
+                    write_off: ph.offset.as_ref(),
+                    write_sym,
+                    scale,
+                },
+            )?;
+        }
+        Ok((h, kv_nodes))
+    }
+
+    /// Final norm + LM head + reshape to `[vocab]`, cast to f32 before the f32
+    /// realize (a bf16 root would be half the width).
+    fn paged_logits_root(&self, h: &Tensor) -> Result<Tensor> {
+        let cfg = &self.config;
+        let h_norm =
+            h.rms_norm_affine(Arc::clone(&self.weights.final_norm_gain), cfg.rms_norm_eps)?;
+        let logits = self.apply_lm_head(&h_norm)?; // [1, 1, vocab]
+        logits
+            .reshape(Shape::from_dims(&[cfg.vocab_size]))?
+            .to_dtype(DType::F32)
+    }
+
     /// Build the held paged decode graph ONCE with stable re-bindable
     /// placeholders, optimize it once, store the session and return this first
     /// token's logits.
@@ -1437,103 +1608,29 @@ impl Qwen3Model {
 
         // The embedding table stays f32 (CUDA IndexSelect has no bf16 key); the
         // lookup is cast to the activation dtype.
-        let embed = Tensor::from_f32(
-            self.weights.token_embedding.clone(),
-            Shape::from_dims(&[cfg.vocab_size, cfg.hidden_size]),
-            &dev,
-        )?;
-        let token_ids = embed.const_placeholder_like(Shape::from_dims(&[1]), DType::U32);
-        let mut h = embed
-            .index_select(0, &token_ids)?
-            .reshape(Shape::from_dims(&[1, 1, cfg.hidden_size]))?
-            .to_dtype(act_dtype)?;
+        let (token_ids, h) = self.embed_paged_placeholder(&dev, act_dtype)?;
 
-        // `[1, 1, 1, head_dim]`: the shape `rope_tables_const_batched` carries at
-        // B = 1, so `rope_batched` runs the same ops in the same order as the
-        // re-planning path.
-        let rope_shape = Shape::from_dims(&[1, 1, 1, cfg.head_dim]);
-        let rope_cos = h.const_placeholder_like(rope_shape.clone(), DType::F32);
-        let rope_sin = h.const_placeholder_like(rope_shape, DType::F32);
-        let block_table =
-            h.const_placeholder_like(Shape::from_dims(&[1, max_blocks_cap.max(1)]), DType::U32);
-        let context_lens = h.const_placeholder_like(Shape::from_dims(&[1]), DType::U32);
-        let offset_tensor =
-            use_device_offset.then(|| h.const_placeholder_like(Shape::from_dims(&[]), DType::I64));
-        let token_ids_node = token_ids.graph_tensor().id();
-        let rope_cos_node = rope_cos.graph_tensor().id();
-        let rope_sin_node = rope_sin.graph_tensor().id();
-        let block_table_node = block_table.graph_tensor().id();
-        let context_lens_node = context_lens.graph_tensor().id();
-        let offset_node = offset_tensor.as_ref().map(|t| t.graph_tensor().id());
+        let ph = self.paged_step_placeholders(&h, token_ids, max_blocks_cap, use_device_offset);
+        let [
+            token_ids_node,
+            rope_cos_node,
+            rope_sin_node,
+            block_table_node,
+            context_lens_node,
+        ] = ph.data_nodes();
+        let offset_node = ph.offset.as_ref().map(|t| t.graph_tensor().id());
 
-        // Per layer: stable pool K/V placeholders (viewed flat so the KV write is
-        // ONE dynamic axis-0 offset), bound once to the pool buffers and mutated
-        // in place each token.
         let mut cache = fuel_dispatch::pipelined::StorageCache::new();
-        let mut kv_nodes: Vec<(fuel_graph::NodeId, fuel_graph::NodeId)> =
-            Vec::with_capacity(n_layers);
-        let flat_shape = pool.pool_shape_flat();
-        for (li, (layer, extras)) in self
-            .weights
-            .layers
-            .iter()
-            .zip(self.weights.layer_extras.iter())
-            .enumerate()
-        {
-            let k_ph = h.const_placeholder_like(flat_shape.clone(), act_dtype);
-            let v_ph = h.const_placeholder_like(flat_shape.clone(), act_dtype);
-            let (k_arc, v_arc) = match (pool.k_pool(li), pool.v_pool(li)) {
-                (Some(k), Some(v)) => (k, v),
-                _ => {
-                    return Err(fuel_ir::error::Error::Msg(format!(
-                        "{WHO}: no K/V pool buffer for layer {li}"
-                    ))
-                    .bt());
-                }
-            };
-            let (k_id, v_id) = (k_ph.graph_tensor().id(), v_ph.graph_tensor().id());
-            cache.insert(k_id, Arc::clone(k_arc));
-            cache.insert(v_id, Arc::clone(v_arc));
-            kv_nodes.push((k_id, v_id));
-            h = self.apply_layer_paged_off(
-                &h,
-                layer,
-                extras,
-                &Qwen3PagedOffInputs {
-                    pool,
-                    k_pool_ph: &k_ph,
-                    v_pool_ph: &v_ph,
-                    rope_cos: &rope_cos,
-                    rope_sin: &rope_sin,
-                    block_table: &block_table,
-                    context_lens: &context_lens,
-                    write_off: offset_tensor.as_ref(),
-                    write_sym,
-                    scale,
-                },
-            )?;
-        }
+        let (h, kv_nodes) =
+            self.build_paged_layers(WHO, h, pool, &ph, (scale, write_sym), &mut cache)?;
 
-        let h_norm =
-            h.rms_norm_affine(Arc::clone(&self.weights.final_norm_gain), cfg.rms_norm_eps)?;
-        let logits = self.apply_lm_head(&h_norm)?; // [1, 1, vocab]
-        // Cast to f32 before the f32 realize (a bf16 root would be half the width).
-        let logits_root = logits
-            .reshape(Shape::from_dims(&[cfg.vocab_size]))?
-            .to_dtype(DType::F32)?;
+        let logits_root = self.paged_logits_root(&h)?;
         let logits_node = logits_root.graph_tensor().id();
         let graph = logits_root.graph_tensor().graph().clone();
 
         // Bind this token's data, then realize and optimize ONCE.
         let data = self.build_paged_token_data(&dev, token, adv, use_device_offset)?;
-        cache.insert(token_ids_node, Arc::clone(&data.token_ids));
-        cache.insert(rope_cos_node, Arc::clone(&data.rope_cos));
-        cache.insert(rope_sin_node, Arc::clone(&data.rope_sin));
-        cache.insert(block_table_node, Arc::clone(&data.block_table));
-        cache.insert(context_lens_node, Arc::clone(&data.context_lens));
-        if let (Some(node), Some(off)) = (offset_node, data.offset.as_ref()) {
-            cache.insert(node, Arc::clone(off));
-        }
+        bind_token_data(&mut cache, ph.data_nodes(), offset_node, &data);
         let mut sym_env = fuel_ir::SymEnv::new();
         sym_env.bind(write_sym, adv.linear)?;
         let (effective_target, optimized, base_cache, logits_vec) =
@@ -2272,39 +2369,31 @@ mod tests {
             "four tokens fill the one allowed block"
         );
 
+        let mut rejected = |token: u32, cap: usize, needle: &str, what: &str| {
+            let e = m
+                .forward_paged_step_persistent(
+                    token,
+                    &mut pool,
+                    s,
+                    cap,
+                    PagedDecodePlan::PlanOnce,
+                    &mut ds,
+                )
+                .unwrap_err();
+            assert!(format!("{e}").contains(needle), "got: {e}");
+            assert_eq!(
+                pool.core().filled_tokens(s),
+                Some(4),
+                "{what} must not advance the session"
+            );
+        };
         // The fifth token needs a second block, but the cap is 1.
-        let e = m
-            .forward_paged_step_persistent(
-                PAGED_SEQ[4],
-                &mut pool,
-                s,
-                1,
-                PagedDecodePlan::PlanOnce,
-                &mut ds,
-            )
-            .unwrap_err();
-        assert!(format!("{e}").contains("max_blocks_cap"), "got: {e}");
-        assert_eq!(
-            filled(&pool),
-            Some(4),
-            "a rejected cap must not advance the session"
-        );
-
-        let e = m
-            .forward_paged_step_persistent(
-                m.config.vocab_size as u32,
-                &mut pool,
-                s,
-                4,
-                PagedDecodePlan::PlanOnce,
-                &mut ds,
-            )
-            .unwrap_err();
-        assert!(format!("{e}").contains("out of range"), "got: {e}");
-        assert_eq!(
-            filled(&pool),
-            Some(4),
-            "a rejected token must not advance the session"
+        rejected(PAGED_SEQ[4], 1, "max_blocks_cap", "a rejected cap");
+        rejected(
+            m.config.vocab_size as u32,
+            4,
+            "out of range",
+            "a rejected token",
         );
 
         // The stream continues with a valid cap and matches the reference.
