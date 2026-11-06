@@ -1696,7 +1696,7 @@ fuel-transformers/src/models/lazy_quantized_t5.rs	not-traced		lives in a directo
 fuel-transformers/src/models/lazy_quantized_whisper.rs	not-traced		names candle in its text; not judged
 fuel-transformers/src/models/lazy_qwen2.rs	not-traced	candle-transformers/src/models/llama.rs	44 of 961 lines also appear in candle (mostly candle-transformers/src/models/llama.rs); not judged
 fuel-transformers/src/models/lazy_qwen2_moe.rs	not-traced	candle-transformers/src/models/qwen2_moe.rs	same file name as candle candle-transformers/src/models/qwen2_moe.rs; a port or re-expression is presumed until judged
-fuel-transformers/src/models/lazy_qwen3.rs	not-traced	candle-transformers/src/models/llama.rs	50 of 1464 lines also appear in candle (mostly candle-transformers/src/models/llama.rs); not judged
+fuel-transformers/src/models/lazy_qwen3.rs	not-traced	candle-transformers/src/models/llama.rs	51 of 1522 lines also appear in candle (mostly candle-transformers/src/models/llama.rs); not judged
 fuel-transformers/src/models/lazy_qwen3_5.rs	not-traced	candle-transformers/src/models/granitemoehybrid.rs	24 of 342 lines also appear in candle (mostly candle-transformers/src/models/granitemoehybrid.rs); not judged
 fuel-transformers/src/models/lazy_qwen3_5_attn.rs	not-traced		lives in a directory that mirrors candle-transformers/src/models/; no same-name file; not judged
 fuel-transformers/src/models/lazy_qwen3_5_decode.rs	not-traced		lives in a directory that mirrors candle-transformers/src/models/; no same-name file; not judged
