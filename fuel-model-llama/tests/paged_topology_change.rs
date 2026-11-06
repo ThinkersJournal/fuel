@@ -82,6 +82,21 @@ fn fresh_pool(cfg: &LlamaConfig, dev: &Device) -> DeviceKvPool {
     DeviceKvPool::new(geom, DType::F32, dev).unwrap()
 }
 
+/// Reference: the re-planning step, no persistent session, no generation bump.
+fn reference_logits(
+    model: &LlamaModel,
+    cfg: &LlamaConfig,
+    dev: &Device,
+    tokens: &[u32],
+) -> Vec<Vec<f32>> {
+    let mut pool = fresh_pool(cfg, dev);
+    let session = pool.core_mut().open();
+    tokens
+        .iter()
+        .map(|&t| model.forward_paged_step(t, &mut pool, session).unwrap())
+        .collect()
+}
+
 #[test]
 fn a_topology_change_advances_the_pool_once_and_keeps_the_logits() {
     let cfg = tiny_cfg();
@@ -93,17 +108,7 @@ fn a_topology_change_advances_the_pool_once_and_keeps_the_logits() {
     let tokens = [1u32, 2, 3, 4];
     let cap = 8usize;
 
-    // Reference: the re-planning step, no persistent session, no generation bump.
-    let mut ref_pool = fresh_pool(&cfg, &dev);
-    let ref_session = ref_pool.core_mut().open();
-    let mut want = Vec::new();
-    for &t in &tokens {
-        want.push(
-            model
-                .forward_paged_step(t, &mut ref_pool, ref_session)
-                .unwrap(),
-        );
-    }
+    let want = reference_logits(&model, &cfg, &dev, &tokens);
 
     // Persistent: three tokens build and rebind the plan, then the generation is bumped so
     // the fourth token's rebind fails with `TopologyChanged`.
