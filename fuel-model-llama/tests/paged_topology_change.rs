@@ -97,6 +97,23 @@ fn reference_logits(
         .collect()
 }
 
+/// The recovered step must return a full row that matches the re-planning reference.
+fn assert_logits_match(got: &[f32], want: &[f32]) {
+    assert_eq!(
+        got.len(),
+        want.len(),
+        "the recovered step must return a full logits row"
+    );
+    // Tolerance: measured correct-path drift is exactly 0 (the same kernels run in the same
+    // order), so 1e-5 is a rounding allowance, far below any wrong-position divergence.
+    for (j, (g, w)) in got.iter().zip(want.iter()).enumerate() {
+        assert!(
+            (g - w).abs() < 1e-5,
+            "logit {j} after the topology change: {g} vs {w}"
+        );
+    }
+}
+
 #[test]
 fn a_topology_change_advances_the_pool_once_and_keeps_the_logits() {
     let cfg = tiny_cfg();
@@ -144,17 +161,5 @@ fn a_topology_change_advances_the_pool_once_and_keeps_the_logits() {
         Some(tokens.len()),
         "four tokens fed must leave four slots filled (a TopologyChanged fallback advanced twice)"
     );
-    assert_eq!(
-        got[3].len(),
-        want[3].len(),
-        "the recovered step must return a full logits row"
-    );
-    // Tolerance: measured correct-path drift is exactly 0 (the same kernels run in the same
-    // order), so 1e-5 is a rounding allowance, far below any wrong-position divergence.
-    for (j, (g, w)) in got[3].iter().zip(want[3].iter()).enumerate() {
-        assert!(
-            (g - w).abs() < 1e-5,
-            "logit {j} after the topology change: {g} vs {w}"
-        );
-    }
+    assert_logits_match(&got[3], &want[3]);
 }
