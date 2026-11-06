@@ -3,6 +3,12 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.41.6 - 2026-11-06 (provisional; the PM allocated 0.41.6, CI-only patch)
+
+### Changed
+
+- **CI: the `cuda-metal-compile-check` self-hosted job now prints the compiler errors into the job log when the CUDA compile fails.** Step 5 (`cargo check` with cuda; cuda+jit; llama cuda) wrote its rendered JSON diagnostics only to a file on the runner, so a red run said `failure` and nothing else (job 127463908032: the first error line was unreadable without elevation, and a later run overwrote the file). On a non-zero exit the step now parses that output and prints up to 20 rendered errors, ending with `---- end of compiler errors (N shown) ----`. No source change; version stamp only.
+
 ## v0.41.4 - 2026-11-05 (provisional; the PM allocated 0.41.4, docs-only patch)
 
 ### Documented
