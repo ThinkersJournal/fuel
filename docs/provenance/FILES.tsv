@@ -13,7 +13,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 510 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 514 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1394 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 306 lines verbatim
@@ -1410,6 +1410,7 @@ fuel-model-llama/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of th
 fuel-model-llama/src/lib.rs	not-traced	candle-transformers/src/models/llama.rs	implements the model candle has at candle-transformers/src/models/llama.rs; a port is presumed until judged
 fuel-model-llama/tests/decode_shape_geometry.rs	own		no lineage; 0 of 35 lines verbatim in candle (0%)
 fuel-model-llama/tests/paged_decode_parity.rs	own		no lineage; 0 of 354 lines verbatim in candle (0%)
+fuel-model-llama/tests/paged_topology_change.rs	own		no lineage; 0 of 60 lines verbatim in candle (0%)
 fuel-model-llama/tests/prefill_last_position.rs	own		no lineage; 0 of 67 lines verbatim in candle (0%)
 fuel-model-phi/Cargo.toml	own		no lineage; 2 of 27 lines verbatim in candle (7%)
 fuel-model-phi/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
