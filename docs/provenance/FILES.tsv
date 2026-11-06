@@ -13,7 +13,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 523 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 525 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1394 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 306 lines verbatim
@@ -1403,7 +1403,7 @@ fuel-model-core/tests/registry_link_forced.rs	own		no lineage; 0 of 39 lines ver
 fuel-model-core/tests/registry_via_umbrella.rs	own		no lineage; 0 of 56 lines verbatim in candle (0%)
 fuel-model-fixture/Cargo.toml	candle-modified	candle-ug/Cargo.toml	rename/copy 30%; 20% of 5 lines verbatim
 fuel-model-fixture/src/lib.rs	own		no lineage; 0 of 25 lines verbatim in candle (0%)
-fuel-model-llama/Cargo.toml	own		no lineage; 2 of 41 lines verbatim in candle (5%)
+fuel-model-llama/Cargo.toml	own		no lineage; 2 of 44 lines verbatim in candle (5%)
 fuel-model-llama/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-model-llama/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-model-llama/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
