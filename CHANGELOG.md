@@ -3,6 +3,12 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.41.8 - 2026-11-06 (provisional; the PM allocated 0.41.8)
+
+### Fixed
+
+- **`fuel-model-llama`'s `cuda` lib tests compile again.** The cuda-gated tests in `src/lib.rs` name `fuel_cuda_backend::` and `fuel_test_support::` directly, but the crate declared neither (it had no `[dev-dependencies]`), so `cargo check --all-targets --features fuel-model-llama/cuda` failed with 41 `E0433` errors (first: `lib.rs` `fuel_test_support` unresolved). That is the compile error behind the self-hosted `cuda-metal-compile-check` step 5 failure. Fix: `cuda` now enables the optional `fuel-cuda-backend` dependency and `fuel-test-support` is a dev-dependency (the pattern `fuel-tensor` uses). No public item changes (patch). Verified by the same `cargo check -j 4 --locked --all-targets` shape CI runs, through a `cuda-build.ps1` slot.
+
 ## v0.41.6 - 2026-11-05 (provisional; the PM allocated 0.41.6)
 
 ### Fixed
