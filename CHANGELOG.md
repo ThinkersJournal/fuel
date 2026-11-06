@@ -9,6 +9,14 @@ This documents the main changes to the `fuel` workspace.
 
 - **`fuel-model-llama`'s `vulkan` lib tests compile again.** The vulkan-gated tests in `src/lib.rs` name `fuel_vulkan_backend::` (3 sites) but the crate did not declare it, so `cargo check --all-targets -p fuel-model-llama --features vulkan` failed with 3 `E0432` (first: `lib.rs:9915`). It stayed hidden because no CI job builds that feature. The same three tests also use `fuel_test_support::` (4 more `E0433`). Fix: `vulkan` now enables the optional `fuel-vulkan-backend` dependency and `fuel-test-support` is a dev-dependency (same as the `cuda` fix in 0.41.8, so whichever lands second drops its duplicate line). CI: the existing `Check vulkan-gated compilation (GAP-233)` step in `rust-ci.yml` now also names `-p fuel-model-llama --features fuel-model-llama/vulkan --all-targets`, so this cannot hide again. No public item changes (patch).
 
+## v0.41.7 - 2026-11-06 (provisional; tentative number, the PM allocates)
+
+### Fixed
+
+- **`LlamaModel::forward_paged_step_persistent_inv_freq` no longer advances the KV pool twice for one token when the held plan goes stale.** The rebind arm advances the session by one slot before it realizes; if the realize then failed with `TopologyChanged` (any `register_runtime_kernel` or `extend_global_bindings` bumps the process-wide generation), the old fallback re-ran the whole step through `forward_paged_step_inv_freq`, which advanced again, so one token occupied two KV slots and every later position was shifted by one. The pool is now advanced once per call and every arm (build, rebind, and the rebuild after `TopologyChanged`) consumes that one advance; the stale plan is dropped and rebuilt for the SAME token. No public item changes (private helpers lost a `session` parameter).
+- **Test:** `paged_topology_change` (its own test binary, because `bump_topology_generation()` is process-wide). Red first on the unfixed code: `filled_tokens` was 5 after four tokens, expected 4; green after, with the logits of the post-bump token within 1e-5 of the re-planning step. `paged_decode_parity` (9 tests) still passes; `clippy -D warnings` on `fuel-model-llama --tests` is clean.
+- **Not covered:** `QuantizedLlama`/other models with their own persistent entries (`lazy_deepseek2`, `fuel-model-phi`) have a similar `TopologyChanged` arm; they were not read for the same defect here.
+
 ## v0.41.6 - 2026-11-05 (provisional; the PM allocated 0.41.6)
 
 ### Fixed
