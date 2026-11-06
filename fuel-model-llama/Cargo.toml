@@ -16,7 +16,9 @@
     # Forwards to fuel-core's cuda feature -- TokenDataBytes/captured_output_to_f32
     # are cuda-only in fuel-core, and LlamaModel's own cuda-gated capture-replay
     # path needs them under the same gate.
-    cuda = ["fuel-tensor/cuda"]
+    # `dep:fuel-cuda-backend`: the cuda-gated lib tests name `fuel_cuda_backend::`
+    # directly (device probe), so the crate must be linked under this feature.
+    cuda = ["fuel-tensor/cuda", "dep:fuel-cuda-backend"]
     # Forwards to fuel-core's vulkan feature -- LlamaModel has its own
     # vulkan-gated decode arms.
     # `dep:fuel-vulkan-backend`: the vulkan-gated lib tests name
@@ -24,6 +26,7 @@
     vulkan = ["fuel-tensor/vulkan", "dep:fuel-vulkan-backend"]
 
 [dependencies]
+    fuel-cuda-backend = { workspace = true, optional = true }
     fuel-dispatch = { workspace = true }
     fuel-vulkan-backend = { workspace = true, optional = true }
     fuel-graph    = { workspace = true }

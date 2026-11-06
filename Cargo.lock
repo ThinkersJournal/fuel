@@ -2296,6 +2296,7 @@ dependencies = [
 name = "fuel-model-llama"
 version = "0.41.9"
 dependencies = [
+ "fuel-cuda-backend",
  "fuel-dispatch",
  "fuel-graph",
  "fuel-ir",
