@@ -13,7 +13,11 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
+<<<<<<< HEAD
 CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 515 lines verbatim
+=======
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 523 lines verbatim
+>>>>>>> origin/main
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1381 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 306 lines verbatim
@@ -1403,13 +1407,14 @@ fuel-model-core/tests/registry_link_forced.rs	own		no lineage; 0 of 39 lines ver
 fuel-model-core/tests/registry_via_umbrella.rs	own		no lineage; 0 of 56 lines verbatim in candle (0%)
 fuel-model-fixture/Cargo.toml	candle-modified	candle-ug/Cargo.toml	rename/copy 30%; 20% of 5 lines verbatim
 fuel-model-fixture/src/lib.rs	own		no lineage; 0 of 25 lines verbatim in candle (0%)
-fuel-model-llama/Cargo.toml	own		no lineage; 2 of 36 lines verbatim in candle (6%)
+fuel-model-llama/Cargo.toml	own		no lineage; 2 of 41 lines verbatim in candle (5%)
 fuel-model-llama/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-model-llama/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-model-llama/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
 fuel-model-llama/src/lib.rs	not-traced	candle-transformers/src/models/llama.rs	implements the model candle has at candle-transformers/src/models/llama.rs; a port is presumed until judged
 fuel-model-llama/tests/decode_shape_geometry.rs	own		no lineage; 0 of 35 lines verbatim in candle (0%)
 fuel-model-llama/tests/paged_decode_parity.rs	own		no lineage; 0 of 354 lines verbatim in candle (0%)
+fuel-model-llama/tests/paged_topology_change.rs	own		no lineage; 0 of 66 lines verbatim in candle (0%)
 fuel-model-llama/tests/prefill_last_position.rs	own		no lineage; 0 of 67 lines verbatim in candle (0%)
 fuel-model-phi/Cargo.toml	own		no lineage; 2 of 27 lines verbatim in candle (7%)
 fuel-model-phi/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
@@ -1696,7 +1701,11 @@ fuel-transformers/src/models/lazy_quantized_t5.rs	not-traced		lives in a directo
 fuel-transformers/src/models/lazy_quantized_whisper.rs	not-traced		names candle in its text; not judged
 fuel-transformers/src/models/lazy_qwen2.rs	not-traced	candle-transformers/src/models/llama.rs	44 of 961 lines also appear in candle (mostly candle-transformers/src/models/llama.rs); not judged
 fuel-transformers/src/models/lazy_qwen2_moe.rs	not-traced	candle-transformers/src/models/qwen2_moe.rs	same file name as candle candle-transformers/src/models/qwen2_moe.rs; a port or re-expression is presumed until judged
+<<<<<<< HEAD
 fuel-transformers/src/models/lazy_qwen3.rs	not-traced	candle-transformers/src/models/llama.rs	50 of 1141 lines also appear in candle (mostly candle-transformers/src/models/llama.rs); not judged
+=======
+fuel-transformers/src/models/lazy_qwen3.rs	not-traced	candle-transformers/src/models/llama.rs	51 of 1522 lines also appear in candle (mostly candle-transformers/src/models/llama.rs); not judged
+>>>>>>> origin/main
 fuel-transformers/src/models/lazy_qwen3_5.rs	not-traced	candle-transformers/src/models/granitemoehybrid.rs	24 of 342 lines also appear in candle (mostly candle-transformers/src/models/granitemoehybrid.rs); not judged
 fuel-transformers/src/models/lazy_qwen3_5_attn.rs	not-traced		lives in a directory that mirrors candle-transformers/src/models/; no same-name file; not judged
 fuel-transformers/src/models/lazy_qwen3_5_decode.rs	not-traced		lives in a directory that mirrors candle-transformers/src/models/; no same-name file; not judged

@@ -2280,12 +2280,14 @@ dependencies = [
 name = "fuel-model-llama"
 version = "0.43.1"
 dependencies = [
+ "fuel-cuda-backend",
  "fuel-dispatch",
  "fuel-graph",
  "fuel-ir",
  "fuel-kv-pool",
  "fuel-loaders",
  "fuel-tensor",
+ "fuel-test-support",
  "half",
  "hf-hub",
  "serde",
