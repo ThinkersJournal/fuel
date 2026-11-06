@@ -144,6 +144,13 @@ fn a_topology_change_advances_the_pool_once_and_keeps_the_logits() {
         Some(tokens.len()),
         "four tokens fed must leave four slots filled (a TopologyChanged fallback advanced twice)"
     );
+    assert_eq!(
+        got[3].len(),
+        want[3].len(),
+        "the recovered step must return a full logits row"
+    );
+    // Tolerance: measured correct-path drift is exactly 0 (the same kernels run in the same
+    // order), so 1e-5 is a rounding allowance, far below any wrong-position divergence.
     for (j, (g, w)) in got[3].iter().zip(want[3].iter()).enumerate() {
         assert!(
             (g - w).abs() < 1e-5,
