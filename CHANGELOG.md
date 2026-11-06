@@ -11,6 +11,12 @@ This documents the main changes to the `fuel` workspace.
 - **Test:** `paged_topology_change` (its own test binary, because `bump_topology_generation()` is process-wide). Red first on the unfixed code: `filled_tokens` was 5 after four tokens, expected 4; green after, with the logits of the post-bump token within 1e-5 of the re-planning step. `paged_decode_parity` (9 tests) still passes; `clippy -D warnings` on `fuel-model-llama --tests` is clean.
 - **Not covered:** `QuantizedLlama`/other models with their own persistent entries (`lazy_deepseek2`, `fuel-model-phi`) have a similar `TopologyChanged` arm; they were not read for the same defect here.
 
+## v0.41.5 - 2026-11-06 (provisional; the PM allocated 0.41.5, CI-only patch)
+
+### Changed
+
+- **CI: the `cuda-metal-compile-check` self-hosted job now prints the compiler errors into the job log when the CUDA compile fails.** Step 5 (`cargo check` with cuda; cuda+jit; llama cuda) wrote its rendered JSON diagnostics only to a file on the runner, so a red run said `failure` and nothing else (job 127463908032: the first error line was unreadable without elevation, and a later run overwrote the file). On a non-zero exit the step now parses that output and prints up to 20 rendered errors, ending with `---- end of compiler errors (N shown) ----`. No source change; version stamp only.
+
 ## v0.41.4 - 2026-11-05 (provisional; the PM allocated 0.41.4, docs-only patch)
 
 ### Documented
