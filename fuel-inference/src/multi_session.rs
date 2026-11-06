@@ -549,7 +549,8 @@ impl PagedDecodeModel for fuel::lazy_quantized_llama::QuantizedLlama3Model {
 /// `Qwen3Model`'s paged surface is its own implementation (it is not a wrapper
 /// over `LlamaModel`): `Qwen3Model::forward_paged_step*` carry Qwen3's attention
 /// (biased Q/K/V, QK-norm before RoPE, `q_dim` decoupled from `hidden_size`).
-/// Dense configs only; the plan-once entry re-plans (GAP-359).
+/// Dense configs only (a windowed config is a typed `Err`, GAP-377); the plan-once
+/// entry holds a `PagedDecodeSession` like `LlamaModel`'s.
 impl PagedDecodeModel for fuel::lazy_qwen3::Qwen3Model {
     fn forward_paged_step(
         &self,
