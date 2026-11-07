@@ -10,6 +10,12 @@ This documents the main changes to the `fuel` workspace.
 - **Workspace on the unpopped 0.43 line.** `unpopped-vocab` 0.40.0 -> 0.43.2 and every `baracuda-*` pin (19 in the workspace manifest, `baracuda-cuda-seam` exact) 0.1.0-alpha.80 -> 0.1.0-alpha.94, the first family whose `baracuda-cuda-seam` requires `fuel-kernel-seam{,-types}` ^0.43 and `unpopped-vocab` ^0.43.2 (the published seam crates are 0.43.0; this workspace's `[patch.crates-io]` path crates are 0.43.1, which satisfy ^0.43). All 47 crates stamp 0.43.1. The lock moves the baracuda family, `baracuda-cuda-emit` 0.43.1, `unpopped` and `unpopped-vocab` 0.43.2; `cargo tree --workspace --all-features -d` shows ONE `unpopped-vocab`.
 - Tag `v0.43.1` is the PM's.
 
+## v0.41.9 - 2026-11-06 (provisional; the PM allocated 0.41.9)
+
+### Fixed
+
+- **`fuel-model-llama`'s `vulkan` lib tests compile again.** The vulkan-gated tests in `src/lib.rs` name `fuel_vulkan_backend::` (3 sites) but the crate did not declare it, so `cargo check --all-targets -p fuel-model-llama --features vulkan` failed with 3 `E0432` (first: `lib.rs:9915`). It stayed hidden because no CI job builds that feature. The same three tests also use `fuel_test_support::` (4 more `E0433`). Fix: `vulkan` now enables the optional `fuel-vulkan-backend` dependency and `fuel-test-support` is a dev-dependency (same as the `cuda` fix in 0.41.8, so whichever lands second drops its duplicate line). CI: the existing `Check vulkan-gated compilation (GAP-233)` step in `rust-ci.yml` now also names `-p fuel-model-llama --features fuel-model-llama/vulkan --all-targets`, so this cannot hide again. No public item changes (patch).
+
 ## v0.41.8 - 2026-11-06 (provisional; the PM allocated 0.41.8)
 
 ### Fixed

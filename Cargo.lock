@@ -2288,6 +2288,7 @@ dependencies = [
  "fuel-loaders",
  "fuel-tensor",
  "fuel-test-support",
+ "fuel-vulkan-backend",
  "half",
  "hf-hub",
  "serde",
