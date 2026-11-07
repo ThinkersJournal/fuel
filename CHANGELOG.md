@@ -3,6 +3,12 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.41.9 - 2026-11-06 (provisional; the PM allocated 0.41.9)
+
+### Fixed
+
+- **`fuel-model-llama`'s `vulkan` lib tests compile again.** The vulkan-gated tests in `src/lib.rs` name `fuel_vulkan_backend::` (3 sites) but the crate did not declare it, so `cargo check --all-targets -p fuel-model-llama --features vulkan` failed with 3 `E0432` (first: `lib.rs:9915`). It stayed hidden because no CI job builds that feature. The same three tests also use `fuel_test_support::` (4 more `E0433`). Fix: `vulkan` now enables the optional `fuel-vulkan-backend` dependency and `fuel-test-support` is a dev-dependency (same as the `cuda` fix in 0.41.8, so whichever lands second drops its duplicate line). CI: the existing `Check vulkan-gated compilation (GAP-233)` step in `rust-ci.yml` now also names `-p fuel-model-llama --features fuel-model-llama/vulkan --all-targets`, so this cannot hide again. No public item changes (patch).
+
 ## v0.41.8 - 2026-11-06 (provisional; the PM allocated 0.41.8)
 
 ### Fixed

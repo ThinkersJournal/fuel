@@ -318,7 +318,7 @@ jobs:
       #     backends — same reasons as WORKSPACE_EXCLUDES at the top of file.
       - name: Check vulkan-gated compilation (GAP-233)
         if: matrix.os == 'ubuntu-latest'
-        run: cargo check --locked -p fuel-tensor -p fuel-dispatch -p fuel-vulkan-dispatch --features fuel-tensor/vulkan --all-targets
+        run: cargo check --locked -p fuel-tensor -p fuel-dispatch -p fuel-vulkan-dispatch -p fuel-model-llama --features fuel-tensor/vulkan,fuel-model-llama/vulkan --all-targets
       # `fuel-vulkan-dispatch` depends on `fuel-memory/vulkan`, which adds a `Vulkan` variant to the closed
       # `BackendStorage` enum for EVERY crate in the build; `fuel-tensor` must still compile without its own
       # `vulkan` feature (it once did not: E0004 in `pipelined_bridge.rs`, found by building the tarballs, where
