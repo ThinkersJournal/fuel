@@ -13,7 +13,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 538 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 541 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1395 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 306 lines verbatim
@@ -600,8 +600,8 @@ fuel-dispatch/src/fused.rs	own		no lineage; 6 of 1346 lines verbatim in candle (
 fuel-dispatch/src/fused_cost.rs	own		no lineage; 2 of 271 lines verbatim in candle (1%)
 fuel-dispatch/src/jit_adopt.rs	own		no lineage; 0 of 345 lines verbatim in candle (0%)
 fuel-dispatch/src/jit_carrier.rs	own		no lineage; 0 of 158 lines verbatim in candle (0%)
-fuel-dispatch/src/jit_ingest.rs	own		no lineage; 5 of 2491 lines verbatim in candle (0%)
-fuel-dispatch/src/jit_ingest_probe.rs	own		no lineage; 1 of 518 lines verbatim in candle (0%)
+fuel-dispatch/src/jit_ingest.rs	own		no lineage; 5 of 2494 lines verbatim in candle (0%)
+fuel-dispatch/src/jit_ingest_probe.rs	own		no lineage; 1 of 565 lines verbatim in candle (0%)
 fuel-dispatch/src/judge_cache.rs	own		no lineage; 0 of 236 lines verbatim in candle (0%)
 fuel-dispatch/src/judge_report_path.rs	own		no lineage; 0 of 18 lines verbatim in candle (0%)
 fuel-dispatch/src/kernel.rs	own		no lineage; 7 of 1207 lines verbatim in candle (1%)
@@ -610,6 +610,7 @@ fuel-dispatch/src/lib.rs	own		no lineage; 0 of 110 lines verbatim in candle (0%)
 fuel-dispatch/src/optimize.rs	own		no lineage; 7 of 1613 lines verbatim in candle (0%)
 fuel-dispatch/src/pipelined.rs	not-traced	candle-metal-kernels/src/tests.rs	22 of 8626 lines also appear in candle (mostly candle-metal-kernels/src/tests.rs); not judged
 fuel-dispatch/src/plan.rs	own		no lineage; 6 of 2685 lines verbatim in candle (0%)
+fuel-dispatch/src/probe_device.rs	own		no lineage; 2 of 65 lines verbatim in candle (3%)
 fuel-dispatch/src/ranker/alternative_set.rs	own		no lineage; 4 of 591 lines verbatim in candle (1%)
 fuel-dispatch/src/ranker/candidate.rs	own		no lineage; 1 of 117 lines verbatim in candle (1%)
 fuel-dispatch/src/ranker/chain.rs	own		no lineage; 3 of 146 lines verbatim in candle (2%)
