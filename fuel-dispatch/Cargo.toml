@@ -2,6 +2,7 @@
 categories.workspace = true
 description = "Dispatch infrastructure for fuel: KernelBindingTable, per-backend registration wrappers, CompiledNode + compile_node, ExecutionPlan + compile_plan + resolve_kernel, FusedKernelRegistry, PipelinedExecutor. The layer that takes a graph and runs it against registered backends. Extracted from fuel-memory 2026-05-31."
 edition.workspace = true
+rust-version.workspace = true
 keywords.workspace = true
 license.workspace = true
 name = "fuel-dispatch"
@@ -20,7 +21,7 @@ fuel-graph = { workspace = true }
 # unconditional core infrastructure.
 fuel-kernel-seam-types = { workspace = true }
 # kiss-ref advisory cross-check (cuda-gated verify path only) — see the `cuda` feature.
-fuel-kiss-ref-backend = { path = "../fuel-kiss-ref-backend", version = "0.43.1", optional = true }
+fuel-kiss-ref-backend = { path = "../fuel-kiss-ref-backend", version = "0.43.2", optional = true }
 # kiss-ref-core (github.com/ThinkersJournal/kiss-ref, crates.io "0.4") — the SINGLE
 # cross-project source of truth for the ULP-distance metric. `fkc::verify::ulp::
 # ulp_distance` delegates to `kiss_ref_core::ulp_distance_f32` so Fuel's verify stack

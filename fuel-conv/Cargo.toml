@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "Reference 2D convolution primitives (im2col + direct loop). Backend-agnostic; consumed by vendor CPU backends and as the parity oracle for GPU conv shaders."
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-conv"

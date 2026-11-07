@@ -2,6 +2,7 @@
 categories.workspace = true
 description = "Unified storage abstraction for fuel: byte-shaped Storage owning bytes + dtype + backend memory region. Closed enum over CPU/CUDA/Vulkan/Metal variants. Backends provide kernels against these types; backends do not own their own storage type."
 edition.workspace = true
+rust-version.workspace = true
 keywords.workspace = true
 license.workspace = true
 name = "fuel-memory"

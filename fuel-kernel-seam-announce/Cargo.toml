@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "Frozen kernel-seam handshake envelope: the SeamHello C-ABI capability/profile negotiation shared across the Fuel <-> backend-synthesizer seam"
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-kernel-seam-announce"

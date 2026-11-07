@@ -2,6 +2,7 @@
 name = "fuel-metal-kernels"
 version.workspace = true
 edition = "2021"
+rust-version.workspace = true
 
 description = "Metal kernels for Fuel"
 repository = "https://github.com/ciresnave/fuel"

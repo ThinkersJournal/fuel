@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "Hardware discovery for the fuel ML framework — device enumeration, probe reports, transfer calibration, topology"
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-hardware"

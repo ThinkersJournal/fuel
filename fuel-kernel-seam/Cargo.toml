@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "Kernel-seam JIT-on-request envelope: JitRequest / JitResponse + the Synthesizer trait — the live-call protocol between Fuel and a JIT kernel backend"
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-kernel-seam"
