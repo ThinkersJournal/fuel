@@ -5,6 +5,8 @@ license.workspace = true
 repository.workspace = true
 edition = "2024"
 rust-version.workspace = true
+keywords.workspace = true
+categories.workspace = true
 description = "CPU, never-panic adapter exposing kiss-ref-core as Fuel's primitive-floor reference / differential target (correctness only; no fusion, no GPU)."
 
 [dependencies]
