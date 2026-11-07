@@ -2,6 +2,8 @@
 
 **Status:** design only. Measured at `origin/main@659ce448` (0.44.0, 2026-11-07) by reading `fuel-dispatch/src/jit_ingest.rs`, `jit_ingest_probe.rs`, `fkc/verify/{mod,bit_stability,invoker_cuda}.rs`, `device_registry.rs` and `fuel-cuda-dispatch/Cargo.toml`. Nothing was built or run. Owner Fuel 1. Parent: ROADMAP row 137 step 6 (`2026-11-03-row137-step6-plan.md`, plan note 4.3).
 
+**DECIDED 2026-11-07 (PM ruling, not CireSnave's): `ProbeTensor`, the minimal public type. `KernelInvoker` and the verify API are NOT published for this (GAP-236 stays its own item). `ProbeTensor`/`ProbeDevice` carry no CUDA names, so FireLine can adopt the trait as a provider seam later.**
+
 ## 1. The problem 6.3a left
 
 6.3a moved the JIT *loader* (`jit_cuda_load`) to `fuel-cuda-dispatch`. The JIT *ingestion* pipeline stayed in `fuel-dispatch` and still names CUDA directly, because it runs a candidate on a device and needs a reference to compare against. `fuel-dispatch` cannot depend on `fuel-cuda-dispatch` (the latter depends on the former), so moving those functions as they are would be a cycle: `jit_ingest.rs` calls them.
