@@ -3,13 +3,21 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
-## v0.43.5 - 2026-11-07 (provisional; tentative number, the PM allocates; docs only)
+## v0.44.2 - 2026-11-07 (provisional; tentative number, the PM allocates; docs only)
 
 ### Changed
 
 - **`ROADMAP.md` row 49 corrected:** it said the oneMKL and AOCL registrars have 0 callers. That was true at `origin/main@991b93702` and is false at `d010189e`: `fuel-tensor/src/cpu_accel.rs` calls both behind the `onemkl`/`aocl` features and `fuel-ir/tests/registrar_callers.rs` guards the callers (found by the FireLine lane). The claim is replaced, not annotated.
 - **`ROADMAP.md` row 143 added:** remove Fuel's 27 `.glsl` kernel sources once Fuel builds against `vulkane-kernels-source` (GLSL belongs to Vulkane).
 - **`docs/PATENT-SWEEP.md` idea 19 added:** US 10,936,769 B2 (MathWorks, ULP error through a model) against `advisory_ulp_band`; `needs-review`, not cleared (FireLine finding).
+
+## v0.44.0 - 2026-11-05 (provisional; the PM allocates; Breaking, on main 0.43.3)
+
+### Breaking
+
+- **ROADMAP row 137 step 6.3a: the live CUDA JIT loader moved from `fuel-dispatch` to `fuel-cuda-dispatch`** (PM ruling A, 2026-11-05; the plan note called all of 6.3 CUDA-gated, and at `5016a361` only part of it is). `fuel_dispatch::jit_cuda_load` is gone; it is `fuel_cuda_dispatch::jit_cuda_load`, behind the new `fuel-cuda-dispatch` feature `jit` (implies `cuda` and `fuel-dispatch/jit`). Its on-device test `jit_synth_kernel_live` moved with it, and so did the real-synthesizer feature: `fuel-dispatch` no longer has `jit-synth` or the dependencies `baracuda-cuda-seam` and `baracuda-nvrtc` (no code in it used them once the test left); `fuel-cuda-dispatch` has `jit-synth` instead. The backend-neutral `jit` modules (`jit_adopt`, `jit_carrier`, `jit_ingest`) stay in `fuel-dispatch`, and so does the test-only `cuda_test_kernels` (18 uses stay). `jit_ingest_probe` does NOT move: production code in `jit_ingest.rs` calls it, so moving it is a dependency cycle (6.3b, design note first).
+- **Verified, with what each number covers:** `cargo check -p fuel-dispatch --features jit --all-targets` (the CI leg without CUDA) and the default `fuel-cuda-dispatch` check are clean. On the RTX 4070: a `cuda-build` slot build of `-p fuel-cuda-dispatch --features cuda,jit,dev-tools` reused the warm cache (2 min 25 s, no forge); `jit_synth_kernel_live` 4 passed, 0 failed under `gpu-run` (one thread); the whole non-ignored `fuel-cuda-dispatch` suite under `gpu-run` 54 passed, 0 failed, 168 ignored (the `#[ignore]`d live tests, not re-run here apart from those 4), and it includes `the_cuda_binding_table_matches_the_golden_census` against the unchanged golden file. `fuel-ir` `gap_hedges` 11/11 with the two allowlist entries re-keyed, and the GPU-lock ratchet 2/2.
+- **Not verified:** name parity was checked by file identity (the moved test file differs from the old one in 5 import and doc lines, and still holds 6 `#[test]`s) plus the resolved list of the after state; the base tree was not built (a second cold CUDA forge for six names). The two `jit-synth` tests (`BaracudaSynthesizer`) were not run on the GPU; whether they now compile with the step-3 seam lockstep merged (one copy of the seam crates in the lock) is stated in the PR thread, not here.
 
 ## v0.43.3 - 2026-11-07 (provisional; tentative number, the PM allocates)
 
