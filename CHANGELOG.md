@@ -3,11 +3,18 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
-## v0.41.10 - 2026-11-07 (provisional; tentative number, the PM allocates)
+## v0.43.2 - 2026-11-07 (provisional; tentative number, the PM allocates)
 
 ### Changed
 
 - **Publish metadata.** `rust-version = "1.88"` on every published crate (via `[workspace.package]`): measured, `cargo +1.88 check` of the CPU/Vulkan workspace set passes and `+1.85` is refused because `zip` 9.1.3 requires rustc 1.88 (the edition-2024 floor is 1.85). A README next to every manifest that lacked one, `keywords`/`categories` for `fuel`, `fuel-kiss-ref-backend` and `fuel-model-core`, and `publish = false` on `fuel-examples` and `fuel-lazy-examples` (examples do not ship). With `fuel-kernels-source` excluded at publish time (`--exclude`, it leaves with the Slang move) `releaseant plan` prints no warnings.
+
+## v0.43.1 - 2026-11-06 (provisional; the PM allocated 0.43.1, seam lockstep step 3)
+
+### Changed
+
+- **Workspace on the unpopped 0.43 line.** `unpopped-vocab` 0.40.0 -> 0.43.2 and every `baracuda-*` pin (19 in the workspace manifest, `baracuda-cuda-seam` exact) 0.1.0-alpha.80 -> 0.1.0-alpha.94, the first family whose `baracuda-cuda-seam` requires `fuel-kernel-seam{,-types}` ^0.43 and `unpopped-vocab` ^0.43.2 (the published seam crates are 0.43.0; this workspace's `[patch.crates-io]` path crates are 0.43.1, which satisfy ^0.43). All 47 crates stamp 0.43.1. The lock moves the baracuda family, `baracuda-cuda-emit` 0.43.1, `unpopped` and `unpopped-vocab` 0.43.2; `cargo tree --workspace --all-features -d` shows ONE `unpopped-vocab`.
+- Tag `v0.43.1` is the PM's.
 
 ## v0.41.9 - 2026-11-06 (provisional; the PM allocated 0.41.9)
 
