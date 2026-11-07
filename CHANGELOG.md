@@ -11,6 +11,12 @@ This documents the main changes to the `fuel` workspace.
 - **`ROADMAP.md` row 143 added:** remove Fuel's 27 `.glsl` kernel sources once Fuel builds against `vulkane-kernels-source` (GLSL belongs to Vulkane).
 - **`docs/PATENT-SWEEP.md` idea 19 added:** US 10,936,769 B2 (MathWorks, ULP error through a model) against `advisory_ulp_band`; `needs-review`, not cleared (FireLine finding).
 
+## v0.44.1 - 2026-11-07 (provisional; tentative number, the PM allocates; docs only)
+
+### Added
+
+- **`docs/design-notes/2026-11-07-row137-step63b-probe-seam.md`:** design note, no code, for ROADMAP row 137 step 6.3b: a neutral `ProbeDevice` trait so the JIT ingestion pipeline stops naming CUDA, in two PRs (signature change, then the move to `fuel-cuda-dispatch`). Findings: `HostTensor`/`KernelInvoker` are private (GAP-236), so the trait carries its own `ProbeTensor`; nothing in CI compiles the CUDA arm.
+
 ## v0.44.0 - 2026-11-05 (provisional; the PM allocates; Breaking, on main 0.43.3)
 
 ### Breaking
