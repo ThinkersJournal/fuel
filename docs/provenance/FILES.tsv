@@ -657,10 +657,7 @@ fuel-dispatch/tests/outreach_chain_status.rs	own		no lineage; 1 of 102 lines ver
 fuel-dispatch/tests/residency_eviction_live.rs	own		no lineage; 1 of 108 lines verbatim in candle (1%)
 fuel-dispatch/tests/runtime_fusion_optimize_e2e.rs	own		no lineage; 1 of 104 lines verbatim in candle (1%)
 fuel-examples/Cargo.toml	candle-modified	candle-examples/Cargo.toml	rename/copy 54%; 79% of 61 lines verbatim
-fuel-examples/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
-fuel-examples/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-examples/README.md	own		no lineage; 0 of 0 lines verbatim in candle (0%)
-fuel-examples/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
 fuel-examples/build.rs	candle-modified	candle-examples/build.rs	rename/copy 55%; 64% of 39 lines verbatim
 fuel-examples/buildtime_downloader.rs	candle-modified	candle-examples/buildtime_downloader.rs	rename/copy 70%; 87% of 15 lines verbatim
 fuel-examples/examples/based/README.md	candle	candle-examples/examples/based/README.md	rename/copy 98%; 100% of 7 lines verbatim
@@ -1285,10 +1282,7 @@ fuel-kv-pool/src/lib.rs	own		no lineage; 8 of 639 lines verbatim in candle (1%)
 fuel-kv-pool/src/sizing.rs	own		no lineage; 3 of 115 lines verbatim in candle (3%)
 fuel-kv-pool/src/tests.rs	own		no lineage; 0 of 391 lines verbatim in candle (0%)
 fuel-lazy-examples/Cargo.toml	own		no lineage; 6 of 25 lines verbatim in candle (24%)
-fuel-lazy-examples/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
-fuel-lazy-examples/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-lazy-examples/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
-fuel-lazy-examples/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
 fuel-lazy-examples/src/bin/bandwidth.rs	not-traced		lives in a directory that mirrors candle-examples/examples/; no same-name file; not judged
 fuel-lazy-examples/src/bin/bert-lazy.rs	not-traced		lives in a directory that mirrors candle-examples/examples/; no same-name file; not judged
 fuel-lazy-examples/src/bin/convnext-lazy.rs	not-traced		lives in a directory that mirrors candle-examples/examples/; no same-name file; not judged
