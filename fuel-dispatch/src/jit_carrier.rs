@@ -3,7 +3,7 @@
 //! into a [`JitRequest`].
 //!
 //! Fuel's JIT seam was complete end-to-end and **unrouted**: `JitRequest` /
-//! [`crate::jit_adopt::adopt_from_response`] / `jit_cuda_load` /
+//! [`crate::jit_adopt::adopt_from_response`] / `fuel_cuda_dispatch::jit_cuda_load` /
 //! `offer_runtime_fused_arm` all existed and were device-validated, but nothing
 //! ever *constructed* a request from a real graph. `adopt_from_response` had no
 //! non-test caller. This module is the missing half.

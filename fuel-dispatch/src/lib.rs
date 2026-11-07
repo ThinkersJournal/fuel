@@ -121,8 +121,6 @@ pub mod fused_cost;
 pub mod jit_adopt;
 #[cfg(feature = "jit")]
 pub mod jit_carrier;
-#[cfg(all(feature = "jit", feature = "cuda"))]
-pub mod jit_cuda_load;
 #[cfg(feature = "jit")]
 mod jit_ingest;
 #[cfg(feature = "jit")]
