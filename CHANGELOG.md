@@ -9,6 +9,20 @@ This documents the main changes to the `fuel` workspace.
 
 - **Dependencies:** `mlmf-core`, `mlmf-gguf`, `mlmf-source-file`, `mlmf-awq`, `mlmf-safetensors` 0.5.11 -> 0.7.26 in `fuel-loaders` (they must move together; `mlmf-ggml` follows transitively). Supersedes Dependabot #536 and #537, which each bumped only two of the five. No source change was needed: `cargo check --locked --all-targets -p fuel-loaders` is clean and `cargo test -p fuel-loaders` passes (39+2+7+7+3 tests, 0 failed). Not run: tests of crates that depend on `fuel-loaders`.
 
+## v0.44.2 - 2026-11-07 (provisional; tentative number, the PM allocates; docs only)
+
+### Changed
+
+- **`ROADMAP.md` row 49 corrected:** it said the oneMKL and AOCL registrars have 0 callers. That was true at `origin/main@991b93702` and is false at `d010189e`: `fuel-tensor/src/cpu_accel.rs` calls both behind the `onemkl`/`aocl` features and `fuel-ir/tests/registrar_callers.rs` guards the callers (found by the FireLine lane). The claim is replaced, not annotated.
+- **`ROADMAP.md` row 143 added:** remove Fuel's 27 `.glsl` kernel sources once Fuel builds against `vulkane-kernels-source` (GLSL belongs to Vulkane).
+- **`docs/PATENT-SWEEP.md` idea 19 added:** US 10,936,769 B2 (MathWorks, ULP error through a model) against `advisory_ulp_band`; `needs-review`, not cleared (FireLine finding).
+
+## v0.44.1 - 2026-11-07 (provisional; tentative number, the PM allocates; docs only)
+
+### Added
+
+- **`docs/design-notes/2026-11-07-row137-step63b-probe-seam.md`:** design note, no code, for ROADMAP row 137 step 6.3b: a neutral `ProbeDevice` trait so the JIT ingestion pipeline stops naming CUDA, in two PRs (signature change, then the move to `fuel-cuda-dispatch`). Findings: `HostTensor`/`KernelInvoker` are private (GAP-236), so the trait carries its own `ProbeTensor`; nothing in CI compiles the CUDA arm.
+
 ## v0.44.0 - 2026-11-05 (provisional; the PM allocates; Breaking, on main 0.43.3)
 
 ### Breaking
