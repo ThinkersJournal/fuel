@@ -2,6 +2,7 @@
 categories.workspace = true
 description = "Vulkan kernel bindings for fuel-dispatch: the Vulkan dispatch wrappers, the FKC link registry and the one-call registrar (above fuel-dispatch, like the vendor CPU backends)"
 edition.workspace = true
+rust-version.workspace = true
 keywords.workspace = true
 license.workspace = true
 name = "fuel-vulkan-dispatch"

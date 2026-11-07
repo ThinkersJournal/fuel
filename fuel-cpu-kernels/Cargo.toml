@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "CPU SIMD vector primitives (VecOps, vec_dot, vec_sum, erf) for the fuel ML framework"
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-cpu-kernels"

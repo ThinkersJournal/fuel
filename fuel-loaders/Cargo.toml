@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "Model-loading support for the fuel ML framework — HF config.json resolution rules, load-progress reporting, and GGUF/imatrix/tokenizer glue over fuel-formats' wire parsers. Knows nothing about Tensor, Storage, or Device."
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-loaders"

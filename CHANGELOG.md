@@ -3,13 +3,73 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
-## v0.44.0 - 2026-11-05 (provisional; the PM allocates; Breaking, after the step-3 seam lockstep at 0.43.1)
+## v0.44.0 - 2026-11-05 (provisional; the PM allocates; Breaking, on main 0.43.2)
 
 ### Breaking
 
 - **ROADMAP row 137 step 6.3a: the live CUDA JIT loader moved from `fuel-dispatch` to `fuel-cuda-dispatch`** (PM ruling A, 2026-11-05; the plan note called all of 6.3 CUDA-gated, and at `5016a361` only part of it is). `fuel_dispatch::jit_cuda_load` is gone; it is `fuel_cuda_dispatch::jit_cuda_load`, behind the new `fuel-cuda-dispatch` feature `jit` (implies `cuda` and `fuel-dispatch/jit`). Its on-device test `jit_synth_kernel_live` moved with it, and so did the real-synthesizer feature: `fuel-dispatch` no longer has `jit-synth` or the dependencies `baracuda-cuda-seam` and `baracuda-nvrtc` (no code in it used them once the test left); `fuel-cuda-dispatch` has `jit-synth` instead. The backend-neutral `jit` modules (`jit_adopt`, `jit_carrier`, `jit_ingest`) stay in `fuel-dispatch`, and so does the test-only `cuda_test_kernels` (18 uses stay). `jit_ingest_probe` does NOT move: production code in `jit_ingest.rs` calls it, so moving it is a dependency cycle (6.3b, design note first).
 - **Verified, with what each number covers:** `cargo check -p fuel-dispatch --features jit --all-targets` (the CI leg without CUDA) and the default `fuel-cuda-dispatch` check are clean. On the RTX 4070: a `cuda-build` slot build of `-p fuel-cuda-dispatch --features cuda,jit,dev-tools` reused the warm cache (2 min 25 s, no forge); `jit_synth_kernel_live` 4 passed, 0 failed under `gpu-run` (one thread); the whole non-ignored `fuel-cuda-dispatch` suite under `gpu-run` 54 passed, 0 failed, 168 ignored (the `#[ignore]`d live tests, not re-run here apart from those 4), and it includes `the_cuda_binding_table_matches_the_golden_census` against the unchanged golden file. `fuel-ir` `gap_hedges` 11/11 with the two allowlist entries re-keyed, and the GPU-lock ratchet 2/2.
-- **Not verified:** name parity was checked by file identity (the moved test file differs from the old one in 5 import and doc lines, and still holds 6 `#[test]`s) plus the resolved list of the after state (4 tests listed from it; the other 2 are `jit-synth`-gated); the base tree was not built, because that would be a second cold CUDA forge for six names. The two `jit-synth` tests (`BaracudaSynthesizer`) were not compiled: the lock on `main` holds two copies of the seam crates (registry 0.35.2 for `baracuda-cuda-seam` alpha.80, workspace 0.41.2), so they are expected not to type-check until the seam lockstep lands, and that predates this change.
+- **Not verified:** name parity was checked by file identity (the moved test file differs from the old one in 5 import and doc lines, and still holds 6 `#[test]`s) plus the resolved list of the after state; the base tree was not built (a second cold CUDA forge for six names). The two `jit-synth` tests (`BaracudaSynthesizer`) were not run on the GPU; whether they now compile with the step-3 seam lockstep merged (one copy of the seam crates in the lock) is stated in the PR thread, not here.
+
+## v0.43.2 - 2026-11-07 (provisional; tentative number, the PM allocates)
+
+### Changed
+
+- **Publish metadata.** `rust-version = "1.88"` on every published crate (via `[workspace.package]`): measured, `cargo +1.88 check` of the CPU/Vulkan workspace set passes and `+1.85` is refused because `zip` 9.1.3 requires rustc 1.88 (the edition-2024 floor is 1.85). A README next to every manifest that lacked one, `keywords`/`categories` for `fuel`, `fuel-kiss-ref-backend` and `fuel-model-core`, and `publish = false` on `fuel-examples` and `fuel-lazy-examples` (examples do not ship). The `Packaged crates` CI step now excludes the two examples crates like the fixtures (they are `publish = false`; the `spdx_header_ratchet` notice test forbids notice copies there, so packaging them could only fail). With `fuel-kernels-source` excluded at publish time (`--exclude`, it leaves with the Slang move) `releaseant plan` prints no warnings.
+
+## v0.43.1 - 2026-11-06 (provisional; the PM allocated 0.43.1, seam lockstep step 3)
+
+### Changed
+
+- **Workspace on the unpopped 0.43 line.** `unpopped-vocab` 0.40.0 -> 0.43.2 and every `baracuda-*` pin (19 in the workspace manifest, `baracuda-cuda-seam` exact) 0.1.0-alpha.80 -> 0.1.0-alpha.94, the first family whose `baracuda-cuda-seam` requires `fuel-kernel-seam{,-types}` ^0.43 and `unpopped-vocab` ^0.43.2 (the published seam crates are 0.43.0; this workspace's `[patch.crates-io]` path crates are 0.43.1, which satisfy ^0.43). All 47 crates stamp 0.43.1. The lock moves the baracuda family, `baracuda-cuda-emit` 0.43.1, `unpopped` and `unpopped-vocab` 0.43.2; `cargo tree --workspace --all-features -d` shows ONE `unpopped-vocab`.
+- Tag `v0.43.1` is the PM's.
+
+## v0.41.9 - 2026-11-06 (provisional; the PM allocated 0.41.9)
+
+### Fixed
+
+- **`fuel-model-llama`'s `vulkan` lib tests compile again.** The vulkan-gated tests in `src/lib.rs` name `fuel_vulkan_backend::` (3 sites) but the crate did not declare it, so `cargo check --all-targets -p fuel-model-llama --features vulkan` failed with 3 `E0432` (first: `lib.rs:9915`). It stayed hidden because no CI job builds that feature. The same three tests also use `fuel_test_support::` (4 more `E0433`). Fix: `vulkan` now enables the optional `fuel-vulkan-backend` dependency and `fuel-test-support` is a dev-dependency (same as the `cuda` fix in 0.41.8, so whichever lands second drops its duplicate line). CI: the existing `Check vulkan-gated compilation (GAP-233)` step in `rust-ci.yml` now also names `-p fuel-model-llama --features fuel-model-llama/vulkan --all-targets`, so this cannot hide again. No public item changes (patch).
+
+## v0.41.8 - 2026-11-06 (provisional; the PM allocated 0.41.8)
+
+### Fixed
+
+- **`fuel-model-llama`'s `cuda` lib tests compile again.** The cuda-gated tests in `src/lib.rs` name `fuel_cuda_backend::` and `fuel_test_support::` directly, but the crate declared neither (it had no `[dev-dependencies]`), so `cargo check --all-targets --features fuel-model-llama/cuda` failed with 41 `E0433` errors (first: `lib.rs` `fuel_test_support` unresolved). That is the compile error behind the self-hosted `cuda-metal-compile-check` step 5 failure. Fix: `cuda` now enables the optional `fuel-cuda-backend` dependency and `fuel-test-support` is a dev-dependency (the pattern `fuel-tensor` uses). No public item changes (patch). Verified by the same `cargo check -j 4 --locked --all-targets` shape CI runs, through a `cuda-build.ps1` slot.
+
+## v0.41.7 - 2026-11-06 (provisional; tentative number, the PM allocates)
+
+### Fixed
+
+- **`LlamaModel::forward_paged_step_persistent_inv_freq` no longer advances the KV pool twice for one token when the held plan goes stale.** The rebind arm advances the session by one slot before it realizes; if the realize then failed with `TopologyChanged` (any `register_runtime_kernel` or `extend_global_bindings` bumps the process-wide generation), the old fallback re-ran the whole step through `forward_paged_step_inv_freq`, which advanced again, so one token occupied two KV slots and every later position was shifted by one. The pool is now advanced once per call and every arm (build, rebind, and the rebuild after `TopologyChanged`) consumes that one advance; the stale plan is dropped and rebuilt for the SAME token. No public item changes (private helpers lost a `session` parameter).
+- **Test:** `paged_topology_change` (its own test binary, because `bump_topology_generation()` is process-wide). Red first on the unfixed code: `filled_tokens` was 5 after four tokens, expected 4; green after, with the logits of the post-bump token within 1e-5 of the re-planning step. `paged_decode_parity` (9 tests) still passes; `clippy -D warnings` on `fuel-model-llama --tests` is clean.
+- **Not covered:** `QuantizedLlama`/other models with their own persistent entries (`lazy_deepseek2`, `fuel-model-phi`) have a similar `TopologyChanged` arm; they were not read for the same defect here.
+
+## v0.41.6 - 2026-11-05 (provisional; the PM allocated 0.41.6)
+
+### Fixed
+
+- **Qwen3 paged decode now plans once (GAP-359 closed for its plan-once half).** `Qwen3Model::forward_paged_step_persistent` (and so `QuantizedQwen3Model`, which delegates to it) ignored `PagedDecodePlan::PlanOnce` and re-built and re-optimized the whole decode graph for every token, in prefill and in decode alike; the paged scheduler feeds a prompt one token at a time, so a 61-token prompt paid the optimizer 61 times. It now builds the single-token graph once, holds it in a `PagedDecodeSession` and rebinds only the token id, RoPE row, capacity-padded block table, context length and KV-write offset. The pool is advanced exactly once per token (validate, reserve, run), a held plan is dropped on a different cap, geometry, dtype, weights or pool, and a `TopologyChanged` rebuilds the plan for the same token. Found by lightbulb (Qwen3-0.6B Q8_0, paged scheduler 15 to 35x slower per step than the contiguous path).
+- **Measured, CPU, lightbulb's `bench_served_driver_steps`** (Qwen3-0.6B Q8_0, 61-token prompt, `KvBudget` 16 x 64, `max_batch` 1, F32 KV, one run per arm, same box): step 0 (prefill + first tokens) 151.1 s -> 15.64 s (9.7x); decode mean over 4 steps 2.572 s -> 0.268 s (9.6x); about 89.7% less, the ~90% re-plan share predicted from lightbulb's own earlier measurement. Box load: 73% -> 18% before, 76% -> 64% after (the AFTER run had more contention, not less). There is no variance estimate.
+- **Tests:** `persistent_paged_entry_equals_the_single_step` now asserts a held session, one optimizer run on the first token only, logits within 1e-6 of the re-planning step on every token across a block boundary, and a stable graph size (it failed first with "token 0: PlanOnce must hold a session"); `replan_flag_optimizes_every_token_and_holds_no_session` is the control that shows the optimizer counter sees a re-plan; four tests cover a different pool, a changed block cap, different weights and validate-first (a rejected cap or token leaves the session unadvanced), each with a separation assertion so it can fail. With the validity check disabled, 4 tests fail as designed. The whole Qwen3 module: 24 passed, 0 failed.
+- **NOT covered:** a `TopologyChanged` rebuild (hard to trigger from a unit test), a bf16 or f16 pool, and the CUDA arm: `Op::PagedAttn` has no CUDA kernel (ROADMAP row 106), so CUDA is expected to stay slower than CPU, which is NOT measured here; it is reported on the PR as a follow-up. The sliding-window decline is unchanged and is now GAP-377.
+
+## v0.41.5 - 2026-11-06 (provisional; the PM allocated 0.41.5, CI-only patch)
+
+### Changed
+
+- **CI: the `cuda-metal-compile-check` self-hosted job now prints the compiler errors into the job log when the CUDA compile fails.** Step 5 (`cargo check` with cuda; cuda+jit; llama cuda) wrote its rendered JSON diagnostics only to a file on the runner, so a red run said `failure` and nothing else (job 127463908032: the first error line was unreadable without elevation, and a later run overwrote the file). On a non-zero exit the step now parses that output and prints up to 20 rendered errors, ending with `---- end of compiler errors (N shown) ----`. No source change; version stamp only.
+
+## v0.41.4 - 2026-11-05 (provisional; the PM allocated 0.41.4, docs-only patch)
+
+### Documented
+
+- **GAP-376 recorded (`docs/gaps.md`, Tier A, OPEN, owner Fuel 1; raised from P after review, because the VRAM-pressure guard cannot fire for these candidates): a kernel's declared `bytes_moved` never reaches its `CostEstimate`.** Measured at `c879efd05`: 113 `.fkc.md` contracts declare a `bytes_moved:` expression, `compile_cost` parses it into `_bytes_moved` and holds only the `flops` AST, and `cost_estimate` / `fused_cost_estimate` return `bytes_moved = 0`, which `ranker/cost.rs` then uses instead of the hand-written estimator for any entry whose declared expression evaluates (a failed evaluation falls back to the estimator, which sets it) (so its `memory_ns`, the cost vector's memory tiers and the VRAM-pressure selector see 0). A second, smaller defect: with `flops` unknown, a bytes formula is evaluated into the `flops` field. Registry row only, no code change; how many entries and rankings are affected is stated in the row as NOT measured.
+
+## v0.41.3 - 2026-11-05 (provisional; the PM allocated 0.41.3, CI-only patch)
+
+### Changed
+
+- **CI: the two self-hosted workflows, `cuda-metal-compile-check` and `checkpoint-tests`, now ask for `runs-on: [self-hosted, Windows, X64, gpu, fuel]`** (was `[self-hosted, Windows, X64]`), to match the labels of the new self-hosted runner `TUF-LAPTOP-fuel-gpu` (PM notice, 2026-11-05), so a different self-hosted Windows runner cannot pick them up. Workflow-only, no Rust change. Verified locally: both files parse as YAML and `runs-on` reads back as the five labels. NOT verified: a run on the labelled runner (that shows on the next run of each job).
 
 ## v0.41.2 - 2026-11-05 (provisional; the PM allocates)
 

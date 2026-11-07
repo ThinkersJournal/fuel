@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "The LLaMA-family lazy-graph decoder for the fuel ML framework — the canonical base every downstream LLaMA-family model (LLaMA-2/3, LLaVA, Mistral, DeepSeek-2) builds on."
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-model-llama"
@@ -16,13 +17,19 @@
     # Forwards to fuel-core's cuda feature -- TokenDataBytes/captured_output_to_f32
     # are cuda-only in fuel-core, and LlamaModel's own cuda-gated capture-replay
     # path needs them under the same gate.
-    cuda = ["fuel-tensor/cuda"]
+    # `dep:fuel-cuda-backend`: the cuda-gated lib tests name `fuel_cuda_backend::`
+    # directly (device probe), so the crate must be linked under this feature.
+    cuda = ["fuel-tensor/cuda", "dep:fuel-cuda-backend"]
     # Forwards to fuel-core's vulkan feature -- LlamaModel has its own
     # vulkan-gated decode arms.
-    vulkan = ["fuel-tensor/vulkan"]
+    # `dep:fuel-vulkan-backend`: the vulkan-gated lib tests name
+    # `fuel_vulkan_backend::` directly (adapter selection), so it must be linked.
+    vulkan = ["fuel-tensor/vulkan", "dep:fuel-vulkan-backend"]
 
 [dependencies]
+    fuel-cuda-backend = { workspace = true, optional = true }
     fuel-dispatch = { workspace = true }
+    fuel-vulkan-backend = { workspace = true, optional = true }
     fuel-graph    = { workspace = true }
     fuel-ir       = { workspace = true }
     # Added for kv_block_pool's shim retirement (fuel-core dissolution,
@@ -39,3 +46,7 @@
     serde         = { workspace = true }
     serde_json    = { workspace = true }
     tokenizers    = { workspace = true, features = ["fancy-regex"] }
+
+[dev-dependencies]
+# The hardware-skip helper the live-device tests use (same pattern as fuel-tensor).
+fuel-test-support = { path = "../fuel-test-support" }

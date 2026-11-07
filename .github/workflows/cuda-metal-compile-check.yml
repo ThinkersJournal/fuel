@@ -33,7 +33,7 @@ env:
 jobs:
   cuda-compile:
     name: cargo check (cuda, jit) on the self-hosted runner
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Windows, X64, gpu, fuel]
     timeout-minutes: 300
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -105,6 +105,23 @@ jobs:
           $code = $LASTEXITCODE
           "cargo exit: $code"
           "json lines: $((Get-Content -LiteralPath $out | Measure-Object -Line).Lines)"
+          # The stream above goes to a file, so without this a failed check leaves only the exit code in the log
+          # (the 2026-11-05 cuda-metal run said "41 previous errors" and nothing else). Print the first rendered
+          # compiler errors so a red run can be read from the job log; the evidence step still counts the stream.
+          if ($code -ne 0) {
+            "---- first compiler errors (rendered, at most 20) ----"
+            $shown = 0
+            foreach ($line in [System.IO.File]::ReadLines($out)) {
+              if ($line -notlike '*"reason":"compiler-message"*') { continue }
+              if ($line -notlike '*"level":"error"*') { continue }
+              try { $m = $line | ConvertFrom-Json } catch { continue }
+              if ($m.reason -ne 'compiler-message' -or $m.message.level -ne 'error') { continue }
+              $m.message.rendered
+              $shown++
+              if ($shown -ge 20) { break }
+            }
+            "---- end of compiler errors ($shown shown) ----"
+          }
           exit $code
 
       - name: cargo check fuel-dispatch with `cuda` alone (no jit)

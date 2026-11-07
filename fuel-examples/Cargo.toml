@@ -2,6 +2,8 @@
 name = "fuel-examples"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
+publish = false
 description.workspace = true
 repository.workspace = true
 keywords.workspace = true

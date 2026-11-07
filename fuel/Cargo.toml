@@ -12,6 +12,9 @@
 name = "fuel"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
+keywords.workspace = true
+categories.workspace = true
 license = "MIT OR Apache-2.0"
 description = "Fuel — a DAG-first, lazy-only ML framework for Rust (the public facade)."
 repository = "https://github.com/ciresnave/fuel"

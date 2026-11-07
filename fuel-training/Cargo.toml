@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "Training orchestration layer for the Fuel ML framework."
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-training"

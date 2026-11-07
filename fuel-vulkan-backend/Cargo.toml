@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "Vulkan GPU executor for the fuel lazy-graph layer. Uses Vulkane for device management and precompiled SPIR-V from fuel-vulkan-kernels (sources in fuel-kernels-source)."
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-vulkan-backend"

@@ -318,7 +318,7 @@ jobs:
       #     backends — same reasons as WORKSPACE_EXCLUDES at the top of file.
       - name: Check vulkan-gated compilation (GAP-233)
         if: matrix.os == 'ubuntu-latest'
-        run: cargo check --locked -p fuel-tensor -p fuel-dispatch -p fuel-vulkan-dispatch --features fuel-tensor/vulkan --all-targets
+        run: cargo check --locked -p fuel-tensor -p fuel-dispatch -p fuel-vulkan-dispatch -p fuel-model-llama --features fuel-tensor/vulkan,fuel-model-llama/vulkan --all-targets
       # `fuel-vulkan-dispatch` depends on `fuel-memory/vulkan`, which adds a `Vulkan` variant to the closed
       # `BackendStorage` enum for EVERY crate in the build; `fuel-tensor` must still compile without its own
       # `vulkan` feature (it once did not: E0004 in `pipelined_bridge.rs`, found by building the tarballs, where
@@ -948,7 +948,8 @@ jobs:
   # NAMED HOLES (also printed by the build step): `DOCS_RS=1` makes baracuda-kernels-sys skip its
   # nvcc build, so the CUDA/forge compile is NOT verified; WORKSPACE_EXCLUDES crates are not built
   # (mkl/aocl need an SDK, metal needs macOS, cuda is the forge). The `fuel-model-*fixture` crates
-  # are `publish = false` and cannot be packaged.
+  # and the two examples crates (`fuel-examples`, `fuel-lazy-examples`) are `publish = false` and do not ship, so none of
+  # them is packaged (the notice check would otherwise demand notice copies the ratchet forbids there).
   package:
     name: Packaged crates
     runs-on: ubuntu-latest
@@ -966,7 +967,7 @@ jobs:
       - name: Packaged-crate check controls
         run: python3 scripts/verify-packaged-crates.py selftest
       - name: Package every publishable crate (no compile)
-        run: cargo package --workspace --exclude fuel-model-fixture --exclude fuel-model-umbrella-fixture --locked --no-verify
+        run: cargo package --workspace --exclude fuel-model-fixture --exclude fuel-model-umbrella-fixture --exclude fuel-examples --exclude fuel-lazy-examples --locked --no-verify
       - name: No include leaves a tarball
         run: python3 scripts/verify-packaged-crates.py scan target/package
       - name: Every tarball carries the licence texts and the third-party notices
