@@ -7,7 +7,7 @@ This documents the main changes to the `fuel` workspace.
 
 ### Changed
 
-- **Publish metadata.** `rust-version = "1.88"` on every published crate (via `[workspace.package]`): measured, `cargo +1.88 check` of the CPU/Vulkan workspace set passes and `+1.85` is refused because `zip` 9.1.3 requires rustc 1.88 (the edition-2024 floor is 1.85). A README next to every manifest that lacked one, `keywords`/`categories` for `fuel`, `fuel-kiss-ref-backend` and `fuel-model-core`, and `publish = false` on `fuel-examples` and `fuel-lazy-examples` (examples do not ship). With `fuel-kernels-source` excluded at publish time (`--exclude`, it leaves with the Slang move) `releaseant plan` prints no warnings.
+- **Publish metadata.** `rust-version = "1.88"` on every published crate (via `[workspace.package]`): measured, `cargo +1.88 check` of the CPU/Vulkan workspace set passes and `+1.85` is refused because `zip` 9.1.3 requires rustc 1.88 (the edition-2024 floor is 1.85). A README next to every manifest that lacked one, `keywords`/`categories` for `fuel`, `fuel-kiss-ref-backend` and `fuel-model-core`, and `publish = false` on `fuel-examples` and `fuel-lazy-examples` (examples do not ship). The `Packaged crates` CI step now excludes the two examples crates like the fixtures (they are `publish = false`; the `spdx_header_ratchet` notice test forbids notice copies there, so packaging them could only fail). With `fuel-kernels-source` excluded at publish time (`--exclude`, it leaves with the Slang move) `releaseant plan` prints no warnings.
 
 ## v0.43.1 - 2026-11-06 (provisional; the PM allocated 0.43.1, seam lockstep step 3)
 
