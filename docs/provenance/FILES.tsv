@@ -9,19 +9,11 @@ path	class	candle_source	basis
 .github/workflows/checkpoint-tests.yml	own		no lineage; 0 of 29 lines verbatim in candle (0%)
 .github/workflows/cuda-metal-compile-check.yml	own		no lineage; 0 of 84 lines verbatim in candle (0%)
 .github/workflows/lavapipe-vulkan.yml	own		no lineage; 0 of 31 lines verbatim in candle (0%)
-<<<<<<< HEAD
 .github/workflows/rust-ci.yml	candle-modified	.github/workflows/rust-ci.yml	same path; 3% of 952 lines verbatim
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 534 lines verbatim
-=======
-.github/workflows/rust-ci.yml	candle-modified	.github/workflows/rust-ci.yml	same path; 3% of 950 lines verbatim
-.github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
-.gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
-.pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 532 lines verbatim
->>>>>>> origin/main
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 536 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1395 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 306 lines verbatim
@@ -70,12 +62,8 @@ docs/design-notes/2026-11-01-seam-s3-executor-backends.md	own		no lineage; 0 of 
 docs/design-notes/2026-11-01-seams-and-cleanup-program.md	own		no lineage; 0 of 76 lines verbatim in candle (0%)
 docs/design-notes/2026-11-01-structure-measurement.md	own		no lineage; 0 of 163 lines verbatim in candle (0%)
 docs/design-notes/2026-11-02-nvidia-licence-read.md	own		no lineage; 0 of 167 lines verbatim in candle (0%)
-<<<<<<< HEAD
 docs/design-notes/2026-11-03-row137-step6-plan.md	own		no lineage; 0 of 115 lines verbatim in candle (0%)
-=======
-docs/design-notes/2026-11-03-row137-step6-plan.md	own		no lineage; 0 of 102 lines verbatim in candle (0%)
 docs/design-notes/2026-11-07-fireline-fuel-baracuda-seam-plan.md	own		no lineage; 0 of 47 lines verbatim in candle (0%)
->>>>>>> origin/main
 docs/design/facade-inversion-recipe.md	own		no lineage; 0 of 216 lines verbatim in candle (0%)
 docs/design/gaps-status-conversion-table.md	own		no lineage; 0 of 80 lines verbatim in candle (0%)
 docs/design/gaps-status-vocabulary.md	own		no lineage; 0 of 213 lines verbatim in candle (0%)
