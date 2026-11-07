@@ -471,7 +471,7 @@ checksum = "2017aad869f103c9fb4d584799b706cb153fa3e3397e3790916bc23e45904719"
 dependencies = [
  "baracuda-cuda-emit",
  "fuel-kernel-seam 0.43.0",
- "fuel-kernel-seam-types 0.43.0",
+ "fuel-kernel-seam-types 0.43.2",
  "unpopped",
  "unpopped-vocab",
 ]
@@ -2121,7 +2121,7 @@ version = "0.43.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d756619ad6d98c0bbfe824a62c3bb966a81812904997853c337d42829a6ff3b"
 dependencies = [
- "fuel-kernel-seam-types 0.43.0",
+ "fuel-kernel-seam-types 0.43.2",
  "unpopped-vocab",
 ]
 
@@ -2139,9 +2139,9 @@ version = "0.44.0"
 
 [[package]]
 name = "fuel-kernel-seam-types"
-version = "0.43.0"
+version = "0.43.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "559b22e88d9634f6a72dea87177f5e7ad4e84b4e64b20349697d572464dc1e59"
+checksum = "830712752f37ee084d6dada83bf0de52edc976bcb404b30ae99cb817e37c70a7"
 
 [[package]]
 name = "fuel-kernel-seam-types"
