@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "Intel oneMKL-backed CPU executor for the fuel lazy-graph layer."
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-mkl-cpu-backend"

@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "Transport-independent parsers for tensor wire formats (safetensors, pickle, GGUF, GGML, imatrix). Operates on impl Read / &[u8] / Cow<[u8]>; knows nothing about Tensor, Storage, or Device. Consumers: fuel-loaders (file/mmap), future fuel-net (HTTP/streaming), future fuel-ipc (Unix socket / shared-mem) — anywhere a tensor wire format needs to be read or written without coupling to a specific transport."
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-formats"

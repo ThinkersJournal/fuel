@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "Backend-agnostic quantized (ggml/gguf block) numerics for fuel: BlockQX types, GgmlType trait, scalar + SIMD reference impls, CPU DynQuantizedStorage adapter."
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-quantized"

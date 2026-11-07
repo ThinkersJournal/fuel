@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "CUDA GPU backend for the fuel ML framework: dtype-tagged storage, kernel dispatch (matmul/conv/softmax/rope/rms_norm/quantized), and lazy-graph executor integration. Built on the baracuda-* FFI crate family — parallel structure to fuel-vulkan-backend on vulkane."
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-cuda-backend"
