@@ -3,6 +3,12 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.43.3 - 2026-11-07 (provisional; tentative number, the PM allocates)
+
+### Added
+
+- **Docs only:** `docs/design-notes/2026-11-07-fireline-fuel-baracuda-seam-plan.md`, the Fuel half (plus baracuda's half, read from its tree) of the FireLine seam plan for the Fuel <-> baracuda kernel-synthesizer interface: what moves into FireLine's one-crate-per-interface crates, what stays, the first-release changes on each side, five conformance checks, and open questions. Measured at `origin/main@28e0aef6`. Supersedes option B of `2026-10-24-seam-crate-versioning.md`. No code changes.
+
 ## v0.43.2 - 2026-11-07 (provisional; tentative number, the PM allocates)
 
 ### Changed
