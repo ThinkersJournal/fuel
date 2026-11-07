@@ -3,6 +3,16 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.44.4 - 2026-11-07 (provisional; tentative number, the PM allocates)
+
+### Added
+
+- **`fuel_dispatch::probe_device` (`jit` feature): `ProbeDevice` and `ProbeTensor`** (row 137 step 6.3b, step A1 of `docs/design-notes/2026-11-07-row137-step63b-probe-seam.md`; PM ruling: a minimal public tensor type, `fkc::verify` stays private). The two reference builders in `jit_ingest_probe` (`reference_output`, `reference_from_registered_recipe`) no longer name CUDA: they build the graph, stamp the device's backend and call `ProbeDevice::realize`. `CudaProbeDevice` (feature `cuda`) carries the code that was inline; it moves to `fuel-cuda-dispatch` in step A3. Behaviour-preserving. Three device-free tests with a stub device (one is the retained sabotage sibling: a hard-coded `Cuda` stamp turns it red).
+
+### Not verified
+
+- The `cuda` arm (`CudaProbeDevice`, the two call sites in `jit_ingest.rs`, the two ignored live tests) was NOT compiled: no CI job builds it and no CUDA forge was run for this change. Checked: `cargo fmt`, `clippy -D warnings --tests` and `check` on `-p fuel-dispatch` with `jit` and with default features, and the 10 `jit_ingest_probe` tests.
+
 ## v0.44.1 - 2026-11-07 (provisional; tentative number, the PM allocates; docs only)
 
 ### Added
