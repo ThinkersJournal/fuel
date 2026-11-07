@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! On-device integration test for the live CUDA JIT `load_kernel`
-//! (`fuel_dispatch::jit_cuda_load::load_synth_kernel`) — the device-specific
+//! (`fuel_cuda_dispatch::jit_cuda_load::load_synth_kernel`) — the device-specific
 //! step `jit_adopt::adopt_from_response` needs, per kernel-seam-interop §5.2.
 //!
 //! `#[ignore]`'d: needs a real CUDA device + the NVRTC runtime. Run manually
-//! with `cargo test -p fuel-dispatch --features cuda,jit -- --ignored`.
+//! with `cargo test -p fuel-cuda-dispatch --features jit -- --ignored`.
 //!
 //! ## Why this drives a mock — and why that reason is now STALE (2026-08-06)
 //!
@@ -56,8 +56,8 @@ use std::sync::{Arc, RwLock};
 
 use baracuda_nvrtc::{CompileOptions, Program};
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
+use fuel_cuda_dispatch::jit_cuda_load::load_synth_kernel;
 use fuel_dispatch::jit_adopt::adopt_from_response;
-use fuel_dispatch::jit_cuda_load::load_synth_kernel;
 use fuel_dispatch::kernel::OpParams;
 use fuel_dispatch::runtime_fused_kernels::{fused_kernel_available, lookup_runtime_kernel};
 use fuel_graph::jit::{OpAttrs, OpTag, PatternNode};
@@ -595,7 +595,7 @@ fn jit_scalar_param_kernel_launches_with_live_value() {
 /// ..._scalar` kernel that `load_synth_kernel` handles today (the vectorized /
 /// strided ABIs are the documented loader follow-up). Gated behind `jit-synth`
 /// (= jit + cuda + baracuda-cuda-seam{nvrtc}); run with
-/// `cargo test -p fuel-dispatch --features jit-synth -- --ignored`.
+/// `cargo test -p fuel-cuda-dispatch --features jit-synth -- --ignored`.
 #[test]
 #[ignore]
 #[cfg(feature = "jit-synth")]
@@ -928,7 +928,7 @@ fn live_baracuda_synthesizer_paged_attn_dense_region() {
 fn jit_slot_reclamation_frees_dead_device_slots_but_not_live_ones() {
     serialise_this_test();
     use fuel_cuda_backend::{DeviceId, is_device_live};
-    use fuel_dispatch::jit_cuda_load::{
+    use fuel_cuda_dispatch::jit_cuda_load::{
         clear_slots_for_tests, reclaim_dead_slots_for_tests, slot_device_ids_for_tests,
     };
 

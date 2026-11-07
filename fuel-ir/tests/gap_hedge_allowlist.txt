@@ -64,8 +64,8 @@ fuel-dispatch/src/fkc/verify/seed_cuda_ledger.rs	//! write, so a naive `push` re
 fuel-dispatch/src/fused.rs	/// The CPU naive-attention reference is bit-stable per-hardware
 fuel-dispatch/src/fused.rs	/// headroom vs naive F32 over the per-step state update.
 fuel-dispatch/src/fused.rs	/// naive reference (different reduction tree); that's a GPU-side
-fuel-dispatch/src/jit_cuda_load.rs	//! today's honest shortcut (documented, not hidden).
-fuel-dispatch/src/jit_cuda_load.rs	/// - `art.kind` isn't [`ArtifactKind::Ptx`] (Cubin loading would need
+fuel-cuda-dispatch/src/jit_cuda_load.rs	//! today's honest shortcut (documented, not hidden).
+fuel-cuda-dispatch/src/jit_cuda_load.rs	/// - `art.kind` isn't [`ArtifactKind::Ptx`] (Cubin loading would need
 fuel-dispatch/src/optimize.rs	//! the architect-approved arm-0 temporary lowering).
 fuel-dispatch/src/pipelined.rs	// Vulkan buffer); waiting it would needlessly serialize the
 fuel-dispatch/src/pipelined.rs	/// `capacity`-element U32 primary slot). CPU only for now — device

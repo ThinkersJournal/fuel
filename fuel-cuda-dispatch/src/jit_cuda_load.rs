@@ -3,17 +3,19 @@
 //! §5.2's device-specific step): given a [`SynthArtifact`] (PTX bytes + a
 //! symbol name), load it as a CUDA module, resolve the function, and wrap it
 //! as a Fuel [`KernelRef`] — the closure
-//! [`crate::jit_adopt::adopt_from_response`] takes as `load_kernel`.
+//! [`fuel_dispatch::jit_adopt::adopt_from_response`] takes as `load_kernel`.
 //!
-//! ## Why this lives in fuel-dispatch, not fuel-cuda-backend
+//! ## Why this lives in fuel-cuda-dispatch, not fuel-cuda-backend
 //!
 //! The task shape suggests a `fuel-cuda-backend` function, but `KernelRef`
-//! is defined in [`crate::kernel`] over `fuel_memory::Storage` — and
+//! is defined in [`fuel_dispatch::kernel`] over `fuel_memory::Storage` — and
 //! `fuel-memory` already depends on `fuel-cuda-backend` (its `cuda` feature
 //! re-exports `CudaStorageBytes`), so the reverse dependency
 //! (`fuel-cuda-backend` → `fuel-memory`/`fuel-kernel-seam`) would be a cycle.
-//! `fuel-dispatch` already depends on both (optionally, behind `cuda` and
-//! `jit`), so the loader lives here, gated behind both features — the actual
+//! `fuel-cuda-dispatch` already depends on all three (`fuel-dispatch` for
+//! `KernelRef`, `fuel-cuda-backend` behind `cuda`, `fuel-kernel-seam` behind
+//! `jit`), so the loader lives here, gated behind `jit` (which implies `cuda`;
+//! it lived in `fuel-dispatch` until ROADMAP row 137 step 6.3a) — the actual
 //! module-load + symbol-resolve step reuses
 //! [`fuel_cuda_backend::CudaDevice::get_or_load_custom_func`] verbatim
 //! (already exactly "load PTX as a module, resolve a symbol, cache by name,
@@ -30,7 +32,7 @@
 //! so `N` is baked into the *code* at compile time, not captured at runtime.
 //! [`load_synth_kernel`] claims the next free slot and returns its dispatcher.
 //! Slots are never freed (a `FusedOpId`'s kernel lives for the process, per
-//! [`crate::runtime_fused_kernels::adopt_runtime_fused`]'s docs), so the bank
+//! [`fuel_dispatch::runtime_fused_kernels::adopt_runtime_fused`]'s docs), so the bank
 //! is sized generously; bump [`MAX_JIT_SLOTS`] + the `dispatch_table!` call if
 //! a workload ever adopts more distinct JIT kernels than that in one process.
 //!
@@ -105,7 +107,7 @@ use fuel_ir::{Error, Layout, Result};
 use fuel_kernel_seam::{ArtifactKind, SynthArtifact};
 use fuel_memory::{BackendStorage, Storage};
 
-use crate::kernel::{KernelRef, OpParams};
+use fuel_dispatch::kernel::{KernelRef, OpParams};
 
 /// Size of the process-global JIT-kernel slot bank. See the module docs'
 /// "why a slot table" section for why this exists at all.
@@ -129,7 +131,7 @@ fn slots() -> &'static RwLock<Vec<Option<Slot>>> {
 
 /// Load `art` as a CUDA module on `device`, resolve `art.link.symbol`, and
 /// wrap it as a [`KernelRef`] — the `load_kernel` closure
-/// [`crate::jit_adopt::adopt_from_response`] needs. See the module docs for
+/// [`fuel_dispatch::jit_adopt::adopt_from_response`] needs. See the module docs for
 /// the scalar-ABI-only scope this implements.
 ///
 /// # Errors

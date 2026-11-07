@@ -19,6 +19,15 @@ fuel-cuda-backend = { workspace = true, optional = true }
 fuel-quantized = { workspace = true, optional = true }
 half = { workspace = true, optional = true }
 bytemuck = { workspace = true, optional = true }
+# Only under `jit` (the JIT-kernel loader `jit_cuda_load` and its on-device test, moved here from `fuel-dispatch`
+# in ROADMAP row 137 step 6.3a). NVRTC is crates.io-pinned, used by tests/jit_synth_kernel_live.rs to compile a
+# scalar-ABI PTX kernel at test time.
+fuel-kernel-seam = { workspace = true, optional = true }
+baracuda-nvrtc = { workspace = true, optional = true }
+unpopped-vocab = { workspace = true, optional = true }
+# The live JIT synthesizer, only under `jit-synth` (moved here from `fuel-dispatch` with its on-device test in ROADMAP
+# row 137 step 6.3a). Crates.io (exact pin) — NOT a ../baracuda path dep, so it honors the reference-only rule.
+baracuda-cuda-seam = { workspace = true, optional = true, features = ["nvrtc"] }
 
 [features]
 # Everything in this crate is CUDA code, and compiling it runs the baracuda kernel forge (56-93 min cold), so
@@ -33,6 +42,15 @@ cuda = [
     "fuel-dispatch/cuda",
     "fuel-memory/cuda",
 ]
+
+# The live CUDA loader for JIT-synthesized kernels (`jit_cuda_load`). Implies `cuda` and `fuel-dispatch/jit`: the same two
+# features it was gated behind inside `fuel-dispatch`.
+jit = ["cuda", "fuel-dispatch/jit", "dep:fuel-kernel-seam", "dep:baracuda-nvrtc", "dep:unpopped-vocab"]
+
+# The LIVE JIT loop on published crates: jit + the real BaracudaSynthesizer (baracuda-cuda-seam, nvrtc). Enables the
+# on-device tests that drive synthesize -> take_kernel -> load_synth_kernel -> launch with Baracuda's own generated
+# kernel (not a mock). Needs the CUDA toolchain (nvrtc). Default OFF.
+jit-synth = ["jit", "dep:baracuda-cuda-seam"]
 
 # Maintenance tools that rewrite the committed verified ledger (the CUDA half). NOT part of the supported API:
 # semver-exempt, off by default.
