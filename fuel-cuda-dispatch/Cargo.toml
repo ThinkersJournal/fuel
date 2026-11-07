@@ -2,6 +2,7 @@
 categories.workspace = true
 description = "CUDA (baracuda) kernel bindings for fuel-dispatch: the CUDA dispatch wrappers, the FKC link registry and the one-call registrar (above fuel-dispatch, like fuel-vulkan-dispatch)"
 edition.workspace = true
+rust-version.workspace = true
 keywords.workspace = true
 license.workspace = true
 name = "fuel-cuda-dispatch"

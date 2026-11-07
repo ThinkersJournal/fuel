@@ -2,6 +2,7 @@
 name = "fuel-parallel"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 description = "Multi-GPU parallelism primitives for the Fuel ML framework."
 repository.workspace = true
 keywords.workspace = true

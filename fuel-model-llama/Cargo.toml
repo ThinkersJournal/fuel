@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "The LLaMA-family lazy-graph decoder for the fuel ML framework — the canonical base every downstream LLaMA-family model (LLaMA-2/3, LLaVA, Mistral, DeepSeek-2) builds on."
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-model-llama"

@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "Metal backend for the fuel ML framework"
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-metal-backend"

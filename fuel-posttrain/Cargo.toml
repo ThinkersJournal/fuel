@@ -2,6 +2,7 @@
     categories.workspace = true
     description          = "Post-training model compression for the Fuel ML framework: quantization-calibration and pruning techniques applied to a loaded model's weights."
     edition.workspace    = true
+    rust-version.workspace = true
     keywords.workspace   = true
     license.workspace    = true
     name                 = "fuel-posttrain"
