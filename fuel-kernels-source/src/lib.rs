@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! # fuel-kernels-source
 //!
-//! Home for Fuel's GPU kernel source files (`.slang`, `.wgsl`, `.glsl`)
+//! Home for Fuel's remaining GPU kernel source files (`.glsl`, `.wgsl`)
 //! and the `compile.sh` script that turns them into backend artifacts.
 //!
 //! This crate intentionally has no Rust code. Downstream consumers
@@ -15,8 +15,9 @@
 //!
 //! ## Layout
 //!
-//! - `kernels/*.slang` — Slang sources (preferred for new kernels:
-//!   autodiff-ready, cross-backend output).
+//! - The Slang sources are no longer here: they moved to the published
+//!   `fishstringer-kernels-source` crate (0.46.0; ROADMAP row 143 covers
+//!   the `.glsl` files next).
 //! - `kernels/*.wgsl` — legacy WGSL sources (being hand-ported to
 //!   Slang; see todo list).
 //! - `kernels/*.glsl` — legacy GLSL sources (kept for the few kernels
@@ -27,7 +28,7 @@
 //! ## Why a separate crate
 //!
 //! Keeping the sources in their own crate makes the source→artifact
-//! split explicit: the `.slang` file is the authoritative
+//! split explicit: the source file is the authoritative
 //! implementation; the `.spv` in fuel-vulkan-kernels and the future
 //! CUDA in fuel-cuda-kernels are derived. Tooling that wants to
 //! regenerate artifacts (CI, future cross-backend compiler) has a

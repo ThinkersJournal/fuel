@@ -121,8 +121,6 @@ JUDGED = {
     "scripts/provenance.py": ("own", "judged: names candle only to describe the fork"),
     "scripts/sync-packaged-notices.py": ("own", "judged: names candle only to describe its licences"),
     "scripts/verify-packaged-crates.py": ("own", "judged: names candle only to describe its licences"),
-    "fuel-kernels-source/kernels/index_select.slang": (
-        "own", "judged: a comment cites candle's index_select semantics; Slang kernel, no shared lines"),
     "fuel-loaders/src/model_progress.rs": (
         "own", "judged: 'candlelight' in a doc comment is a different project, not candle"),
     "THIRD-PARTY-NOTICES.md": (

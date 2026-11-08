@@ -3,12 +3,13 @@
 //!
 //! Precompiled SPIR-V kernels for the Fuel Vulkan backend.
 //!
-//! Shader sources (`.wgsl`, `.glsl`, `.slang`) live in the
-//! `fuel-kernels-source` crate at `kernels/`. They are compiled to
-//! SPIR-V **ahead of time** using
-//! `fuel-kernels-source/kernels/compile.sh` (requires Vulkan SDK +
-//! naga-cli) and the resulting `.spv` files are committed to `spv/`
-//! in this crate.
+//! Shader sources: the `.glsl` / `.wgsl` ones live in the
+//! `fuel-kernels-source` crate at `kernels/`, compiled to SPIR-V
+//! **ahead of time** by `fuel-kernels-source/kernels/compile.sh`
+//! (requires Vulkan SDK + naga-cli). The Slang ones live in the
+//! published `fishstringer-kernels-source` crate; `spv/SOURCE.txt`
+//! records the pinned version they were regenerated from. The
+//! resulting `.spv` files are committed to `spv/` in this crate.
 //!
 //! This crate only exposes the embedded byte table and the
 //! environment-variable name for the dev-time disk-override
@@ -27,10 +28,11 @@
 //!
 //! # Adding a new shader
 //!
-//! 1. Drop the source file into `fuel-kernels-source/kernels/` (any of
-//!    `.wgsl`, `.glsl`, `.slang`).
-//! 2. Run `./compile.sh` from that directory — writes SPIR-V into
-//!    `../fuel-vulkan-kernels/spv/`.
+//! 1. Drop a `.glsl` / `.wgsl` source into `fuel-kernels-source/kernels/`,
+//!    or add a Slang kernel to `fishstringer-kernels-source` and bump
+//!    the pin recorded in `spv/SOURCE.txt`.
+//! 2. For `.glsl` / `.wgsl`, run `./compile.sh` from that directory —
+//!    writes SPIR-V into `../fuel-vulkan-kernels/spv/`.
 //! 3. Add a `(name, include_bytes!(...))` entry to [`EMBEDDED`] below.
 //! 4. Rebuild Fuel.
 

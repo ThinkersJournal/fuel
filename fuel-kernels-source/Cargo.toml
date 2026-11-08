@@ -1,6 +1,6 @@
 [package]
 categories.workspace = true
-description          = "Kernel source files (.slang / .wgsl / .glsl) shared across Fuel GPU backends. Compile ahead of time with src/compile.sh; compiled artifacts live in fuel-vulkan-kernels (SPIR-V) and fuel-cuda-kernels (PTX / cubin)."
+description          = "Kernel source files (.glsl / .wgsl) shared across Fuel GPU backends. Compile ahead of time with kernels/compile.sh; compiled artifacts live in fuel-vulkan-kernels (SPIR-V) and fuel-cuda-kernels (PTX / cubin)."
 edition.workspace    = true
 rust-version.workspace = true
 keywords.workspace   = true

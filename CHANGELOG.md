@@ -3,6 +3,20 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.46.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.45.0)
+
+### Breaking
+
+- **`fuel-kernels-source`: the 150 Slang sources (`kernels/*.slang`, `*.slangh`) and the two slangc-only post-processors (`kernels/hoist_extinst_imports.py`, `kernels/no_contraction.py`) are removed; `kernels/compile.sh` now handles `.glsl` / `.wgsl` only.** *Who is affected:* anyone who takes the `.slang` / `.slangh` files or those two scripts from the `fuel-kernels-source` crate, or runs `compile.sh` on a Slang file. *Use instead:* the published `fishstringer-kernels-source` crate, which carries the same kernels (the committed `fuel-vulkan-kernels/spv` was regenerated from its 0.0.13 in 0.44.5; `fuel-vulkan-kernels/spv/SOURCE.txt` records the pin; take `~0.0.14`, published 2026-11-08; it also ships `kernels/spv_equiv.py`, a structural SPIR-V equivalence check). The 27 `.glsl` sources and `compile.sh` stay until ROADMAP row 143. No `.spv` byte changes in this release.
+
+### Changed
+
+- **ROADMAP row 137:** records that 6.3b step A3 (move the CUDA probe pieces to `fuel-cuda-dispatch`) is deferred and depends on GAP-236 (the verify API those modules use is private), per the PM ruling 2026-11-08.
+
+### Not verified
+
+- `cargo build -p fuel-vulkan-kernels` is unaffected because nothing in a Rust build read the `.slang` files. Not run: `compile.sh` itself (needs the Vulkan SDK and naga-cli; only `bash -n` syntax-checked), lavapipe (CI), macOS.
+
 ## v0.45.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.44.6)
 
 ### Breaking
