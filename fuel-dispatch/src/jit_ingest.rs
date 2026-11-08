@@ -4336,6 +4336,8 @@ mod tests {
     fn ingestion_service_adopts_a_matching_add_candidate_e2e() {
         use fuel_ir::probe::BackendId;
 
+        use fuel_cuda_backend::CudaDevice;
+
         let Ok(dev) = CudaDevice::new(0) else {
             return fuel_test_support::hardware::skip(
                 fuel_test_support::hardware::Hardware::Cuda,
@@ -4390,6 +4392,8 @@ mod tests {
     #[ignore = "requires a live CUDA device"]
     #[cfg(feature = "cuda")]
     fn ingestion_service_rejects_a_mismatched_mul_candidate_e2e() {
+        use fuel_cuda_backend::CudaDevice;
+
         let Ok(dev) = CudaDevice::new(0) else {
             return fuel_test_support::hardware::skip(
                 fuel_test_support::hardware::Hardware::Cuda,
@@ -4451,6 +4455,8 @@ mod tests {
     #[ignore = "requires a live CUDA device"]
     #[cfg(feature = "cuda")]
     fn ingestion_service_flags_an_f64_add_candidate_e2e() {
+        use fuel_cuda_backend::CudaDevice;
+
         let Ok(dev) = CudaDevice::new(0) else {
             return fuel_test_support::hardware::skip(
                 fuel_test_support::hardware::Hardware::Cuda,
