@@ -1,0 +1,41 @@
+The 153 Slang-derived SPIR-V files in this directory were built from the published crate
+fishstringer-kernels-source 0.0.13 (tag v0.0.13 = 7cffe9c3e044ef88f59a4b2f6d38afcc798541c4), by that
+crate's kernels/compile.sh --out-dir <dir> (153 outputs; manifest = compile.sh --print-manifest),
+with slangc 2026.8 (Vulkan SDK 1.4.350.0) and Python 3.15.2.
+Built and reported by the FishStringer lane (message 2026-11-07); Fuel did not run the script.
+Tree sha256 (sorted name + bytes over the 153): 95998422827471bc2de0839afabbc7ed4b58633bfb56fa697b580c82d1102932
+Check: SHA-256 over the 153 .spv files sorted by name, hashing each file's name then its bytes.
+Versus the files committed before this change: 34 byte-equal, 119 differ (111 debug records only: an extra
+OpMemberName; 8 instruction/id order: arg_reduce_last_dim_bf16/f16/f32/f64, dequant_q4_km,
+flash_attention, matmul, silu_backward). spirv-val passes on both copies of all 8 (FishStringer).
+Whether the 8 are semantically equal is decided by the Vulkan live tests (see the PR).
+
+The 27 files below are NOT from this crate; they come from fuel-kernels-source/kernels/*.glsl
+(glslangValidator, compile.sh glsl branch) and are unchanged:
+conv2d_im2col_bf16.spv
+flash_attn_backward_k_f32.spv
+flash_attn_backward_q_f32.spv
+flash_attn_backward_v_f32.spv
+flash_attn_bf16.spv
+flash_attn_combine_bf16.spv
+flash_attn_combine_f16.spv
+flash_attn_combine_f32.spv
+flash_attn_f16.spv
+flash_attn_f32.spv
+flash_attn_split_bf16.spv
+flash_attn_split_f16.spv
+flash_attn_split_f32.spv
+matmul_coop.spv
+matmul_coop_bf16_bf16.spv
+matmul_coop_bf16_bf16_bf16.spv
+matmul_coop_f16_f16.spv
+matmul_coop_f16_f16_f16.spv
+matmul_small_bf16_bf16_bf16.spv
+matmul_small_bf16_bf16_f32.spv
+matmul_small_f16_f16_f16.spv
+matmul_small_f16_f16_f32.spv
+matmul_tiled.spv
+matmul_tiled_bf16_b.spv
+matvec.spv
+matvec_bf16_b.spv
+matvec_cols.spv

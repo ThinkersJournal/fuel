@@ -13,6 +13,17 @@ This documents the main changes to the `fuel` workspace.
 
 - Measured while a `gpu-run` held the mutex, from a second process, in both `pwsh` 7 and Windows PowerShell 5.1: the DACL is one ACE, `S-1-5-11 Modify, Synchronize Allow`. Not run: a cross-account acquire (needs a second account), so the denial itself is not reproduced here, only the ACL that prevents it.
 
+## v0.44.5 - 2026-11-07 (provisional; tentative number, the PM allocates)
+
+### Changed
+
+- **`fuel-vulkan-kernels`: the 153 crate-sourced SPIR-V files are regenerated from `fishstringer-kernels-source` 0.0.13 (slangc 2026.8).** 34 are byte-equal to the previous files; 119 differ (111 debug-info only, 8 instruction-order differences in `arg_reduce_last_dim` x4, `dequant_q4_km`, `flash_attention`, `matmul`, `silu_backward`). The 27 glsl-derived files are untouched. `fuel-vulkan-kernels/spv/SOURCE.txt` records the crate version, tag commit, toolchain and tree hash. The Slang sources stay in this repo until the follow-up PR deletes them.
+
+### Not verified
+
+- Run on the RTX 4070 under `gpu-run` at the staged tree: `fuel-vulkan-dispatch --test vulkan_dispatch_live --ignored` 197/197 pass; `fuel-vulkan-backend --lib` 34 pass, 8 ignored. `recycler_reclaim_live` fails identically on unmodified main e1288c00 (pool 76546048 B after 21 realizes, bound 20971520), so it is not caused by this change.
+- Not run: lavapipe (CI), macOS, other GPUs.
+
 ## v0.44.4 - 2026-11-07 (provisional; tentative number, the PM allocates)
 
 ### Added
