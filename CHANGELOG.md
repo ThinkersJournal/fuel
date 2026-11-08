@@ -3,6 +3,16 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.46.1 - 2026-11-08 (provisional; tentative number, the PM allocates)
+
+### Fixed
+
+- **`fuel-vulkan-backend/tests/recycler_reclaim_live.rs` (GAP-378): the recycler-reclaim live test now asserts that the pool plateaus, not that it stays under 2 x the working set.** The test was red on the RTX 4070 on unmodified `main`: 76546048 B pooled after 21 realizes against a bound of 20971520 B. That figure is exactly what the per-bucket caps from #434 allow (4 x 4 MiB + 5 x 3 MiB + 8 x 2 MiB + 16 x 1 MiB = 63 MiB, plus the 10 MiB just dropped), so the pool was bounded, not leaking; the old bound predated #434 and #436. The test now runs a second loop of 20 realizes and requires growth below one working set. No library code changed.
+
+### Not verified
+
+- Run on the 4070 under `gpu-run`: fixed test passes (76546048 B after both 21 and 41 realizes); with the per-bucket cap removed it fails (220200960 B after 21, 429916160 after 41). Whether the real decode path reuses freed buffers was not measured; GAP-378 stays open for that.
+
 ## v0.46.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.45.0)
 
 ### Breaking
