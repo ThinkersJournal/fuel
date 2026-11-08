@@ -19,7 +19,7 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-use fuel_kernel_seam_types::{OpAttrs, OpTag, PatternNode, matmul_roles};
+use fireline_grammar::{OpAttrs, OpTag, PatternNode, matmul_roles};
 
 use crate::registry::{FusedOpId, FusedOpParams};
 use crate::{Graph, Node, NodeId, Op};
@@ -479,8 +479,8 @@ fn tag_to_op(tag: OpTag, attrs: &OpAttrs) -> Option<Op> {
         // the dedicated `scan_role`/`scan_index` carriers.
         T::ScanPlaceholder => Op::ScanPlaceholder {
             role: match attrs.scan_role? {
-                fuel_kernel_seam_types::SCAN_ROLE_CARRY => crate::ScanRole::Carry,
-                fuel_kernel_seam_types::SCAN_ROLE_ELEM => crate::ScanRole::Elem,
+                fireline_grammar::SCAN_ROLE_CARRY => crate::ScanRole::Carry,
+                fireline_grammar::SCAN_ROLE_ELEM => crate::ScanRole::Elem,
                 _ => return None,
             },
             index: attrs.scan_index? as usize,
@@ -603,7 +603,7 @@ pub enum RelAttrError {
     RelAbsConflict { field: &'static str },
     /// The underlying shape-expression evaluation declined (bind out of range,
     /// axis out of range, divide-by-zero, `Param` with no param threading, …).
-    Expr(fuel_kernel_seam_types::shape_expr::ShapeExprError),
+    Expr(fireline_grammar::shape_expr::ShapeExprError),
     /// The expression evaluated over a SYMBOLIC bind extent → a surfaced gap
     /// (§6.20-0004): a rel attr cannot resolve concrete at emit time.
     SymbolicGap { field: &'static str },
@@ -623,7 +623,7 @@ pub enum RelAttrError {
     /// (`[N,1]` or `[1,M]`) and emit the wrong graph, so it is refused instead
     /// (Baracuda's §6.20 finding). A **Dims-class gap**: `missing_ctor` is the
     /// reserved wire tag of the constructor that WOULD express it
-    /// ([`fuel_kernel_seam_types::shape_expr::TAG_DIMS`] = `0x0B`, a §6.20-0002
+    /// ([`fireline_grammar::shape_expr::TAG_DIMS`] = `0x0B`, a §6.20-0002
     /// extension-registry entrant — proposal filed KISS #80). `frame` is the
     /// computed per-axis-max frame, for telemetry.
     FrameNotExpressible {
@@ -692,7 +692,7 @@ fn rel_abs_conflict_field(tag: OpTag, attrs: &OpAttrs) -> Option<&'static str> {
 /// unlike the graph-builder `compute_broadcast_shape`, incompatibility is
 /// `None`, never a panic.
 fn bind_broadcast_frame(bind_shapes: &[Vec<i64>]) -> Option<Vec<i64>> {
-    use fuel_kernel_seam_types::shape_expr::SYMBOLIC;
+    use fireline_grammar::shape_expr::SYMBOLIC;
     let rank = bind_shapes.iter().map(Vec::len).max()?;
     let mut frame = vec![1i64; rank];
     for s in bind_shapes {
@@ -732,10 +732,10 @@ fn bind_broadcast_frame(bind_shapes: &[Vec<i64>]) -> Option<Vec<i64>> {
 /// which carries the frame).
 fn same_as_frame_guard(
     tag: OpTag,
-    se: &fuel_kernel_seam_types::shape_expr::ShapeExpr,
+    se: &fireline_grammar::shape_expr::ShapeExpr,
     bind_shapes: &[Vec<i64>],
 ) -> Result<(), RelAttrError> {
-    use fuel_kernel_seam_types::shape_expr::{ShapeExpr, TAG_DIMS};
+    use fireline_grammar::shape_expr::{ShapeExpr, TAG_DIMS};
     // Exhaustive on purpose: the Dims/WithDim extension entrants (KISS #80)
     // express the max-frame DIRECTLY (a whole-shape ctor), so they must NOT be
     // routed through this partial-`SameAs`-frame guard — they return early.
@@ -774,7 +774,7 @@ fn same_as_frame_guard(
 ///
 /// Evaluation reuses `shape_expr::eval_dim`/`eval_shape`/`resolve_axis` — the
 /// single §6.20 evaluator, no second one. `Dim::Param` declines with a typed
-/// [`fuel_kernel_seam_types::shape_expr::ShapeExprError::ParamOutOfRange`] until param threading lands (C-4);
+/// [`fireline_grammar::shape_expr::ShapeExprError::ParamOutOfRange`] until param threading lands (C-4);
 /// symbolic bind extents decline as [`RelAttrError::SymbolicGap`]. Rel fields
 /// are CLEARED in the output (rel+abs both set in the RESULT would trip the
 /// mutual-exclusion check on a second resolve).
@@ -784,7 +784,7 @@ pub fn resolve_rel_attrs(
     bind_shapes: &[Vec<i64>],
     child_shapes: &[Vec<i64>],
 ) -> Result<OpAttrs, RelAttrError> {
-    use fuel_kernel_seam_types::shape_expr::{self, Dim, DimValue, LAST, ShapeValue, resolve_axis};
+    use fireline_grammar::shape_expr::{self, Dim, DimValue, LAST, ShapeValue, resolve_axis};
     // Mutual exclusion FIRST, for every field, before any evaluation — so a
     // value-dependent decline in an earlier field can't mask a rel+abs
     // authoring conflict in a later one (the registration probe relies on
@@ -1004,7 +1004,7 @@ fn validate_node(node: &PatternNode, n_binds: usize) -> Result<(), RuntimeFusedE
 ///   concrete fill instead (the emit-time resolver is the real gate; its
 ///   decline there is a G2 fixpoint).
 fn rel_probe(tag: OpTag, attrs: &OpAttrs, n_binds: usize) -> Result<OpAttrs, RelAttrError> {
-    use fuel_kernel_seam_types::shape_expr::ShapeExprError as E;
+    use fireline_grammar::shape_expr::ShapeExprError as E;
     let probe: Vec<i64> = vec![2, 4];
     let bind_shapes = vec![probe.clone(); n_binds];
     match resolve_rel_attrs(tag, attrs, &bind_shapes, std::slice::from_ref(&probe)) {
@@ -1156,7 +1156,7 @@ pub fn try_emit_region(
 /// declines as [`RelAttrError::SymbolicGap`] (surfaced gap, §6.20-0004)
 /// instead of silently resolving against the capacity bound.
 fn shape_expr_operand(shape: &fuel_ir::Shape) -> Vec<i64> {
-    use fuel_kernel_seam_types::shape_expr::SYMBOLIC;
+    use fireline_grammar::shape_expr::SYMBOLIC;
     (0..shape.rank())
         .map(|a| {
             if shape.extent(a).is_dynamic() {
@@ -2323,7 +2323,7 @@ mod tests {
     /// from the input shape at emit time (NOT from the params cursor). This is
     /// the narrow carrier a norm-backward's `MulScalar(n = dims[last])` needs.
     fn mul_scalar_reduced_count_region() -> PatternNode {
-        use fuel_kernel_seam_types::shape_expr::{Dim, LAST};
+        use fireline_grammar::shape_expr::{Dim, LAST};
         PatternNode::Op {
             op: OpTag::MulScalar,
             attrs: OpAttrs {
@@ -2386,7 +2386,7 @@ mod tests {
     /// rel-XOR-abs authoring conflict at emit (never a silent precedence).
     #[test]
     fn scalar_rel_and_baked_scalar_together_is_a_typed_conflict() {
-        use fuel_kernel_seam_types::shape_expr::{Dim, LAST};
+        use fireline_grammar::shape_expr::{Dim, LAST};
         let region = PatternNode::Op {
             op: OpTag::MulScalar,
             attrs: OpAttrs {
@@ -3593,10 +3593,10 @@ mod tests {
 
     mod resolve_rel {
         use super::super::{RelAttrError, resolve_rel_attrs};
-        use fuel_kernel_seam_types::shape_expr::{
+        use fireline_grammar::shape_expr::{
             Dim, LAST, SYMBOLIC, ShapeExpr, ShapeExprError, TAG_DIMS,
         };
-        use fuel_kernel_seam_types::{OpAttrs, OpTag};
+        use fireline_grammar::{OpAttrs, OpTag};
 
         fn half_of_bind0_last() -> Dim {
             Dim::Div(
@@ -3936,8 +3936,8 @@ mod tests {
     mod emit_rel {
         use super::super::*;
         use super::{assert_structural_eq, bind, op_node};
+        use fireline_grammar::shape_expr::{Dim, ShapeExpr};
         use fuel_ir::{DType, Shape};
-        use fuel_kernel_seam_types::shape_expr::{Dim, ShapeExpr};
 
         fn cst(g: &mut Graph, dims: &[usize]) -> NodeId {
             g.push(Node {
@@ -4013,7 +4013,7 @@ mod tests {
                 Err(RelAttrError::FrameNotExpressible {
                     field: "target_shape",
                     frame: vec![2, 3],
-                    missing_ctor: fuel_kernel_seam_types::shape_expr::TAG_DIMS,
+                    missing_ctor: fireline_grammar::shape_expr::TAG_DIMS,
                 }),
             );
         }
@@ -4170,7 +4170,7 @@ mod tests {
                 Err(RuntimeFusedError::InvalidRelAttrs {
                     tag: OpTag::BroadcastTo,
                     error: RelAttrError::Expr(
-                        fuel_kernel_seam_types::shape_expr::ShapeExprError::OperandOutOfRange {
+                        fireline_grammar::shape_expr::ShapeExprError::OperandOutOfRange {
                             operand: 7,
                             operands: 1,
                         },
@@ -6389,9 +6389,9 @@ mod tests {
         use super::{bind, op_node};
         use crate::opt::base_map_hash;
         use crate::{ScanEmit, ScanPredicate, ScanRole};
+        use fireline_grammar::{SCAN_ROLE_CARRY, SCAN_ROLE_ELEM};
         use fuel_ir::storage::{OutputViewSpec, compose_bundle};
         use fuel_ir::{DType, Shape};
-        use fuel_kernel_seam_types::{SCAN_ROLE_CARRY, SCAN_ROLE_ELEM};
         use std::sync::Arc;
 
         fn placeholder(role: u8, index: u32) -> PatternNode {
@@ -6882,7 +6882,7 @@ mod tests {
         /// Dtype comes from bind 0 (the uniform-dtype scan inputs).
         #[test]
         fn scan_placeholder_recipe_emits_its_declared_shape() {
-            use fuel_kernel_seam_types::shape_expr::{Dim, ShapeExpr};
+            use fireline_grammar::shape_expr::{Dim, ShapeExpr};
             let dims2 = || {
                 ShapeExpr::Dims(vec![
                     Dim::Extent {

@@ -28,9 +28,9 @@ use crate::registry::{
     SubgraphPattern, decompose_via_recipe,
 };
 use crate::{Graph, NodeId};
+use fireline_grammar::shape_expr::{Dim, LAST, ShapeExpr};
+use fireline_grammar::{OpAttrs, OpTag, PatternNode};
 use fuel_ir::{DType, Shape};
-use fuel_kernel_seam_types::shape_expr::{Dim, LAST, ShapeExpr};
-use fuel_kernel_seam_types::{OpAttrs, OpTag, PatternNode};
 use std::sync::OnceLock;
 
 /// Metadata-side registry entry for Rope.

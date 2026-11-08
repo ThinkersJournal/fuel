@@ -102,8 +102,8 @@ use Disposition::{Declined, Obligation, Record, Reference};
 struct Row {
     clause: &'static str,
     disposition: Disposition,
-    /// `"<repo-relative file>::<test fn name>"`, required for `Obligation` and
-    /// `Declined`, forbidden otherwise.
+    /// `"<repo-relative file>::<test fn name>"` (or `"<dependency package>/<file>::<test fn name>"`, resolved through
+    /// `cargo metadata`), required for `Obligation` and `Declined`, forbidden otherwise.
     test: Option<&'static str>,
     /// Why this disposition. Required on every row without exception.
     reason: &'static str,
@@ -117,19 +117,10 @@ struct Row {
 /// Adding a citation without a row is a BUILD FAILURE, which is the point.
 const LEDGER: &[Row] = &[
     Row {
-        clause: "KISS-ANNOUNCE-7.3-0002",
-        disposition: Reference,
-        test: None,
-        reason: "Cited in `fuel-kernel-seam-announce` docs to say why a plain AND is wrong: the                  consumer writes provider-only (FEAT) bits as zero. Fuel's consumer envelope                  sets none; the consumer-only case is exercised by the sabotage sibling of the                  7.3-0003 obligation, which is the row that carries the test.",
-        exists_at: None,
-    },
-    Row {
         clause: "KISS-ANNOUNCE-7.3-0003",
-        disposition: Obligation,
-        test: Some(
-            "fuel-kernel-seam-announce/src/lib.rs::kiss_vectors_live_word_is_role_aware_in_both_orientations",
-        ),
-        reason: "The role-aware live capability word, `negotiate_with_role`: the KISS corpus                  worked vector (`announce_vectors.json`, `negotiation`) in both orientations.",
+        disposition: Record,
+        test: None,
+        reason: "The role-aware live capability word (`negotiate_with_role`) moved to the published `fireline-announce` 0.1.0 with the rest of the handshake crate (FireLine wave 1). Its discharging test is FireLine's `tests/conformance.rs::the_kiss_vectors_give_the_same_live_word_in_both_orientations`. Fuel has no dependency on `fireline-announce` (nothing in Fuel imports the handshake), so Fuel cannot discharge it here; if Fuel takes the dependency, this row returns to Obligation naming that test.",
         exists_at: None,
     },
     Row {
@@ -231,7 +222,7 @@ const LEDGER: &[Row] = &[
     Row {
         clause: "KISS-CONTRACT-6.4-0011",
         disposition: Obligation,
-        test: Some("fuel-kernel-seam-types/src/shape_expr.rs::out_differs_from_operands"),
+        test: Some("fireline-grammar/src/shape_expr.rs::out_differs_from_operands"),
         reason: "Declared/computed output-shape consistency, with Gap never counting as a \
                  mismatch. Fuel implements it in `matmul_shape` and the seam's shape checker.",
         exists_at: None,
@@ -248,13 +239,6 @@ const LEDGER: &[Row] = &[
         disposition: Record,
         test: None,
         reason: "docs/gaps.md registry row (GAP-038). Records what KISS PINS: the Provenance section is exactly five fields with no crate-version field, which is why Fuel needs no new front-matter field for the second version axis. A fact about KISS, not an obligation Fuel discharges.",
-        exists_at: None,
-    },
-    Row {
-        clause: "KISS-GRAMMAR-6.8-0007",
-        disposition: Reference,
-        test: None,
-        reason: "Cited in fuel-kernel-seam-types/src/canonical.rs to LOCATE a design in the standard, not to claim or decline conformance: KISS-Grammar embeds the KISS-Ops OpAttrs bytes uninterpreted and \"MUST NOT define an alternative OpAttrs byte layout\". That is what converts \"I did not find per-op schemas for Slice/Cast/Pad\" into \"there is no document those schemas could be in\" -- one mechanism checked would have been an absence claim off the wrong instrument. Nothing here for Fuel to discharge.",
         exists_at: None,
     },
     Row {
@@ -325,13 +309,6 @@ const LEDGER: &[Row] = &[
         exists_at: None,
     },
     Row {
-        clause: "KISS-OPS-6.19-0001",
-        disposition: Reference,
-        test: None,
-        reason: "Cited in fuel-kernel-seam-types/src/canonical.rs to LOCATE ownership of the OpAttrs channel -- KISS-Ops is its single normative owner, which is what makes KISS-GRAMMAR-6.8-0007's disclaimer (\"MUST NOT define an alternative OpAttrs byte layout\") decisive rather than merely consistent. Nothing for Fuel to discharge; it names WHO owns the layout, not what Fuel must do.",
-        exists_at: None,
-    },
-    Row {
         clause: "KISS-OPS-6.19-0003",
         disposition: Reference,
         test: None,
@@ -346,55 +323,10 @@ const LEDGER: &[Row] = &[
         exists_at: None,
     },
     Row {
-        clause: "KISS-OPS-6.19-0007",
-        disposition: Declined,
-        test: Some(
-            "fuel-kernel-seam-types/tests/kiss_ops_619_divergence.rs::the_shared_axis_field_diverges_on_width_not_only_on_field_set",
-        ),
-        reason: "Fuel DELIBERATELY does not conform: -0007 pins an axis index at ONE BYTE and Fuel emits i64. Tracked as GAP-305. The named test asserts the width divergence and reddens in BOTH directions -- if Fuel's encoding moves, and if Fuel ever narrows axis to u8 and the divergence closes. Note this divergence was NOT recorded in the prose, which described the gather/scatter difference as a field-set one only; the two rows disagree even on the single field they share.",
-        exists_at: None,
-    },
-    Row {
         clause: "KISS-OPS-6.19-0010",
         disposition: Obligation,
-        test: Some("fuel-kernel-seam-types/src/lib.rs::three_carrier_width_pins_stay_distinct"),
+        test: Some("fireline-grammar/src/lib.rs::three_carrier_width_pins_stay_distinct"),
         reason: "Fuel CLAIMS to conform, and this is the one KISS-Ops clause the node-envelope carrier actually implements: definite lengths only. `OpAttrs::to_canonical_bytes` emits a u32-LE outer byte length and the payload verbatim, no-parse-inside. The named test pins the empty-schema form as exactly the 4-byte zero envelope, which is the definite-length claim at its smallest case; the divergence suite additionally asserts prefix == body length on every vector it builds.",
-        exists_at: None,
-    },
-    Row {
-        clause: "KISS-OPS-6.19-0025",
-        disposition: Declined,
-        test: Some(
-            "fuel-kernel-seam-types/tests/kiss_ops_619_divergence.rs::dim_reduce_diverges_from_kiss_ops_6_19_0025",
-        ),
-        reason: "Fuel DELIBERATELY does not conform: -0025 schemas reduce as {monoid, reduce_axes, keepdim, accumulator, math_precision}; Fuel emits {axis, keepdim} with the monoid riding op_name (SumDim/MaxDim/MeanDim). Tracked as GAP-305 and documented in canonical.rs. The named test also pins the VALUE divergence -0025 fixes keepdim at 1 and Fuel emits 0 -- invisible in any length comparison.",
-        exists_at: None,
-    },
-    Row {
-        clause: "KISS-OPS-6.19-0026",
-        disposition: Declined,
-        test: Some(
-            "fuel-kernel-seam-types/tests/kiss_ops_619_divergence.rs::cumsum_diverges_from_kiss_ops_6_19_0026",
-        ),
-        reason: "Fuel DELIBERATELY does not conform: -0026 schemas prefix_scan as {monoid, reduce_axes, exclusivity, accumulator, math_precision}; Fuel's CumSum emits {axis, keepdim}. Tracked as GAP-305. The named test asserts the divergence from vectors derived from the clause text, never from Fuel's own encoder.",
-        exists_at: None,
-    },
-    Row {
-        clause: "KISS-OPS-6.19-0027",
-        disposition: Declined,
-        test: Some(
-            "fuel-kernel-seam-types/tests/kiss_ops_619_divergence.rs::gather_diverges_from_kiss_ops_6_19_0027",
-        ),
-        reason: "Fuel DELIBERATELY does not conform: -0027 schemas gather as {axis, oob_policy, index_operand, index_dtype}; Fuel emits {axis} alone, with oob_policy a deferred unwired slot and index_operand riding child_edges. Tracked as GAP-305 and documented in canonical.rs. The named test asserts the divergence and fails if Fuel ever becomes conformant, at which point this row becomes an Obligation.",
-        exists_at: None,
-    },
-    Row {
-        clause: "KISS-OPS-6.19-0034",
-        disposition: Declined,
-        test: Some(
-            "fuel-kernel-seam-types/tests/kiss_ops_619_divergence.rs::index_select_and_scatter_add_diverge_from_kiss_ops_6_19_0034",
-        ),
-        reason: "Fuel DELIBERATELY does not conform: -0034 schemas index_select/embedding/scatter_add as {axis, index_operand, index_dtype}; Fuel emits {axis} alone. Tracked as GAP-305. The named test covers IndexSelect and ScatterAdd; scatter_combine rides op_name (IndexAdd vs ScatterAdd), which is why the tags differ where the schema does not.",
         exists_at: None,
     },
     Row {
@@ -594,12 +526,56 @@ fn cited_clauses() -> BTreeMap<String, Vec<String>> {
     map
 }
 
+/// Where a `test:` path lives. A repo-relative file is read in place. Otherwise the FIRST path component
+/// must be a package the workspace depends on (FireLine wave 1: the grammar crate's tests left this repo
+/// for the published `fireline-grammar`), and the rest is read from that package's source tree as
+/// `cargo metadata` locates it. **A `test:` that names neither is an error**, so the gate cannot be satisfied
+/// by a path that points nowhere.
+fn resolve_test_file(file: &str) -> Result<PathBuf, String> {
+    let local = repo_root().join(file);
+    if local.exists() {
+        return Ok(local);
+    }
+    let (pkg, rest) = file
+        .split_once('/')
+        .ok_or_else(|| format!("`{file}` is not a repo file and has no package prefix"))?;
+    let meta =
+        std::process::Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
+            .args(["metadata", "--format-version", "1", "--offline"])
+            .current_dir(repo_root())
+            .output()
+            .map_err(|e| format!("cannot run `cargo metadata` to locate `{pkg}`: {e}"))?;
+    if !meta.status.success() {
+        return Err(format!(
+            "`cargo metadata --offline` failed while locating `{pkg}`: {}",
+            String::from_utf8_lossy(&meta.stderr)
+        ));
+    }
+    let json: serde_json::Value = serde_json::from_slice(&meta.stdout)
+        .map_err(|e| format!("`cargo metadata` output is not JSON: {e}"))?;
+    let manifest = json["packages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|p| p["name"] == pkg)
+        .and_then(|p| p["manifest_path"].as_str())
+        .ok_or_else(|| {
+            format!(
+                "`{pkg}` is neither a directory in this repo nor a package in the dependency graph"
+            )
+        })?;
+    let dir = Path::new(manifest)
+        .parent()
+        .ok_or_else(|| format!("manifest path of `{pkg}` has no parent"))?;
+    Ok(dir.join(rest))
+}
+
 /// Is `file::test_name` a real `#[test]` that is not `#[ignore]`d?
 fn named_test_is_live(spec: &str) -> Result<(), String> {
     let (file, name) = spec
         .split_once("::")
         .ok_or_else(|| format!("`{spec}` is not `<file>::<test fn>`"))?;
-    let path = repo_root().join(file);
+    let path = resolve_test_file(file)?;
     let src = std::fs::read_to_string(&path)
         .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
     let lines: Vec<&str> = src.lines().collect();
@@ -791,13 +767,8 @@ const BARE_CITED_LEDGER_CLAUSES: &[&str] = &[
     // new category, they are the category the list was built for.
     "6.19-0003", // kiss-shape-expression-rfc-reply.md -- a letter FROM KISS TO
     // FUEL, 2026-07-18. Not Fuel's text.
-    "6.19-0007", // kiss-shape-expression-rfc-reply.md -- as above.
     "6.19-0010", // three outreach letters. Fuel's own five sites were QUALIFIED
-    // in this change rather than declared.
-    "6.19-0025", // kiss-shape-expression-rfc-reply.md -- as above.
-    "6.19-0027", // baracuda-recipe-grammar-codesign-reply-2.md -- a Fuel letter
-                 // marked RELAYED to Baracuda 2026-07-15; a record of what we
-                 // SENT.
+                 // in this change rather than declared.
 ];
 
 // ---- the gate ------------------------------------------------------------

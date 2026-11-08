@@ -9,7 +9,7 @@
 
 use crate::KissRefError;
 use crate::mapping::op_to_kiss;
-use fuel_kernel_seam_types::OpTag;
+use fireline_grammar::OpTag;
 
 pub use kiss_ref_core::{DiffReport, Tolerance};
 

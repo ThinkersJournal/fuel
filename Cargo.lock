@@ -470,8 +470,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2017aad869f103c9fb4d584799b706cb153fa3e3397e3790916bc23e45904719"
 dependencies = [
  "baracuda-cuda-emit",
- "fuel-kernel-seam 0.43.0",
- "fuel-kernel-seam-types 0.43.2",
+ "fuel-kernel-seam",
+ "fuel-kernel-seam-types",
  "unpopped",
  "unpopped-vocab",
 ]
@@ -1705,6 +1705,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aedcfb3409746eddb02b9e19ebda1c3394f759a152e48ee875a0844d1b955484"
 
 [[package]]
+name = "fireline-grammar"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85fdf8d89779343f120374a8626298d2dfd26c7641d224a6837b8c648a50b6f0"
+
+[[package]]
+name = "fireline-synth"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e12efcb226c6793f3aa2152063d21e640c1d4e0ec3ffc66d46fba3dd0c3fda91"
+dependencies = [
+ "fireline-grammar",
+ "unpopped-vocab",
+]
+
+[[package]]
 name = "fixedbitset"
 version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1797,7 +1813,7 @@ dependencies = [
 
 [[package]]
 name = "fuel"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel-backend-contract",
  "fuel-cpu-backend",
@@ -1812,7 +1828,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-aocl-cpu-backend"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "aocl-blas",
  "aocl-types",
@@ -1826,21 +1842,21 @@ dependencies = [
 
 [[package]]
 name = "fuel-backend-contract"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel-ir",
 ]
 
 [[package]]
 name = "fuel-conv"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "num-traits",
 ]
 
 [[package]]
 name = "fuel-correctness-fixtures"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "bytemuck",
  "fuel-ir",
@@ -1850,7 +1866,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-cpu-backend"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "accelerate-src",
  "bytemuck",
@@ -1877,7 +1893,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-cpu-kernels"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "float8",
  "half",
@@ -1887,7 +1903,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-cuda-backend"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "baracuda-core",
  "baracuda-cublas",
@@ -1921,17 +1937,17 @@ dependencies = [
 
 [[package]]
 name = "fuel-cuda-dispatch"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "baracuda-cuda-seam",
  "baracuda-nvrtc",
  "bytemuck",
+ "fireline-synth",
  "fuel-cpu-backend",
  "fuel-cuda-backend",
  "fuel-dispatch",
  "fuel-graph",
  "fuel-ir",
- "fuel-kernel-seam 0.46.2",
  "fuel-memory",
  "fuel-quantized",
  "fuel-test-support",
@@ -1941,7 +1957,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-datasets"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "byteorder",
  "fuel-ir",
@@ -1958,10 +1974,12 @@ dependencies = [
 
 [[package]]
 name = "fuel-dispatch"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "baracuda-kernels-types",
  "bytemuck",
+ "fireline-grammar",
+ "fireline-synth",
  "fuel-backend-contract",
  "fuel-conv",
  "fuel-cpu-backend",
@@ -1969,8 +1987,6 @@ dependencies = [
  "fuel-graph",
  "fuel-hardware",
  "fuel-ir",
- "fuel-kernel-seam 0.46.2",
- "fuel-kernel-seam-types 0.46.2",
  "fuel-kiss-ref-backend",
  "fuel-memory",
  "fuel-metal-backend",
@@ -1992,7 +2008,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-examples"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "ab_glyph",
  "accelerate-src",
@@ -2040,7 +2056,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-formats"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "bytemuck",
  "byteorder",
@@ -2057,19 +2073,19 @@ dependencies = [
 
 [[package]]
 name = "fuel-graph"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
+ "fireline-grammar",
  "float8",
  "fuel-backend-contract",
  "fuel-cpu-backend",
  "fuel-ir",
- "fuel-kernel-seam-types 0.46.2",
  "half",
 ]
 
 [[package]]
 name = "fuel-hardware"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel-cpu-backend",
  "fuel-cuda-backend",
@@ -2082,7 +2098,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-inference"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel",
  "fuel-backend-contract",
@@ -2101,7 +2117,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-ir"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "float8",
  "half",
@@ -2121,21 +2137,9 @@ version = "0.43.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d756619ad6d98c0bbfe824a62c3bb966a81812904997853c337d42829a6ff3b"
 dependencies = [
- "fuel-kernel-seam-types 0.43.2",
+ "fuel-kernel-seam-types",
  "unpopped-vocab",
 ]
-
-[[package]]
-name = "fuel-kernel-seam"
-version = "0.46.2"
-dependencies = [
- "fuel-kernel-seam-types 0.46.2",
- "unpopped-vocab",
-]
-
-[[package]]
-name = "fuel-kernel-seam-announce"
-version = "0.46.2"
 
 [[package]]
 name = "fuel-kernel-seam-types"
@@ -2144,19 +2148,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830712752f37ee084d6dada83bf0de52edc976bcb404b30ae99cb817e37c70a7"
 
 [[package]]
-name = "fuel-kernel-seam-types"
-version = "0.46.2"
-
-[[package]]
 name = "fuel-kernels-source"
-version = "0.46.2"
+version = "0.47.0"
 
 [[package]]
 name = "fuel-kiss-ref-backend"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
+ "fireline-grammar",
  "fuel-ir",
- "fuel-kernel-seam-types 0.46.2",
  "half",
  "kiss-classify-vocab",
  "kiss-ops-vocab",
@@ -2165,11 +2165,11 @@ dependencies = [
 
 [[package]]
 name = "fuel-kv-pool"
-version = "0.46.2"
+version = "0.47.0"
 
 [[package]]
 name = "fuel-lazy-examples"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel",
  "fuel-backend-contract",
@@ -2189,7 +2189,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-loaders"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "byteorder",
  "fuel-backend-contract",
@@ -2212,7 +2212,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-memory"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "bytemuck",
  "fuel-cpu-backend",
@@ -2228,7 +2228,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-metal-backend"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel-backend-contract",
  "fuel-cpu-backend",
@@ -2245,7 +2245,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-metal-kernels"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2263,7 +2263,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-mkl-cpu-backend"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel-conv",
  "fuel-cpu-backend",
@@ -2276,7 +2276,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-core"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel-model-fixture",
  "fuel-model-umbrella-fixture",
@@ -2288,7 +2288,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-fixture"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel-model-core",
  "inventory",
@@ -2296,7 +2296,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-llama"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel-cuda-backend",
  "fuel-dispatch",
@@ -2316,7 +2316,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-phi"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel-dispatch",
  "fuel-graph",
@@ -2332,7 +2332,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-umbrella-fixture"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel-model-core",
  "fuel-model-fixture",
@@ -2341,7 +2341,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-nn"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel-graph",
  "fuel-ir",
@@ -2356,7 +2356,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-onnx"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2368,7 +2368,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-parallel"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel",
  "fuel-cuda-backend",
@@ -2379,7 +2379,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-posttrain"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel-ir",
  "fuel-tensor",
@@ -2387,7 +2387,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-quantized"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "bytemuck",
  "byteorder",
@@ -2400,7 +2400,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-tensor"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "accelerate-src",
  "anyhow",
@@ -2465,7 +2465,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-tensor-tools"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -2479,11 +2479,11 @@ dependencies = [
 
 [[package]]
 name = "fuel-test-support"
-version = "0.46.2"
+version = "0.47.0"
 
 [[package]]
 name = "fuel-training"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "fuel",
  "fuel-dispatch",
@@ -2498,7 +2498,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-transformers"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "accelerate-src",
  "anyhow",
@@ -2537,7 +2537,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-vulkan-backend"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "bytemuck",
  "fuel-backend-contract",
@@ -2556,7 +2556,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-vulkan-dispatch"
-version = "0.46.2"
+version = "0.47.0"
 dependencies = [
  "bytemuck",
  "fuel-conv",
@@ -2573,7 +2573,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-vulkan-kernels"
-version = "0.46.2"
+version = "0.47.0"
 
 [[package]]
 name = "futures"

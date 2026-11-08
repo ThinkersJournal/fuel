@@ -2,7 +2,7 @@
 //! Kernel-seam JIT — the Fuel-side projection + structural matcher
 //! (kernel-seam-interop §5; fkc-fusion-patterns §3/§3a). The frozen grammar
 //! types ([`OpTag`], [`OpAttrs`], [`PatternNode`]) live in
-//! [`fuel_kernel_seam_types`] and are re-exported here; this module holds the
+//! [`fireline_grammar`] and are re-exported here; this module holds the
 //! two parts that need the graph: the `Op -> OpTag` projection [`op_to_tag`]
 //! and the structural matcher [`match_region`] (the declarative-fusion engine
 //! behind `PatternKind::Declarative`).
@@ -14,7 +14,7 @@
 use crate::{Graph, NodeId, Op};
 use std::collections::BTreeMap;
 
-pub use fuel_kernel_seam_types::{OpAttrs, OpTag, PatternNode};
+pub use fireline_grammar::{OpAttrs, OpTag, PatternNode};
 
 // ===========================================================================
 // op_to_tag — the Op -> OpTag projection (stays Fuel-side: it needs the graph Op)
@@ -732,7 +732,7 @@ mod tests {
     // `ScanPlaceholder`->{scan_role, scan_index}) are unreachable from any
     // `Op` -- `op_to_tag` emits none of those four tags -- so they are
     // reachable only from hand-built regions and are pinned in
-    // fuel-kernel-seam-types instead.
+    // fireline-grammar instead.
     //
     // SOUNDNESS IS A PROPERTY OF (op, field), NOT OF A SITE: the single-axis
     // arm serves eight tags and is sound for four of them.

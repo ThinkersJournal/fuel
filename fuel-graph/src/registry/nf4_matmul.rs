@@ -92,8 +92,8 @@ use crate::registry::{
     SubgraphPattern, decompose_via_recipe,
 };
 use crate::{Graph, NodeId};
+use fireline_grammar::{OpAttrs, OpTag, PatternNode};
 use fuel_ir::{DType, Shape};
-use fuel_kernel_seam_types::{OpAttrs, OpTag, PatternNode};
 
 /// The 16 NF4 NormalFloat values (bitsandbytes standard quantization
 /// curve). Kept byte-identical to `fuel_cpu_backend::byte_kernels::NF4_LUT`

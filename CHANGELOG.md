@@ -3,6 +3,18 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.47.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.46.2)
+
+### Breaking
+
+- **FireLine wave 1: `fuel-kernel-seam`, `fuel-kernel-seam-types` and `fuel-kernel-seam-announce` are removed from the workspace; Fuel depends on the published `fireline-synth` and `fireline-grammar` (`~0.1`).** *Who is affected:* anyone importing `fuel_kernel_seam` (now `fireline_synth`), `fuel_kernel_seam_types` (now `fireline_grammar`) or `fuel_kernel_seam_announce` (now `fireline_announce`, 0.1.0 on crates.io; Fuel itself does not depend on it because nothing in Fuel imported it). The public items of `-types`/`-grammar` and `fuel-kernel-seam`/`fireline-synth` are item-for-item identical (measured by comparing every `pub` item of the 0.1.0 crates with the removed ones); the announce crate renamed `SEAM_CAP_FDX_*` to `SEAM_CAP_DLPACK_EXT_*` and `SeamHello::fuel` to `profile_v1`. The workspace `[patch.crates-io]` for the seam crates is gone. `fuel-graph`, `fuel-dispatch` (feature `jit`), `fuel-kiss-ref-backend` and `fuel-cuda-dispatch` (feature `jit`) name the new crates.
+- `fuel-dispatch/tests/kiss_clause_ledger.rs`: a `test:` path may now name a dependency package (`fireline-grammar/src/...`), resolved through `cargo metadata`, and a path naming neither a repo directory nor a package is an error. Eight rows whose only citations lived in the moved crates are deleted (KISS-ANNOUNCE-7.3-0002, KISS-GRAMMAR-6.8-0007, KISS-OPS-6.19-0001, -0007, -0025, -0026, -0027, -0034), as `no_orphan_ledger_rows` requires; their obligations are discharged by FireLine's own suites. KISS-ANNOUNCE-7.3-0003 becomes a `Record` (Fuel has no dependency on the handshake crate). Three stale entries leave `BARE_CITED_LEDGER_CLAUSES`.
+- `fuel-ir/tests/exhaustive_by_design_marker.rs`: `PatternNode` leaves `EXPECTED_MARKED` (its guard now lives in `fireline-grammar/tests/exhaustive_by_design.rs`); `crate_dependency_tiers.txt` drops the three crates.
+
+### Not verified
+
+- `cargo clippy -D warnings` on `fuel-graph`, `fuel-kiss-ref-backend`, `fuel-dispatch --features jit --all-targets` and the ledger gate pass locally; `cargo tree -d` shows a single `unpopped-vocab`. Not built: `fuel-cuda-dispatch` and its `jit-synth` feature (needs a CUDA forge slot, and `baracuda-cuda-seam` must first release a version on `fireline-*`; the published alpha.95 still requires `fuel-kernel-seam ^0.43`).
+
 ## v0.46.2 - 2026-11-08 (provisional; tentative number, the PM allocates)
 
 ### Fixed
