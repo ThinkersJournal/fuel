@@ -28,6 +28,23 @@
 //! driver-reported `vram_used` is printed alongside as a coarse
 //! cross-check (VMA block granularity makes it noisy, so it is not
 //! hard-asserted).
+//!
+//! ## What the bound is (GAP-378)
+//!
+//! The pool is allowed to PLATEAU, not to stay at one working set. Since
+//! #434 each size bucket keeps up to `16 MiB / size` buffers (4 to 1,024),
+//! and since #436 a buffer freed in the current batch epoch is not
+//! reusable until a submission bumps the epoch. The pool measured on
+//! 2026-11-07 (73 MiB) is exactly what those caps allow when nothing is
+//! reused: 4 x 4 MiB + 5 x 3 MiB + 8 x 2 MiB + 16 x 1 MiB = 63 MiB, plus
+//! the 10 MiB just dropped and not yet swept. Nothing is reused in this
+//! loop: with the per-bucket cap removed (sabotage, 2026-11-07) the pool
+//! grew 10 MiB per realize without stopping (220200960 B after 21
+//! realizes, 429916160 after 41) and this test went red; with the cap in
+//! place it holds 76546048 B after both 21 and 41.
+//! The old assertion (pool <= 2 x working set) predated both changes. A leak is GROWTH that does not stop, so this
+//! test measures the second half of the loop: it must not grow by a
+//! working set.
 
 use fuel_vulkan_backend::VulkanBackend;
 
@@ -78,14 +95,20 @@ fn recycler_reclaims_across_full_realizes_no_unbounded_growth() {
     let vram_after_1 = b.vram_used();
 
     const N: usize = 20;
-    for _ in 0..N {
-        one_realize(&b, &sizes);
-        // synchronize_pending between realizes is exactly what did NOT
-        // help in the field — the leak is the untrimmed pool, not
-        // deferred-batch retirement. Kept here to mirror the real loop.
-        b.synchronize_pending().ok();
-    }
+    let run = |n: usize| {
+        for _ in 0..n {
+            one_realize(&b, &sizes);
+            // synchronize_pending between realizes is exactly what did NOT
+            // help in the field — the leak is the untrimmed pool, not
+            // deferred-batch retirement. Kept here to mirror the real loop.
+            b.synchronize_pending().ok();
+        }
+    };
+    run(N);
     let pool_after_n = b.recycler_pooled_bytes();
+    // Second half: a bounded recycler has already plateaued by now.
+    run(N);
+    let pool_after_2n = b.recycler_pooled_bytes();
     let vram_after_n = b.vram_used();
 
     eprintln!("working_set              = {working_set} bytes");
@@ -96,17 +119,16 @@ fn recycler_reclaims_across_full_realizes_no_unbounded_growth() {
     let vram_delta = vram_after_n.saturating_sub(vram_after_1);
     eprintln!("vram_used delta (1 -> {})       = {vram_delta}", N + 1);
 
-    // A correctly-bounded recycler holds ~one working-set no matter how
-    // many realizes ran (reuse keeps the pool flat; the trim caps it).
-    // Allow 2× slack for best-fit rounding / an in-flight extra bucket.
-    // A push-only recycler holds ~(N+1)× working-set — orders over this.
-    let bound = working_set * 2;
+    eprintln!("pool_bytes after realize {} = {pool_after_2n}", 2 * N + 1);
+    // A push-only recycler grows by one working set per realize, so over
+    // the second half it grows by N x working_set. A recycler that
+    // plateaus (bucket depth caps, byte cap) grows by at most one
+    // working set (a bucket still filling) and normally by zero.
+    let growth = pool_after_2n.saturating_sub(pool_after_n);
     assert!(
-        pool_after_n <= bound,
-        "Vulkan recycler-reclaim leak: pool held {pool_after_n} bytes after \
-         {} full realizes (working set {working_set}, bound {bound}). The \
-         recycler grew ~linearly instead of reusing/trimming freed device \
-         buffers — the D1-decode OOM signature.",
+        growth < working_set,
+        "Vulkan recycler-reclaim leak: the pool grew by {growth} bytes over          the second {N} realizes (after {} realizes: {pool_after_n}, after {}:          {pool_after_2n}; working set {working_set}). A bounded recycler          plateaus; this one keeps growing — the D1-decode OOM signature.",
         N + 1,
+        2 * N + 1,
     );
 }
