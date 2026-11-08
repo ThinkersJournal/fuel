@@ -13,6 +13,8 @@ This documents the main changes to the `fuel` workspace.
 
 - `fuel-tensor/tests/cuda_two_device_instances_live.rs` (live CUDA, `--features cuda`, no `#[ignore]`: it fails loudly without a device): three tests following `KvCache::write_bytes`; whichever runs first in the process is the born-red reproduction.
 
+- `docs/gaps.md` GAP-379: the `NoBackendForOp` diagnostic does not name the decision device or its (empty) placements, so a stale topology looks like a missing binding.
+
 ### Not verified
 
 - On the RTX 4070 under `gpu-run`: at the base the first test in the process fails with the error above (`placements=[]` for `Cuda { gpu_id: 0 }` at the planner's empty-enumeration site); with the fix all three pass (3.49 s). Vulkan has the same ordering in principle and was not run. lightbulb's end-to-end decode was not run by me.
