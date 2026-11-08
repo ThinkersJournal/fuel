@@ -13,7 +13,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 565 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 571 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1395 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 306 lines verbatim
@@ -77,7 +77,7 @@ docs/frontier-paradigms-vision.md	own		no lineage; 0 of 155 lines verbatim in ca
 docs/fuel-consumer-seam.md	own		no lineage; 0 of 1061 lines verbatim in candle (0%)
 docs/fused-op-registry.md	own		no lineage; 0 of 311 lines verbatim in candle (0%)
 docs/gap-015-handoff.md	own		no lineage; 0 of 183 lines verbatim in candle (0%)
-docs/gaps.md	own		no lineage; 0 of 422 lines verbatim in candle (0%)
+docs/gaps.md	own		no lineage; 0 of 423 lines verbatim in candle (0%)
 docs/interchange/stablehlo-to-fuel-op-map.md	own		no lineage; 0 of 157 lines verbatim in candle (0%)
 docs/kernel-contracts/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
 docs/method-rules-drafts-issue-159.md	own		no lineage; 0 of 286 lines verbatim in candle (0%)
@@ -1383,7 +1383,7 @@ fuel-tensor/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the roo
 fuel-tensor/examples/gap315_probe.rs	own		no lineage; 1 of 116 lines verbatim in candle (1%)
 fuel-tensor/examples/gap315_reconciliation_test.rs	own		no lineage; 1 of 77 lines verbatim in candle (1%)
 fuel-tensor/src/awq.rs	own		no lineage; 1 of 359 lines verbatim in candle (0%)
-fuel-tensor/src/cpu_accel.rs	own		no lineage; 2 of 78 lines verbatim in candle (3%)
+fuel-tensor/src/cpu_accel.rs	own		no lineage; 2 of 79 lines verbatim in candle (3%)
 fuel-tensor/src/cuda_backend/mod.rs	own		no lineage; 3 of 43 lines verbatim in candle (7%)
 fuel-tensor/src/decode_shape.rs	own		no lineage; 2 of 252 lines verbatim in candle (1%)
 fuel-tensor/src/device.rs	candle-modified	candle-core/src/device.rs	rename/copy 38%; 43% of 176 lines verbatim
@@ -1399,7 +1399,7 @@ fuel-tensor/src/lib.rs	not-traced	candle-core/src/lib.rs	9 of 84 lines also appe
 fuel-tensor/src/metal_backend/mod.rs	own		no lineage; 1 of 39 lines verbatim in candle (3%)
 fuel-tensor/src/nf4.rs	own		no lineage; 5 of 576 lines verbatim in candle (1%)
 fuel-tensor/src/persistent_decode.rs	own		no lineage; 3 of 848 lines verbatim in candle (0%)
-fuel-tensor/src/pipelined_bridge.rs	own		no lineage; 1 of 1722 lines verbatim in candle (0%)
+fuel-tensor/src/pipelined_bridge.rs	own		no lineage; 1 of 1726 lines verbatim in candle (0%)
 fuel-tensor/src/planner.rs	own		no lineage; 1 of 66 lines verbatim in candle (2%)
 fuel-tensor/src/reproducibility.rs	own		no lineage; 0 of 67 lines verbatim in candle (0%)
 fuel-tensor/src/sampling.rs	not-traced	candle-examples/examples/stable-diffusion-3/sampling.rs	same file name as candle candle-examples/examples/stable-diffusion-3/sampling.rs; a port or re-expression is presumed until judged
@@ -1409,6 +1409,7 @@ fuel-tensor/src/vulkan_backend.rs	own		no lineage; 0 of 36 lines verbatim in can
 fuel-tensor/tests/cuda_async_realize_live.rs	own		no lineage; 0 of 89 lines verbatim in candle (0%)
 fuel-tensor/tests/cuda_composed_bisect.rs	own		no lineage; 0 of 87 lines verbatim in candle (0%)
 fuel-tensor/tests/cuda_multidevice_realize_live.rs	own		no lineage; 0 of 103 lines verbatim in candle (0%)
+fuel-tensor/tests/cuda_two_device_instances_live.rs	own		no lineage; 1 of 71 lines verbatim in candle (1%)
 fuel-tensor/tests/cuda_vulkan_multidevice_realize_live.rs	own		no lineage; 0 of 156 lines verbatim in candle (0%)
 fuel-tensor/tests/cuda_vulkan_overlap_bench_live.rs	own		no lineage; 0 of 544 lines verbatim in candle (0%)
 fuel-tensor/tests/fixture_capture_roundtrip.rs	own		no lineage; 0 of 133 lines verbatim in candle (0%)
@@ -1438,7 +1439,7 @@ fuel-tensor/tests/recip_abs_realize_live.rs	own		no lineage; 0 of 55 lines verba
 fuel-tensor/tests/sampling_temperature_zero.rs	own		no lineage; 0 of 23 lines verbatim in candle (0%)
 fuel-tensor/tests/strict_reproducibility_realize.rs	own		no lineage; 0 of 25 lines verbatim in candle (0%)
 fuel-tensor/tests/vulkan_bridge_realize_live.rs	own		no lineage; 0 of 135 lines verbatim in candle (0%)
-fuel-tensor/tests/vulkan_install_before_snapshot.rs	own		no lineage; 0 of 44 lines verbatim in candle (0%)
+fuel-tensor/tests/vulkan_install_before_snapshot.rs	own		no lineage; 0 of 53 lines verbatim in candle (0%)
 fuel-tensor/tests/write_slice_doff_kv.rs	own		no lineage; 0 of 111 lines verbatim in candle (0%)
 fuel-tensor/tests/write_slice_doff_kv_cuda.rs	own		no lineage; 0 of 74 lines verbatim in candle (0%)
 fuel-test-support/Cargo.toml	own		no lineage; 2 of 12 lines verbatim in candle (17%)
