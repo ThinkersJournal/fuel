@@ -21,27 +21,14 @@ use crate::fkc::verify::{HostTensor, fill_deterministic, to_bytes};
 use crate::jit_adopt::element_kind_to_dtype;
 
 use crate::jit_ingest::VerifyVerdict;
-#[cfg(feature = "cuda")]
-use crate::pipelined::{PipelinedExecutor, StorageCache};
-#[cfg(feature = "cuda")]
-use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
-#[cfg(feature = "cuda")]
+use crate::probe_device::{ProbeDevice, ProbeTensor};
 use fuel_graph::jit::PatternNode;
-#[cfg(feature = "cuda")]
 use fuel_graph::opt::lower_to_base_map;
-#[cfg(feature = "cuda")]
 use fuel_graph::registry::{FusedOpId, FusedOpParams};
-#[cfg(feature = "cuda")]
 use fuel_graph::runtime_fused::emit_region;
-#[cfg(feature = "cuda")]
 use fuel_graph::topo_order_multi;
-#[cfg(feature = "cuda")]
 use fuel_graph::{Graph, Node, NodeId, Op};
-#[cfg(feature = "cuda")]
-use fuel_ir::probe::BackendId;
-#[cfg(feature = "cuda")]
 use fuel_ir::{DType, Error, Result, Shape};
-#[cfg(feature = "cuda")]
 use std::sync::{Arc, RwLock};
 
 /// Build one deterministic float-fill [`HostTensor`] per `operands` entry,
@@ -290,27 +277,17 @@ pub fn probe_from_operands(operands: &[OperandDesc], seed: u64) -> Option<Vec<Ho
 /// only for a parameterless region — see the `scalars` doc above. Either way,
 /// Task 5's verifier wraps the whole `reference_output` call in
 /// `catch_unwind`.)
-#[cfg(feature = "cuda")]
 pub fn reference_output(
     decompose: &PatternNode,
     probe: &[HostTensor],
     out_dtype: DType,
     out_shape: Vec<usize>,
-    device: &CudaDevice,
+    device: &dyn ProbeDevice,
 ) -> Result<HostTensor> {
-    // (a) H2D: upload every probe into fresh CUDA-resident storage.
-    let mut storages: Vec<Arc<RwLock<fuel_memory::Storage>>> = Vec::with_capacity(probe.len());
-    for t in probe {
-        let cb = CudaStorageBytes::from_cpu_bytes(device, &t.bytes)?;
-        storages.push(Arc::new(RwLock::new(fuel_memory::Storage::new(
-            fuel_memory::BackendStorage::Cuda(cb),
-            t.dtype,
-        ))));
-    }
-
-    // (b)-(d) Build the reference graph: one Const leaf per probe (ids
+    // (a)-(d) Build the reference graph: one Const leaf per probe (ids
     // `0..n_inputs`), re-emit the region onto them (emitted primitives take
-    // ids `n_inputs..=sink`), and stamp CUDA on every emitted kernel node.
+    // ids `n_inputs..=sink`), and stamp the device's backend on every emitted
+    // kernel node.
     let graph = Arc::new(RwLock::new(Graph::new()));
     let (input_ids, sink) = {
         let mut g = graph
@@ -329,49 +306,51 @@ pub fn reference_output(
             .collect();
         let n_inputs = input_ids.len();
         let sink = emit_region(&mut g, decompose, &input_ids, &[]);
-        // Input Consts are adopted from the StorageCache (no kernel); only the
-        // emitted primitives `[n_inputs, sink]` need a target backend (the
-        // realize precondition), matching the CPU template's single-node stamp.
+        // Input Consts are adopted from the device's bound inputs (no kernel);
+        // only the emitted primitives `[n_inputs, sink]` need a target backend
+        // (the realize precondition), matching the CPU template's single-node
+        // stamp.
         for id in n_inputs..=sink.0 {
-            g.set_target_backend(NodeId(id), BackendId::Cuda);
+            g.set_target_backend(NodeId(id), device.backend());
         }
         (input_ids, sink)
     };
 
-    // (e) Bind each probe storage to its Const node id.
-    let mut cache = StorageCache::new();
-    for (id, storage) in input_ids.iter().zip(storages) {
-        cache.insert(*id, storage);
-    }
+    // (e)-(g) Upload, realize the region sink, read back: the device's job.
+    realize_on_device(device, graph, sink, &input_ids, probe, out_dtype, out_shape)
+}
 
-    // (f) Realize the region sink on the device.
-    let (out_arc, _layout) = PipelinedExecutor::realize_with_devices(
-        graph,
-        sink,
-        cache,
-        crate::pipelined::DeviceRegistry::new().with_cuda(device.clone()),
-    )?;
-
-    // (g) D2H: read the CUDA output storage back to host bytes.
-    let bytes = {
-        let guard = out_arc.read().map_err(|_| {
-            Error::Msg("reference_output: output storage RwLock poisoned".to_string())
-        })?;
-        match &guard.inner {
-            fuel_memory::BackendStorage::Cuda(c) => c.to_cpu_bytes()?,
-            #[allow(unreachable_patterns)]
-            _ => {
-                return Err(Error::Msg(
-                    "reference_output: realized output storage is not CUDA".to_string(),
-                ));
-            }
-        }
-    };
-
+/// Bind each `probe` to its `Const` leaf, realize `sink` through `device`, and
+/// carry the caller-declared `out_dtype`/`out_shape` onto the returned bytes
+/// (the device returns bytes; the declared type and shape are the caller's).
+fn realize_on_device(
+    device: &dyn ProbeDevice,
+    graph: Arc<RwLock<Graph>>,
+    sink: NodeId,
+    input_ids: &[NodeId],
+    probe: &[HostTensor],
+    out_dtype: DType,
+    out_shape: Vec<usize>,
+) -> Result<HostTensor> {
+    let inputs: Vec<(NodeId, ProbeTensor)> = input_ids
+        .iter()
+        .zip(probe)
+        .map(|(id, t)| {
+            (
+                *id,
+                ProbeTensor {
+                    dtype: t.dtype,
+                    shape: t.shape.clone(),
+                    bytes: t.bytes.clone(),
+                },
+            )
+        })
+        .collect();
+    let out = device.realize(graph, sink, &inputs)?;
     Ok(HostTensor {
         dtype: out_dtype,
         shape: out_shape,
-        bytes,
+        bytes: out.bytes,
     })
 }
 
@@ -398,25 +377,14 @@ pub fn reference_output(
 /// Never panics on the production path — every lock/H2D/lower/realize/D2H
 /// failure is returned as `Err`. (`lower_to_base_map` is itself never-panic: a
 /// self-returning `decompose` is a clean fixpoint, not a loop.)
-#[cfg(feature = "cuda")]
 pub fn reference_from_registered_recipe(
     claimed_op: FusedOpId,
     params: &FusedOpParams,
     probe: &[HostTensor],
     out_dtype: DType,
     out_shape: Vec<usize>,
-    device: &CudaDevice,
+    device: &dyn ProbeDevice,
 ) -> Result<HostTensor> {
-    // (a) H2D: upload every probe into fresh CUDA-resident storage.
-    let mut storages: Vec<Arc<RwLock<fuel_memory::Storage>>> = Vec::with_capacity(probe.len());
-    for t in probe {
-        let cb = CudaStorageBytes::from_cpu_bytes(device, &t.bytes)?;
-        storages.push(Arc::new(RwLock::new(fuel_memory::Storage::new(
-            fuel_memory::BackendStorage::Cuda(cb),
-            t.dtype,
-        ))));
-    }
-
     // (b) Build the reference graph: one Const leaf per probe (ids
     // `0..n_inputs`) + the claimed fused op as the sink over those leaves.
     let graph = Arc::new(RwLock::new(Graph::new()));
@@ -452,59 +420,23 @@ pub fn reference_from_registered_recipe(
         Error::Msg("reference_from_registered_recipe: lowering returned no roots".to_string())
     })?;
 
-    // (d) Stamp CUDA on every reachable NON-`Const` node of the LOWERED base
-    // map (not just the original fused node — after lowering the primitives are
-    // what realize will dispatch). The `Op::Const` probe leaves are adopted
-    // from the StorageCache (no kernel), so they need no target backend.
+    // (d) Stamp the device's backend on every reachable NON-`Const` node of
+    // the LOWERED base map (not just the original fused node — after lowering
+    // the primitives are what realize will dispatch). The `Op::Const` probe
+    // leaves are bound by the device, so they need no target backend.
     {
         let mut g = graph.write().map_err(|_| {
             Error::Msg("reference_from_registered_recipe: graph RwLock poisoned".to_string())
         })?;
         for nid in topo_order_multi(&g, &roots) {
             if !matches!(g.node(nid).op, Op::Const) {
-                g.set_target_backend(nid, BackendId::Cuda);
+                g.set_target_backend(nid, device.backend());
             }
         }
     }
 
-    // (e) Bind each probe storage to its Const node id.
-    let mut cache = StorageCache::new();
-    for (id, storage) in input_ids.iter().zip(storages) {
-        cache.insert(*id, storage);
-    }
-
-    // (f) Realize the lowered base-map sink on the device.
-    let (out_arc, _layout) = PipelinedExecutor::realize_with_devices(
-        graph,
-        sink,
-        cache,
-        crate::pipelined::DeviceRegistry::new().with_cuda(device.clone()),
-    )?;
-
-    // (g) D2H: read the CUDA output storage back to host bytes.
-    let bytes = {
-        let guard = out_arc.read().map_err(|_| {
-            Error::Msg(
-                "reference_from_registered_recipe: output storage RwLock poisoned".to_string(),
-            )
-        })?;
-        match &guard.inner {
-            fuel_memory::BackendStorage::Cuda(c) => c.to_cpu_bytes()?,
-            #[allow(unreachable_patterns)]
-            _ => {
-                return Err(Error::Msg(
-                    "reference_from_registered_recipe: realized output storage is not CUDA"
-                        .to_string(),
-                ));
-            }
-        }
-    };
-
-    Ok(HostTensor {
-        dtype: out_dtype,
-        shape: out_shape,
-        bytes,
-    })
+    // (e)-(g) Upload, realize the lowered base-map sink, read back.
+    realize_on_device(device, graph, sink, &input_ids, probe, out_dtype, out_shape)
 }
 
 #[cfg(test)]
@@ -512,6 +444,188 @@ mod tests {
     use super::*;
     use fuel_ir::DType;
     use unpopped_vocab::ElementKind;
+
+    // ---- the probe seam: reference builders against a device-free stub ------
+
+    /// A `ProbeDevice` that needs no GPU: it records what the reference builder
+    /// handed it (backend stamps, bound leaf ids) and returns fixed bytes, or an
+    /// error. It names no real backend type, which is the point of the seam.
+    struct StubDevice {
+        backend: fuel_ir::probe::BackendId,
+        out: Result<Vec<u8>>,
+        seen: std::sync::Mutex<Option<StubSeen>>,
+    }
+
+    #[derive(Debug, Clone)]
+    struct StubSeen {
+        /// `(node index, target backend)` for every node of the graph.
+        stamps: Vec<(usize, Option<fuel_ir::probe::BackendId>)>,
+        /// Leaf ids bound, in order.
+        bound: Vec<usize>,
+        sink: usize,
+    }
+
+    impl ProbeDevice for StubDevice {
+        fn backend(&self) -> fuel_ir::probe::BackendId {
+            self.backend
+        }
+        fn realize(
+            &self,
+            graph: Arc<RwLock<Graph>>,
+            sink: NodeId,
+            inputs: &[(NodeId, ProbeTensor)],
+        ) -> Result<ProbeTensor> {
+            let g = graph.read().expect("graph lock");
+            let stamps = (0..g.len())
+                .map(|i| (i, g.target_backend(NodeId(i))))
+                .collect();
+            *self.seen.lock().expect("stub lock") = Some(StubSeen {
+                stamps,
+                bound: inputs.iter().map(|(id, _)| id.0).collect(),
+                sink: sink.0,
+            });
+            match &self.out {
+                Ok(bytes) => Ok(ProbeTensor {
+                    dtype: DType::U8,
+                    shape: vec![bytes.len()],
+                    bytes: bytes.clone(),
+                }),
+                Err(e) => Err(Error::Msg(format!("stub: {e}"))),
+            }
+        }
+    }
+
+    fn stub(backend: fuel_ir::probe::BackendId, out: Result<Vec<u8>>) -> StubDevice {
+        StubDevice {
+            backend,
+            out,
+            seen: std::sync::Mutex::new(None),
+        }
+    }
+
+    fn host_f32(vals: &[f32]) -> HostTensor {
+        HostTensor {
+            dtype: DType::F32,
+            shape: vec![vals.len()],
+            bytes: vals.iter().flat_map(|v| v.to_le_bytes()).collect(),
+        }
+    }
+
+    fn add_region() -> PatternNode {
+        use fuel_graph::jit::{OpAttrs, OpTag};
+        PatternNode::Op {
+            op: OpTag::Add,
+            attrs: OpAttrs::default(),
+            operands: vec![
+                PatternNode::Bind { index: 0 },
+                PatternNode::Bind { index: 1 },
+            ],
+        }
+    }
+
+    /// `reference_output` stamps the DEVICE's backend (not a hard-coded one) on
+    /// every emitted node, binds the probes to leaf ids `0..n` in order, and
+    /// returns the device's bytes under the CALLER's declared dtype and shape.
+    /// Sabotage sibling: the stub reports Vulkan, so a builder that still
+    /// stamped `Cuda` fails the stamp assertion.
+    #[test]
+    fn reference_output_stamps_the_devices_backend_and_binds_leaves_in_order() {
+        use fuel_ir::probe::BackendId;
+        let dev = stub(BackendId::Vulkan, Ok(vec![1, 2, 3, 4]));
+        let out = reference_output(
+            &add_region(),
+            &[host_f32(&[1.0]), host_f32(&[2.0])],
+            DType::F32,
+            vec![1],
+            &dev,
+        )
+        .expect("stub realize succeeds");
+        assert_eq!(
+            out.dtype,
+            DType::F32,
+            "caller's declared dtype, not the stub's U8"
+        );
+        assert_eq!(out.shape, vec![1], "caller's declared shape");
+        assert_eq!(out.bytes, vec![1, 2, 3, 4]);
+        let seen = dev
+            .seen
+            .lock()
+            .unwrap()
+            .clone()
+            .expect("realize was called");
+        assert_eq!(
+            seen.bound,
+            vec![0, 1],
+            "probes bind to leaf ids 0..n in order"
+        );
+        assert_eq!(seen.sink, 2, "one emitted Add node follows the two leaves");
+        for (i, b) in &seen.stamps {
+            if *i >= 2 {
+                assert_eq!(*b, Some(BackendId::Vulkan), "emitted node {i} stamped");
+            } else {
+                assert_eq!(*b, None, "leaf {i} is bound by the device, not stamped");
+            }
+        }
+    }
+
+    /// A device failure is an `Err` from the builder, never a panic, and never a
+    /// fabricated output.
+    #[test]
+    fn reference_output_propagates_a_device_error() {
+        use fuel_ir::probe::BackendId;
+        let dev = stub(BackendId::Cpu, Err(Error::Msg("no device".to_string())));
+        let err = reference_output(
+            &add_region(),
+            &[host_f32(&[1.0]), host_f32(&[2.0])],
+            DType::F32,
+            vec![1],
+            &dev,
+        )
+        .expect_err("a failing device must fail the reference");
+        assert!(format!("{err:?}").contains("no device"), "{err:?}");
+    }
+
+    /// The registered-recipe reference lowers the fused op to primitives and
+    /// stamps the device backend on every non-leaf node that remains.
+    #[test]
+    fn reference_from_registered_recipe_stamps_every_lowered_node() {
+        use fuel_graph::registry::{FusedOpParams, FusedOps};
+        use fuel_ir::probe::BackendId;
+        let dev = stub(BackendId::Vulkan, Ok(vec![0; 4]));
+        let probe = [
+            host_f32(&[0.0; 8]),
+            host_f32(&[0.0; 8]),
+            host_f32(&[0.0; 8]),
+        ];
+        reference_from_registered_recipe(
+            FusedOps::ROPE,
+            &FusedOpParams::Rope,
+            &probe,
+            DType::F32,
+            vec![8],
+            &dev,
+        )
+        .expect("stub realize succeeds");
+        let seen = dev
+            .seen
+            .lock()
+            .unwrap()
+            .clone()
+            .expect("realize was called");
+        assert_eq!(seen.bound, vec![0, 1, 2]);
+        let stamped = seen.stamps.iter().filter(|(i, _)| *i >= 3).count();
+        assert!(
+            stamped > 1,
+            "rope lowers to several primitives, got {stamped}"
+        );
+        for (i, b) in seen.stamps.iter().filter(|(i, _)| *i >= 3) {
+            // Nodes the lowering leaves unreachable from the sink are not stamped;
+            // every REACHABLE one is, and the sink itself must be.
+            if *i == seen.sink {
+                assert_eq!(*b, Some(BackendId::Vulkan), "the sink is stamped");
+            }
+        }
+    }
 
     /// **The whole probe set is examined — a failure in the LAST probe still
     /// fails the candidate.**
@@ -918,7 +1032,7 @@ mod tests {
             &[x, cos_t, sin_t],
             DType::F32,
             x_shape,
-            &dev,
+            &crate::probe_device::CudaProbeDevice::new(dev),
         )
         .expect("reference_from_registered_recipe should realize the lowered rope base map");
 
@@ -958,7 +1072,14 @@ mod tests {
         };
         let a = ht_f32(&[1.0, 2.0, 3.0, 4.0]);
         let b = ht_f32(&[10.0, 20.0, 30.0, 40.0]);
-        let out = reference_output(&region, &[a, b], DType::F32, vec![4], &dev).unwrap();
+        let out = reference_output(
+            &region,
+            &[a, b],
+            DType::F32,
+            vec![4],
+            &crate::probe_device::CudaProbeDevice::new(dev),
+        )
+        .unwrap();
         assert_eq!(bytes_to_f32(&out.bytes), vec![11.0, 22.0, 33.0, 44.0]);
     }
 }
