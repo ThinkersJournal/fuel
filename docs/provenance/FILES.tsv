@@ -13,7 +13,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 547 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 551 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1395 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 306 lines verbatim
@@ -1882,6 +1882,7 @@ fuel-vulkan-kernels/LICENSE-APACHE	copy		byte-identical packaged copy of the roo
 fuel-vulkan-kernels/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-vulkan-kernels/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
 fuel-vulkan-kernels/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
+fuel-vulkan-kernels/spv/SOURCE.txt	own		no lineage; 0 of 25 lines verbatim in candle (0%)
 fuel-vulkan-kernels/spv/add_assign_scaled.spv	data		binary file; no path or similarity match to a candle file
 fuel-vulkan-kernels/spv/affine.spv	data		binary file; no path or similarity match to a candle file
 fuel-vulkan-kernels/spv/affine_bf16.spv	data		binary file; no path or similarity match to a candle file
