@@ -9,6 +9,10 @@ This documents the main changes to the `fuel` workspace.
 
 - **`fuel-tensor`: the first realize in a process on a CUDA device no longer fails with `NoBackendForOp` for an op whose binding exists.** `pipelined_bridge::build_optimized_graph` took its `SystemTopology::current()` snapshot BEFORE `cpu_accel::ensure_installed()` installed the kernels that live above `fuel-dispatch` (CUDA since row 137 step 6.2, Vulkan since 6.1). The topology is built from the binding table, so `backends_for(Cuda { gpu_id: 0 })` was empty for that first realize and the planner reported `no backend supports write_slice on [F32, F32]; available backends: [Cpu, Cuda]`. The install now runs first. Reported by lightbulb on fuel 0.43.2 (`decode_step_bench` prefill; the served driver ended after step 0 with no tokens). Two suspected causes were measured and refuted: two `CudaDevice` instances on one ordinal, and a CPU-resident persistent buffer under a CUDA realize both pass.
 
+### Changed
+
+- `fuel-tensor/tests/vulkan_install_before_snapshot.rs`: the source-order guard (now `the_bridge_installs_before_it_takes_the_optimize_snapshots`) requires `ensure_installed()` before BOTH the `SystemTopology` snapshot and the binding-table snapshot in `build_optimized_graph`, instead of within three lines of the latter.
+
 ### Added
 
 - `fuel-tensor/tests/cuda_two_device_instances_live.rs` (live CUDA, `--features cuda`, no `#[ignore]`: it fails loudly without a device): three tests following `KvCache::write_bytes`; whichever runs first in the process is the born-red reproduction.

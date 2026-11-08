@@ -37,6 +37,7 @@ use fuel_tensor::lazy::Tensor;
 /// A live CUDA device is REQUIRED (GAP-157): this file is compiled only under
 /// `--features cuda`, so a missing device is a loud failure, not a silent pass.
 fn device() -> CudaDevice {
+    fuel_test_support::require_gpu_run_lock();
     let probe = fuel_hardware::probe::ProbeReport::probe_all();
     fuel_test_support::require(
         "a live CUDA device",
@@ -105,7 +106,7 @@ fn persistent_write_slice_second_instance_same_ordinal() {
     let b = device();
     assert!(
         !a.same_device(&b),
-        "premise: two CudaDevice::new(0) are distinct Fuel devices (DeviceId differs)"
+        "premise: two device handles opened on ordinal 0 are distinct Fuel devices (DeviceId differs)"
     );
     let got = write_row_through(&a, &b)
         .expect("a buffer allocated through one CudaDevice instance must be writable through another on the same ordinal");

@@ -57,33 +57,48 @@ fn the_first_realize_installs_vulkan_and_a_stale_snapshot_never_sees_it() {
     );
 }
 
-/// Order: in the production optimize entry, `ensure_installed()` must come right BEFORE the line that takes
-/// the snapshot the optimizer reads. The behaviour test cannot see that order (it only sees the table after
-/// the realize), so this one reads the source. It fails if the install moves after the snapshot or is
-/// removed; if `pipelined_bridge.rs` is restructured, update the anchor here AND re-prove the order.
+/// Order: in the production optimize entry (`build_optimized_graph`), `ensure_installed()` must come BEFORE
+/// both snapshots the optimizer reads: the `SystemTopology` (built from the binding table, so a backend
+/// installed after it is missing from `backends_for(..)`; GAP-359: the first CUDA realize failed with
+/// `NoBackendForOp`) and the binding-table snapshot. The behaviour test cannot see that order (it only sees
+/// the table after the realize), so this one reads the source. It fails if the install moves after either
+/// snapshot or is removed; if `pipelined_bridge.rs` is restructured, update the anchors here AND re-prove
+/// the order.
 #[test]
-fn the_bridge_installs_right_before_it_takes_the_optimize_snapshot() {
+fn the_bridge_installs_before_it_takes_the_optimize_snapshots() {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/src/pipelined_bridge.rs");
     let src = std::fs::read_to_string(path).expect("read pipelined_bridge.rs");
     let lines: Vec<&str> = src.lines().map(str::trim).collect();
-    let snapshots: Vec<usize> = lines
+
+    let start = lines
         .iter()
+        .position(|l| l.starts_with("fn build_optimized_graph("))
+        .expect("positive control failed: `fn build_optimized_graph(` is gone or renamed; find the new entry");
+    // The function body ends at the next top-level item, which starts at column 0 in the source.
+    let end = src
+        .lines()
         .enumerate()
-        .filter(|(_, l)| **l == "let bindings_guard = global_bindings();")
-        .map(|(i, _)| i)
-        .collect();
+        .skip(start + 1)
+        .find(|(_, l)| {
+            l.starts_with("fn ") || l.starts_with("pub fn ") || l.starts_with("pub(crate) fn ")
+        })
+        .map_or(lines.len(), |(i, _)| i);
+    let body = &lines[start..end];
+    let find = |needle: &str| body.iter().position(|l| *l == needle);
+
+    let install = find("crate::cpu_accel::ensure_installed();")
+        .expect("`ensure_installed()` is missing from build_optimized_graph: Vulkan and CUDA kernels would be invisible");
+    let topology = find("let topology = SystemTopology::current();")
+        .expect("positive control failed: the topology snapshot line is gone or renamed; re-prove the order");
+    let bindings = find("let bindings_guard = global_bindings();")
+        .expect("positive control failed: the binding-table snapshot line is gone or renamed; re-prove the order");
+
     assert!(
-        !snapshots.is_empty(),
-        "positive control failed: the optimize-entry snapshot line is gone or renamed; find the new one and \
-         re-prove that the install still precedes it"
+        install < topology,
+        "`ensure_installed()` (body line {install}) must run BEFORE the SystemTopology snapshot (line {topology}):          a backend installed after it is absent from `backends_for(..)` and the first realize in a process fails          with NoBackendForOp (GAP-359)"
     );
-    for i in snapshots {
-        let window = &lines[i.saturating_sub(3)..i];
-        assert!(
-            window.contains(&"crate::cpu_accel::ensure_installed();"),
-            "line {}: `ensure_installed()` must run just before this snapshot, or Vulkan kernels registered \
-             later are invisible to this realize",
-            i + 1
-        );
-    }
+    assert!(
+        install < bindings,
+        "`ensure_installed()` (body line {install}) must run BEFORE the binding-table snapshot (line {bindings}),          or kernels registered later are invisible to this realize"
+    );
 }
