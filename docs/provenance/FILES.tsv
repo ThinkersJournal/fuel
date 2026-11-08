@@ -13,7 +13,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 547 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 550 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1395 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 306 lines verbatim
@@ -2092,7 +2092,7 @@ scripts/g2_sweep.py	own		no lineage; 1 of 96 lines verbatim in candle (1%)
 scripts/g2_undo_const_like.py	own		no lineage; 1 of 74 lines verbatim in candle (1%)
 scripts/gap326_guarded_functions.txt	own		no lineage; 0 of 61 lines verbatim in candle (0%)
 scripts/gen_iq_grids.py	own		no lineage; 0 of 51 lines verbatim in candle (0%)
-scripts/gpu-run.ps1	own		no lineage; 0 of 178 lines verbatim in candle (0%)
+scripts/gpu-run.ps1	own		no lineage; 0 of 192 lines verbatim in candle (0%)
 scripts/hooks/pre-commit	own		no lineage; 0 of 171 lines verbatim in candle (0%)
 scripts/install-hooks.sh	own		no lineage; 0 of 43 lines verbatim in candle (0%)
 scripts/judge_compare.py	own		no lineage; 0 of 25 lines verbatim in candle (0%)
