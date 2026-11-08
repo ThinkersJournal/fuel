@@ -3,6 +3,16 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.44.6 - 2026-11-07 (provisional; tentative number, the PM allocates)
+
+### Fixed
+
+- **`scripts/gpu-run.ps1`: the machine-wide `Global\gpu-run` mutex is now created with an explicit ACL (Authenticated Users: Synchronize | Modify).** With the default ACL only the creating account could open it, so a GPU run started by another account (a CI runner service, a lane session) failed with `Access to the path 'Global\gpu-run' is denied`. Windows PowerShell uses the `MutexSecurity` constructor; PowerShell 7 uses `System.Threading.MutexAcl.Create`. A mutex already created by an older script with the default ACL keeps that ACL until its last holder exits.
+
+### Not verified
+
+- Measured while a `gpu-run` held the mutex, from a second process, in both `pwsh` 7 and Windows PowerShell 5.1: the DACL is one ACE, `S-1-5-11 Modify, Synchronize Allow`. Not run: a cross-account acquire (needs a second account), so the denial itself is not reproduced here, only the ACL that prevents it.
+
 ## v0.44.5 - 2026-11-07 (provisional; tentative number, the PM allocates)
 
 ### Changed
