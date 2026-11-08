@@ -149,7 +149,25 @@ if ($env:GPU_RUN_HELD -eq '1') {
 }
 
 # --- Acquire the machine-wide mutex (the real mutual exclusion) ----------------
-$mutex        = New-Object System.Threading.Mutex($false, $MutexName)
+# The mutex is created with an explicit ACL: Authenticated Users get Synchronize|Modify. With the
+# default ACL only the creating account may open it, so a run started by another account (a CI
+# runner service, a lane session) died with 'Access to the path Global\gpu-run is denied'.
+# Windows PowerShell (.NET Framework) takes the MutexSecurity overload; PowerShell 7 (.NET Core)
+# goes through System.Threading.MutexAcl.
+$createdNew   = $false
+$mutexSid     = New-Object System.Security.Principal.SecurityIdentifier(
+                    [System.Security.Principal.WellKnownSidType]::AuthenticatedUserSid, $null)
+$mutexRule    = New-Object System.Security.AccessControl.MutexAccessRule(
+                    $mutexSid,
+                    ([System.Security.AccessControl.MutexRights]::Synchronize -bor [System.Security.AccessControl.MutexRights]::Modify),
+                    [System.Security.AccessControl.AccessControlType]::Allow)
+$mutexSec     = New-Object System.Security.AccessControl.MutexSecurity
+$mutexSec.AddAccessRule($mutexRule)
+if ($PSVersionTable.PSEdition -eq 'Core') {
+    $mutex = [System.Threading.MutexAcl]::Create($false, $MutexName, [ref]$createdNew, $mutexSec)
+} else {
+    $mutex = New-Object System.Threading.Mutex($false, $MutexName, [ref]$createdNew, $mutexSec)
+}
 $acquired     = $false
 $t0           = Get-Date
 $holderBefore = if (Test-Path -LiteralPath $LockPath) {
