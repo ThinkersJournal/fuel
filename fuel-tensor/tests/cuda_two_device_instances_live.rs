@@ -20,8 +20,8 @@
 //! the process is the born-red reproduction (`--test-threads=1` runs them alphabetically, so
 //! `persistent_write_slice_cpu_resident_buffer_cuda_realize` is first and was red at the base).
 //!
-//! Gated `#[ignore]`; needs a live NVIDIA GPU. Run:
-//!   cargo test -p fuel-tensor --features cuda --test cuda_two_device_instances_live -- --ignored --test-threads=1
+//! Compiled only under `--features cuda`; needs a live NVIDIA GPU (fails loudly without one). Run:
+//!   cargo test -p fuel-tensor --features cuda --test cuda_two_device_instances_live -- --test-threads=1
 
 #![cfg(feature = "cuda")]
 
@@ -34,14 +34,18 @@ use fuel_memory::Storage;
 use fuel_tensor::Device;
 use fuel_tensor::lazy::Tensor;
 
-fn device_or_skip() -> Option<CudaDevice> {
-    match CudaDevice::new(0) {
-        Ok(d) => Some(d),
-        Err(e) => {
-            eprintln!("no CUDA device; skipping: {e:?}");
-            None
-        }
-    }
+/// A live CUDA device is REQUIRED (GAP-157): this file is compiled only under
+/// `--features cuda`, so a missing device is a loud failure, not a silent pass.
+fn device() -> CudaDevice {
+    let probe = fuel_hardware::probe::ProbeReport::probe_all();
+    fuel_test_support::require(
+        "a live CUDA device",
+        probe
+            .devices
+            .iter()
+            .any(|d| d.backend == fuel_ir::probe::BackendId::Cuda),
+    );
+    CudaDevice::new(0).expect("cuda device 0 should be available")
 }
 
 /// Allocate the persistent `[4, 2]` F32 buffer (all zeros) on `alloc_dev`, then
@@ -89,18 +93,16 @@ fn write_row_via(alloc: &Device, realize: &Device) -> Result<Vec<f32>, String> {
 const WANT: [f32; 8] = [0.0, 0.0, 7.0, 8.0, 0.0, 0.0, 0.0, 0.0];
 
 #[test]
-#[ignore = "requires a live CUDA device"]
 fn persistent_write_slice_same_instance() {
-    let Some(a) = device_or_skip() else { return };
+    let a = device();
     let got = write_row_through(&a, &a).expect("control: one instance end to end");
     assert_eq!(got, WANT.to_vec());
 }
 
 #[test]
-#[ignore = "requires a live CUDA device"]
 fn persistent_write_slice_second_instance_same_ordinal() {
-    let Some(a) = device_or_skip() else { return };
-    let Some(b) = device_or_skip() else { return };
+    let a = device();
+    let b = device();
     assert!(
         !a.same_device(&b),
         "premise: two CudaDevice::new(0) are distinct Fuel devices (DeviceId differs)"
@@ -113,9 +115,8 @@ fn persistent_write_slice_second_instance_same_ordinal() {
 /// A CPU-resident persistent buffer under a CUDA-pinned realize (one suspect on the way to
 /// the cause; it passes and is kept as a regression guard for that shape).
 #[test]
-#[ignore = "requires a live CUDA device"]
 fn persistent_write_slice_cpu_resident_buffer_cuda_realize() {
-    let Some(a) = device_or_skip() else { return };
+    let a = device();
     let got = write_row_via(&Device::cpu(), &a.clone().into())
         .expect("a CPU-resident persistent buffer must be writable by a CUDA-pinned realize");
     assert_eq!(got, WANT.to_vec());

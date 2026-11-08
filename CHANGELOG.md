@@ -11,7 +11,7 @@ This documents the main changes to the `fuel` workspace.
 
 ### Added
 
-- `fuel-tensor/tests/cuda_two_device_instances_live.rs` (`#[ignore]`, live CUDA): three tests following `KvCache::write_bytes`; whichever runs first in the process is the born-red reproduction.
+- `fuel-tensor/tests/cuda_two_device_instances_live.rs` (live CUDA, `--features cuda`, no `#[ignore]`: it fails loudly without a device): three tests following `KvCache::write_bytes`; whichever runs first in the process is the born-red reproduction.
 
 ### Not verified
 
