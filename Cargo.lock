@@ -465,13 +465,13 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cuda-seam"
-version = "0.1.0-alpha.94"
+version = "0.1.0-alpha.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2017aad869f103c9fb4d584799b706cb153fa3e3397e3790916bc23e45904719"
+checksum = "fe789f26eaa186f7ea2786db159cb24d1485b3126275e14db711380bd897a600"
 dependencies = [
  "baracuda-cuda-emit",
- "fuel-kernel-seam",
- "fuel-kernel-seam-types",
+ "fireline-grammar",
+ "fireline-synth",
  "unpopped",
  "unpopped-vocab",
 ]
@@ -2130,22 +2130,6 @@ dependencies = [
  "thiserror 2.0.21",
  "zip",
 ]
-
-[[package]]
-name = "fuel-kernel-seam"
-version = "0.43.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d756619ad6d98c0bbfe824a62c3bb966a81812904997853c337d42829a6ff3b"
-dependencies = [
- "fuel-kernel-seam-types",
- "unpopped-vocab",
-]
-
-[[package]]
-name = "fuel-kernel-seam-types"
-version = "0.43.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "830712752f37ee084d6dada83bf0de52edc976bcb404b30ae99cb817e37c70a7"
 
 [[package]]
 name = "fuel-kernels-source"

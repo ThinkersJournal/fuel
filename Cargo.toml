@@ -322,7 +322,7 @@ baracuda-nvrtc         = { version = "0.1.0-alpha.94" }
 # prerelease would not float to the next alpha anyway). Fuel names only the seam crate; emit comes with it.
 # 0.1.0-alpha.2 (2026-10-24) requires fuel-kernel-seam{,-types} ^0.24.0 (alpha.161 required ^0.23.0, which
 # left two seam crates in a 0.24 workspace). 0.1.0-alpha.15 (2026-10-24) requires them on ^0.25 (built on 0.25.10).
-baracuda-cuda-seam     = { version = "=0.1.0-alpha.94" }
+baracuda-cuda-seam     = { version = "=0.1.0-alpha.106" }
 baracuda-nccl-sys      = { version = "0.1.0-alpha.94" }
 baracuda-nccl          = { version = "0.1.0-alpha.94", features = ["half-crate"] }
 baracuda-cutlass       = { version = "0.1.0-alpha.94" }
