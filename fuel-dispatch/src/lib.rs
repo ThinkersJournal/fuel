@@ -139,6 +139,8 @@ mod kiss_corpus;
 pub mod optimize;
 pub mod pipelined;
 pub mod plan;
+#[cfg(feature = "jit")]
+pub mod probe_device;
 pub mod ranker;
 pub mod residency;
 pub mod runtime_fused_arm;

@@ -2082,6 +2082,9 @@ fn verify_candidate_on_probe(
             );
         }
 
+        // The device side of the reference realize (the probe seam: no backend
+        // is named inside `jit_ingest_probe`).
+        let probe_device = crate::probe_device::CudaProbeDevice::new(device.clone());
         let reference = match cand.claimed_op {
             Some(claimed) => {
                 // (i)+(ii) Claimed-op STRUCTURAL gates (recipe-identity +
@@ -2103,7 +2106,7 @@ fn verify_candidate_on_probe(
                     &probe,
                     out_dtype,
                     out_shape.clone(),
-                    device,
+                    &probe_device,
                 ) {
                     Ok(r) => r,
                     Err(e) => {
@@ -2130,7 +2133,7 @@ fn verify_candidate_on_probe(
                     &probe,
                     out_dtype,
                     out_shape.clone(),
-                    device,
+                    &probe_device,
                 ) {
                     Ok(r) => r,
                     Err(e) => {
