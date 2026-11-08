@@ -15,9 +15,9 @@
     fuel-backend-contract = { workspace = true }
     fuel-graph             = { workspace = true }
     bytemuck               = { workspace = true, features = ["derive"] }
-    # Precompiled SPIR-V kernels. Sources live in fuel-kernels-source
-    # and are compiled ahead of time (see
-    # `fuel-kernels-source/kernels/compile.sh`) — vulkane does NOT
+    # Precompiled SPIR-V kernels. Sources live in fuel-kernels-source (glsl)
+    # and fishstringer-kernels-source (Slang), compiled ahead of time (see
+    # `fuel-kernels-source/kernels/compile.sh`, `fuel-vulkan-kernels/spv/SOURCE.txt`) — vulkane does NOT
     # need its naga / shaderc / slang features at build or run time.
     # Fuel stays toolchain-free for downstream consumers.
     fuel-vulkan-kernels    = { workspace = true }

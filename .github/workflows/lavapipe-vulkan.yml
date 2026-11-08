@@ -48,7 +48,7 @@ jobs:
       # cannot outlive its cause. None of these is a claim that the kernel is right: see ROADMAP row 134.
       #   conv2d_bf16, conv2d_f16 : "VK_KHR_cooperative_matrix not available" - Lavapipe lacks the extension.
       # unary_sin_f64, unary_cos_f64 and unary_sin_f64_huge used to fail here; llvmpipe fused the double-double
-      # `a * b + c` into one FMA. They pass since unary_f64.spv carries NoContraction (compile.sh, no_contraction.py;
+      # `a * b + c` into one FMA. They pass since unary_f64.spv carries NoContraction (fishstringer-kernels-source's compile step, see fuel-vulkan-kernels/spv/SOURCE.txt;
       # measured on fuel#566 before the fix). Do not drop the decoration without re-adding their skips.
       - name: cargo test (live Vulkan tests, every one, failures do not stop the run)
         run: |
