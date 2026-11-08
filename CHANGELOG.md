@@ -7,7 +7,7 @@ This documents the main changes to the `fuel` workspace.
 
 ### Breaking
 
-- **`fuel-dispatch` (feature `cuda` + `jit`): the JIT ingestion entry points take a `ProbeDevice`, not a `CudaDevice`** (row 137 step 6.3b, step A2 of `docs/design-notes/2026-11-07-row137-step63b-probe-seam.md`). `jit_ingest::verify_candidate`, `ingest_one` and `IngestionService::start` now take `&dyn ProbeDevice` / `Arc<dyn ProbeDevice>`; wrap a device with `probe_device::CudaProbeDevice::new(dev)`. `ProbeDevice` gains `invoke_candidate`, which runs the candidate kernel; `CudaProbeDevice` carries the `CudaInvoker` call that was inline. A device failure while invoking now reaches the ledger as `Invoke(\"<message>\")` where it used to be `Invoke(..)` or `Backend(..)` by cause.
+- **`fuel-dispatch` (feature `cuda` + `jit`): the JIT ingestion entry points take a `ProbeDevice`, not a `CudaDevice`** (row 137 step 6.3b, step A2 of `docs/design-notes/2026-11-07-row137-step63b-probe-seam.md`). `jit_ingest::verify_candidate`, `ingest_one` and `IngestionService::start` now take `&dyn ProbeDevice` / `Arc<dyn ProbeDevice>`; wrap a device with `probe_device::CudaProbeDevice::new(dev)`. `ProbeDevice` gains `invoke_candidate`, which runs the candidate kernel; `CudaProbeDevice` carries the `CudaInvoker` call that was inline. A device failure while invoking now reaches the ledger as `Invoke("<message>")` where it used to be `Invoke(..)` or `Backend(..)` by cause.
 
 ### Added
 
