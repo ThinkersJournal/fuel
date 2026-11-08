@@ -469,6 +469,18 @@ mod tests {
         fn backend(&self) -> fuel_ir::probe::BackendId {
             self.backend
         }
+        fn invoke_candidate(
+            &self,
+            _entry: &crate::kernel::BindingEntry,
+            _params: &crate::kernel::OpParams,
+            _inputs: &[ProbeTensor],
+            _out_dtype: DType,
+            _out_shape: &[usize],
+        ) -> Result<ProbeTensor> {
+            Err(Error::Msg(
+                "StubDevice: invoke_candidate not used".to_string(),
+            ))
+        }
         fn realize(
             &self,
             graph: Arc<RwLock<Graph>>,
