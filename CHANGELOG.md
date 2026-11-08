@@ -3,11 +3,11 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
-## v0.45.1 - 2026-11-08 (provisional; tentative number, the PM allocates)
+## v0.46.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.45.0)
 
-### Removed
+### Breaking
 
-- **`fuel-kernels-source`: the 150 Slang sources (`kernels/*.slang`, `*.slangh`) and the two slangc-only post-processors (`hoist_extinst_imports.py`, `no_contraction.py`) are deleted; `compile.sh` now handles `.glsl` / `.wgsl` only.** The Slang kernels live in the published `fishstringer-kernels-source` crate (the Slang move to FishStringer, PM ruling 2026-11-07); `fuel-vulkan-kernels/spv` was regenerated from its 0.0.13 in 0.44.5 and `spv/SOURCE.txt` records the pin. The 27 `.glsl` sources and `compile.sh` stay until ROADMAP row 143. Anyone who depended on `fuel-kernels-source` for the Slang files must take them from `fishstringer-kernels-source` instead.
+- **`fuel-kernels-source`: the 150 Slang sources (`kernels/*.slang`, `*.slangh`) and the two slangc-only post-processors (`kernels/hoist_extinst_imports.py`, `kernels/no_contraction.py`) are removed; `kernels/compile.sh` now handles `.glsl` / `.wgsl` only.** *Who is affected:* anyone who takes the `.slang` / `.slangh` files or those two scripts from the `fuel-kernels-source` crate, or runs `compile.sh` on a Slang file. *Use instead:* the published `fishstringer-kernels-source` crate, which carries the same kernels (the committed `fuel-vulkan-kernels/spv` was regenerated from its 0.0.13 in 0.44.5; `fuel-vulkan-kernels/spv/SOURCE.txt` records the pin; take `~0.0.14` once it is published). The 27 `.glsl` sources and `compile.sh` stay until ROADMAP row 143. No `.spv` byte changes in this release.
 
 ### Changed
 
@@ -15,7 +15,7 @@ This documents the main changes to the `fuel` workspace.
 
 ### Not verified
 
-- No kernel behaviour changes (no `.spv` byte changed). `cargo build -p fuel-vulkan-kernels` is unaffected because nothing in a Rust build read the `.slang` files. Not run: `compile.sh` itself (needs the Vulkan SDK and naga-cli; only `bash -n` syntax-checked), lavapipe (CI), macOS.
+- `cargo build -p fuel-vulkan-kernels` is unaffected because nothing in a Rust build read the `.slang` files. Not run: `compile.sh` itself (needs the Vulkan SDK and naga-cli; only `bash -n` syntax-checked), lavapipe (CI), macOS.
 
 ## v0.45.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.44.6)
 

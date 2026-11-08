@@ -18,7 +18,7 @@
 #   .wgsl   -> naga (Vulkan 1.1 / SPIR-V 1.3)
 #   .glsl   -> glslangValidator, compute stage, Vulkan 1.1
 #
-# The Slang sources are NOT here any more: since 0.45.1 they live in the
+# The Slang sources are NOT here any more: since 0.46.0 they live in the
 # published `fishstringer-kernels-source` crate, and the committed
 # `fuel-vulkan-kernels/spv` outputs for them are regenerated from a pinned
 # version of that crate (see `fuel-vulkan-kernels/spv/SOURCE.txt`).

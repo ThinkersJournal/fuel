@@ -16,7 +16,7 @@
 //! ## Layout
 //!
 //! - The Slang sources are no longer here: they moved to the published
-//!   `fishstringer-kernels-source` crate (0.45.1; ROADMAP row 143 covers
+//!   `fishstringer-kernels-source` crate (0.46.0; ROADMAP row 143 covers
 //!   the `.glsl` files next).
 //! - `kernels/*.wgsl` — legacy WGSL sources (being hand-ported to
 //!   Slang; see todo list).
