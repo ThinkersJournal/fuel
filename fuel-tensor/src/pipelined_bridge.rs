@@ -794,6 +794,11 @@ fn build_optimized_graph(
     // thread's mirror (the isolated per-realize delta the test reads).
     OPTIMIZE_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     OPTIMIZE_CALLS_TL.with(|c| c.set(c.get() + 1));
+    // Install the kernels that live above `fuel-dispatch` (Vulkan, CUDA, vendor CPU BLAS) BEFORE the
+    // topology snapshot below, not after it: `SystemTopology::current()` is built from the binding table,
+    // so a backend installed after it is missing from `backends_for(..)` and the first realize in a process
+    // fails with `NoBackendForOp` (GAP-359 CUDA arm: `placements=[]` for `Cuda { gpu_id: 0 }`).
+    crate::cpu_accel::ensure_installed();
     let topology = SystemTopology::current();
     let placements_for =
         |dev: DeviceLocation| -> Vec<BackendId> { topology.backends_for(dev).to_vec() };
@@ -876,7 +881,6 @@ fn build_optimized_graph(
         options = options.with_telemetry(hooks);
     }
 
-    crate::cpu_accel::ensure_installed();
     let bindings_guard = global_bindings();
     let mut g = graph
         .write()

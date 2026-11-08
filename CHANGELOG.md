@@ -3,6 +3,20 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.46.2 - 2026-11-08 (provisional; tentative number, the PM allocates)
+
+### Fixed
+
+- **`fuel-tensor`: the first realize in a process on a CUDA (or Vulkan) device no longer fails with `NoBackendForOp` for an op whose binding exists.** `pipelined_bridge::build_optimized_graph` took its `SystemTopology::current()` snapshot BEFORE `cpu_accel::ensure_installed()` installed the kernels that live above `fuel-dispatch` (CUDA since row 137 step 6.2, Vulkan since 6.1). The topology is built from the binding table, so `backends_for(Cuda { gpu_id: 0 })` was empty for that first realize and the planner reported `no backend supports write_slice on [F32, F32]; available backends: [Cpu, Cuda]`. The install now runs first. Reported by lightbulb on fuel 0.43.2 (`decode_step_bench` prefill; the served driver ended after step 0 with no tokens). Two suspected causes were measured and refuted: two `CudaDevice` instances on one ordinal, and a CPU-resident persistent buffer under a CUDA realize both pass.
+
+### Added
+
+- `fuel-tensor/tests/cuda_two_device_instances_live.rs` (`#[ignore]`, live CUDA): three tests following `KvCache::write_bytes`; whichever runs first in the process is the born-red reproduction.
+
+### Not verified
+
+- On the RTX 4070 under `gpu-run`: at the base the first test in the process fails with the error above (`placements=[]` for `Cuda { gpu_id: 0 }` at the planner's empty-enumeration site); with the fix all three pass (3.49 s). Vulkan has the same ordering in principle and was not run. lightbulb's end-to-end decode was not run by me.
+
 ## v0.46.1 - 2026-11-08 (provisional; tentative number, the PM allocates)
 
 ### Fixed

@@ -3,8 +3,9 @@
 //! BLAS kernels (oneMKL behind the `onemkl` feature, AOCL behind `aocl`; ROADMAP row 66) and the Vulkan kernels
 //! (`fuel-vulkan-dispatch`, behind `vulkan`; ROADMAP row 137 step 6.1).
 //!
-//! **Order matters (the snapshot hazard).** [`ensure_installed`] runs immediately BEFORE the bridge takes its
-//! snapshot of the global table. An extension publishes a new table for later readers; a snapshot already taken
+//! **Order matters (the snapshot hazard).** [`ensure_installed`] runs BEFORE the bridge takes its
+//! `SystemTopology` snapshot and its snapshot of the global table (the topology is built from the table, so a
+//! backend installed after it is absent from `backends_for(..)`: GAP-359). An extension publishes a new table for later readers; a snapshot already taken
 //! keeps the old one, so a kernel installed after it is invisible to that realize with no error. The Vulkan
 //! install is therefore NOT optional in this function, and `tests/vulkan_install_before_snapshot.rs` fails if it is
 //! removed or moved after the snapshot.
