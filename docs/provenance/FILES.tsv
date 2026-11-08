@@ -1409,7 +1409,7 @@ fuel-tensor/src/vulkan_backend.rs	own		no lineage; 0 of 36 lines verbatim in can
 fuel-tensor/tests/cuda_async_realize_live.rs	own		no lineage; 0 of 89 lines verbatim in candle (0%)
 fuel-tensor/tests/cuda_composed_bisect.rs	own		no lineage; 0 of 87 lines verbatim in candle (0%)
 fuel-tensor/tests/cuda_multidevice_realize_live.rs	own		no lineage; 0 of 103 lines verbatim in candle (0%)
-fuel-tensor/tests/cuda_two_device_instances_live.rs	own		no lineage; 1 of 73 lines verbatim in candle (1%)
+fuel-tensor/tests/cuda_two_device_instances_live.rs	own		no lineage; 1 of 70 lines verbatim in candle (1%)
 fuel-tensor/tests/cuda_vulkan_multidevice_realize_live.rs	own		no lineage; 0 of 156 lines verbatim in candle (0%)
 fuel-tensor/tests/cuda_vulkan_overlap_bench_live.rs	own		no lineage; 0 of 544 lines verbatim in candle (0%)
 fuel-tensor/tests/fixture_capture_roundtrip.rs	own		no lineage; 0 of 133 lines verbatim in candle (0%)
