@@ -13,7 +13,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 6% of 562 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 565 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1395 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 306 lines verbatim
@@ -1682,7 +1682,7 @@ fuel-vulkan-backend/tests/adapter_inventory_live.rs	own		no lineage; 0 of 60 lin
 fuel-vulkan-backend/tests/byte_storage_live.rs	own		no lineage; 0 of 189 lines verbatim in candle (0%)
 fuel-vulkan-backend/tests/live_adapter/mod.rs	own		no lineage; 0 of 45 lines verbatim in candle (0%)
 fuel-vulkan-backend/tests/mapped_meter_live.rs	own		no lineage; 0 of 49 lines verbatim in candle (0%)
-fuel-vulkan-backend/tests/recycler_reclaim_live.rs	own		no lineage; 0 of 72 lines verbatim in candle (0%)
+fuel-vulkan-backend/tests/recycler_reclaim_live.rs	own		no lineage; 0 of 86 lines verbatim in candle (0%)
 fuel-vulkan-dispatch/Cargo.toml	own		no lineage; 3 of 25 lines verbatim in candle (12%)
 fuel-vulkan-dispatch/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-vulkan-dispatch/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
