@@ -3,6 +3,20 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.45.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.44.6)
+
+### Breaking
+
+- **`fuel-dispatch` (feature `cuda` + `jit`): the JIT ingestion entry points take a `ProbeDevice`, not a `CudaDevice`** (row 137 step 6.3b, step A2 of `docs/design-notes/2026-11-07-row137-step63b-probe-seam.md`). `jit_ingest::verify_candidate`, `ingest_one` and `IngestionService::start` now take `&dyn ProbeDevice` / `Arc<dyn ProbeDevice>`; wrap a device with `probe_device::CudaProbeDevice::new(dev)`. `ProbeDevice` gains `invoke_candidate`, which runs the candidate kernel; `CudaProbeDevice` carries the `CudaInvoker` call that was inline. A device failure while invoking now reaches the ledger as `Invoke("<message>")` where it used to be `Invoke(..)` or `Backend(..)` by cause.
+
+### Added
+
+- Two device-free tests of the new `ProbeInvoker` adapter with a stub device (inputs and declared output reach the device; a device error becomes `VerifyError::Invoke`; a mutation of that mapping turns the second red). `fkc::verify` re-exports `KernelInvoker`/`VerifyError` under `jit` + `test` as well as `cuda`.
+
+### Not verified
+
+- The `cuda` arm (the 11 live tests in `jit_ingest.rs`, `CudaProbeDevice::invoke_candidate`) was not run on hardware; its compile status is stated in the PR.
+
 ## v0.44.6 - 2026-11-07 (provisional; tentative number, the PM allocates)
 
 ### Fixed

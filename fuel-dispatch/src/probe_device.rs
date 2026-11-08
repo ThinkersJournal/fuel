@@ -12,13 +12,15 @@
 //! Design: `docs/design-notes/2026-11-07-row137-step63b-probe-seam.md`
 //! (PM ruling 2026-11-07: a minimal public [`ProbeTensor`]; the private
 //! `fkc::verify` API is NOT published for this, GAP-236 stays its own item).
-//! This is step A1 of that note: the two reference builders. Running the
-//! candidate kernel itself (`invoke_candidate`) joins the trait in A2.
+//! A1 made the two reference builders device-free; A2 (this file) adds
+//! [`ProbeDevice::invoke_candidate`], which runs the candidate kernel itself.
 
 use std::sync::{Arc, RwLock};
 
 use fuel_graph::{Graph, NodeId};
 use fuel_ir::DType;
+
+use crate::kernel::{BindingEntry, OpParams};
 use fuel_ir::Result;
 use fuel_ir::probe::BackendId;
 
@@ -43,6 +45,19 @@ pub trait ProbeDevice: Send + Sync {
     /// The backend whose kernels realize the graph; the caller stamps it on
     /// every non-leaf node before calling [`ProbeDevice::realize`].
     fn backend(&self) -> BackendId;
+
+    /// Run the candidate kernel `entry` once on `inputs` (uploaded as
+    /// contiguous tensors) with `params`, into a fresh output of `out_dtype`
+    /// and `out_shape`, and return the output as host bytes. The error is the
+    /// kernel's own failure, device-unavailable included.
+    fn invoke_candidate(
+        &self,
+        entry: &BindingEntry,
+        params: &OpParams,
+        inputs: &[ProbeTensor],
+        out_dtype: DType,
+        out_shape: &[usize],
+    ) -> Result<ProbeTensor>;
 
     /// Realize `sink` of `graph` with each `(leaf id, tensor)` in `inputs`
     /// bound to its leaf, and return the sink's value as host bytes.
@@ -75,6 +90,41 @@ impl CudaProbeDevice {
 impl ProbeDevice for CudaProbeDevice {
     fn backend(&self) -> BackendId {
         BackendId::Cuda
+    }
+
+    fn invoke_candidate(
+        &self,
+        entry: &BindingEntry,
+        params: &OpParams,
+        inputs: &[ProbeTensor],
+        out_dtype: DType,
+        out_shape: &[usize],
+    ) -> Result<ProbeTensor> {
+        use crate::fkc::verify::{CudaInvoker, HostTensor, KernelInvoker};
+        use fuel_ir::Error;
+
+        let host: Vec<HostTensor> = inputs
+            .iter()
+            .map(|t| HostTensor {
+                dtype: t.dtype,
+                shape: t.shape.clone(),
+                bytes: t.bytes.clone(),
+            })
+            .collect();
+        let inv = CudaInvoker::new(self.device.clone(), out_dtype, out_shape.to_vec())
+            .with_params(params.clone());
+        let out = inv.invoke(entry, &host).map_err(|e| {
+            use crate::fkc::verify::VerifyError;
+            match e {
+                VerifyError::Invoke(m) | VerifyError::Backend(m) => Error::Msg(m),
+                VerifyError::NoReference => Error::Msg("no reference".to_string()),
+            }
+        })?;
+        Ok(ProbeTensor {
+            dtype: out.dtype,
+            shape: out.shape,
+            bytes: out.bytes,
+        })
     }
 
     fn realize(

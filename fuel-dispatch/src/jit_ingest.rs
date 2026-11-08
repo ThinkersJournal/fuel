@@ -21,16 +21,21 @@ use crate::fkc::verify::is_transcendental;
 
 #[cfg(feature = "cuda")]
 use crate::fkc::verify::{
-    Bound, CudaInvoker, HostTensor, KernelInvoker, ProbeInputs, VerificationLedger, VerifyError,
-    VerifyOutcome, region_contains_transcendental, verify_bit_stability, verify_precision_bound,
+    Bound, HostTensor, KernelInvoker, ProbeInputs, VerificationLedger, VerifyError, VerifyOutcome,
+    region_contains_transcendental, verify_bit_stability, verify_precision_bound,
     widen_bound_for_transcendental,
 };
 #[cfg(feature = "cuda")]
 use crate::kernel::BindingEntry;
+#[cfg(any(feature = "cuda", test))]
+use crate::probe_device::{ProbeDevice, ProbeTensor};
 #[cfg(feature = "cuda")]
 use crate::runtime_fused_kernels::adopt_runtime_fused;
-#[cfg(feature = "cuda")]
-use fuel_cuda_backend::CudaDevice;
+// The device-free `ProbeInvoker` tests need the verifier's invoker types without `cuda`.
+#[cfg(all(test, not(feature = "cuda")))]
+use crate::fkc::verify::{HostTensor, KernelInvoker, VerifyError};
+#[cfg(all(test, not(feature = "cuda")))]
+use crate::kernel::BindingEntry;
 
 /// A not-yet-verified kernel a provider has offered Fuel: the callable
 /// itself, the region it claims to replace (`decompose`, `None` if the
@@ -964,7 +969,8 @@ mod flag_not_verdict_tests {
             backend: BackendId::Cuda,
             claimed_op: None,
         };
-        let (_verdict, records) = verify_candidate(&cand, &dev);
+        let (_verdict, records) =
+            verify_candidate(&cand, &crate::probe_device::CudaProbeDevice::new(dev));
         let advisory = records.iter().find(|r| r.claim == "kiss_ref_advisory");
         assert!(
             advisory.is_some(),
@@ -1029,7 +1035,8 @@ mod flag_not_verdict_tests {
             backend: BackendId::Cuda,
             claimed_op: None,
         };
-        let (_verdict, records) = verify_candidate(&cand, &dev);
+        let (_verdict, records) =
+            verify_candidate(&cand, &crate::probe_device::CudaProbeDevice::new(dev));
         let advisory = records
             .iter()
             .find(|r| r.claim == "kiss_ref_advisory")
@@ -1096,7 +1103,8 @@ mod flag_not_verdict_tests {
             backend: BackendId::Cuda,
             claimed_op: Some(claimed),
         };
-        let (_verdict, records) = verify_candidate(&cand, &dev);
+        let (_verdict, records) =
+            verify_candidate(&cand, &crate::probe_device::CudaProbeDevice::new(dev));
         let advisory = records
             .iter()
             .find(|r| r.claim == "kiss_ref_advisory")
@@ -1555,7 +1563,7 @@ fn resolve_reference_failure(
 #[cfg(feature = "cuda")]
 pub fn verify_candidate(
     cand: &CandidateKernel,
-    device: &CudaDevice,
+    device: &dyn ProbeDevice,
 ) -> (VerifyVerdict, Vec<LedgerRecord>) {
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         verify_candidate_impl(cand, device)
@@ -1660,7 +1668,7 @@ fn claimed_op_structural_gate(
 #[cfg(feature = "cuda")]
 fn verify_candidate_impl(
     cand: &CandidateKernel,
-    device: &CudaDevice,
+    device: &dyn ProbeDevice,
 ) -> (VerifyVerdict, Vec<LedgerRecord>) {
     // Seed derived from the revision hash so a re-run is byte-identical.
     let seed = 0x5EED_C0DE_1234_5678_u64 ^ cand.kernel_revision_hash;
@@ -1735,12 +1743,51 @@ fn verify_candidate_impl(
     (verdict, merged.records().to_vec())
 }
 
+/// Adapts a [`ProbeDevice`] to the verifier's [`KernelInvoker`]: runs the
+/// candidate kernel through [`ProbeDevice::invoke_candidate`], so the
+/// bit-stability check and the numeric check share one invoke path and neither
+/// names a backend.
+#[cfg(any(feature = "cuda", test))]
+struct ProbeInvoker<'a> {
+    device: &'a dyn ProbeDevice,
+    params: &'a crate::kernel::OpParams,
+    out_dtype: fuel_ir::DType,
+    out_shape: &'a [usize],
+}
+
+#[cfg(any(feature = "cuda", test))]
+impl KernelInvoker for ProbeInvoker<'_> {
+    fn invoke(
+        &self,
+        entry: &BindingEntry,
+        inputs: &[HostTensor],
+    ) -> Result<HostTensor, VerifyError> {
+        let probe: Vec<ProbeTensor> = inputs
+            .iter()
+            .map(|t| ProbeTensor {
+                dtype: t.dtype,
+                shape: t.shape.clone(),
+                bytes: t.bytes.clone(),
+            })
+            .collect();
+        let out = self
+            .device
+            .invoke_candidate(entry, self.params, &probe, self.out_dtype, self.out_shape)
+            .map_err(|e| VerifyError::Invoke(e.to_string()))?;
+        Ok(HostTensor {
+            dtype: self.out_dtype,
+            shape: self.out_shape.to_vec(),
+            bytes: out.bytes,
+        })
+    }
+}
+
 /// The per-probe body of [`verify_candidate_impl`]: verify `cand` on the one
 /// `probe` it is given.
 #[cfg(feature = "cuda")]
 fn verify_candidate_on_probe(
     cand: &CandidateKernel,
-    device: &CudaDevice,
+    device: &dyn ProbeDevice,
     seed: u64,
     probe: Vec<HostTensor>,
 ) -> (VerifyVerdict, Vec<LedgerRecord>) {
@@ -1878,8 +1925,12 @@ fn verify_candidate_on_probe(
         kernel_revision_hash: cand.kernel_revision_hash,
         cost_expr: None,
     };
-    let inv = CudaInvoker::new(device.clone(), out_dtype, out_shape.clone())
-        .with_params(cand.op_params.clone());
+    let inv = ProbeInvoker {
+        device,
+        params: &cand.op_params,
+        out_dtype,
+        out_shape: &out_shape,
+    };
     let cand_out = match inv.invoke(&entry, &probe) {
         Ok(o) => o,
         Err(e) => {
@@ -2082,9 +2133,6 @@ fn verify_candidate_on_probe(
             );
         }
 
-        // The device side of the reference realize (the probe seam: no backend
-        // is named inside `jit_ingest_probe`).
-        let probe_device = crate::probe_device::CudaProbeDevice::new(device.clone());
         let reference = match cand.claimed_op {
             Some(claimed) => {
                 // (i)+(ii) Claimed-op STRUCTURAL gates (recipe-identity +
@@ -2106,7 +2154,7 @@ fn verify_candidate_on_probe(
                     &probe,
                     out_dtype,
                     out_shape.clone(),
-                    &probe_device,
+                    device,
                 ) {
                     Ok(r) => r,
                     Err(e) => {
@@ -2133,7 +2181,7 @@ fn verify_candidate_on_probe(
                     &probe,
                     out_dtype,
                     out_shape.clone(),
-                    &probe_device,
+                    device,
                 ) {
                     Ok(r) => r,
                     Err(e) => {
@@ -2311,7 +2359,7 @@ fn verify_candidate_on_probe(
 /// `.expect("fused candidate has a decompose")`, which is a production panic
 /// the constitution's never-panic invariant forbids.
 #[cfg(feature = "cuda")]
-pub fn ingest_one(cand: &CandidateKernel, device: &CudaDevice) -> IngestOutcome {
+pub fn ingest_one(cand: &CandidateKernel, device: &dyn ProbeDevice) -> IngestOutcome {
     let (verdict, records) = verify_candidate(cand, device);
     match verdict {
         VerifyVerdict::Pass => adopt_verified(cand),
@@ -2446,8 +2494,8 @@ impl IngestionService {
     /// queue/worker/idle-gate/never-panic machinery lives there and is
     /// exercised directly (no GPU) by this module's tests.
     #[cfg(feature = "cuda")]
-    pub fn start(device: CudaDevice, cfg: IngestionConfig) -> Self {
-        Self::start_with_verify(move |cand| ingest_one(cand, &device), cfg)
+    pub fn start(device: std::sync::Arc<dyn ProbeDevice>, cfg: IngestionConfig) -> Self {
+        Self::start_with_verify(move |cand| ingest_one(cand, device.as_ref()), cfg)
     }
 
     /// Test/production seam: build the service around an injected verify
@@ -2587,6 +2635,140 @@ where
 
 #[cfg(test)]
 mod tests {
+
+    // ---- ProbeInvoker: the candidate-invoke path against a device-free stub ----
+
+    /// What the stub saw: input byte lengths, the declared output shape and dtype.
+    #[derive(Clone, Debug, PartialEq)]
+    struct InvokeSeen {
+        input_bytes: Vec<usize>,
+        out_shape: Vec<usize>,
+        out_dtype: fuel_ir::DType,
+    }
+
+    struct InvokeStub {
+        out: Result<Vec<u8>, String>,
+        seen: std::sync::Mutex<Option<InvokeSeen>>,
+    }
+
+    impl ProbeDevice for InvokeStub {
+        fn backend(&self) -> fuel_ir::probe::BackendId {
+            fuel_ir::probe::BackendId::Vulkan
+        }
+        fn invoke_candidate(
+            &self,
+            _entry: &BindingEntry,
+            _params: &crate::kernel::OpParams,
+            inputs: &[ProbeTensor],
+            out_dtype: fuel_ir::DType,
+            out_shape: &[usize],
+        ) -> fuel_ir::Result<ProbeTensor> {
+            *self.seen.lock().unwrap() = Some(InvokeSeen {
+                input_bytes: inputs.iter().map(|t| t.bytes.len()).collect(),
+                out_shape: out_shape.to_vec(),
+                out_dtype,
+            });
+            match &self.out {
+                Ok(b) => Ok(ProbeTensor {
+                    dtype: out_dtype,
+                    shape: out_shape.to_vec(),
+                    bytes: b.clone(),
+                }),
+                Err(m) => Err(fuel_ir::Error::Msg(m.clone())),
+            }
+        }
+        fn realize(
+            &self,
+            _graph: std::sync::Arc<std::sync::RwLock<fuel_graph::Graph>>,
+            _sink: fuel_graph::NodeId,
+            _inputs: &[(fuel_graph::NodeId, ProbeTensor)],
+        ) -> fuel_ir::Result<ProbeTensor> {
+            Err(fuel_ir::Error::Msg("not used".to_string()))
+        }
+    }
+
+    fn nop_kernel(
+        _: &[std::sync::Arc<std::sync::RwLock<fuel_memory::Storage>>],
+        _: &mut [std::sync::Arc<std::sync::RwLock<fuel_memory::Storage>>],
+        _: &[fuel_ir::Layout],
+        _: &crate::kernel::OpParams,
+    ) -> fuel_ir::Result<()> {
+        Ok(())
+    }
+
+    fn nop_entry() -> BindingEntry {
+        BindingEntry {
+            kernel: nop_kernel,
+            caps: crate::kernel::KernelCaps::empty(),
+            precision: crate::fused::PrecisionGuarantee::none("test"),
+            cost: crate::kernel::unknown_cost,
+            kernel_source: "candidate",
+            is_generic: false,
+            kernel_revision_hash: 0,
+            cost_expr: None,
+        }
+    }
+
+    /// `ProbeInvoker` hands the device the probe inputs and the DECLARED output
+    /// dtype/shape, and returns the device's bytes under that declared type.
+    #[test]
+    fn probe_invoker_passes_inputs_and_declared_output_to_the_device() {
+        let dev = InvokeStub {
+            out: Ok(vec![9, 8, 7, 6]),
+            seen: std::sync::Mutex::new(None),
+        };
+        let params = crate::kernel::OpParams::None;
+        let inv = ProbeInvoker {
+            device: &dev,
+            params: &params,
+            out_dtype: fuel_ir::DType::F32,
+            out_shape: &[1],
+        };
+        let input = HostTensor {
+            dtype: fuel_ir::DType::F32,
+            shape: vec![2],
+            bytes: vec![0; 8],
+        };
+        let out = inv.invoke(&nop_entry(), &[input]).expect("stub invoke ok");
+        assert_eq!(out.dtype, fuel_ir::DType::F32);
+        assert_eq!(out.shape, vec![1]);
+        assert_eq!(out.bytes, vec![9, 8, 7, 6]);
+        let seen = dev
+            .seen
+            .lock()
+            .unwrap()
+            .clone()
+            .expect("invoke_candidate called");
+        assert_eq!(
+            seen,
+            InvokeSeen {
+                input_bytes: vec![8],
+                out_shape: vec![1],
+                out_dtype: fuel_ir::DType::F32
+            }
+        );
+    }
+
+    /// A device failure surfaces as `VerifyError::Invoke` carrying the device's
+    /// message, never a panic and never a fabricated tensor.
+    #[test]
+    fn probe_invoker_maps_a_device_error_to_verify_error_invoke() {
+        let dev = InvokeStub {
+            out: Err("launch failed".to_string()),
+            seen: std::sync::Mutex::new(None),
+        };
+        let params = crate::kernel::OpParams::None;
+        let inv = ProbeInvoker {
+            device: &dev,
+            params: &params,
+            out_dtype: fuel_ir::DType::F32,
+            out_shape: &[1],
+        };
+        match inv.invoke(&nop_entry(), &[]) {
+            Err(VerifyError::Invoke(m)) => assert!(m.contains("launch failed"), "{m}"),
+            other => panic!("expected VerifyError::Invoke, got {other:?}"),
+        }
+    }
     use super::*;
 
     /// Task 3: `CandidateKernel.claimed_op` — the op-identity a candidate
@@ -2793,7 +2975,8 @@ mod tests {
             claimed_op: None,
         };
 
-        let (verdict, records) = verify_candidate(&cand, &dev);
+        let (verdict, records) =
+            verify_candidate(&cand, &crate::probe_device::CudaProbeDevice::new(dev));
         assert!(
             matches!(verdict, VerifyVerdict::Pass),
             "expected Pass, got {verdict:?}"
@@ -2890,7 +3073,8 @@ mod tests {
             claimed_op: None,
         };
 
-        let (verdict, records) = verify_candidate(&cand, &dev);
+        let (verdict, records) =
+            verify_candidate(&cand, &crate::probe_device::CudaProbeDevice::new(dev));
         match verdict {
             VerifyVerdict::Fail { claim, detail } => {
                 assert_eq!(claim, "max_ulp", "first (only) declared numeric claim");
@@ -2961,7 +3145,8 @@ mod tests {
             claimed_op: None,
         };
 
-        let (verdict, records) = verify_candidate(&cand, &dev);
+        let (verdict, records) =
+            verify_candidate(&cand, &crate::probe_device::CudaProbeDevice::new(dev));
         match verdict {
             VerifyVerdict::Inconclusive { claim, detail } => {
                 assert_eq!(claim, "max_ulp", "escalate names the evidence claim");
@@ -3049,7 +3234,7 @@ mod tests {
             claimed_op: None,
         };
 
-        match ingest_one(&cand, &dev) {
+        match ingest_one(&cand, &crate::probe_device::CudaProbeDevice::new(dev)) {
             IngestOutcome::Rejected(r) => {
                 assert!(
                     r.failed_claim.contains("max")
@@ -3121,7 +3306,7 @@ mod tests {
             claimed_op: None,
         };
 
-        match ingest_one(&cand, &dev) {
+        match ingest_one(&cand, &crate::probe_device::CudaProbeDevice::new(dev)) {
             IngestOutcome::Adopted(id) => {
                 let table = crate::dispatch::global_bindings();
                 assert!(
@@ -3287,7 +3472,7 @@ mod tests {
             claimed_op: Some(FusedOps::ROPE),
         };
 
-        match ingest_one(&cand, &dev) {
+        match ingest_one(&cand, &crate::probe_device::CudaProbeDevice::new(dev)) {
             IngestOutcome::Rejected(r) => {
                 assert!(
                     r.failed_claim.contains("max")
@@ -3387,7 +3572,7 @@ mod tests {
             claimed_op: Some(claimed_id),
         };
 
-        match ingest_one(&cand, &dev) {
+        match ingest_one(&cand, &crate::probe_device::CudaProbeDevice::new(dev)) {
             IngestOutcome::Adopted(id) => {
                 let table = crate::dispatch::global_bindings();
                 assert!(
@@ -4151,6 +4336,8 @@ mod tests {
     fn ingestion_service_adopts_a_matching_add_candidate_e2e() {
         use fuel_ir::probe::BackendId;
 
+        use fuel_cuda_backend::CudaDevice;
+
         let Ok(dev) = CudaDevice::new(0) else {
             return fuel_test_support::hardware::skip(
                 fuel_test_support::hardware::Hardware::Cuda,
@@ -4158,7 +4345,10 @@ mod tests {
             );
         };
 
-        let svc = IngestionService::start(dev, IngestionConfig::default());
+        let svc = IngestionService::start(
+            std::sync::Arc::new(crate::probe_device::CudaProbeDevice::new(dev)),
+            IngestionConfig::default(),
+        );
 
         let (tx, rx) = std::sync::mpsc::channel::<()>();
         let fb = Arc::new(E2eFeedback::with_notify(tx));
@@ -4202,6 +4392,8 @@ mod tests {
     #[ignore = "requires a live CUDA device"]
     #[cfg(feature = "cuda")]
     fn ingestion_service_rejects_a_mismatched_mul_candidate_e2e() {
+        use fuel_cuda_backend::CudaDevice;
+
         let Ok(dev) = CudaDevice::new(0) else {
             return fuel_test_support::hardware::skip(
                 fuel_test_support::hardware::Hardware::Cuda,
@@ -4209,7 +4401,10 @@ mod tests {
             );
         };
 
-        let svc = IngestionService::start(dev, IngestionConfig::default());
+        let svc = IngestionService::start(
+            std::sync::Arc::new(crate::probe_device::CudaProbeDevice::new(dev)),
+            IngestionConfig::default(),
+        );
 
         let (tx, rx) = std::sync::mpsc::channel::<()>();
         let fb = Arc::new(E2eFeedback::with_notify(tx));
@@ -4260,6 +4455,8 @@ mod tests {
     #[ignore = "requires a live CUDA device"]
     #[cfg(feature = "cuda")]
     fn ingestion_service_flags_an_f64_add_candidate_e2e() {
+        use fuel_cuda_backend::CudaDevice;
+
         let Ok(dev) = CudaDevice::new(0) else {
             return fuel_test_support::hardware::skip(
                 fuel_test_support::hardware::Hardware::Cuda,
@@ -4267,7 +4464,10 @@ mod tests {
             );
         };
 
-        let svc = IngestionService::start(dev, IngestionConfig::default());
+        let svc = IngestionService::start(
+            std::sync::Arc::new(crate::probe_device::CudaProbeDevice::new(dev)),
+            IngestionConfig::default(),
+        );
 
         let (tx, rx) = std::sync::mpsc::channel::<()>();
         let fb = Arc::new(E2eFeedback::with_notify(tx));

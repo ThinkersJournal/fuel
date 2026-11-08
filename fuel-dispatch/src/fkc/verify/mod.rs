@@ -128,9 +128,11 @@ pub use bit_stability::{HostTensor, fill_deterministic};
 // The invoker/outcome surface: `jit_ingest`'s cuda block (jit+cuda) and
 // `harness`+`seed_cuda_ledger` (cuda, via `super::`) — i.e. `cuda` covers both.
 #[cfg(feature = "cuda")]
-pub use bit_stability::{
-    KernelInvoker, ProbeInputs, VerifyError, VerifyOutcome, verify_bit_stability,
-};
+pub use bit_stability::{ProbeInputs, VerifyOutcome, verify_bit_stability};
+// `KernelInvoker`/`VerifyError` also reach `jit_ingest`'s device-free `ProbeInvoker`
+// tests (jit+test), which need no `cuda`.
+#[cfg(any(feature = "cuda", all(feature = "jit", test)))]
+pub use bit_stability::{KernelInvoker, VerifyError};
 pub use ledger::{LedgerQuery, VerificationLedger, gate_precision};
 // `LedgerRecord`: `jit_ingest` (jit) and `harness`+`seed_cuda_ledger` (cuda)
 // — and, unconditionally, the register-gate tests, which CONSTRUCT a ledger
