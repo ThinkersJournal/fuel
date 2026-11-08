@@ -7,7 +7,7 @@ This documents the main changes to the `fuel` workspace.
 
 ### Breaking
 
-- **`fuel-kernels-source`: the 150 Slang sources (`kernels/*.slang`, `*.slangh`) and the two slangc-only post-processors (`kernels/hoist_extinst_imports.py`, `kernels/no_contraction.py`) are removed; `kernels/compile.sh` now handles `.glsl` / `.wgsl` only.** *Who is affected:* anyone who takes the `.slang` / `.slangh` files or those two scripts from the `fuel-kernels-source` crate, or runs `compile.sh` on a Slang file. *Use instead:* the published `fishstringer-kernels-source` crate, which carries the same kernels (the committed `fuel-vulkan-kernels/spv` was regenerated from its 0.0.13 in 0.44.5; `fuel-vulkan-kernels/spv/SOURCE.txt` records the pin; take `~0.0.14` once it is published). The 27 `.glsl` sources and `compile.sh` stay until ROADMAP row 143. No `.spv` byte changes in this release.
+- **`fuel-kernels-source`: the 150 Slang sources (`kernels/*.slang`, `*.slangh`) and the two slangc-only post-processors (`kernels/hoist_extinst_imports.py`, `kernels/no_contraction.py`) are removed; `kernels/compile.sh` now handles `.glsl` / `.wgsl` only.** *Who is affected:* anyone who takes the `.slang` / `.slangh` files or those two scripts from the `fuel-kernels-source` crate, or runs `compile.sh` on a Slang file. *Use instead:* the published `fishstringer-kernels-source` crate, which carries the same kernels (the committed `fuel-vulkan-kernels/spv` was regenerated from its 0.0.13 in 0.44.5; `fuel-vulkan-kernels/spv/SOURCE.txt` records the pin; take `~0.0.14`, published 2026-11-08; it also ships `kernels/spv_equiv.py`, a structural SPIR-V equivalence check). The 27 `.glsl` sources and `compile.sh` stay until ROADMAP row 143. No `.spv` byte changes in this release.
 
 ### Changed
 
