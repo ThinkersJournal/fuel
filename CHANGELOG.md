@@ -3,6 +3,16 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.46.3 - 2026-11-10 (provisional; tentative number, the PM allocates; docs only)
+
+### Changed
+
+- `docs/gaps.md`: new row GAP-380 (Tier C, Owner Fuel 1): under CUDA the fused paged-attention op is placed on `Cpu` in the held paged-decode plan (measured with `paged_decode_node_placement_report_cuda` at `de12d8efc`).
+
+### Not verified
+
+- That the host placement accounts for all of the served ~170 ms/step.
+
 ## v0.46.2 - 2026-11-08 (provisional; tentative number, the PM allocates)
 
 ### Fixed
