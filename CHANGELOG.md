@@ -11,6 +11,10 @@ This documents the main changes to the `fuel` workspace.
 - `fuel-dispatch/tests/kiss_clause_ledger.rs`: a `test:` path may now name a dependency package (`fireline-grammar/src/...`), resolved through `cargo metadata`, and a path naming neither a repo directory nor a package is an error. Eight rows whose only citations lived in the moved crates are deleted (KISS-ANNOUNCE-7.3-0002, KISS-GRAMMAR-6.8-0007, KISS-OPS-6.19-0001, -0007, -0025, -0026, -0027, -0034), as `no_orphan_ledger_rows` requires; their obligations are discharged by FireLine's own suites. KISS-ANNOUNCE-7.3-0003 becomes a `Record` (Fuel has no dependency on the handshake crate). Three stale entries leave `BARE_CITED_LEDGER_CLAUSES`.
 - `fuel-ir/tests/exhaustive_by_design_marker.rs`: `PatternNode` leaves `EXPECTED_MARKED` (its guard now lives in `fireline-grammar/tests/exhaustive_by_design.rs`); `crate_dependency_tiers.txt` drops the three crates.
 
+### Changed
+
+- The repository moved to `ThinkersJournal/fuel` (2026-11-10): `repository` in `Cargo.toml` (workspace, `fuel-metal-kernels`) and the live links in the crate READMEs and one doc comment now name it (the old URL redirects). Historic text (`docs/`, `ROADMAP.md`, older changelog entries, CI-run links) is left as written.
+
 ### Not verified
 
 - `cargo clippy -D warnings` on `fuel-graph`, `fuel-kiss-ref-backend`, `fuel-dispatch --features jit --all-targets` and the ledger gate pass locally; `cargo tree -d` shows a single `unpopped-vocab`. Not built: `fuel-cuda-dispatch` and its `jit-synth` feature (needs a CUDA forge slot, and `baracuda-cuda-seam` must first release a version on `fireline-*`; the published alpha.95 still requires `fuel-kernel-seam ^0.43`).
