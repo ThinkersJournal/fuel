@@ -1,0 +1,90 @@
+# Device tests on the self-hosted GPU runner (CireSnave 2026-10-16: "Self-hosted
+# runners are the direction we're heading. ... Avoiding tests because they can't
+# run on GitHub hides problems with no positive to counter it.").
+#
+# MANUAL-ONLY (workflow_dispatch) until the preconditions below hold. Re-landed 2026-11-10 from the
+# `ignore-step1-gpu-runner` draft: labels now match the registered runner (as cuda-metal-compile-check.yml uses),
+# the `cuda-build.ps1` slot step is dropped (its Global\ mutex is created by another account, so the restricted
+# runner account may be denied; the forge is capped by BARACUDA_FORGE_THREADS instead), and the push-to-main and
+# schedule triggers are removed. UNVERIFIED ON THE RUNNER: no run has been made. Restore push/schedule only after
+# a dispatch run is green and the ORDER DEPENDENCY below is met.
+# Original note: not enabled until the runner spike confirms GPU visibility under the
+# restricted account (board 221). Runner labels per the PM: self-hosted, windows,
+# gpu (+ gpu-cuda / gpu-vulkan).
+#
+# TRIGGERS ARE DELIBERATELY NARROW: a self-hosted runner executes whatever the
+# workflow says, so NEVER `pull_request` (a fork PR would run its code on the
+# owner's PC). push-to-main + schedule + manual only.
+#
+# ONE DEVICE, ONE JOB AT A TIME: runner concurrency is 1, the `concurrency`
+# group below serialises the two jobs, and `scripts/gpu-run.ps1` (the
+# machine-wide mutex) stays the in-job guard against local lanes sharing the GPU.
+#
+# NO SILENT SKIPS: CUDA and Vulkan device-absence is FATAL by default
+# (fuel-test-support::hardware), so a missing device reddens the job instead of
+# passing. `--include-ignored` runs the tests still carrying #[ignore] during the
+# #[ignore] retirement; it is dropped, step by step, as they lose the attribute.
+#
+# ORDER DEPENDENCY: `--include-ignored` would also run the ignored TOOLS that
+# rewrite committed files (seed_*_ledger, gap_228_flip, gap_hedges
+# regenerate_allowlist) and the network/bench tests. Retirement steps 3 (tools to
+# bins), 4 (instruments/benches to examples) and 2 (hub) MUST merge before this
+# workflow is enabled, or the first run dirties the ledger.
+name: Device tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gpu-device
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  BARACUDA_FORGE_THREADS: "4"
+
+jobs:
+  cuda:
+    name: CUDA device tests
+    runs-on: [self-hosted, Windows, X64, gpu, fuel]
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build (forge capped at 4 threads, as cuda-metal-compile-check does)
+        shell: pwsh
+        run: >
+          cargo test -j 4 -p fuel-dispatch -p fuel-cuda-backend -p fuel-tensor
+          -p fuel-model-llama -p fuel-model-phi -p fuel-inference
+          --features fuel-dispatch/cuda,fuel-dispatch/jit,fuel-tensor/cuda --no-run
+      - name: Run (GPU mutex held)
+        shell: pwsh
+        run: >
+          pwsh scripts/gpu-run.ps1 -Project fuel --
+          cargo test -j 4 -p fuel-dispatch -p fuel-cuda-backend -p fuel-tensor
+          -p fuel-model-llama -p fuel-model-phi -p fuel-inference
+          --features fuel-dispatch/cuda,fuel-dispatch/jit,fuel-tensor/cuda
+          -- --include-ignored --test-threads=1
+
+  vulkan:
+    name: Vulkan device tests
+    needs: cuda
+    if: ${{ !cancelled() }}
+    runs-on: [self-hosted, Windows, X64, gpu, fuel]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build
+        shell: pwsh
+        run: >
+          cargo test -j 4 -p fuel-dispatch -p fuel-vulkan-backend -p fuel-model-llama
+          --features fuel-dispatch/vulkan --no-run
+      - name: Run (GPU mutex held)
+        shell: pwsh
+        run: >
+          pwsh scripts/gpu-run.ps1 -Project fuel --
+          cargo test -j 4 -p fuel-dispatch -p fuel-vulkan-backend -p fuel-model-llama
+          --features fuel-dispatch/vulkan
+          -- --include-ignored --test-threads=1
