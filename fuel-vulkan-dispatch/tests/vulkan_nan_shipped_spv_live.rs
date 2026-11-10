@@ -207,15 +207,10 @@ fn measure(be: &Arc<VulkanBackend>) -> Vec<(String, bool)> {
     out
 }
 
-/// Kernel groups that DROP the NaN on the shipped `.spv` (every case, every dtype). Measured
-/// 2026-11-10 at `de12d8efc` (spv built from fishstringer-kernels-source 0.0.13).
-const KNOWN_DROP_GROUPS: &[&str] = &[
-    "relu/",
-    "max-full/",
-    "min-full/",
-    "max-lastdim/",
-    "min-lastdim/",
-];
+/// Kernel groups that DROP the NaN on the shipped `.spv`. Empty since fishstringer-kernels-source
+/// 0.0.17 (isnan guards on the 12 unary/reduce/reduce_last_dim kernels, GAP-381 closed); a future
+/// known defect is added here with its GAP id, and the test reddens when it stops dropping.
+const KNOWN_DROP_GROUPS: &[&str] = &[];
 
 #[test]
 fn shipped_vulkan_spv_nan_behaviour_is_pinned() {
