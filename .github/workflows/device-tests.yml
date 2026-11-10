@@ -79,12 +79,12 @@ jobs:
       - name: Build
         shell: pwsh
         run: >
-          cargo test -j 4 -p fuel-dispatch -p fuel-vulkan-backend -p fuel-model-llama
+          cargo test -j 4 -p fuel-dispatch -p fuel-vulkan-backend -p fuel-vulkan-dispatch -p fuel-model-llama
           --features fuel-dispatch/vulkan --no-run
       - name: Run (GPU mutex held)
         shell: pwsh
         run: >
           pwsh scripts/gpu-run.ps1 -Project fuel --
-          cargo test -j 4 -p fuel-dispatch -p fuel-vulkan-backend -p fuel-model-llama
+          cargo test -j 4 -p fuel-dispatch -p fuel-vulkan-backend -p fuel-vulkan-dispatch -p fuel-model-llama
           --features fuel-dispatch/vulkan
           -- --include-ignored --test-threads=1
