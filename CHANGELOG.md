@@ -3,6 +3,17 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.47.2 - 2026-11-10 (provisional; tentative number, the PM allocates; tests and docs)
+
+### Added
+
+- `fuel-vulkan-dispatch/tests/vulkan_nan_shipped_spv_live.rs`: pins what the shipped Vulkan `.spv` does with a NaN in `relu`, `max`/`min` reduce and last-dim `max`/`min` (f32/f16/bf16/f64) on every non-CPU adapter, named by adapter name and PCI address, with the binary `Maximum`/`Minimum` guard as the positive control. Not `#[ignore]`d: it needs the `gpu-run` lock (`require_gpu_run_lock`) and a missing adapter fails.
+- `docs/gaps.md`: GAP-381 (Tier A): all 56 NaN-input cases per adapter drop the NaN on both the AMD iGPU and the NVIDIA card.
+
+### Not verified
+
+- Metal; the strided variants; any `.spv` other than the committed one.
+
 ## v0.46.2 - 2026-11-08 (provisional; tentative number, the PM allocates)
 
 ### Fixed
