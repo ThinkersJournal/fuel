@@ -61,8 +61,16 @@ pub enum CompiledCostExpr {
     /// judge_measured with no expressions). Maps to `unknown_cost` in the
     /// register slice.
     Unknown,
-    /// A parsed expression tree.
+    /// A parsed expression tree: the `flops` expression alone (a contract
+    /// that declares no `bytes_moved`, so `bytes_moved` evaluates to 0).
     Expr(CostNode),
+    /// A contract that declares a `bytes_moved` expression (GAP-376). Either
+    /// side may be absent: `flops: None` is a bytes-only block, whose bytes
+    /// formula must never be read as flops. Built only by `compile_cost`.
+    Declared {
+        flops: Option<CostNode>,
+        bytes_moved: Option<CostNode>,
+    },
 }
 
 /// One node of a cost-expression AST.
@@ -429,6 +437,30 @@ pub fn eval(
     match expr {
         CompiledCostExpr::Unknown => Ok(0.0),
         CompiledCostExpr::Expr(node) => eval_node(node, bindings),
+        CompiledCostExpr::Declared { flops, .. } => match flops {
+            Some(node) => eval_node(node, bindings),
+            None => Ok(0.0),
+        },
+    }
+}
+
+/// Evaluate the declared `bytes_moved` side of a compiled cost (GAP-376).
+/// `Unknown` and a flops-only `Expr` declare no bytes, so they evaluate to
+/// `0.0`, exactly as before this field was carried.
+pub fn eval_bytes_moved(
+    expr: &CompiledCostExpr,
+    bindings: &HashMap<String, f64>,
+) -> Result<f64, CostEvalError> {
+    match expr {
+        CompiledCostExpr::Declared {
+            bytes_moved: Some(node),
+            ..
+        } => eval_node(node, bindings),
+        CompiledCostExpr::Unknown
+        | CompiledCostExpr::Expr(_)
+        | CompiledCostExpr::Declared {
+            bytes_moved: None, ..
+        } => Ok(0.0),
     }
 }
 
@@ -531,8 +563,8 @@ pub fn bind_cost_symbols(
 /// a dispatch context, turning a parsed [`CompiledCostExpr`] into a concrete
 /// [`CostEstimate`] — the value FKC import previously dropped in favor of the
 /// `unknown_cost` sentinel. An undefined symbol is a typed [`CostEvalError`]
-/// (never a panic, never a silent zero). `bytes_moved` stays 0 until contracts
-/// carry a separate `bytes:` expression.
+/// (never a panic, never a silent zero). `bytes_moved` is the declared
+/// `bytes_moved:` expression when the contract carries one, else 0 (GAP-376).
 pub fn cost_estimate(
     expr: &CompiledCostExpr,
     op: OpKind,
@@ -542,8 +574,10 @@ pub fn cost_estimate(
 ) -> Result<CostEstimate, CostEvalError> {
     let symbols = bind_cost_symbols(op, shapes, dtypes, params);
     let flops = eval(expr, &symbols)?;
+    let bytes_moved = eval_bytes_moved(expr, &symbols)?;
     Ok(CostEstimate {
         flops: flops.max(0.0) as u64,
+        bytes_moved: bytes_moved.max(0.0) as u64,
         ..CostEstimate::default()
     })
 }

@@ -935,7 +935,7 @@ fn compile_cost(block: Option<&CostBlock>, section: &str) -> Result<CompiledCost
     };
 
     let flops = parse("flops", cost.flops.as_deref())?;
-    let _bytes_moved = parse("bytes_moved", cost.bytes_moved.as_deref())?;
+    let bytes_moved = parse("bytes_moved", cost.bytes_moved.as_deref())?;
     // overhead_ns / memory.device_bytes are raw scalars (number or `~`);
     // when they are an expression STRING they are parse-validated too.
     if let Some(mem) = &cost.memory
@@ -947,12 +947,18 @@ fn compile_cost(block: Option<&CostBlock>, section: &str) -> Result<CompiledCost
         let _ = parse("overhead_ns", Some(s))?;
     }
 
-    // The primary held AST is flops. If flops is Unknown but bytes_moved
-    // carries an expression, hold bytes_moved instead (so a cost block with
-    // only a bytes_moved formula is not collapsed to Unknown).
-    match flops {
-        CompiledCostExpr::Unknown => Ok(_bytes_moved),
-        expr => Ok(expr),
+    // Hold BOTH expressions (GAP-376): a declared `bytes_moved` must reach
+    // the `CostEstimate`, and a bytes-only block must not have its bytes
+    // formula evaluated into `flops`. With no `bytes_moved` the flops-only
+    // `Expr` form is kept unchanged.
+    let node = |e: CompiledCostExpr| match e {
+        CompiledCostExpr::Expr(n) => Some(n),
+        _ => None,
+    };
+    match (node(flops), node(bytes_moved)) {
+        (None, None) => Ok(CompiledCostExpr::Unknown),
+        (Some(f), None) => Ok(CompiledCostExpr::Expr(f)),
+        (flops, bytes_moved) => Ok(CompiledCostExpr::Declared { flops, bytes_moved }),
     }
 }
 
@@ -1414,8 +1420,15 @@ mod tests {
             p.kernel as *const () as usize,
             dummy_kernel as *const () as usize
         );
-        // cost: flops = "n" parsed (not Unknown).
-        assert!(matches!(p.cost, CompiledCostExpr::Expr(_)));
+        // cost: flops = "n" parsed (not Unknown) AND the contract's declared
+        // `bytes_moved` is held beside it (GAP-376), not dropped.
+        assert!(matches!(
+            p.cost,
+            CompiledCostExpr::Declared {
+                flops: Some(_),
+                bytes_moved: Some(_)
+            }
+        ));
         assert_eq!(p.kernel_source, "portable-cpu");
     }
 
@@ -2111,6 +2124,64 @@ return:
         block.bytes_moved = Some("3 * n *".into());
         let err = compile_cost(Some(&block), "k").expect_err("malformed bytes_moved");
         assert!(matches!(err, FkcError::CostExprParse { field, .. } if field == "bytes_moved"));
+    }
+
+    /// GAP-376: a declared `bytes_moved` must reach the `CostEstimate`.
+    fn gap376_estimate(flops: Option<&str>, bytes: Option<&str>) -> crate::fused::CostEstimate {
+        let block = CostBlock {
+            provenance: Some("declared".into()),
+            class: None,
+            cost_fn: None,
+            flops: flops.map(Into::into),
+            bytes_moved: bytes.map(Into::into),
+            overhead_ns: None,
+            memory: None,
+        };
+        let expr = compile_cost(Some(&block), "k").expect("cost block compiles");
+        let params = crate::kernel::OpParams::Matmul {
+            lhs_batch_dims: vec![2],
+            rhs_batch_dims: vec![2],
+            m: 3,
+            n: 4,
+            k: 5,
+            m_compute: crate::kernel::MatmulM::All,
+        };
+        crate::fkc::cost_estimate(
+            &expr,
+            OpKind::MatMul,
+            &[],
+            &[DType::F32, DType::F32, DType::F32],
+            &params,
+        )
+        .expect("declared cost evaluates")
+    }
+
+    #[test]
+    fn declared_bytes_moved_reaches_the_cost_estimate() {
+        // flops = 2 * n = 8; bytes_moved = 3 * n * dtype_bytes = 3 * 4 * 4 = 48.
+        let est = gap376_estimate(Some("2 * n"), Some("3 * n * dtype_bytes"));
+        assert_eq!(est.flops, 8, "flops expression still evaluates");
+        assert_eq!(
+            est.bytes_moved, 48,
+            "GAP-376: declared bytes_moved was dropped"
+        );
+    }
+
+    #[test]
+    fn bytes_only_block_does_not_read_bytes_as_flops() {
+        // flops absent: the bytes formula must not be evaluated into `flops`.
+        let est = gap376_estimate(None, Some("3 * n * dtype_bytes"));
+        assert_eq!(est.flops, 0, "GAP-376: a bytes formula was read as flops");
+        assert_eq!(est.bytes_moved, 48);
+    }
+
+    #[test]
+    fn flops_only_block_keeps_zero_bytes_moved() {
+        // Sabotage sibling: absent bytes_moved stays 0, so the two tests
+        // above cannot pass by filling bytes_moved unconditionally.
+        let est = gap376_estimate(Some("2 * n"), None);
+        assert_eq!(est.flops, 8);
+        assert_eq!(est.bytes_moved, 0);
     }
 
     #[test]
