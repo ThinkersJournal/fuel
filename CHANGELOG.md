@@ -41,6 +41,17 @@ This documents the main changes to the `fuel` workspace.
 
 - `ROADMAP.md`: rows 144 to 148, one per backend provider (CPU gemm, Vulkan, AOCL, oneMKL, Metal), each as its own project behind FireLine with Fuel only binding (PM ruling 2026-11-10; CireSnave 2026-11-07). All NOT STARTED; the seam census and FireLine's wave-2 definitions come first.
 
+## v0.47.5 - 2026-11-11 (tentative; the PM allocates)
+
+### Fixed
+
+- `fuel-dispatch` (GAP-376): a contract's declared `bytes_moved` now reaches its `CostEstimate`. `CompiledCostExpr` gains `Declared { flops, bytes_moved }`, built by `compile_cost` whenever a contract declares `bytes_moved`; `cost_estimate` and `fused_cost_estimate` evaluate both sides through the new `eval_bytes_moved`. A flops-only contract keeps `Expr` and `bytes_moved = 0`. A bytes-only block no longer has its bytes formula evaluated into `flops`. Entries costed from a declared expression that evaluates now give the ranker a nonzero memory term, so rankings can change.
+
+### Not verified
+
+- How many registered entries evaluate a declared expression and how many rankings move; a ranking-change test and a `WontFit` guard test; where an over-large allocation ends (GAP-376 stays PARTIAL).
+- Run here: `cargo test -p fuel-dispatch --lib -- fkc:: ranker::` (454 passed) and `cargo clippy -p fuel-dispatch --tests -D warnings`. The other CI-exact gates are left to CI.
+
 ## v0.47.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.46.2)
 
 ### Breaking
