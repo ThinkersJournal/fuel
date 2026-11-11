@@ -52,6 +52,16 @@ This documents the main changes to the `fuel` workspace.
 - How many registered entries evaluate a declared expression and how many rankings move; a ranking-change test and a `WontFit` guard test; where an over-large allocation ends (GAP-376 stays PARTIAL).
 - Run here: `cargo test -p fuel-dispatch --lib -- fkc:: ranker::` (454 passed) and `cargo clippy -p fuel-dispatch --tests -D warnings`. The other CI-exact gates are left to CI.
 
+## v0.47.6 - 2026-11-11 (PM-allocated)
+
+### Changed
+
+- Dependencies (lockfile only), taking Dependabot #625, #626, #641, #642, #643 as one batch: `parquet` 60.0.0 to 60.1.0 (with its arrow siblings), `tokio` 1.53.3 to 1.54.1, `yoke` 0.8.3 to 0.8.4, `memmap2` 0.9.11 to 0.9.12, `smallvec` 1.16.3 to 1.16.5. CireSnave's standing rule: every dependency on its most recent version at all times.
+
+### Not verified
+
+- See the PR body for the build and test gates that were run; nothing beyond them was run.
+
 ## v0.47.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.46.2)
 
 ### Breaking
