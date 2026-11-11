@@ -33,8 +33,8 @@ use crate::registry::{
     SubgraphPattern, decompose_via_recipe,
 };
 use crate::{Graph, NodeId};
+use fireline_grammar::{OpAttrs, OpTag, PatternNode};
 use fuel_ir::{DType, Shape};
-use fuel_kernel_seam_types::{OpAttrs, OpTag, PatternNode};
 
 /// Metadata-side registry entry for PowIBackward.
 pub fn entry() -> FusedOpEntry {

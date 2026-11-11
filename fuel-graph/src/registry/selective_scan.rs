@@ -107,10 +107,10 @@ use crate::registry::{
     SubgraphPattern, decompose_via_recipe,
 };
 use crate::{Graph, NodeId};
+use fireline_grammar::shape_expr::{Dim, ShapeExpr};
+use fireline_grammar::{OpAttrs, OpTag, PatternNode, SCAN_ROLE_CARRY, SCAN_ROLE_ELEM};
 use fuel_ir::storage::OutputViewSpec;
 use fuel_ir::{DType, Layout, Shape};
-use fuel_kernel_seam_types::shape_expr::{Dim, ShapeExpr};
-use fuel_kernel_seam_types::{OpAttrs, OpTag, PatternNode, SCAN_ROLE_CARRY, SCAN_ROLE_ELEM};
 use std::sync::Arc;
 
 /// Metadata-side registry entry for SelectiveScan. Multi-output (item

@@ -23,7 +23,7 @@ For the in-flight phase work and the planned order, see
 
 ## Get started
 
-Make sure that you have [`fuel`](https://github.com/ciresnave/fuel/tree/main/fuel) correctly installed as described in [**Installation**](https://huggingface.github.io/candle/guide/installation.html).
+Make sure that you have [`fuel`](https://github.com/ThinkersJournal/fuel/tree/main/fuel) correctly installed as described in [**Installation**](https://huggingface.github.io/candle/guide/installation.html).
 
 Let's see how to run a simple matrix multiplication.
 Write the following to your `myapp/src/main.rs` file:
@@ -576,7 +576,7 @@ RUN set -eux; \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
 # Clone fuel repo
-RUN git clone https://github.com/ciresnave/fuel.git
+RUN git clone https://github.com/ThinkersJournal/fuel.git
 
 # Set compute capability for the build
 ARG CUDA_COMPUTE_CAP=90

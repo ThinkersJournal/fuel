@@ -13,7 +13,7 @@
     float8                 = { workspace = true }
     fuel-ir                = { workspace = true }
     fuel-backend-contract  = { workspace = true }
-    fuel-kernel-seam-types = { workspace = true }
+    fireline-grammar = { workspace = true }
     half                   = { workspace = true }
 
 [dev-dependencies]

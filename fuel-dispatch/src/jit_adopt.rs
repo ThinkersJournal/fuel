@@ -23,10 +23,10 @@
 //! applies. Gated behind the `jit` feature so the core dispatch layer stays free
 //! of the envelope crate.
 
+use fireline_synth::{JitRequest, JitResponse, SynthArtifact, Synthesizer};
 use fuel_graph::registry::FusedOpId;
 use fuel_ir::probe::BackendId;
 use fuel_ir::{DType, Error, Result};
-use fuel_kernel_seam::{JitRequest, JitResponse, SynthArtifact, Synthesizer};
 use unpopped_vocab::{ElementKind, OperandDesc};
 
 use crate::kernel::KernelRef;
@@ -404,8 +404,8 @@ mod tests {
     }
 
     use super::*;
+    use fireline_synth::{ArtifactKind, JitBudget, LinkEntry};
     use fuel_graph::jit::{OpAttrs, OpTag, PatternNode};
-    use fuel_kernel_seam::{ArtifactKind, JitBudget, LinkEntry};
     use std::sync::{Arc, Mutex, RwLock as StdRwLock};
 
     fn noop_kernel(

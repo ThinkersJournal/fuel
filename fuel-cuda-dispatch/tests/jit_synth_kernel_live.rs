@@ -36,7 +36,7 @@
 //! signal.** External facts (is X published? what version?) belong in a check,
 //! not a comment.
 //!
-//! What remains true: this test drives the seam (`fuel_kernel_seam::Synthesizer`)
+//! What remains true: this test drives the seam (`fireline_synth::Synthesizer`)
 //! with a small mock whose "compiled artifact" is real PTX — compiled at test
 //! time by `baracuda-nvrtc` from hand-written CUDA-C matching the exact scalar
 //! ABI `load_synth_kernel` expects. That exercises everything novel *here*
@@ -55,6 +55,9 @@
 use std::sync::{Arc, RwLock};
 
 use baracuda_nvrtc::{CompileOptions, Program};
+use fireline_synth::{
+    ArtifactKind, JitBudget, JitRequest, JitResponse, LinkEntry, SynthArtifact, Synthesizer,
+};
 use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
 use fuel_cuda_dispatch::jit_cuda_load::load_synth_kernel;
 use fuel_dispatch::jit_adopt::adopt_from_response;
@@ -63,9 +66,6 @@ use fuel_dispatch::runtime_fused_kernels::{fused_kernel_available, lookup_runtim
 use fuel_graph::jit::{OpAttrs, OpTag, PatternNode};
 use fuel_ir::probe::BackendId;
 use fuel_ir::{DType, Layout, Shape};
-use fuel_kernel_seam::{
-    ArtifactKind, JitBudget, JitRequest, JitResponse, LinkEntry, SynthArtifact, Synthesizer,
-};
 use fuel_memory::{BackendStorage, Storage};
 use unpopped_vocab::{ArchSku, ElementKind, OperandDesc};
 
@@ -602,7 +602,7 @@ fn jit_scalar_param_kernel_launches_with_live_value() {
 fn live_baracuda_synthesizer_full_loop_scalar() {
     serialise_this_test();
     use baracuda_cuda_seam::BaracudaSynthesizer;
-    use fuel_kernel_seam::{JitBudget, JitRequest, JitResponse, Synthesizer};
+    use fireline_synth::{JitBudget, JitRequest, JitResponse, Synthesizer};
 
     let device = dev();
 
