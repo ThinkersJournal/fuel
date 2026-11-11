@@ -8,12 +8,13 @@ path	class	candle_source	basis
 .github/dependabot.yml	candle	.github/dependabot.yml	identical path; 100% of 2 lines verbatim
 .github/workflows/checkpoint-tests.yml	own		no lineage; 0 of 29 lines verbatim in candle (0%)
 .github/workflows/cuda-metal-compile-check.yml	own		no lineage; 0 of 84 lines verbatim in candle (0%)
+.github/workflows/device-tests.yml	own		no lineage; 0 of 49 lines verbatim in candle (0%)
 .github/workflows/lavapipe-vulkan.yml	own		no lineage; 0 of 31 lines verbatim in candle (0%)
 .github/workflows/rust-ci.yml	candle-modified	.github/workflows/rust-ci.yml	same path; 3% of 952 lines verbatim
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 582 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 583 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1383 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 295 lines verbatim
@@ -1703,14 +1704,13 @@ fuel-vulkan-dispatch/tests/vulkan_claims_match_contracts.rs	own		no lineage; 0 o
 fuel-vulkan-dispatch/tests/vulkan_cross_vendor_masked_fill.rs	own		no lineage; 0 of 71 lines verbatim in candle (0%)
 fuel-vulkan-dispatch/tests/vulkan_deferred_eviction_live.rs	own		no lineage; 1 of 198 lines verbatim in candle (1%)
 fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	own		no lineage; 3 of 5370 lines verbatim in candle (0%)
-fuel-vulkan-dispatch/tests/vulkan_nan_shipped_spv_live.rs	own		no lineage; 1 of 114 lines verbatim in candle (1%)
 fuel-vulkan-dispatch/tests/vulkan_write_slice_rotating_live.rs	own		no lineage; 1 of 116 lines verbatim in candle (1%)
 fuel-vulkan-kernels/Cargo.toml	own		no lineage; 2 of 9 lines verbatim in candle (22%)
 fuel-vulkan-kernels/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-vulkan-kernels/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-vulkan-kernels/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
 fuel-vulkan-kernels/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
-fuel-vulkan-kernels/spv/SOURCE.txt	own		no lineage; 0 of 23 lines verbatim in candle (0%)
+fuel-vulkan-kernels/spv/SOURCE.txt	own		no lineage; 0 of 25 lines verbatim in candle (0%)
 fuel-vulkan-kernels/spv/add_assign_scaled.spv	data		binary file; no path or similarity match to a candle file
 fuel-vulkan-kernels/spv/affine.spv	data		binary file; no path or similarity match to a candle file
 fuel-vulkan-kernels/spv/affine_bf16.spv	data		binary file; no path or similarity match to a candle file

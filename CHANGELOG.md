@@ -3,6 +3,26 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.47.1 - 2026-11-10 (PM-allocated)
+
+### Changed
+
+- `docs/gaps.md`: new row GAP-380 (Tier C, Owner Fuel 1): under CUDA the fused paged-attention op is placed on `Cpu` in the held paged-decode plan (measured with `paged_decode_node_placement_report_cuda` at `de12d8efc`).
+
+### Not verified
+
+- That the host placement accounts for all of the served ~170 ms/step.
+
+## v0.47.2 - 2026-11-10 (PM-allocated)
+
+### Added
+
+- `.github/workflows/device-tests.yml`: a MANUAL-ONLY (`workflow_dispatch`) job pair that runs the CUDA and Vulkan device tests on the self-hosted runner under `gpu-run.ps1`. Re-landed from the old `ignore-step1-gpu-runner` draft with the current runner labels and without the push and schedule triggers.
+
+### Not verified
+
+- No run on the runner has been made. `--include-ignored` also runs ignored tools that rewrite committed files; see the ORDER DEPENDENCY note in the file before enabling any automatic trigger.
+
 ## v0.47.3 - 2026-11-10 (PM-allocated)
 
 ### Added
