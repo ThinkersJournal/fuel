@@ -52,6 +52,17 @@ This documents the main changes to the `fuel` workspace.
 - How many registered entries evaluate a declared expression and how many rankings move; a ranking-change test and a `WontFit` guard test; where an over-large allocation ends (GAP-376 stays PARTIAL).
 - Run here: `cargo test -p fuel-dispatch --lib -- fkc:: ranker::` (454 passed) and `cargo clippy -p fuel-dispatch --tests -D warnings`. The other CI-exact gates are left to CI.
 
+## v0.47.7 - 2026-11-11 (PM-allocated; docs only)
+
+### Changed
+
+- `ROADMAP.md`: rows 149-152 from the background-minds Phase 0 verification (measured at `origin/main@5363c6b6`): 149 GAP-380 paged attention on the GPU, 150 prefix reuse at admit keyed by (content, adapter) with a guard that refuses splicing a base prefix into an adapter fork, 151 session fork, 152 runtime per-branch LoRA. No code.
+- `docs/gaps.md`: GAP-380 re-tiered C to A (PM, 2026-11-11): cheap forks need the paged-attention op on the GPU. Owner unchanged.
+
+### Not verified
+
+- The `fuel-inference` and `fuel-model-llama` prefix tests were not run for the Phase 0 report; `cargo test -p fuel-kv-pool` was (42 passed, 0 failed).
+
 ## v0.47.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.46.2)
 
 ### Breaking
