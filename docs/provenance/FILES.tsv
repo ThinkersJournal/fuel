@@ -8,14 +8,15 @@ path	class	candle_source	basis
 .github/dependabot.yml	candle	.github/dependabot.yml	identical path; 100% of 2 lines verbatim
 .github/workflows/checkpoint-tests.yml	own		no lineage; 0 of 29 lines verbatim in candle (0%)
 .github/workflows/cuda-metal-compile-check.yml	own		no lineage; 0 of 84 lines verbatim in candle (0%)
+.github/workflows/device-tests.yml	own		no lineage; 0 of 49 lines verbatim in candle (0%)
 .github/workflows/lavapipe-vulkan.yml	own		no lineage; 0 of 31 lines verbatim in candle (0%)
 .github/workflows/rust-ci.yml	candle-modified	.github/workflows/rust-ci.yml	same path; 3% of 952 lines verbatim
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 576 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 580 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
-Cargo.lock	own		no lineage; 2 of 1388 lines verbatim in candle (0%)
+Cargo.lock	own		no lineage; 2 of 1383 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 295 lines verbatim
 GLOSSARY.md	own		no lineage; 0 of 56 lines verbatim in candle (0%)
 GUIDE.md	own		no lineage; 2 of 168 lines verbatim in candle (1%)
@@ -652,7 +653,7 @@ fuel-dispatch/src/variant_bake.rs	own		no lineage; 1 of 718 lines verbatim in ca
 fuel-dispatch/tests/bit_stable_coverage_flip.rs	own		no lineage; 4 of 610 lines verbatim in candle (1%)
 fuel-dispatch/tests/fkc_clause_coverage.rs	own		no lineage; 1 of 209 lines verbatim in candle (0%)
 fuel-dispatch/tests/fkc_prose_clause_coverage.rs	own		no lineage; 0 of 158 lines verbatim in candle (0%)
-fuel-dispatch/tests/kiss_clause_ledger.rs	own		no lineage; 2 of 503 lines verbatim in candle (0%)
+fuel-dispatch/tests/kiss_clause_ledger.rs	own		no lineage; 2 of 510 lines verbatim in candle (0%)
 fuel-dispatch/tests/kiss_derivation_vectors.rs	own		no lineage; 2 of 270 lines verbatim in candle (1%)
 fuel-dispatch/tests/kiss_signed_zero_tie_conformance.rs	own		no lineage; 0 of 136 lines verbatim in candle (0%)
 fuel-dispatch/tests/kiss_structure_key_byte_match.rs	own		no lineage; 0 of 669 lines verbatim in candle (0%)
