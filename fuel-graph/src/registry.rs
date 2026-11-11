@@ -28,9 +28,9 @@
 //! - Step 5: drop the per-fused-op `Op` variants once nothing emits them.
 
 use crate::{Graph, NodeId};
+use fireline_grammar::PatternNode;
 use fuel_ir::storage::OutputViewSpec;
 use fuel_ir::{DType, DynScalar, Shape};
-use fuel_kernel_seam_types::PatternNode;
 use std::collections::HashMap;
 
 pub mod awq_matmul;
@@ -961,7 +961,7 @@ pub struct PatternHash(pub u64);
 /// needs.** Returns the same [`PatternNode`] the op's `decompose` lowers,
 /// *without touching the graph*.
 ///
-/// `fuel_kernel_seam::JitRequest::region` is documented as "the recipe's
+/// `fireline_synth::JitRequest::region` is documented as "the recipe's
 /// `decompose` (the primitive subgraph)", so a synthesizer can be asked to build
 /// one kernel for a region the consumer discovered at runtime. Lowering needs
 /// every primitive bound on the target device; **handing the region over needs

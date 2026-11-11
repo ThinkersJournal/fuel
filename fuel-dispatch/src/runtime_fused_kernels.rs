@@ -293,7 +293,7 @@ pub fn clear_runtime_fused_for_tests() {
 /// Takes the *resolved* parts (the region + the bound `KernelRef`), not a
 /// `JitResponse` — the `JitResponse`/`SynthArtifact` destructuring (+ the
 /// artifact-load step) happens at the seam-call site (`jit_adopt`), so the
-/// core dispatch layer stays free of the `fuel-kernel-seam` envelope crate.
+/// core dispatch layer stays free of the `fireline-synth` envelope crate.
 /// Returns `None` if the region is not registrable (non-decomposable / bad
 /// binds — surfaced by `register_runtime_fused`).
 ///

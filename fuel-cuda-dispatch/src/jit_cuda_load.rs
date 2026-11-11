@@ -11,9 +11,9 @@
 //! is defined in [`fuel_dispatch::kernel`] over `fuel_memory::Storage` — and
 //! `fuel-memory` already depends on `fuel-cuda-backend` (its `cuda` feature
 //! re-exports `CudaStorageBytes`), so the reverse dependency
-//! (`fuel-cuda-backend` → `fuel-memory`/`fuel-kernel-seam`) would be a cycle.
+//! (`fuel-cuda-backend` → `fuel-memory`/`fireline-synth`) would be a cycle.
 //! `fuel-cuda-dispatch` already depends on all three (`fuel-dispatch` for
-//! `KernelRef`, `fuel-cuda-backend` behind `cuda`, `fuel-kernel-seam` behind
+//! `KernelRef`, `fuel-cuda-backend` behind `cuda`, `fireline-synth` behind
 //! `jit`), so the loader lives here, gated behind `jit` (which implies `cuda`;
 //! it lived in `fuel-dispatch` until ROADMAP row 137 step 6.3a) — the actual
 //! module-load + symbol-resolve step reuses
@@ -102,9 +102,9 @@
 
 use std::sync::{Arc, OnceLock, RwLock};
 
+use fireline_synth::{ArtifactKind, SynthArtifact};
 use fuel_cuda_backend::{CudaDevice, CudaFunc, DeviceId, LaunchConfig, WrapErr};
 use fuel_ir::{Error, Layout, Result};
-use fuel_kernel_seam::{ArtifactKind, SynthArtifact};
 use fuel_memory::{BackendStorage, Storage};
 
 use fuel_dispatch::kernel::{KernelRef, OpParams};

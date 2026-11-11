@@ -3,7 +3,7 @@
 //!
 //! CPU, never-panic adapter exposing [`kiss_ref_core`] as Fuel's primitive-floor
 //! **reference** / **differential target**. Correctness only — no fusion, no
-//! optimizer, no GPU. It maps Fuel's op tag ([`fuel_kernel_seam_types::OpTag`])
+//! optimizer, no GPU. It maps Fuel's op tag ([`fireline_grammar::OpTag`])
 //! and dtype ([`fuel_ir::DType`]) onto kiss-ref's vocabulary, then delegates to
 //! kiss-ref's spec-exact reference kernels.
 //!
@@ -14,8 +14,8 @@
 //! Every failure is a [`KissRefError`] (kiss-ref-core is itself never-panic), so
 //! the adapter is safe on Fuel's never-panic execution path.
 
+use fireline_grammar::OpTag;
 use fuel_ir::DType;
-use fuel_kernel_seam_types::OpTag;
 
 /// Never-panic failure surface. Every adapter call returns `Result<_, KissRefError>`.
 #[derive(Debug, Clone, PartialEq, Eq)]

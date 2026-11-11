@@ -62,8 +62,8 @@ use crate::registry::{
     SubgraphPattern, decompose_via_recipe,
 };
 use crate::{Graph, NodeId};
+use fireline_grammar::{OpAttrs, OpTag, PatternNode};
 use fuel_ir::{DType, Shape};
-use fuel_kernel_seam_types::{OpAttrs, OpTag, PatternNode};
 
 /// Metadata-side registry entry for PagedAttn.
 pub fn entry() -> FusedOpEntry {
@@ -247,7 +247,7 @@ fn alibi_bias_recipe(alibi: PatternNode, b: usize, hq: usize, sq: usize, sk: usi
 ///
 /// [`decompose`] lowers the node into the graph; this hands back the same
 /// [`PatternNode`] *without touching the graph*, which is what the JIT seam
-/// needs: `fuel_kernel_seam::JitRequest::region` is documented as "the recipe's
+/// needs: `fireline_synth::JitRequest::region` is documented as "the recipe's
 /// `decompose` (the primitive subgraph)", so a synthesizer can be asked to build
 /// one kernel for exactly this region.
 ///

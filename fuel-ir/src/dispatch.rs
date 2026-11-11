@@ -11,7 +11,7 @@
 //! `fuel-core` because they call into `Tensor`'s realize path.
 //! Only the data + the pure lookup helpers are here.
 //!
-//! [`Judge`]: https://github.com/ciresnave/fuel/blob/main/fuel-core/src/judge/mod.rs
+//! [`Judge`]: https://github.com/ThinkersJournal/fuel/blob/main/fuel-core/src/judge/mod.rs
 
 use crate::DType;
 use crate::Shape;
