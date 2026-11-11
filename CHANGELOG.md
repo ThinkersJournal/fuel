@@ -13,6 +13,16 @@ This documents the main changes to the `fuel` workspace.
 
 - That the host placement accounts for all of the served ~170 ms/step.
 
+## v0.47.2 - 2026-11-10 (PM-allocated)
+
+### Added
+
+- `.github/workflows/device-tests.yml`: a MANUAL-ONLY (`workflow_dispatch`) job pair that runs the CUDA and Vulkan device tests on the self-hosted runner under `gpu-run.ps1`. Re-landed from the old `ignore-step1-gpu-runner` draft with the current runner labels and without the push and schedule triggers.
+
+### Not verified
+
+- No run on the runner has been made. `--include-ignored` also runs ignored tools that rewrite committed files; see the ORDER DEPENDENCY note in the file before enabling any automatic trigger.
+
 ## v0.47.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.46.2)
 
 ### Breaking
