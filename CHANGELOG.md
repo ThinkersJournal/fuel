@@ -35,6 +35,12 @@ This documents the main changes to the `fuel` workspace.
 
 - Metal; the strided variants; any `.spv` other than the committed one.
 
+## v0.47.4 - 2026-11-10 (PM-allocated; docs only)
+
+### Changed
+
+- `ROADMAP.md`: rows 144 to 148, one per backend provider (CPU gemm, Vulkan, AOCL, oneMKL, Metal), each as its own project behind FireLine with Fuel only binding (PM ruling 2026-11-10; CireSnave 2026-11-07). All NOT STARTED; the seam census and FireLine's wave-2 definitions come first.
+
 ## v0.47.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.46.2)
 
 ### Breaking
