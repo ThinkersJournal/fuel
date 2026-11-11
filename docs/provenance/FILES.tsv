@@ -14,7 +14,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 590 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 597 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1383 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 295 lines verbatim
@@ -557,11 +557,11 @@ fuel-dispatch/src/dispatch.rs	own		no lineage; 7 of 7072 lines verbatim in candl
 fuel-dispatch/src/driver.rs	own		no lineage; 5 of 335 lines verbatim in candle (1%)
 fuel-dispatch/src/fkc/caps_map.rs	own		no lineage; 2 of 260 lines verbatim in candle (1%)
 fuel-dispatch/src/fkc/contract_audit_flip.rs	own		no lineage; 0 of 488 lines verbatim in candle (0%)
-fuel-dispatch/src/fkc/cost_compile.rs	own		no lineage; 1 of 70 lines verbatim in candle (1%)
-fuel-dispatch/src/fkc/cost_expr.rs	own		no lineage; 9 of 302 lines verbatim in candle (3%)
+fuel-dispatch/src/fkc/cost_compile.rs	own		no lineage; 1 of 71 lines verbatim in candle (1%)
+fuel-dispatch/src/fkc/cost_expr.rs	own		no lineage; 9 of 320 lines verbatim in candle (3%)
 fuel-dispatch/src/fkc/cpu_link.rs	own		no lineage; 0 of 1358 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/error.rs	own		no lineage; 0 of 271 lines verbatim in candle (0%)
-fuel-dispatch/src/fkc/lower.rs	own		no lineage; 2 of 1224 lines verbatim in candle (0%)
+fuel-dispatch/src/fkc/lower.rs	own		no lineage; 2 of 1257 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/mod.rs	own		no lineage; 0 of 297 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/parse.rs	own		no lineage; 0 of 282 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/precision.rs	own		no lineage; 1 of 136 lines verbatim in candle (1%)
