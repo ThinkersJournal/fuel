@@ -62,6 +62,17 @@ This documents the main changes to the `fuel` workspace.
 
 - See the PR body for the build and test gates that were run; nothing beyond them was run.
 
+## v0.47.7 - 2026-11-11 (PM-allocated; docs only)
+
+### Changed
+
+- `ROADMAP.md`: rows 149-152 from the background-minds Phase 0 verification (measured at `origin/main@5363c6b6`): 149 GAP-380 paged attention on the GPU, 150 prefix reuse at admit keyed by (content, adapter) with a guard that refuses splicing a base prefix into an adapter fork, 151 session fork, 152 runtime per-branch LoRA. No code.
+- `docs/gaps.md`: GAP-380 re-tiered C to A (PM, 2026-11-11): cheap forks need the paged-attention op on the GPU. Owner unchanged.
+
+### Not verified
+
+- The `fuel-inference` and `fuel-model-llama` prefix tests were not run for the Phase 0 report; `cargo test -p fuel-kv-pool` was (42 passed, 0 failed).
+
 ## v0.47.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.46.2)
 
 ### Breaking
