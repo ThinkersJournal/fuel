@@ -539,18 +539,33 @@ fn resolve_test_file(file: &str) -> Result<PathBuf, String> {
     let (pkg, rest) = file
         .split_once('/')
         .ok_or_else(|| format!("`{file}` is not a repo file and has no package prefix"))?;
-    let meta =
-        std::process::Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
-            .args(["metadata", "--format-version", "1", "--offline"])
-            .current_dir(repo_root())
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+    // Offline first (hermetic on a warmed box). A clean CI cache lacks the sources of other platforms'
+    // crates, so `--offline` cannot resolve the whole graph there: retry online, and report both failures.
+    let run = |offline: bool| {
+        let mut cmd = std::process::Command::new(&cargo);
+        cmd.args(["metadata", "--format-version", "1"]);
+        if offline {
+            cmd.arg("--offline");
+        }
+        cmd.current_dir(repo_root())
             .output()
-            .map_err(|e| format!("cannot run `cargo metadata` to locate `{pkg}`: {e}"))?;
-    if !meta.status.success() {
-        return Err(format!(
-            "`cargo metadata --offline` failed while locating `{pkg}`: {}",
-            String::from_utf8_lossy(&meta.stderr)
-        ));
-    }
+            .map_err(|e| format!("cannot run `cargo metadata` to locate `{pkg}`: {e}"))
+    };
+    let first = run(true)?;
+    let meta = if first.status.success() {
+        first
+    } else {
+        let second = run(false)?;
+        if !second.status.success() {
+            return Err(format!(
+                "`cargo metadata` failed while locating `{pkg}` (offline: {}; online: {})",
+                String::from_utf8_lossy(&first.stderr),
+                String::from_utf8_lossy(&second.stderr)
+            ));
+        }
+        second
+    };
     let json: serde_json::Value = serde_json::from_slice(&meta.stdout)
         .map_err(|e| format!("`cargo metadata` output is not JSON: {e}"))?;
     let manifest = json["packages"]
