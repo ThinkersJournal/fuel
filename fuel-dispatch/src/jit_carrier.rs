@@ -49,9 +49,9 @@
 //! anyway because the trigger is the piece Fuel owns, and because the next
 //! fused op with no backend implementation may not be indexed.
 
+use fireline_synth::{JitBudget, JitRequest};
 use fuel_graph::{Graph, NodeId};
 use fuel_ir::probe::BackendId;
-use fuel_kernel_seam::{JitBudget, JitRequest};
 use unpopped_vocab::{ArchSku, OperandDesc};
 
 use crate::jit_adopt::dtype_to_element_kind;

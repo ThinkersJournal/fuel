@@ -17,7 +17,7 @@ keywords.workspace = true
 categories.workspace = true
 license = "MIT OR Apache-2.0"
 description = "Fuel — a DAG-first, lazy-only ML framework for Rust (the public facade)."
-repository = "https://github.com/ciresnave/fuel"
+repository = "https://github.com/ThinkersJournal/fuel"
 
 [dependencies]
 # The surface `fuel-core` used to carry is re-exported from the crates that own it

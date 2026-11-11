@@ -11,8 +11,8 @@
 //! the identity, which is the point: Fuel's naming used to be the odd one
 //! out, and this file was the only place that silently absorbed it.
 
+use fireline_grammar::OpTag;
 use fuel_ir::DType;
-use fuel_kernel_seam_types::OpTag;
 use kiss_classify_vocab::Dtype;
 use kiss_ops_vocab::Op;
 

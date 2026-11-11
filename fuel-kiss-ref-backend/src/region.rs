@@ -26,8 +26,8 @@
 use crate::KissRefError;
 use crate::mapping::{op_to_kiss, supports};
 use crate::reference::to_rows;
+use fireline_grammar::{OpAttrs, OpTag, PatternNode};
 use fuel_ir::DType;
-use fuel_kernel_seam_types::{OpAttrs, OpTag, PatternNode};
 use kiss_ops_vocab::decomp::Expr;
 use kiss_ref_core::{DiffReport, Tolerance};
 
@@ -77,7 +77,7 @@ pub fn region_op_count(region: &PatternNode) -> usize {
 // `--features jit` alone, without this cuda-gated adapter. So the live path
 // carries its own copy of this same formula. The two are hand-maintained and
 // cannot be co-compiled on a CPU build; they are kept from drifting by a shared
-// fixture — `fuel_kernel_seam_types::advisory_band_reference_cases()` — that
+// fixture — `fireline_grammar::advisory_band_reference_cases()` — that
 // BOTH sides assert against (adapter side: `advisory_band_matches_shared_cases`
 // below; live side: `advisory_ulp_band_matches_shared_cases` in jit_ingest.rs).
 // If you change the formula here, change it there and update that one fixture.
@@ -335,8 +335,8 @@ region_float!(
 mod tests {
     use super::*;
     use crate::KissRefError;
+    use fireline_grammar::{OpAttrs, OpTag, PatternNode};
     use fuel_ir::DType;
-    use fuel_kernel_seam_types::{OpAttrs, OpTag, PatternNode};
     use kiss_ref_core::Tolerance;
 
     fn bind(i: u8) -> PatternNode {
@@ -702,7 +702,7 @@ mod tests {
                 Some(Tolerance::Ulp(n)) => Some(n),
             }
         }
-        for (region, expected) in fuel_kernel_seam_types::advisory_band_reference_cases() {
+        for (region, expected) in fireline_grammar::advisory_band_reference_cases() {
             assert_eq!(
                 normalize(region_advisory_tolerance(&region)),
                 expected,

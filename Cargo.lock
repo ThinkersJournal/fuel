@@ -465,13 +465,13 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cuda-seam"
-version = "0.1.0-alpha.94"
+version = "0.1.0-alpha.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2017aad869f103c9fb4d584799b706cb153fa3e3397e3790916bc23e45904719"
+checksum = "fe789f26eaa186f7ea2786db159cb24d1485b3126275e14db711380bd897a600"
 dependencies = [
  "baracuda-cuda-emit",
- "fuel-kernel-seam 0.43.0",
- "fuel-kernel-seam-types 0.43.2",
+ "fireline-grammar",
+ "fireline-synth",
  "unpopped",
  "unpopped-vocab",
 ]
@@ -1705,6 +1705,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aedcfb3409746eddb02b9e19ebda1c3394f759a152e48ee875a0844d1b955484"
 
 [[package]]
+name = "fireline-grammar"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85fdf8d89779343f120374a8626298d2dfd26c7641d224a6837b8c648a50b6f0"
+
+[[package]]
+name = "fireline-synth"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e12efcb226c6793f3aa2152063d21e640c1d4e0ec3ffc66d46fba3dd0c3fda91"
+dependencies = [
+ "fireline-grammar",
+ "unpopped-vocab",
+]
+
+[[package]]
 name = "fixedbitset"
 version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1926,12 +1942,12 @@ dependencies = [
  "baracuda-cuda-seam",
  "baracuda-nvrtc",
  "bytemuck",
+ "fireline-synth",
  "fuel-cpu-backend",
  "fuel-cuda-backend",
  "fuel-dispatch",
  "fuel-graph",
  "fuel-ir",
- "fuel-kernel-seam 0.47.3",
  "fuel-memory",
  "fuel-quantized",
  "fuel-test-support",
@@ -1962,6 +1978,8 @@ version = "0.47.3"
 dependencies = [
  "baracuda-kernels-types",
  "bytemuck",
+ "fireline-grammar",
+ "fireline-synth",
  "fuel-backend-contract",
  "fuel-conv",
  "fuel-cpu-backend",
@@ -1969,8 +1987,6 @@ dependencies = [
  "fuel-graph",
  "fuel-hardware",
  "fuel-ir",
- "fuel-kernel-seam 0.47.3",
- "fuel-kernel-seam-types 0.47.3",
  "fuel-kiss-ref-backend",
  "fuel-memory",
  "fuel-metal-backend",
@@ -2059,11 +2075,11 @@ dependencies = [
 name = "fuel-graph"
 version = "0.47.3"
 dependencies = [
+ "fireline-grammar",
  "float8",
  "fuel-backend-contract",
  "fuel-cpu-backend",
  "fuel-ir",
- "fuel-kernel-seam-types 0.47.3",
  "half",
 ]
 
@@ -2116,38 +2132,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fuel-kernel-seam"
-version = "0.43.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d756619ad6d98c0bbfe824a62c3bb966a81812904997853c337d42829a6ff3b"
-dependencies = [
- "fuel-kernel-seam-types 0.43.2",
- "unpopped-vocab",
-]
-
-[[package]]
-name = "fuel-kernel-seam"
-version = "0.47.3"
-dependencies = [
- "fuel-kernel-seam-types 0.47.3",
- "unpopped-vocab",
-]
-
-[[package]]
-name = "fuel-kernel-seam-announce"
-version = "0.47.3"
-
-[[package]]
-name = "fuel-kernel-seam-types"
-version = "0.43.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "830712752f37ee084d6dada83bf0de52edc976bcb404b30ae99cb817e37c70a7"
-
-[[package]]
-name = "fuel-kernel-seam-types"
-version = "0.47.3"
-
-[[package]]
 name = "fuel-kernels-source"
 version = "0.47.3"
 
@@ -2155,8 +2139,8 @@ version = "0.47.3"
 name = "fuel-kiss-ref-backend"
 version = "0.47.3"
 dependencies = [
+ "fireline-grammar",
  "fuel-ir",
- "fuel-kernel-seam-types 0.47.3",
  "half",
  "kiss-classify-vocab",
  "kiss-ops-vocab",

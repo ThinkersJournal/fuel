@@ -11,7 +11,7 @@ description = "CPU, never-panic adapter exposing kiss-ref-core as Fuel's primiti
 
 [dependencies]
 fuel-ir = { workspace = true }
-fuel-kernel-seam-types = { workspace = true }
+fireline-grammar = { workspace = true }
 half = { workspace = true }
 # kiss-ref (github.com/ThinkersJournal/kiss-ref) — all three crates from the one
 # workspace repo, tracked as PUBLISHED RELEASES (CireSnave, 2026-07-29: always
