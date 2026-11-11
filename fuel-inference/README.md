@@ -1,3 +1,3 @@
 # fuel-inference
 
-Inference orchestration layer for the [Fuel](https://github.com/ciresnave/fuel) ML framework.
+Inference orchestration layer for the [Fuel](https://github.com/ThinkersJournal/fuel) ML framework.

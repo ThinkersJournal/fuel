@@ -842,14 +842,14 @@ mod flag_not_verdict_tests {
     /// `fuel_kiss_ref_backend::region_advisory_tolerance` is pinned to from the
     /// other side. The two cannot be co-compiled on a CPU build (the adapter is
     /// cuda-gated, this helper stays jit-only-testable), so
-    /// `fuel_kernel_seam_types::advisory_band_reference_cases()` is the single
+    /// `fireline_grammar::advisory_band_reference_cases()` is the single
     /// source of truth keeping them in lockstep — a drift in this formula fails
     /// here, a drift in the adapter's fails its `advisory_band_matches_shared_cases`.
     /// `advisory_ulp_band` already returns the fixture's normalized `Option<u64>`
     /// (`None` ⇒ exact comparison, `Some(n)` ⇒ `Ulp(n)`).
     #[test]
     fn advisory_ulp_band_matches_shared_cases() {
-        for (region, expected) in fuel_kernel_seam_types::advisory_band_reference_cases() {
+        for (region, expected) in fireline_grammar::advisory_band_reference_cases() {
             assert_eq!(
                 advisory_ulp_band(&region),
                 expected,

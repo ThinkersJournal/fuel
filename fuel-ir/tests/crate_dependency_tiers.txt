@@ -94,7 +94,7 @@
 #
 # So the dependency is correctly placed and THE NAME IS WHAT LIES (GAP-268). A
 # correctness fixture is a CONTRACT -- it states expected behaviour -- which is
-# why it sits with `fuel-backend-contract` and `fuel-kernel-seam` rather than
+# why it sits with `fuel-backend-contract` (and, until FireLine wave 1, `fuel-kernel-seam`) rather than
 # anywhere near test support. The rename is separable and deliberately NOT done
 # here: it is a cross-tree sweep with the stale/historical/pinned disposition
 # problem attached, and tiering closes the coverage hole today without buying it.
@@ -124,11 +124,8 @@ fuel-cpu-kernels	20	kernels
 fuel-vulkan-kernels	20	kernels
 fuel-metal-kernels	20	kernels
 fuel-kernels-source	20	kernels
-fuel-kernel-seam-types	20	kernels
-fuel-kernel-seam-announce	20	kernels
 
 fuel-backend-contract	30	contracts
-fuel-kernel-seam	30	contracts
 fuel-correctness-fixtures	30	contracts
 fuel-formats	30	IO / formats
 

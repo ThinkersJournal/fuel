@@ -5,7 +5,7 @@ edition = "2021"
 rust-version.workspace = true
 
 description = "Metal kernels for Fuel"
-repository = "https://github.com/ciresnave/fuel"
+repository = "https://github.com/ThinkersJournal/fuel"
 keywords = ["blas", "tensor", "machine-learning"]
 categories = ["science"]
 license = "MIT OR Apache-2.0"

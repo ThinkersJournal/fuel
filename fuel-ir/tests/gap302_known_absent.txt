@@ -42,6 +42,7 @@
 AddInplace
 Aggressive
 ArrowDeviceArray
+C000000
 Concurrency
 CostRegistry
 ErrorBound
@@ -57,7 +58,10 @@ NoBackendKernel
 NodeKind
 OpEntry
 ReferenceFactory
+ReservedNonZero
 RuntimeHook
+SeamError
+SeamHello
 SequenceRecord
 SubInplace
 WholeGraph

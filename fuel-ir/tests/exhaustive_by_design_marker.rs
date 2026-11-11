@@ -49,7 +49,9 @@ const MARKER: &str = "EXHAUSTIVE-BY-DESIGN";
 /// Extending the marker to a new enum means adding it here in the same change —
 /// deliberately, so a new closed-enum declaration is a reviewed act, not a
 /// silent one.
-const EXPECTED_MARKED: &[&str] = &["Scalar", "DType", "Op", "PatternNode"];
+// `PatternNode` left this list when its crate moved to FireLine (`fireline-grammar`, wave 1), which carries its own
+// `tests/exhaustive_by_design.rs` guard for it; this scan walks only this repo's tree and can no longer see it.
+const EXPECTED_MARKED: &[&str] = &["Scalar", "DType", "Op"];
 
 /// One enum definition whose preceding attribute/doc block carries [`MARKER`].
 #[derive(Debug, PartialEq, Eq)]
