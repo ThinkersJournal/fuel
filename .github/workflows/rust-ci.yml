@@ -738,14 +738,20 @@ jobs:
       # Same masking as the matrix `fail-fast` above, one level down: there a
       # failing OS cancelled its siblings, here a failing BINARY cancels every
       # binary after it. Triage needs the whole list, not the first entry.
+      # `shipped_vulkan_spv_nan_behaviour_is_pinned` (fuel-vulkan-dispatch, vulkan_nan_shipped_spv_live)
+      # is SKIPPED on the three hosted `cargo test --workspace` steps below, and it is NOT `#[ignore]`d:
+      # it needs a real Vulkan adapter plus the machine-wide GPU lock, which no hosted runner has.
+      # CireSnave's rule (2026-10-16): tests that cannot run on GitHub run on the self-hosted runner under
+      # the same conditions, never ignored. `device-tests.yml` runs it on the GPU runner, where a missing
+      # adapter or lock FAILS (GAP-157). Removing this skip without a hosted adapter reddens CI.
       - name: Run tests (with lld on Linux)
         if: runner.os == 'Linux'
         env:
           RUSTFLAGS: "-C link-arg=-fuse-ld=lld"
-        run: cargo test --locked --workspace --no-fail-fast ${{ env.WORKSPACE_EXCLUDES }}
+        run: cargo test --locked --workspace --no-fail-fast ${{ env.WORKSPACE_EXCLUDES }} -- --skip shipped_vulkan_spv_nan_behaviour_is_pinned
       - name: Run tests (Windows)
         if: runner.os == 'Windows' && steps.cls.outputs.light != 'true'
-        run: cargo test --locked --workspace --no-fail-fast ${{ env.WORKSPACE_EXCLUDES }}
+        run: cargo test --locked --workspace --no-fail-fast ${{ env.WORKSPACE_EXCLUDES }} -- --skip shipped_vulkan_spv_nan_behaviour_is_pinned
       # macOS gets its OWN exclusion set, and the difference is the point: this
       # runner CAN build the Metal crates (objc2 is happy on Apple), so
       # excluding them here would throw away the only Metal test coverage in the
@@ -755,7 +761,7 @@ jobs:
       # not collapse them into one list.
       - name: Run tests (macOS)
         if: runner.os == 'macOS' && steps.cls.outputs.light != 'true'
-        run: cargo test --locked --workspace --no-fail-fast ${{ env.MACOS_EXCLUDES }}
+        run: cargo test --locked --workspace --no-fail-fast ${{ env.MACOS_EXCLUDES }} -- --skip shipped_vulkan_spv_nan_behaviour_is_pinned
       - name: Run telemetry-gated dispatch tests (sk4 wire codec)
         # `always() &&` is LOAD-BEARING, not defensive. Without it this step is
         # skipped whenever ANY earlier step in the job fails — and on a CI

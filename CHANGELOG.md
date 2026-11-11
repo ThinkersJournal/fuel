@@ -23,6 +23,18 @@ This documents the main changes to the `fuel` workspace.
 
 - No run on the runner has been made. `--include-ignored` also runs ignored tools that rewrite committed files; see the ORDER DEPENDENCY note in the file before enabling any automatic trigger.
 
+## v0.47.3 - 2026-11-10 (PM-allocated)
+
+### Added
+
+- `fuel-vulkan-dispatch/tests/vulkan_nan_shipped_spv_live.rs`: pins what the shipped Vulkan `.spv` does with a NaN in `relu`, `max`/`min` reduce and last-dim `max`/`min` (f32/f16/bf16/f64) on every non-CPU adapter, named by adapter name and PCI address, with the binary `Maximum`/`Minimum` guard as the positive control. Not `#[ignore]`d: it needs the `gpu-run` lock (`require_gpu_run_lock`) and a missing adapter fails.
+- `docs/gaps.md`: GAP-381 (Tier A), CLOSED in this change: measured at `de12d8efc`, all 56 NaN-input cases per adapter dropped the NaN on both the AMD iGPU and the NVIDIA card; with the 12 `.spv` (unary, reduce, reduce_last_dim) rebuilt from `fishstringer-kernels-source` 0.0.17 all 72 cases per adapter propagate (16 controls included) and `KNOWN_DROP_GROUPS` is empty.
+- `fuel-vulkan-kernels/spv/`: 12 files replaced by the 0.0.17 build (isnan guards); `SOURCE.txt` updated (tree sha `d02d101b...12d1`).
+
+### Not verified
+
+- Metal; the strided variants; any `.spv` other than the committed one.
+
 ## v0.47.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.46.2)
 
 ### Breaking
