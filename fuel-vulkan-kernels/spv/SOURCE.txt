@@ -1,14 +1,12 @@
 The 153 Slang-derived SPIR-V files in this directory were built from the published crate
-fishstringer-kernels-source 0.0.13 (tag v0.0.13 = 7cffe9c3e044ef88f59a4b2f6d38afcc798541c4), by that
+fishstringer-kernels-source 0.0.17 (tag v0.0.17 = 159cd15), by that
 crate's kernels/compile.sh --out-dir <dir> (153 outputs; manifest = compile.sh --print-manifest),
 with slangc 2026.8 (Vulkan SDK 1.4.350.0) and Python 3.15.2.
-Built and reported by the FishStringer lane (message 2026-11-07); Fuel did not run the script.
-Tree sha256 (sorted name + bytes over the 153): 95998422827471bc2de0839afabbc7ed4b58633bfb56fa697b580c82d1102932
+Built and reported by the FishStringer lane (message 2026-11-10); Fuel did not run the script.
+Tree sha256 (sorted name + bytes over the 153): d02d101b83b6574141282926429c207454fc78bc22d4481830432e6281e412d1
 Check: SHA-256 over the 153 .spv files sorted by name, hashing each file's name then its bytes.
-Versus the files committed before this change: 34 byte-equal, 119 differ (111 debug records only: an extra
-OpMemberName; 8 instruction/id order: arg_reduce_last_dim_bf16/f16/f32/f64, dequant_q4_km,
-flash_attention, matmul, silu_backward). spirv-val passes on both copies of all 8 (FishStringer).
-Whether the 8 are semantically equal is decided by the Vulkan live tests (see the PR).
+Versus the 0.0.13 files: 141 byte-equal, 12 differ (unary x4, reduce x4, reduce_last_dim x4: the isnan NaN guards, GAP-381).
+Fuel verified the .crate sha256 (18b588b0d039c5e307996cb971f41e6365449a24034637837c511a7a36848c95) and the tree sha over the 153; the .crate ships sources only, so the .spv are FishStringer-built. spirv-val ok (FishStringer); device behaviour: vulkan_nan_shipped_spv_live.
 
 The 27 files below are NOT from this crate; they come from fuel-kernels-source/kernels/*.glsl
 (glslangValidator, compile.sh glsl branch) and are unchanged:

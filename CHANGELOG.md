@@ -3,7 +3,39 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
-## v0.47.4 - 2026-11-10 (proposed; docs only)
+## v0.47.1 - 2026-11-10 (PM-allocated)
+
+### Changed
+
+- `docs/gaps.md`: new row GAP-380 (Tier C, Owner Fuel 1): under CUDA the fused paged-attention op is placed on `Cpu` in the held paged-decode plan (measured with `paged_decode_node_placement_report_cuda` at `de12d8efc`).
+
+### Not verified
+
+- That the host placement accounts for all of the served ~170 ms/step.
+
+## v0.47.2 - 2026-11-10 (PM-allocated)
+
+### Added
+
+- `.github/workflows/device-tests.yml`: a MANUAL-ONLY (`workflow_dispatch`) job pair that runs the CUDA and Vulkan device tests on the self-hosted runner under `gpu-run.ps1`. Re-landed from the old `ignore-step1-gpu-runner` draft with the current runner labels and without the push and schedule triggers.
+
+### Not verified
+
+- No run on the runner has been made. `--include-ignored` also runs ignored tools that rewrite committed files; see the ORDER DEPENDENCY note in the file before enabling any automatic trigger.
+
+## v0.47.3 - 2026-11-10 (PM-allocated)
+
+### Added
+
+- `fuel-vulkan-dispatch/tests/vulkan_nan_shipped_spv_live.rs`: pins what the shipped Vulkan `.spv` does with a NaN in `relu`, `max`/`min` reduce and last-dim `max`/`min` (f32/f16/bf16/f64) on every non-CPU adapter, named by adapter name and PCI address, with the binary `Maximum`/`Minimum` guard as the positive control. Not `#[ignore]`d: it needs the `gpu-run` lock (`require_gpu_run_lock`) and a missing adapter fails.
+- `docs/gaps.md`: GAP-381 (Tier A), CLOSED in this change: measured at `de12d8efc`, all 56 NaN-input cases per adapter dropped the NaN on both the AMD iGPU and the NVIDIA card; with the 12 `.spv` (unary, reduce, reduce_last_dim) rebuilt from `fishstringer-kernels-source` 0.0.17 all 72 cases per adapter propagate (16 controls included) and `KNOWN_DROP_GROUPS` is empty.
+- `fuel-vulkan-kernels/spv/`: 12 files replaced by the 0.0.17 build (isnan guards); `SOURCE.txt` updated (tree sha `d02d101b...12d1`).
+
+### Not verified
+
+- Metal; the strided variants; any `.spv` other than the committed one.
+
+## v0.47.4 - 2026-11-10 (PM-allocated; docs only)
 
 ### Changed
 
