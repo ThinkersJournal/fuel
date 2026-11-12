@@ -20,3 +20,11 @@ LICENSE         text eol=lf
 # Not currently exposed (our byte-match parses JSON first, so line endings never
 # reach the token comparison) but pinned so a future byte-level compare is armed.
 *.json          text eol=lf
+
+# The machine-wide GPU lock helper and its interleave test are taken BYTE FOR BYTE from the
+# canonical copy (C:/Projects/tools/gpu-run, Baracuda#355) and hash-verified by
+# fuel-test-support/tests/gpu_run_canonical_mutex.rs. Without eol=lf, autocrlf re-diverges them on
+# the next Windows checkout and the hash check fails for a reason nobody guesses.
+scripts/gpu-run-mutex.ps1 text eol=lf
+scripts/test-gpu-run-interleave.ps1 text eol=lf
+scripts/gpu-run-canonical.SHA256SUMS text eol=lf
