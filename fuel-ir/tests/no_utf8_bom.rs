@@ -70,6 +70,27 @@ const BOM_REQUIRED: &[(&str, &str)] = &[
     ),
 ];
 
+/// Files that begin with a BOM because they are BYTE-FOR-BYTE copies of a canonical file that has
+/// one, pinned by SHA-256 in `fuel-test-support/tests/gpu_run_canonical_mutex.rs`.
+///
+/// These are NOT in [`BOM_REQUIRED`]: that list is for files PowerShell 5.1 needs a BOM to parse,
+/// and its self-retirement clause demands non-ASCII content. These two are pure ASCII, so 5.1 reads
+/// them the same with or without the BOM; the BOM is simply part of the canonical bytes
+/// (`C:/Projects/tools/gpu-run`, Baracuda#355), and editing it here would break the hash pin and
+/// the "byte for byte" contract. RETIREMENT: when the canonical copy drops its BOM, re-take the file;
+/// `every_canonical_copy_exemption_still_carries_the_bom` then reds, which is the prompt to delete
+/// the entry.
+const BOM_CANONICAL_COPIES: &[(&str, &str)] = &[
+    (
+        "scripts/gpu-run-mutex.ps1",
+        "canonical GPU-lock helper (Baracuda#355), byte for byte, SHA-256 pinned",
+    ),
+    (
+        "scripts/test-gpu-run-interleave.ps1",
+        "canonical GPU-lock interleave test (Baracuda#355), byte for byte, SHA-256 pinned",
+    ),
+];
+
 fn workspace_root() -> PathBuf {
     let mut dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     loop {
@@ -128,7 +149,11 @@ fn no_tracked_file_begins_with_a_utf8_bom() {
     let root = workspace_root();
     let files = tracked_files(&root).expect("enumerate tracked files");
 
-    let allowed: Vec<String> = BOM_REQUIRED.iter().map(|(p, _)| (*p).to_string()).collect();
+    let allowed: Vec<String> = BOM_REQUIRED
+        .iter()
+        .chain(BOM_CANONICAL_COPIES.iter())
+        .map(|(p, _)| (*p).to_string())
+        .collect();
 
     let mut offenders = Vec::new();
     for path in &files {
@@ -248,6 +273,23 @@ fn every_bom_allowlist_entry_still_needs_its_bom() {
             "BOM allowlist names `{rel}`, but it is now pure ASCII — so PowerShell 5.1 would \
              read it identically with or without a BOM, and the entry has outlived its \
              reason. DELETE THE BOM AND THIS ENTRY TOGETHER. Reason on file: {reason}"
+        );
+    }
+}
+
+/// Every canonical-copy exemption must still EXIST and still CARRY its BOM. Unlike
+/// [`BOM_REQUIRED`] it does not demand non-ASCII content (these files are pure ASCII, see the
+/// const); it demands only that the exemption still describes the file, so a canonical copy that
+/// dropped its BOM retires the entry instead of leaving a stale exemption.
+#[test]
+fn every_canonical_copy_exemption_still_carries_the_bom() {
+    let root = workspace_root();
+    for (rel, reason) in BOM_CANONICAL_COPIES {
+        let bytes = std::fs::read(root.join(rel))
+            .unwrap_or_else(|e| panic!("canonical-copy exemption `{rel}` cannot be read ({e}); delete the entry if the file moved. Reason on file: {reason}"));
+        assert!(
+            starts_with_bom(&bytes),
+            "canonical-copy exemption `{rel}` has NO BOM: the canonical copy dropped it, so the              entry is stale. Delete it from BOM_CANONICAL_COPIES. Reason on file: {reason}"
         );
     }
 }
