@@ -144,6 +144,12 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.22 - 2026-11-12 (tentative; the PM allocates)
+
+### Changed
+
+- `fuel-formats`: doc comments on the public GGUF wire-format items (`gguf.rs`) and the pickle `Object`/`Stack` accessors (`pickle.rs`). ARC/MOD programme (PM 2026-11-12), coderipper MOD-001 on `-p fuel-formats`: 1 Low finding (33 of 56 public items undocumented) -> 0 findings. Documentation only; `clippy -D warnings` and `cargo doc -D warnings` clean.
+
 ## v0.47.21 - 2026-11-12 (PM-allocated)
 
 ### Changed
