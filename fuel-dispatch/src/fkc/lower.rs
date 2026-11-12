@@ -2474,6 +2474,227 @@ return:
         );
     }
 
+    /// Ledger-coverage report (GAP-383): imports every contract in the three kernel-contract trees
+    /// through the SAME steps as `import_bundle_str` (`lower_file`, then the V-FKC-9 `gate_precision`
+    /// against the embedded verification ledger) and reports, per (op, dtype signature) PAIR, whether
+    /// any record of a backend still meets the accuracy bound after the gate.
+    ///
+    /// Why pairs and not records: an op can have several records per signature (variants), and
+    /// `AccuracyPreferenceFilter` only removes a GPU candidate when NO GPU candidate for that
+    /// (op, dtypes) meets the bound while a CPU candidate does. So a GPU pair is placed on the host
+    /// for lack of evidence iff it has zero meeting records and the CPU pair has at least one.
+    ///
+    /// Limits: CPU kernels registered by hand (not from a contract) are not in the CPU map; "meets
+    /// the bound" is approximated as bit-stable or a relative/absolute claim (the filter's default
+    /// bound value is not applied); the link is a stub (the revision hash does not depend on it);
+    /// the ledger match key includes the kernel revision hash. Prints the report (`--nocapture`);
+    /// asserts only its controls.
+    #[test]
+    fn contract_claims_without_a_ledger_pass_by_dtype_signature() {
+        use std::collections::BTreeMap;
+        fn walk(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+            let Ok(rd) = std::fs::read_dir(dir) else {
+                return;
+            };
+            for e in rd.flatten() {
+                let path = e.path();
+                if path.is_dir() {
+                    walk(&path, out);
+                } else if path.to_string_lossy().ends_with(".fkc.md") {
+                    out.push(path);
+                }
+            }
+        }
+        let base = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut files = Vec::new();
+        for tree in [
+            "kernel-contracts",
+            "../fuel-cuda-dispatch/kernel-contracts",
+            "../fuel-vulkan-dispatch/kernel-contracts",
+        ] {
+            walk(&base.join(tree), &mut files);
+        }
+        files.sort();
+        let ledger = crate::fkc::verify::embedded();
+        let claims = |g: &crate::fused::PrecisionGuarantee| {
+            g.bit_stable_on_same_hardware
+                || g.max_ulp.is_some()
+                || g.max_relative.is_some()
+                || g.max_absolute.is_some()
+        };
+        let meets = |g: &crate::fused::PrecisionGuarantee| {
+            g.bit_stable_on_same_hardware || g.max_relative.is_some() || g.max_absolute.is_some()
+        };
+        // (backend, op, signature) -> (records, records declaring a claim, records meeting the bound
+        // AFTER the gate, records meeting the bound BEFORE the gate)
+        let mut pairs: BTreeMap<(String, String, String), (usize, usize, usize, usize)> =
+            BTreeMap::new();
+        let mut lower_errors = 0usize;
+        for f in &files {
+            let Ok(src) = std::fs::read_to_string(f) else {
+                continue;
+            };
+            let Ok(file) = parse_file(&src) else { continue };
+            let mut warnings = Vec::new();
+            let Ok(mut resolved) = lower_file(&file, &StubLink, &mut warnings) else {
+                lower_errors += 1;
+                continue;
+            };
+            for r in &mut resolved {
+                let (op, backend, sig, declared, gated) = match r {
+                    Resolved::Primitive(p) => {
+                        let q = crate::fkc::verify::LedgerQuery {
+                            kernel_ref: p.kernel_source.as_str(),
+                            backend: p.backend,
+                            dtypes: p.dtypes.as_slice(),
+                            kernel_revision_hash: p.revision.0,
+                        };
+                        let declared = p.precision;
+                        let gated = crate::fkc::verify::gate_precision(
+                            p.precision,
+                            &q,
+                            ledger,
+                            &mut warnings,
+                        );
+                        (
+                            format!("{:?}", p.op),
+                            p.backend,
+                            format!("{:?}", p.dtypes.as_slice()),
+                            declared,
+                            gated,
+                        )
+                    }
+                    Resolved::Fused(fz) => {
+                        let q = crate::fkc::verify::LedgerQuery {
+                            kernel_ref: fz.kernel_source.as_str(),
+                            backend: fz.backend,
+                            dtypes: fz.dtypes.as_slice(),
+                            kernel_revision_hash: fz.revision.0,
+                        };
+                        let declared = fz.precision;
+                        let gated = crate::fkc::verify::gate_precision(
+                            fz.precision,
+                            &q,
+                            ledger,
+                            &mut warnings,
+                        );
+                        (
+                            format!("Fused({:?})", fz.id),
+                            fz.backend,
+                            format!("{:?}", fz.dtypes.as_slice()),
+                            declared,
+                            gated,
+                        )
+                    }
+                };
+                let e = pairs.entry((format!("{backend:?}"), op, sig)).or_default();
+                e.0 += 1;
+                if claims(&declared) {
+                    e.1 += 1;
+                }
+                if meets(&gated) {
+                    e.2 += 1;
+                }
+                if meets(&declared) {
+                    e.3 += 1;
+                }
+            }
+        }
+        let cpu_meets = |op: &String, sig: &String| {
+            pairs
+                .get(&("Cpu".to_string(), op.clone(), sig.clone()))
+                .is_some_and(|v| v.2 > 0)
+        };
+        for backend in ["Cuda", "Vulkan"] {
+            let mine: Vec<(&(String, String, String), &(usize, usize, usize, usize))> =
+                pairs.iter().filter(|((b, _, _), _)| b == backend).collect();
+            let n_pairs = mine.len();
+            let records: usize = mine.iter().map(|(_, v)| v.0).sum();
+            let declared_ok = mine.iter().filter(|(_, v)| v.3 > 0).count();
+            let cost_placed = mine.iter().filter(|(_, v)| v.2 > 0).count();
+            let lost_to_gate = mine.iter().filter(|(_, v)| v.3 > 0 && v.2 == 0).count();
+            let host_pref: Vec<_> = mine
+                .iter()
+                .filter(|((_, op, sig), v)| v.2 == 0 && cpu_meets(op, sig))
+                .collect();
+            let no_cpu: usize = mine
+                .iter()
+                .filter(|((_, op, sig), v)| v.2 == 0 && !cpu_meets(op, sig))
+                .count();
+            println!(
+                "\n=== {backend}: {n_pairs} (op, dtype signature) pairs from {records} contract records ===\n  \
+                 {declared_ok} pairs DECLARE a meeting claim; {cost_placed} still meet the bound after the gate (placed by cost);\n  \
+                 {lost_to_gate} pairs LOSE their declared claim at the V-FKC-9 gate (no ledger pass) and have no other meeting record;\n  \
+                 {} pairs have no meeting record and a CPU record that meets the bound => PLACED ON THE HOST by AccuracyPreferenceFilter;\n  \
+                 {no_cpu} pairs have no meeting record and no CPU contract record meeting the bound (filter skipped: the GPU kernel still runs)",
+                host_pref.len()
+            );
+            let mut by_op: BTreeMap<String, usize> = BTreeMap::new();
+            let mut by_sig: BTreeMap<String, usize> = BTreeMap::new();
+            for ((_, op, sig), _) in &host_pref {
+                *by_op.entry(op.clone()).or_default() += 1;
+                *by_sig.entry(sig.clone()).or_default() += 1;
+            }
+            let mut v: Vec<_> = by_sig.into_iter().collect();
+            v.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+            println!(
+                "  host-preferred pairs BY DTYPE SIGNATURE ({} signatures):",
+                v.len()
+            );
+            for (sig, n) in &v {
+                println!("      {sig:<40} {n}");
+            }
+            let mut v: Vec<_> = by_op.into_iter().collect();
+            v.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+            println!("  host-preferred pairs BY OP ({} ops):", v.len());
+            for (op, n) in &v {
+                println!("      {op:<34} {n}");
+            }
+            // The pairs over only the float / index dtypes a decode graph uses.
+            let decode: Vec<_> = host_pref
+                .iter()
+                .filter(|((_, _, sig), _)| {
+                    !["F64", "F8", "I8", "I32", "I64", "U8"]
+                        .iter()
+                        .any(|d| sig.contains(d))
+                })
+                .collect();
+            println!(
+                "  host-preferred pairs over F32/F16/BF16/U32/Bool only ({}):",
+                decode.len()
+            );
+            for ((_, op, sig), _) in &decode {
+                println!("      {op:<30} {sig}");
+            }
+        }
+        println!(
+            "\ncontract files scanned: {}, files that did not lower with the stub link: {lower_errors}",
+            files.len()
+        );
+        let cuda_pairs = pairs.iter().filter(|((b, _, _), _)| b == "Cuda").count();
+        let cuda_host: usize = pairs
+            .iter()
+            .filter(|((b, op, sig), v)| b == "Cuda" && v.2 == 0 && cpu_meets(op, sig))
+            .count();
+        let cuda_met: usize = pairs
+            .iter()
+            .filter(|((b, _, _), v)| b == "Cuda" && v.2 > 0)
+            .count();
+        assert!(files.len() > 50, "CONTROL: the walk must find the corpus");
+        assert!(
+            cuda_pairs > 100,
+            "CONTROL: the instrument must see the CUDA pairs"
+        );
+        assert!(
+            cuda_host > 0,
+            "CONTROL: the recipe's Cast(U32->F32), MaskedFill and Ge are measured host-preferred pairs"
+        );
+        assert!(
+            cuda_met > 0,
+            "CONTROL: backed CUDA pairs exist (the ledger holds 284 CUDA bit_stable records)"
+        );
+    }
+
     #[test]
     fn both_op_kind_and_fused_op_is_ambiguous() {
         let file = parse_file(ELEMENTWISE_BINARY).expect("parses");
