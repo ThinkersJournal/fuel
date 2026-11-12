@@ -94,7 +94,18 @@ This documents the main changes to the `fuel` workspace.
 
 - Whether any CPU-versus-GPU placement flips; that needs a GPU run, and the CPU-only suites cannot show one.
 
-## v0.47.10 - 2026-11-12 (tentative; the PM allocates)
+## v0.47.11 - 2026-11-12 (tentative; the PM allocates)
+
+### Changed
+
+- `docs/gaps.md`: new row GAP-383 (Tier A, Owner Fuel 1): a CUDA kernel whose contract declares a precision claim but has no verified-ledger `pass` is downgraded to UNAUDITED at import, and `AccuracyPreferenceFilter` then prefers a verified CPU kernel before cost ranking. Counted over the contract corpus: 258 of 485 CUDA (op, dtype signature) pairs are host-preferred (Vulkan 74 of 333); measured end to end on `Cast(U32->F32)` and `MaskedFill`.
+- `fuel-dispatch/src/fkc/lower.rs`: test `contract_claims_without_a_ledger_pass_by_dtype_signature` (CPU-only) prints the per-signature, per-op table; it asserts only its controls.
+
+### Not verified
+
+- Which of the 258 pairs occur in a real decode graph; that seeding the ledger flips a placement; hand-registered CPU kernels are not in the CPU map.
+
+## v0.47.13 - 2026-11-12 (PM-allocated)
 
 ### Fixed
 
