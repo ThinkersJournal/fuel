@@ -144,6 +144,12 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.21 - 2026-11-12 (tentative; the PM allocates)
+
+### Changed
+
+- `ROADMAP.md`: new row 153 (ARC/MOD hygiene programme): the measured non-Info fuel findings (coderipper 0.43.20 at `d082e554`: MOD-003 2, MOD-001 4, MOD-002 10) with the order of work and the `[architecture]` declaration step.
+
 ## v0.47.20 - 2026-11-12 (PM-allocated)
 
 ### Changed
