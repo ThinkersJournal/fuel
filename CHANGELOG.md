@@ -77,11 +77,11 @@ This documents the main changes to the `fuel` workspace.
 
 ### Changed
 
-- `docs/gaps.md`: new row GAP-382 (Tier A, Owner Fuel 1): a contract's declared `overhead_ns` never reaches its `CostEstimate` (`fuel-dispatch/src/fkc/lower.rs` `compile_cost`, `schema.rs` `CostBlock::overhead_ns`), so `kernel_overhead_ns` is 0 for every candidate costed from a declared expression. 780 declaration lines across every `*.fkc.md`, 26 in the CUDA contracts. The fix is the next PR (0.47.9).
+- `docs/gaps.md`: new row GAP-382 (Tier A, Owner Fuel 1): a contract's declared `overhead_ns` never reaches its `CostEstimate` (`fuel-dispatch/src/fkc/lower.rs` `compile_cost`, `schema.rs` `CostBlock::overhead_ns`), so `kernel_overhead_ns` is 0 for every candidate costed from a declared expression. 780 `overhead_ns:` lines across every `*.fkc.md`, of which 272 carry a number (247 CPU-side trees, 25 CUDA, 0 Vulkan) and 508 are `~` placeholders. The fix is the next PR (0.47.9).
 
 ### Not verified
 
-- How many placements the fix changes; that the 780 lines are 780 distinct sections.
+- How many placements the fix changes.
 
 ## v0.47.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.46.2)
 
