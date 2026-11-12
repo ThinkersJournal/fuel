@@ -94,6 +94,21 @@ This documents the main changes to the `fuel` workspace.
 
 - Whether any CPU-versus-GPU placement flips; that needs a GPU run, and the CPU-only suites cannot show one.
 
+## v0.47.12 - 2026-11-12 (PM-allocated)
+
+### Changed
+
+- `fuel-dispatch` CUDA ledger seeder (`fkc/verify/seed_cuda_ledger.rs`, GAP-383): when the harness's own probe recipes (about 42 ops) have none for an `(op, dtypes)` entry it now falls back to the shared backend-agnostic recipes the CPU and Vulkan seeders already use (`probe_recipes::build_primitive_probe`, 114 ops), through one chooser `choose_probe` used by BOTH the `bit_stable` pass and the `max_ulp` pass (before, `MaskedFill`'s declared `max_ulp: 0` could never be earned, so its whole claim stayed downgraded). The harness's own recipes always win, so every record it already earned re-seeds from the identical probe (test `an_op_with_its_own_recipe_never_reaches_the_shared_one`, red when the order is swapped). A shared probe that needs a seeded output (the in-place family) is skipped with a stated reason, as in `seed_vulkan_ledger` (GAP-222).
+- `seed-cuda`: optional env var `FUEL_SEED_CUDA_OPS=Cast,MaskedFill,...` restricts a run to the named `OpKind`s (unset or empty is every probe-able entry, as before).
+
+### Measured
+
+- Batch 1 on the RTX 4070 Laptop (`Cast`, `MaskedFill`, the six comparisons): 97 passed, 0 failed, 0 skipped of 100 attempts; CUDA `bit_stable` ledger records 284 to 381 (in an experiment tree; the seeded ledger is the next PR). With those records the CUDA `Cast(U32->F32)` and `Ge` candidates are bit-stable and compete on cost; `MaskedFill` needs the `max_ulp` pass this change enables.
+
+### Not verified
+
+- That every shared recipe earns a pass on every kernel it reaches (batch 2 and the rest are not run); the code is CUDA-gated, so no CI job compiles it and its tests run locally with `--features cuda`.
+
 ## v0.47.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.46.2)
 
 ### Breaking

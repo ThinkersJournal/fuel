@@ -90,11 +90,49 @@ const CLAIM: &str = "bit_stable_on_same_hardware";
 /// A synthesized, safe, valid probe for one `(OpKind, dtypes)` CUDA
 /// registration: real inputs the kernel runs on without crashing, the
 /// `OpParams` it needs, and the output dtype/shape `CudaInvoker` allocates.
+#[derive(Debug)]
 struct Probe {
     inputs: ProbeInputs,
     params: OpParams,
     out_dtype: DType,
     out_shape: Vec<usize>,
+}
+
+/// Which recipe answered for an `(op, dtypes)` registration (GAP-383).
+///
+/// This harness's OWN recipes (`build_cuda_probe`) always win, so every record it already earned
+/// re-seeds from the identical probe. Only where it has none does the SHARED backend-agnostic
+/// recipe set the CPU and Vulkan seeders use (`probe_recipes::build_primitive_probe`) answer: it
+/// covers 114 ops against this harness's ~42, and a second copy is the divergence its own header
+/// warns about.
+#[derive(Debug)]
+enum ProbeChoice {
+    /// This harness's own recipe.
+    Own(Probe),
+    /// The shared recipe.
+    Shared(Probe),
+    /// The shared recipe needs a seeded output (the in-place family: the target arrives as
+    /// `outputs[0]`) and `CudaInvoker` cannot seed one; running it on a zeroed buffer would earn
+    /// a pass that measures nothing (GAP-222), so the entry is skipped.
+    NeedsSeededOutput,
+    /// No recipe anywhere.
+    None,
+}
+
+fn choose_probe(op: OpKind, dtypes: &[DType], seed: u64) -> ProbeChoice {
+    if let Some(p) = build_cuda_probe(op, dtypes, seed) {
+        return ProbeChoice::Own(p);
+    }
+    match super::probe_recipes::build_primitive_probe(op, dtypes, seed) {
+        Some(shared) if shared.out_seed.is_some() => ProbeChoice::NeedsSeededOutput,
+        Some(shared) => ProbeChoice::Shared(Probe {
+            inputs: shared.inputs,
+            params: shared.params,
+            out_dtype: shared.out_dtype,
+            out_shape: shared.out_shape,
+        }),
+        None => ProbeChoice::None,
+    }
 }
 
 /// Encode `vals` into `dt`'s byte representation (float dtypes only — the
@@ -408,9 +446,19 @@ pub fn run_cuda_verification(
         let seed = 0x2545_F491_4F6C_DD1D_u64
             ^ (op as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)
             ^ (dtypes.len() as u64).wrapping_mul(0xD1B5_4A32_D192_ED03);
-        let probe = match build_cuda_probe(op, dtypes, seed) {
-            Some(p) => p,
-            None => {
+        let probe = match choose_probe(op, dtypes, seed) {
+            ProbeChoice::Own(p) | ProbeChoice::Shared(p) => p,
+            ProbeChoice::NeedsSeededOutput => {
+                log.push(CudaSeedAttempt {
+                    op: format!("{op:?}"),
+                    dtypes: dtypes_vec,
+                    kernel_revision_hash: rev,
+                    outcome: "skip: probe needs a seeded output, CudaInvoker cannot seed"
+                        .to_string(),
+                });
+                continue;
+            }
+            ProbeChoice::None => {
                 log.push(CudaSeedAttempt {
                     op: format!("{op:?}"),
                     dtypes: dtypes_vec,
@@ -503,14 +551,17 @@ pub fn run_cuda_verification(
         let seed = 0x2545_F491_4F6C_DD1D_u64
             ^ (op as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)
             ^ (dtypes.len() as u64).wrapping_mul(0xD1B5_4A32_D192_ED03);
-        let Some(probe) = build_cuda_probe(op, dtypes, seed) else {
-            log.push(CudaSeedAttempt {
-                op: format!("{op:?}"),
-                dtypes: dtypes_vec,
-                kernel_revision_hash: rev,
-                outcome: "max_ulp skip: no probe recipe".to_string(),
-            });
-            continue;
+        let probe = match choose_probe(op, dtypes, seed) {
+            ProbeChoice::Own(p) | ProbeChoice::Shared(p) => p,
+            ProbeChoice::NeedsSeededOutput | ProbeChoice::None => {
+                log.push(CudaSeedAttempt {
+                    op: format!("{op:?}"),
+                    dtypes: dtypes_vec,
+                    kernel_revision_hash: rev,
+                    outcome: "max_ulp skip: no probe recipe".to_string(),
+                });
+                continue;
+            }
         };
         let cpu_entry = cpu_table
             .iter_entries()
@@ -573,6 +624,30 @@ pub fn run_cuda_verification(
     Ok((ledger, log))
 }
 
+#[cfg_attr(
+    not(feature = "dev-tools"),
+    allow(
+        dead_code,
+        reason = "called only by the dev-tools seeding entry point; unit-tested without it"
+    )
+)]
+/// The `OpKind`s of `table_ops` whose `Debug` name appears in the comma-separated `names`
+/// (`FUEL_SEED_CUDA_OPS`), in table order, once each. An unknown name matches nothing.
+pub(crate) fn ops_named(table_ops: &[OpKind], names: &str) -> Vec<OpKind> {
+    let wanted: Vec<&str> = names
+        .split(',')
+        .map(str::trim)
+        .filter(|n| !n.is_empty())
+        .collect();
+    let mut out: Vec<OpKind> = Vec::new();
+    for op in table_ops {
+        if wanted.contains(&format!("{op:?}").as_str()) && !out.contains(op) {
+            out.push(*op);
+        }
+    }
+    out
+}
+
 #[cfg(feature = "dev-tools")]
 /// CapturedRun 4b-resume Step 3 — sweep the production CUDA binding table,
 /// empirically verify `bit_stable_on_same_hardware` for every op this
@@ -582,7 +657,24 @@ pub fn run_cuda_verification(
 /// Requires a live CUDA device (a maintenance tool, not a test). Run:
 ///   `cargo run -p fuel-dispatch --features dev-tools --bin fuel-dev-tools -- seed-cuda (with --features cuda)`
 pub(crate) fn run_seed_cuda_ledger(register: fn(&mut KernelBindingTable)) {
-    let (ledger, log) = run_cuda_verification(register, None, true).expect("cuda seeding runs");
+    // Optional subset (a batch): `FUEL_SEED_CUDA_OPS=Cast,MaskedFill,...`. Unset or empty = every
+    // probe-able CUDA entry, exactly as before.
+    let only: Option<Vec<OpKind>> = std::env::var("FUEL_SEED_CUDA_OPS")
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .map(|names| {
+            let mut t = KernelBindingTable::new();
+            register(&mut t);
+            let ops: Vec<OpKind> = t.iter_entries().map(|(op, _, _, _)| op).collect();
+            let picked = ops_named(&ops, &names);
+            println!(
+                "[step3] FUEL_SEED_CUDA_OPS={names:?} -> {} op(s): {picked:?}",
+                picked.len()
+            );
+            picked
+        });
+    let (ledger, log) =
+        run_cuda_verification(register, only.as_deref(), true).expect("cuda seeding runs");
     for a in &log {
         println!(
             "[step3] {} {:?} (rev={}): {}",
@@ -620,4 +712,141 @@ pub(crate) fn run_seed_cuda_ledger(register: fn(&mut KernelBindingTable)) {
         summary.after,
         summary.path.display(),
     );
+}
+
+#[cfg(test)]
+mod probe_choice_tests {
+    use super::*;
+
+    /// Representative ops this harness already has its OWN recipes for (taken from `build_cuda_probe`'s
+    /// match arms): binary and unary elementwise, reductions, norms, softmax, matmul, indexing.
+    const OWN_OPS: &[OpKind] = &[
+        OpKind::AddElementwise,
+        OpKind::SubElementwise,
+        OpKind::MulElementwise,
+        OpKind::DivElementwise,
+        OpKind::MaximumElementwise,
+        OpKind::MinimumElementwise,
+        OpKind::PowElementwise,
+        OpKind::RemElementwise,
+        OpKind::SumReduce,
+        OpKind::MaxReduce,
+        OpKind::MinReduce,
+        OpKind::MeanReduce,
+        OpKind::NegElementwise,
+        OpKind::ReluElementwise,
+        OpKind::SqrElementwise,
+        OpKind::SqrtElementwise,
+        OpKind::RecipElementwise,
+        OpKind::RsqrtElementwise,
+        OpKind::AbsElementwise,
+        OpKind::TanhElementwise,
+        OpKind::SigmoidElementwise,
+        OpKind::SiluElementwise,
+        OpKind::GeluElementwise,
+        OpKind::ExpElementwise,
+        OpKind::LogElementwise,
+        OpKind::SinElementwise,
+        OpKind::CosElementwise,
+        OpKind::SoftmaxLastDim,
+        OpKind::RmsNormLastDim,
+        OpKind::LayerNormLastDim,
+        OpKind::MatMul,
+        OpKind::IndexSelect,
+        OpKind::Concat,
+    ];
+
+    fn fingerprint(p: &Probe) -> String {
+        format!("{p:?}")
+    }
+
+    #[test]
+    fn an_op_with_its_own_recipe_never_reaches_the_shared_one() {
+        // The invariant behind "existing records re-seed identically": wherever this harness's own
+        // recipe answers, `choose_probe` returns EXACTLY that probe (same inputs, params, output).
+        let seed = 0x2545_F491_4F6C_DD1D_u64;
+        let mut own_answers = 0usize;
+        for &op in OWN_OPS {
+            for dt in [DType::F32, DType::F16, DType::BF16, DType::F64] {
+                for dtypes in [vec![dt, dt], vec![dt, dt, dt], vec![dt, DType::U32, dt]] {
+                    if let Some(own) = build_cuda_probe(op, &dtypes, seed) {
+                        own_answers += 1;
+                        match choose_probe(op, &dtypes, seed) {
+                            ProbeChoice::Own(chosen) => assert_eq!(
+                                fingerprint(&chosen),
+                                fingerprint(&own),
+                                "{op:?} {dtypes:?}: the chosen probe differs from the harness's own"
+                            ),
+                            other => {
+                                panic!("{op:?} {dtypes:?}: own recipe exists but got {other:?}")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // CONTROL: the sweep must see real own-recipe answers, or the assertion above is vacuous.
+        assert!(
+            own_answers > 40,
+            "CONTROL: only {own_answers} own-recipe answers seen"
+        );
+    }
+
+    #[test]
+    fn ops_the_harness_lacks_fall_back_to_the_shared_recipe() {
+        // The three measured recipe pairs of GAP-383.
+        for (op, dtypes) in [
+            (OpKind::Cast, vec![DType::U32, DType::F32]),
+            (
+                OpKind::GreaterEqualElementwise,
+                vec![DType::F32, DType::F32, DType::Bool],
+            ),
+            (
+                OpKind::MaskedFill,
+                vec![DType::F32, DType::Bool, DType::F32],
+            ),
+        ] {
+            assert!(
+                build_cuda_probe(op, &dtypes, 7).is_none(),
+                "PRECONDITION: the harness's own recipes do not cover {op:?} {dtypes:?}"
+            );
+            assert!(
+                matches!(choose_probe(op, &dtypes, 7), ProbeChoice::Shared(_)),
+                "{op:?} {dtypes:?} should fall back to the shared recipe"
+            );
+        }
+    }
+
+    #[test]
+    fn an_in_place_probe_is_skipped_rather_than_run_on_a_zeroed_output() {
+        // Sabotage sibling of the fallback: the shared recipe for an in-place op carries `out_seed`;
+        // ignoring it would earn a pass on an all-zero buffer (GAP-222).
+        assert!(matches!(
+            choose_probe(OpKind::AbsInplace, &[DType::F32, DType::F32], 7),
+            ProbeChoice::NeedsSeededOutput
+        ));
+    }
+
+    #[test]
+    fn an_op_with_no_recipe_anywhere_is_none() {
+        assert!(matches!(
+            choose_probe(OpKind::QMatMul, &[DType::F32, DType::U32, DType::F32], 7),
+            ProbeChoice::None
+        ));
+    }
+
+    #[test]
+    fn ops_named_picks_each_requested_op_once_and_ignores_unknown_names() {
+        let table = [
+            OpKind::Cast,
+            OpKind::Cast,
+            OpKind::MaskedFill,
+            OpKind::AddElementwise,
+        ];
+        assert_eq!(
+            ops_named(&table, " Cast, MaskedFill ,Nope,,"),
+            vec![OpKind::Cast, OpKind::MaskedFill]
+        );
+        assert!(ops_named(&table, "").is_empty());
+    }
 }
