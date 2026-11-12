@@ -14,7 +14,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 613 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 612 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1383 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 295 lines verbatim
@@ -78,7 +78,7 @@ docs/frontier-paradigms-vision.md	own		no lineage; 0 of 155 lines verbatim in ca
 docs/fuel-consumer-seam.md	own		no lineage; 0 of 1061 lines verbatim in candle (0%)
 docs/fused-op-registry.md	own		no lineage; 0 of 311 lines verbatim in candle (0%)
 docs/gap-015-handoff.md	own		no lineage; 0 of 183 lines verbatim in candle (0%)
-docs/gaps.md	own		no lineage; 0 of 426 lines verbatim in candle (0%)
+docs/gaps.md	own		no lineage; 0 of 427 lines verbatim in candle (0%)
 docs/interchange/stablehlo-to-fuel-op-map.md	own		no lineage; 0 of 157 lines verbatim in candle (0%)
 docs/kernel-contracts/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
 docs/method-rules-drafts-issue-159.md	own		no lineage; 0 of 286 lines verbatim in candle (0%)
@@ -561,7 +561,7 @@ fuel-dispatch/src/fkc/cost_compile.rs	own		no lineage; 1 of 72 lines verbatim in
 fuel-dispatch/src/fkc/cost_expr.rs	own		no lineage; 9 of 337 lines verbatim in candle (3%)
 fuel-dispatch/src/fkc/cpu_link.rs	own		no lineage; 0 of 1358 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/error.rs	own		no lineage; 0 of 271 lines verbatim in candle (0%)
-fuel-dispatch/src/fkc/lower.rs	own		no lineage; 2 of 1380 lines verbatim in candle (0%)
+fuel-dispatch/src/fkc/lower.rs	own		no lineage; 3 of 1485 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/mod.rs	own		no lineage; 0 of 297 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/parse.rs	own		no lineage; 0 of 282 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/precision.rs	own		no lineage; 1 of 136 lines verbatim in candle (1%)
@@ -592,7 +592,7 @@ fuel-dispatch/src/fkc/verify/mod.rs	own		no lineage; 0 of 142 lines verbatim in 
 fuel-dispatch/src/fkc/verify/probe_recipes.rs	own		no lineage; 0 of 834 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/verify/seed_cpu_ledger.rs	own		no lineage; 1 of 1362 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/verify/seed_cuda_accuracy.rs	own		no lineage; 0 of 255 lines verbatim in candle (0%)
-fuel-dispatch/src/fkc/verify/seed_cuda_ledger.rs	own		no lineage; 0 of 373 lines verbatim in candle (0%)
+fuel-dispatch/src/fkc/verify/seed_cuda_ledger.rs	own		no lineage; 0 of 289 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/verify/seed_vulkan_ledger.rs	own		no lineage; 0 of 249 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/verify/seed_vulkan_matmul_accuracy.rs	own		no lineage; 0 of 128 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/verify/ulp.rs	own		no lineage; 4 of 490 lines verbatim in candle (1%)
