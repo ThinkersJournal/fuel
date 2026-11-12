@@ -144,6 +144,18 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.19 - 2026-11-12 (PM-allocated)
+
+### Changed
+
+- `fuel-dispatch` (`optimize.rs`) and `fuel-graph` (`opt.rs`): when the pinned device is CUDA and no kernel is bound for a fused op on it, `optimize_graph_with_passes` lowers that node to its primitive recipe BEFORE planning (`lower_selected_fused`; allowlist `LOWER_WHEN_NO_DEVICE_KERNEL = [PAGED_ATTN]`). A bound kernel (CPU, or a future CUDA one) keeps the fused node. GAP-380 / ROADMAP row 149 (a1). Measured on the experiment branch (n=1, not a quiet-box run): mid decode 50.7 ms/token against 104.8 fused-on-host.
+- Verified on the (a1)+(a2) stack on the RTX 4070 through `gpu-run`: `bf16_paged_decode_matches_contiguous_on_cuda` (argmax matches over 6 steps).
+
+### Not verified
+
+- Placement of `Cast`/`MaskedFill` on CUDA depends on the seeded ledger now in main (#658); the (a4) device tests are not written yet.
+- Models other than the llama test fixtures; half-precision and the Baracuda `BatchPagedDecodePlan` fast path (row 149 (b)).
+
 ## v0.47.18 - 2026-11-12 (PM-allocated)
 
 ### Added
