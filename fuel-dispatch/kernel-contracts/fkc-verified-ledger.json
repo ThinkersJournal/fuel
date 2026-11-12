@@ -229,23 +229,6 @@
     "kernel_ref": "baracuda",
     "backend": "Cuda",
     "dtypes": [
-      "F64",
-      "F64"
-    ],
-    "kernel_revision_hash": 10427773084904508641,
-    "claim": "bit_stable_on_same_hardware",
-    "result": "pass",
-    "verified_at": "epoch:1783975913",
-    "protocol_version": 1,
-    "evidence": {
-      "harness": "capturedrun-4b/seed_cuda_ledger",
-      "repeat_calls": 16
-    }
-  },
-  {
-    "kernel_ref": "baracuda",
-    "backend": "Cuda",
-    "dtypes": [
       "F16",
       "F16"
     ],
@@ -697,23 +680,6 @@
       "F32"
     ],
     "kernel_revision_hash": 3887912102480129992,
-    "claim": "bit_stable_on_same_hardware",
-    "result": "pass",
-    "verified_at": "epoch:1783975913",
-    "protocol_version": 1,
-    "evidence": {
-      "harness": "capturedrun-4b/seed_cuda_ledger",
-      "repeat_calls": 16
-    }
-  },
-  {
-    "kernel_ref": "baracuda",
-    "backend": "Cuda",
-    "dtypes": [
-      "F16",
-      "F16"
-    ],
-    "kernel_revision_hash": 10427773084904508641,
     "claim": "bit_stable_on_same_hardware",
     "result": "pass",
     "verified_at": "epoch:1783975913",
@@ -1281,23 +1247,6 @@
       "F64"
     ],
     "kernel_revision_hash": 13869461178005855342,
-    "claim": "bit_stable_on_same_hardware",
-    "result": "pass",
-    "verified_at": "epoch:1783975913",
-    "protocol_version": 1,
-    "evidence": {
-      "harness": "capturedrun-4b/seed_cuda_ledger",
-      "repeat_calls": 16
-    }
-  },
-  {
-    "kernel_ref": "baracuda",
-    "backend": "Cuda",
-    "dtypes": [
-      "F32",
-      "F32"
-    ],
-    "kernel_revision_hash": 10427773084904508641,
     "claim": "bit_stable_on_same_hardware",
     "result": "pass",
     "verified_at": "epoch:1783975913",
@@ -2298,23 +2247,6 @@
       "F16"
     ],
     "kernel_revision_hash": 534470193464919073,
-    "claim": "bit_stable_on_same_hardware",
-    "result": "pass",
-    "verified_at": "epoch:1783975914",
-    "protocol_version": 1,
-    "evidence": {
-      "harness": "capturedrun-4b/seed_cuda_ledger",
-      "repeat_calls": 16
-    }
-  },
-  {
-    "kernel_ref": "baracuda",
-    "backend": "Cuda",
-    "dtypes": [
-      "BF16",
-      "BF16"
-    ],
-    "kernel_revision_hash": 10427773084904508641,
     "claim": "bit_stable_on_same_hardware",
     "result": "pass",
     "verified_at": "epoch:1783975914",
@@ -16283,19 +16215,19 @@
           "rel": 9.231944660126334e-9
         },
         {
-          "abs": 1.3446303705894056e-9,
+          "abs": 1.3446303705894054e-9,
           "case": "rows=28 cols=1024",
-          "rel": 1.3446303705894056e-9
+          "rel": 1.3446303705894054e-9
         },
         {
-          "abs": 7.967265263329747e-10,
+          "abs": 7.967265263329746e-10,
           "case": "rows=16 cols=2048",
-          "rel": 7.967265263329747e-10
+          "rel": 7.967265263329746e-10
         },
         {
-          "abs": 3.7095050924203227e-10,
+          "abs": 3.709505092420322e-10,
           "case": "rows=8 cols=4096",
-          "rel": 3.7095050924203227e-10
+          "rel": 3.709505092420322e-10
         },
         {
           "abs": 1.2660773883281518e-10,
@@ -16343,19 +16275,19 @@
           "rel": 9.231944660126334e-9
         },
         {
-          "abs": 1.3446303705894056e-9,
+          "abs": 1.3446303705894054e-9,
           "case": "rows=28 cols=1024",
-          "rel": 1.3446303705894056e-9
+          "rel": 1.3446303705894054e-9
         },
         {
-          "abs": 7.967265263329747e-10,
+          "abs": 7.967265263329746e-10,
           "case": "rows=16 cols=2048",
-          "rel": 7.967265263329747e-10
+          "rel": 7.967265263329746e-10
         },
         {
-          "abs": 3.7095050924203227e-10,
+          "abs": 3.709505092420322e-10,
           "case": "rows=8 cols=4096",
-          "rel": 3.7095050924203227e-10
+          "rel": 3.709505092420322e-10
         },
         {
           "abs": 1.2660773883281518e-10,
@@ -16695,7 +16627,7 @@
         {
           "abs": 4.749276758531096e-7,
           "case": "rows=1 cols=1000",
-          "rel": 5.7226106034533196e-8
+          "rel": 5.72261060345332e-8
         },
         {
           "abs": 4.762270737757035e-7,
@@ -16745,7 +16677,7 @@
         {
           "abs": 4.749276758531096e-7,
           "case": "rows=1 cols=1000",
-          "rel": 5.7226106034533196e-8
+          "rel": 5.72261060345332e-8
         },
         {
           "abs": 4.762270737757035e-7,
@@ -16793,7 +16725,7 @@
           "rel": 0.0
         },
         {
-          "abs": 1.1877108097024804e-7,
+          "abs": 1.1877108097024805e-7,
           "case": "rows=1 cols=1000",
           "rel": 5.8279042041121215e-8
         },
@@ -16843,7 +16775,7 @@
           "rel": 0.0
         },
         {
-          "abs": 1.1877108097024804e-7,
+          "abs": 1.1877108097024805e-7,
           "case": "rows=1 cols=1000",
           "rel": 5.8279042041121215e-8
         },
@@ -17108,9 +17040,9 @@
           "rel": 8.37613017834471e-8
         },
         {
-          "abs": 7.788748346282405e-8,
+          "abs": 7.788748346282406e-8,
           "case": "rows=4 cols=8192",
-          "rel": 7.788748346282405e-8
+          "rel": 7.788748346282406e-8
         }
       ],
       "harness": "row-39/seed_cuda_accuracy",
@@ -17158,9 +17090,9 @@
           "rel": 8.37613017834471e-8
         },
         {
-          "abs": 7.788748346282405e-8,
+          "abs": 7.788748346282406e-8,
           "case": "rows=4 cols=8192",
-          "rel": 7.788748346282405e-8
+          "rel": 7.788748346282406e-8
         }
       ],
       "harness": "row-39/seed_cuda_accuracy",
@@ -17903,9 +17835,9 @@
           "rel": 8.514637450662833e-8
         },
         {
-          "abs": 8.886886471159984e-8,
+          "abs": 8.886886471159985e-8,
           "case": "rows=448 cols=1024",
-          "rel": 8.886886471159984e-8
+          "rel": 8.886886471159985e-8
         },
         {
           "abs": 8.83771489323948e-8,
@@ -17915,7 +17847,7 @@
       ],
       "harness": "row-39/seed_cuda_accuracy",
       "input_range": "uniform [-6, 6) plus edges",
-      "measured_worst": 8.886886471159984e-8,
+      "measured_worst": 8.886886471159985e-8,
       "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
       "op": "SigmoidElementwise",
       "reference": "f64 1 / (1 + exp(-x))"
@@ -17953,9 +17885,9 @@
           "rel": 8.514637450662833e-8
         },
         {
-          "abs": 8.886886471159984e-8,
+          "abs": 8.886886471159985e-8,
           "case": "rows=448 cols=1024",
-          "rel": 8.886886471159984e-8
+          "rel": 8.886886471159985e-8
         },
         {
           "abs": 8.83771489323948e-8,
@@ -17965,7 +17897,7 @@
       ],
       "harness": "row-39/seed_cuda_accuracy",
       "input_range": "uniform [-6, 6) plus edges",
-      "measured_worst": 8.886886471159984e-8,
+      "measured_worst": 8.886886471159985e-8,
       "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
       "op": "SigmoidElementwise",
       "reference": "f64 1 / (1 + exp(-x))"
@@ -17993,19 +17925,19 @@
           "rel": 0.0
         },
         {
-          "abs": 1.1175871073021427e-7,
+          "abs": 1.1175871073021429e-7,
           "case": "rows=1 cols=1000",
           "rel": 6.178175750801397e-8
         },
         {
           "abs": 2.663766087707131e-7,
           "case": "rows=1 cols=3072",
-          "rel": 8.648987511645623e-8
+          "rel": 8.648987511645624e-8
         },
         {
           "abs": 8.06974078670919e-7,
           "case": "rows=448 cols=1024",
-          "rel": 1.1629863943855843e-7
+          "rel": 1.1629863943855844e-7
         },
         {
           "abs": 6.196290929239012e-7,
@@ -18043,19 +17975,19 @@
           "rel": 0.0
         },
         {
-          "abs": 1.1175871073021427e-7,
+          "abs": 1.1175871073021429e-7,
           "case": "rows=1 cols=1000",
           "rel": 6.178175750801397e-8
         },
         {
           "abs": 2.663766087707131e-7,
           "case": "rows=1 cols=3072",
-          "rel": 8.648987511645623e-8
+          "rel": 8.648987511645624e-8
         },
         {
           "abs": 8.06974078670919e-7,
           "case": "rows=448 cols=1024",
-          "rel": 1.1629863943855843e-7
+          "rel": 1.1629863943855844e-7
         },
         {
           "abs": 6.196290929239012e-7,
@@ -18065,7 +17997,7 @@
       ],
       "harness": "row-39/seed_cuda_accuracy",
       "input_range": "uniform [0.01, 100) plus edges",
-      "measured_worst": 1.1629863943855843e-7,
+      "measured_worst": 1.1629863943855844e-7,
       "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
       "op": "RsqrtElementwise",
       "reference": "f64 1 / sqrt(x)"
@@ -18907,7 +18839,7 @@
         {
           "abs": 9.493866137688656e-7,
           "case": "rows=1 cols=3072",
-          "rel": 5.867079311069709e-8
+          "rel": 5.8670793110697095e-8
         },
         {
           "abs": 9.536040757041064e-7,
@@ -18958,7 +18890,7 @@
         {
           "abs": 9.493866137688656e-7,
           "case": "rows=1 cols=3072",
-          "rel": 5.867079311069709e-8
+          "rel": 5.8670793110697095e-8
         },
         {
           "abs": 9.536040757041064e-7,
@@ -20150,7 +20082,7 @@
           "rel": 4.724418655217092e-8
         },
         {
-          "abs": 2.1474988898262387e-7,
+          "abs": 2.147498889826239e-7,
           "case": "q4_0 rows=1 n=40 k=96 seed=2",
           "rel": 4.2648272736342457e-8
         },
@@ -20167,7 +20099,7 @@
         {
           "abs": 4.684043233282864e-7,
           "case": "q4_0 rows=9 n=17 k=160 seed=1",
-          "rel": 5.646686934361032e-8
+          "rel": 5.6466869343610323e-8
         },
         {
           "abs": 3.7030986277386546e-7,
@@ -20375,7 +20307,7 @@
           "rel": 5.227980058193544e-8
         },
         {
-          "abs": 2.0518109522527086e-7,
+          "abs": 2.051810952252709e-7,
           "case": "q8_0 rows=1 n=40 k=96 seed=3",
           "rel": 3.996753554829229e-8
         },
@@ -20776,7 +20708,7 @@
           "rel": 4.724418655217092e-8
         },
         {
-          "abs": 2.1474988898262387e-7,
+          "abs": 2.147498889826239e-7,
           "case": "q4_0 rows=1 n=40 k=96 seed=2",
           "rel": 4.2648272736342457e-8
         },
@@ -20793,7 +20725,7 @@
         {
           "abs": 4.684043233282864e-7,
           "case": "q4_0 rows=9 n=17 k=160 seed=1",
-          "rel": 5.646686934361032e-8
+          "rel": 5.6466869343610323e-8
         },
         {
           "abs": 3.7030986277386546e-7,
@@ -21001,7 +20933,7 @@
           "rel": 5.227980058193544e-8
         },
         {
-          "abs": 2.0518109522527086e-7,
+          "abs": 2.051810952252709e-7,
           "case": "q8_0 rows=1 n=40 k=96 seed=3",
           "rel": 3.996753554829229e-8
         },
@@ -38168,6 +38100,2171 @@
       "harness": "gap-225/seed_cpu_ledger::max_ulp",
       "reference": "exact in-process (fkc::verify::exact_ref)",
       "reference_kind": "truth"
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U32",
+      "F32"
+    ],
+    "kernel_revision_hash": 4790380303650700107,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F32",
+      "Bool"
+    ],
+    "kernel_revision_hash": 54076120538439779,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I64",
+      "I32"
+    ],
+    "kernel_revision_hash": 12718306152394170488,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "F64",
+      "Bool"
+    ],
+    "kernel_revision_hash": 7206970275160261014,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "I32"
+    ],
+    "kernel_revision_hash": 12718306152394170488,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "U8"
+    ],
+    "kernel_revision_hash": 15426705576193770198,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "F8E4M3"
+    ],
+    "kernel_revision_hash": 17960286632545008628,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "U32"
+    ],
+    "kernel_revision_hash": 10978187038842749440,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F16"
+    ],
+    "kernel_revision_hash": 4963152844826859668,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F16",
+      "Bool"
+    ],
+    "kernel_revision_hash": 17813471795370218133,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I32",
+      "I64"
+    ],
+    "kernel_revision_hash": 5321646266465969584,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "BF16",
+      "Bool"
+    ],
+    "kernel_revision_hash": 1713119021046772467,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I32",
+      "BF16"
+    ],
+    "kernel_revision_hash": 913686790943500661,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "F64",
+      "Bool"
+    ],
+    "kernel_revision_hash": 15165689422141663886,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I32",
+      "F16"
+    ],
+    "kernel_revision_hash": 2021287888601824235,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F16"
+    ],
+    "kernel_revision_hash": 1914349709601941648,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U8",
+      "U8"
+    ],
+    "kernel_revision_hash": 15426705576193770198,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I32",
+      "F32"
+    ],
+    "kernel_revision_hash": 4790380303650700107,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 10285466010795449808,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "F16"
+    ],
+    "kernel_revision_hash": 2021287888601824235,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "U8"
+    ],
+    "kernel_revision_hash": 15426705576193770198,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I64",
+      "U8"
+    ],
+    "kernel_revision_hash": 15426705576193770198,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U8",
+      "F32"
+    ],
+    "kernel_revision_hash": 4790380303650700107,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "U8"
+    ],
+    "kernel_revision_hash": 15426705576193770198,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F16"
+    ],
+    "kernel_revision_hash": 2021287888601824235,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "U32"
+    ],
+    "kernel_revision_hash": 10978187038842749440,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "Bool",
+      "F64"
+    ],
+    "kernel_revision_hash": 6336531893589730906,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I64",
+      "U32"
+    ],
+    "kernel_revision_hash": 10978187038842749440,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "I64"
+    ],
+    "kernel_revision_hash": 5321646266465969584,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F16",
+      "Bool"
+    ],
+    "kernel_revision_hash": 12220226274858770579,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "BF16",
+      "Bool"
+    ],
+    "kernel_revision_hash": 1511838008239649458,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U32",
+      "BF16"
+    ],
+    "kernel_revision_hash": 913686790943500661,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I32",
+      "Bool",
+      "I32"
+    ],
+    "kernel_revision_hash": 6336531893589730906,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 1914349709601941648,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F32",
+      "Bool"
+    ],
+    "kernel_revision_hash": 14829098897267419867,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "F64"
+    ],
+    "kernel_revision_hash": 11656949087232791816,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "U32"
+    ],
+    "kernel_revision_hash": 10978187038842749440,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F16"
+    ],
+    "kernel_revision_hash": 10285466010795449808,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "F64"
+    ],
+    "kernel_revision_hash": 10285466010795449808,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F8E4M3",
+      "F32"
+    ],
+    "kernel_revision_hash": 4790380303650700107,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "BF16"
+    ],
+    "kernel_revision_hash": 913686790943500661,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "BF16"
+    ],
+    "kernel_revision_hash": 913686790943500661,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F64"
+    ],
+    "kernel_revision_hash": 11656949087232791816,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F64"
+    ],
+    "kernel_revision_hash": 11656949087232791816,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "BF16"
+    ],
+    "kernel_revision_hash": 913686790943500661,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F8E4M3",
+      "BF16"
+    ],
+    "kernel_revision_hash": 913686790943500661,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F8E4M3"
+    ],
+    "kernel_revision_hash": 17960286632545008628,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U8",
+      "I64"
+    ],
+    "kernel_revision_hash": 5321646266465969584,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "F32"
+    ],
+    "kernel_revision_hash": 4790380303650700107,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "Bool",
+      "F32"
+    ],
+    "kernel_revision_hash": 6336531893589730906,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "BF16"
+    ],
+    "kernel_revision_hash": 1914349709601941648,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "F16"
+    ],
+    "kernel_revision_hash": 2021287888601824235,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "U32"
+    ],
+    "kernel_revision_hash": 10978187038842749440,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F32",
+      "Bool"
+    ],
+    "kernel_revision_hash": 15294142026349298698,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "I64"
+    ],
+    "kernel_revision_hash": 5321646266465969584,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U8",
+      "BF16"
+    ],
+    "kernel_revision_hash": 913686790943500661,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 1401522491906017110,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "BF16"
+    ],
+    "kernel_revision_hash": 10285466010795449808,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "BF16"
+    ],
+    "kernel_revision_hash": 10427773084904508641,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I32",
+      "U32",
+      "I32"
+    ],
+    "kernel_revision_hash": 3793160802414656617,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "F64"
+    ],
+    "kernel_revision_hash": 1914349709601941648,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I32",
+      "I32"
+    ],
+    "kernel_revision_hash": 12718306152394170488,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U8",
+      "F16"
+    ],
+    "kernel_revision_hash": 2021287888601824235,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "I64"
+    ],
+    "kernel_revision_hash": 5321646266465969584,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I64",
+      "F64"
+    ],
+    "kernel_revision_hash": 11656949087232791816,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "BF16",
+      "Bool"
+    ],
+    "kernel_revision_hash": 535504107434091878,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "U8"
+    ],
+    "kernel_revision_hash": 15426705576193770198,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F16",
+      "Bool"
+    ],
+    "kernel_revision_hash": 17429088148532867908,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "I32"
+    ],
+    "kernel_revision_hash": 12718306152394170488,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "BF16",
+      "Bool"
+    ],
+    "kernel_revision_hash": 16445317639250360120,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I64",
+      "BF16"
+    ],
+    "kernel_revision_hash": 913686790943500661,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I64",
+      "F32"
+    ],
+    "kernel_revision_hash": 4790380303650700107,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U32",
+      "F64"
+    ],
+    "kernel_revision_hash": 11656949087232791816,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "U32",
+      "F64"
+    ],
+    "kernel_revision_hash": 3793160802414656617,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "F64",
+      "Bool"
+    ],
+    "kernel_revision_hash": 16020999499196691537,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U32",
+      "U8"
+    ],
+    "kernel_revision_hash": 15426705576193770198,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 4790380303650700107,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "I32"
+    ],
+    "kernel_revision_hash": 12718306152394170488,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F8E4M3"
+    ],
+    "kernel_revision_hash": 17960286632545008628,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F16",
+      "Bool"
+    ],
+    "kernel_revision_hash": 18041008601788957268,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 4963152844826859668,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F16",
+      "Bool"
+    ],
+    "kernel_revision_hash": 332324956813488581,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F32",
+      "Bool"
+    ],
+    "kernel_revision_hash": 4707137045747111170,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F8E4M3",
+      "F16"
+    ],
+    "kernel_revision_hash": 2021287888601824235,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F32",
+      "Bool"
+    ],
+    "kernel_revision_hash": 16081097241574399089,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "BF16",
+      "Bool"
+    ],
+    "kernel_revision_hash": 1665304015896429235,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "F64",
+      "Bool"
+    ],
+    "kernel_revision_hash": 10064955926678055572,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "BF16"
+    ],
+    "kernel_revision_hash": 1401522491906017110,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "BF16"
+    ],
+    "kernel_revision_hash": 4963152844826859668,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "I64"
+    ],
+    "kernel_revision_hash": 5321646266465969584,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U32",
+      "F16"
+    ],
+    "kernel_revision_hash": 2021287888601824235,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U32",
+      "U32"
+    ],
+    "kernel_revision_hash": 10978187038842749440,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F16"
+    ],
+    "kernel_revision_hash": 1401522491906017110,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "BF16",
+      "Bool"
+    ],
+    "kernel_revision_hash": 11980165284748653707,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F16"
+    ],
+    "kernel_revision_hash": 10427773084904508641,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I64",
+      "F16"
+    ],
+    "kernel_revision_hash": 2021287888601824235,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "F64"
+    ],
+    "kernel_revision_hash": 4963152844826859668,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F32"
+    ],
+    "kernel_revision_hash": 4790380303650700107,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U32",
+      "I64"
+    ],
+    "kernel_revision_hash": 5321646266465969584,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F16",
+      "F16",
+      "Bool"
+    ],
+    "kernel_revision_hash": 12809597533319242320,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I32",
+      "U8"
+    ],
+    "kernel_revision_hash": 15426705576193770198,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "F64"
+    ],
+    "kernel_revision_hash": 10427773084904508641,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F32",
+      "Bool"
+    ],
+    "kernel_revision_hash": 2630612314627507506,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "F64"
+    ],
+    "kernel_revision_hash": 11656949087232791816,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 10427773084904508641,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "F64",
+      "Bool"
+    ],
+    "kernel_revision_hash": 10758188597375653867,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "U32",
+      "F32"
+    ],
+    "kernel_revision_hash": 3793160802414656617,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "F64",
+      "Bool"
+    ],
+    "kernel_revision_hash": 7899547199598221307,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I32",
+      "U32"
+    ],
+    "kernel_revision_hash": 10978187038842749440,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I32",
+      "F64"
+    ],
+    "kernel_revision_hash": 11656949087232791816,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "F64"
+    ],
+    "kernel_revision_hash": 1401522491906017110,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U8",
+      "F64"
+    ],
+    "kernel_revision_hash": 11656949087232791816,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "I32"
+    ],
+    "kernel_revision_hash": 12718306152394170488,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "F16"
+    ],
+    "kernel_revision_hash": 2021287888601824235,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U32",
+      "I32"
+    ],
+    "kernel_revision_hash": 12718306152394170488,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U8",
+      "U32"
+    ],
+    "kernel_revision_hash": 10978187038842749440,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "BF16"
+    ],
+    "kernel_revision_hash": 913686790943500661,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "U8",
+      "I32"
+    ],
+    "kernel_revision_hash": 12718306152394170488,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I64",
+      "I64"
+    ],
+    "kernel_revision_hash": 5321646266465969584,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "BF16",
+      "F32"
+    ],
+    "kernel_revision_hash": 4790380303650700107,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1794473173",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "Bool",
+      "F64"
+    ],
+    "kernel_revision_hash": 6336531893589730906,
+    "claim": "max_ulp",
+    "result": "pass",
+    "verified_at": "epoch:1794473174",
+    "protocol_version": 1,
+    "evidence": {
+      "bound": 0,
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "reference": "cpu"
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "Bool",
+      "F32"
+    ],
+    "kernel_revision_hash": 6336531893589730906,
+    "claim": "max_ulp",
+    "result": "pass",
+    "verified_at": "epoch:1794473174",
+    "protocol_version": 1,
+    "evidence": {
+      "bound": 0,
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "reference": "cpu"
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "I32",
+      "U32",
+      "I32"
+    ],
+    "kernel_revision_hash": 3793160802414656617,
+    "claim": "max_ulp",
+    "result": "pass",
+    "verified_at": "epoch:1794473174",
+    "protocol_version": 1,
+    "evidence": {
+      "bound": 0,
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "reference": "cpu"
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F64",
+      "U32",
+      "F64"
+    ],
+    "kernel_revision_hash": 3793160802414656617,
+    "claim": "max_ulp",
+    "result": "pass",
+    "verified_at": "epoch:1794473174",
+    "protocol_version": 1,
+    "evidence": {
+      "bound": 0,
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "reference": "cpu"
+    }
+  },
+  {
+    "kernel_ref": "baracuda",
+    "backend": "Cuda",
+    "dtypes": [
+      "F32",
+      "U32",
+      "F32"
+    ],
+    "kernel_revision_hash": 3793160802414656617,
+    "claim": "max_ulp",
+    "result": "pass",
+    "verified_at": "epoch:1794473174",
+    "protocol_version": 1,
+    "evidence": {
+      "bound": 0,
+      "harness": "capturedrun-4b/seed_cuda_ledger",
+      "reference": "cpu"
     }
   }
 ]

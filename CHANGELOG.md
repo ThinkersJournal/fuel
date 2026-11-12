@@ -133,6 +133,22 @@ This documents the main changes to the `fuel` workspace.
 
 - That every shared recipe earns a pass on every kernel it reaches (batch 2 and the rest are not run); the code is CUDA-gated, so no CI job compiles it and its tests run locally with `--features cuda`.
 
+## v0.47.17 - 2026-11-12 (tentative; the PM allocates)
+
+### Changed
+
+- `fuel-dispatch/kernel-contracts/fkc-verified-ledger.json`: seeded CUDA ledger (GAP-383): +121 records (116 `bit_stable`, 5 `max_ulp`) for `Cast`, `MaskedFill`, the six comparisons, `Gather`, `LayerNormLastDim`, `ReduceSumTo`, `ReduceMaxTo`, `CumSum`, `Pad`; 20 existing records re-earned (all `pass`), none dropped. 1863 -> 1984 records; CUDA `bit_stable` passes 284 -> 400. Seeded through `scripts/gpu-run.ps1` in ONE combined `seed-cuda` run from a binary built 2026-11-12 01:44 (UTC-7) from `seed_cuda_ledger.rs` blob `91ab190d` (identical to `main@6e0b982e`), base ledger identical to main's.
+- `docs/gaps.md`: GAP-383 marked PARTIAL with the new counts (CUDA host-preferred pairs 258 -> 163; Vulkan unchanged); new row GAP-384 (`seed-cuda` merges onto the embedded ledger, so a second run drops the first run's records).
+- `ROADMAP.md` row 149: the PM's order (decomposed recipe as the production path first; Baracuda binding as a measured follow-on; dispatch rule).
+
+### Measured
+
+- Decomposed `PAGED_ATTN` recipe, plan dump, tiny / mid: Cpu-placed nodes 5 -> 1 and 17 -> 1 (the fused arm stays 7 / 25); ms/token median tiny 16.8, mid 50.7 against fused 10.8 / 104.8 (n=1 each, not a quiet box).
+
+### Not verified
+
+- Which of the remaining 163 CUDA host-preferred pairs occur in a real decode graph; the seeded records re-earn on another GPU.
+
 ## v0.47.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.46.2)
 
 ### Breaking
