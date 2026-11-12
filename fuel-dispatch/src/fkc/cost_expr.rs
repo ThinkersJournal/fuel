@@ -64,12 +64,16 @@ pub enum CompiledCostExpr {
     /// A parsed expression tree: the `flops` expression alone (a contract
     /// that declares no `bytes_moved`, so `bytes_moved` evaluates to 0).
     Expr(CostNode),
-    /// A contract that declares a `bytes_moved` expression (GAP-376). Either
-    /// side may be absent: `flops: None` is a bytes-only block, whose bytes
-    /// formula must never be read as flops. Built only by `compile_cost`.
+    /// A contract that declares a `bytes_moved` expression (GAP-376) and/or an
+    /// `overhead_ns` (GAP-382). Any side may be absent: `flops: None` is a
+    /// bytes-only block, whose bytes formula must never be read as flops. Built
+    /// only by `compile_cost`.
     Declared {
         flops: Option<CostNode>,
         bytes_moved: Option<CostNode>,
+        /// Declared launch overhead in ns: a number (held as a literal) or an
+        /// expression string. `None` for an absent or `~` field.
+        overhead_ns: Option<CostNode>,
     },
 }
 
@@ -464,6 +468,32 @@ pub fn eval_bytes_moved(
     }
 }
 
+/// Evaluate the declared `overhead_ns` side of a compiled cost (GAP-382), in
+/// nanoseconds saturated into `u32` (the `CostEstimate::kernel_overhead_ns`
+/// width). `Unknown`, a flops-only `Expr` and a block with no `overhead_ns`
+/// declare none, so they evaluate to `0`, exactly as before this field was
+/// carried.
+pub fn eval_overhead_ns(
+    expr: &CompiledCostExpr,
+    bindings: &HashMap<String, f64>,
+) -> Result<u32, CostEvalError> {
+    match expr {
+        CompiledCostExpr::Declared {
+            overhead_ns: Some(node),
+            ..
+        } => {
+            let v = eval_node(node, bindings)?;
+            // f64 -> u32 `as` saturates (NaN -> 0); clamp the sign explicitly.
+            Ok(v.max(0.0) as u32)
+        }
+        CompiledCostExpr::Unknown
+        | CompiledCostExpr::Expr(_)
+        | CompiledCostExpr::Declared {
+            overhead_ns: None, ..
+        } => Ok(0),
+    }
+}
+
 fn eval_node(node: &CostNode, bindings: &HashMap<String, f64>) -> Result<f64, CostEvalError> {
     match node {
         CostNode::Lit(v) => Ok(*v),
@@ -564,7 +594,8 @@ pub fn bind_cost_symbols(
 /// [`CostEstimate`] — the value FKC import previously dropped in favor of the
 /// `unknown_cost` sentinel. An undefined symbol is a typed [`CostEvalError`]
 /// (never a panic, never a silent zero). `bytes_moved` is the declared
-/// `bytes_moved:` expression when the contract carries one, else 0 (GAP-376).
+/// `bytes_moved:` expression when the contract carries one, else 0 (GAP-376),
+/// and `kernel_overhead_ns` the declared `overhead_ns:` likewise (GAP-382).
 pub fn cost_estimate(
     expr: &CompiledCostExpr,
     op: OpKind,
@@ -575,9 +606,11 @@ pub fn cost_estimate(
     let symbols = bind_cost_symbols(op, shapes, dtypes, params);
     let flops = eval(expr, &symbols)?;
     let bytes_moved = eval_bytes_moved(expr, &symbols)?;
+    let kernel_overhead_ns = eval_overhead_ns(expr, &symbols)?;
     Ok(CostEstimate {
         flops: flops.max(0.0) as u64,
         bytes_moved: bytes_moved.max(0.0) as u64,
+        kernel_overhead_ns,
         ..CostEstimate::default()
     })
 }
