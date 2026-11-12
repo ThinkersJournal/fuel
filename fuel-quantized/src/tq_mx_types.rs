@@ -29,7 +29,9 @@ use crate::k_quants::{GgmlType, QK_K};
 use fuel_ir::quantized::GgmlDType;
 use half::f16;
 
+/// Elements per `BlockMxfp4` block.
 pub const QK_MXFP4: usize = 32;
+/// Elements per `BlockNvfp4` block.
 pub const QK_NVFP4: usize = 64;
 const QK_NVFP4_SUB: usize = 16;
 
@@ -39,6 +41,7 @@ pub const KVALUES_FP4: [i8; 16] = [0, 1, 2, 3, 4, 6, 8, 12, 0, -1, -2, -3, -4, -
 
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
+/// One ternary `BlockTq1_0` block (54 bytes) of QK_K = 256 elements: packed quants plus an f16 scale. `#[repr(C)]` and `Pod`; the fields are crate-private.
 pub struct BlockTq1_0 {
     pub(crate) qs: [u8; (QK_K - 4 * QK_K / 64) / 5],
     pub(crate) qh: [u8; QK_K / 64],
@@ -48,6 +51,7 @@ const _: () = assert!(std::mem::size_of::<BlockTq1_0>() == 54);
 
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
+/// One ternary `BlockTq2_0` block (66 bytes) of QK_K = 256 elements: 2-bit quants plus an f16 scale. `#[repr(C)]` and `Pod`; the fields are crate-private.
 pub struct BlockTq2_0 {
     pub(crate) qs: [u8; QK_K / 4],
     pub(crate) d: f16,
@@ -56,6 +60,7 @@ const _: () = assert!(std::mem::size_of::<BlockTq2_0>() == 66);
 
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
+/// One MXFP4 block (17 bytes): a shared 1-byte exponent and 32 4-bit codes into `KVALUES_FP4`. `#[repr(C)]` and `Pod`; the fields are crate-private.
 pub struct BlockMxfp4 {
     pub(crate) e: u8,
     pub(crate) qs: [u8; QK_MXFP4 / 2],
@@ -64,6 +69,7 @@ const _: () = assert!(std::mem::size_of::<BlockMxfp4>() == 17);
 
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
+/// One NVFP4 block (36 bytes): 64 4-bit codes into `KVALUES_FP4` in four 16-element sub-blocks with a 1-byte scale each. `#[repr(C)]` and `Pod`; the fields are crate-private.
 pub struct BlockNvfp4 {
     pub(crate) d: [u8; QK_NVFP4 / QK_NVFP4_SUB],
     pub(crate) qs: [u8; QK_NVFP4 / 2],

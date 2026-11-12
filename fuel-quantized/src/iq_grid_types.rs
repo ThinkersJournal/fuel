@@ -32,6 +32,7 @@ use half::f16;
 
 const IQ1S_DELTA: f32 = 0.125;
 
+/// One `BlockIq2Xxs` quantization block (66 bytes): 256 elements in GGUF's on-disk layout (an f16 scale and grid/sign indices). `#[repr(C)]` and `Pod`, so a block slice is the file's bytes; the fields are crate-private.
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct BlockIq2Xxs {
@@ -40,6 +41,7 @@ pub struct BlockIq2Xxs {
 }
 const _: () = assert!(std::mem::size_of::<BlockIq2Xxs>() == 66);
 
+/// One `BlockIq2Xs` quantization block (74 bytes): 256 elements in GGUF's on-disk layout (an f16 scale, grid/sign indices and sub-block scales). `#[repr(C)]` and `Pod`, so a block slice is the file's bytes; the fields are crate-private.
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct BlockIq2Xs {
@@ -49,6 +51,7 @@ pub struct BlockIq2Xs {
 }
 const _: () = assert!(std::mem::size_of::<BlockIq2Xs>() == 74);
 
+/// One `BlockIq2S` quantization block (82 bytes): 256 elements in GGUF's on-disk layout (an f16 scale, grid indices, high bits and sub-block scales). `#[repr(C)]` and `Pod`, so a block slice is the file's bytes; the fields are crate-private.
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct BlockIq2S {
@@ -59,6 +62,7 @@ pub struct BlockIq2S {
 }
 const _: () = assert!(std::mem::size_of::<BlockIq2S>() == 82);
 
+/// One `BlockIq3Xxs` quantization block (98 bytes): 256 elements in GGUF's on-disk layout (an f16 scale and grid/sign indices). `#[repr(C)]` and `Pod`, so a block slice is the file's bytes; the fields are crate-private.
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct BlockIq3Xxs {
@@ -67,6 +71,7 @@ pub struct BlockIq3Xxs {
 }
 const _: () = assert!(std::mem::size_of::<BlockIq3Xxs>() == 98);
 
+/// One `BlockIq3S` quantization block (110 bytes): 256 elements in GGUF's on-disk layout (an f16 scale, grid indices, high bits, signs and sub-block scales). `#[repr(C)]` and `Pod`, so a block slice is the file's bytes; the fields are crate-private.
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct BlockIq3S {
@@ -78,6 +83,7 @@ pub struct BlockIq3S {
 }
 const _: () = assert!(std::mem::size_of::<BlockIq3S>() == 110);
 
+/// One `BlockIq1S` quantization block (50 bytes): 256 elements in GGUF's on-disk layout (an f16 scale, grid indices and high bits). `#[repr(C)]` and `Pod`, so a block slice is the file's bytes; the fields are crate-private.
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct BlockIq1S {
@@ -87,6 +93,7 @@ pub struct BlockIq1S {
 }
 const _: () = assert!(std::mem::size_of::<BlockIq1S>() == 50);
 
+/// One `BlockIq1M` quantization block (56 bytes): 256 elements in GGUF's on-disk layout (grid indices, high bits and packed sub-block scales). `#[repr(C)]` and `Pod`, so a block slice is the file's bytes; the fields are crate-private.
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct BlockIq1M {

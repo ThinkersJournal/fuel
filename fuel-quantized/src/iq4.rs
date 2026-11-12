@@ -29,6 +29,7 @@ use crate::k_quants::{GgmlType, QK_K};
 use fuel_ir::quantized::GgmlDType;
 use half::f16;
 
+/// Elements per `BlockIq4Nl` block.
 pub const QK4_NL: usize = 32;
 
 /// `kvalues_iq4nl` from `ggml-common.h`: the codebook both formats index with a
@@ -37,6 +38,7 @@ pub const KVALUES_IQ4NL: [i8; 16] = [
     -127, -104, -83, -65, -49, -35, -22, -10, 1, 13, 25, 38, 53, 69, 89, 113,
 ];
 
+/// One `BlockIq4Nl` quantization block (18 bytes): 32 elements in GGUF's on-disk layout (an f16 scale and 4-bit codes into `KVALUES_IQ4NL`). `#[repr(C)]` and `Pod`, so a block slice is the file's bytes; the fields are crate-private.
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct BlockIq4Nl {
@@ -45,6 +47,7 @@ pub struct BlockIq4Nl {
 }
 const _: () = assert!(std::mem::size_of::<BlockIq4Nl>() == 2 + QK4_NL / 2);
 
+/// One `BlockIq4Xs` quantization block (136 bytes): 256 elements in GGUF's on-disk layout (an f16 super-scale, 6-bit sub-block scales and 4-bit codes into `KVALUES_IQ4NL`). `#[repr(C)]` and `Pod`, so a block slice is the file's bytes; the fields are crate-private.
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct BlockIq4Xs {
