@@ -365,6 +365,9 @@ fn optimize_graph_with_passes(
     let mut eviction: Option<crate::residency::EvictionOutcome> = None;
     if let Some(pinned) = opts.pinned_device {
         stamp_plan_backends(graph, roots, &plan, pinned);
+        // Every node stamped for a backend must have an executor arm there (typed plan-time error
+        // rather than an executor failure mid-run).
+        crate::pipelined::check_direct_arms_wired(graph, roots)?;
         // Optimize-time kernel-variant bake: resolve **same-device**
         // kernel-variant branches (a decomposed region vs. a fused kernel on
         // the SAME device — e.g. the CUDA flash decode arm) to their cost
