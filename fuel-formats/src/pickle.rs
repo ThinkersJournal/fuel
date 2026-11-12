@@ -147,6 +147,7 @@ pub enum Object {
 type OResult<T> = std::result::Result<T, Object>;
 
 impl Object {
+    /// The text of a `Unicode` object; otherwise returns the object unchanged as the error.
     pub fn unicode(self) -> OResult<String> {
         match self {
             Self::Unicode(t) => Ok(t),
@@ -154,6 +155,7 @@ impl Object {
         }
     }
 
+    /// The `(callable, args)` pair of a `Reduce` object; otherwise returns the object unchanged as the error.
     pub fn reduce(self) -> OResult<(Self, Self)> {
         match self {
             Self::Reduce { callable, args } => Ok((*callable, *args)),
@@ -161,6 +163,7 @@ impl Object {
         }
     }
 
+    /// `Ok(())` for the `None` object; otherwise returns the object unchanged as the error.
     pub fn none(self) -> OResult<()> {
         match self {
             Self::None => Ok(()),
@@ -168,6 +171,7 @@ impl Object {
         }
     }
 
+    /// The wrapped object of a `PersistentLoad`; otherwise returns the object unchanged as the error.
     pub fn persistent_load(self) -> OResult<Self> {
         match self {
             Self::PersistentLoad(t) => Ok(*t),
@@ -175,6 +179,7 @@ impl Object {
         }
     }
 
+    /// The value of a `Bool` object; otherwise returns the object unchanged as the error.
     pub fn bool(self) -> OResult<bool> {
         match self {
             Self::Bool(t) => Ok(t),
@@ -182,6 +187,7 @@ impl Object {
         }
     }
 
+    /// The value of an `Int` object; otherwise returns the object unchanged as the error.
     pub fn int(self) -> OResult<i32> {
         match self {
             Self::Int(t) => Ok(t),
@@ -189,6 +195,7 @@ impl Object {
         }
     }
 
+    /// The value of an `Int` (widened) or `Long` object; otherwise returns the object unchanged as the error.
     pub fn int_or_long(self) -> OResult<i64> {
         match self {
             Self::Int(t) => Ok(t as i64),
@@ -197,6 +204,7 @@ impl Object {
         }
     }
 
+    /// The elements of a `Tuple` object; otherwise returns the object unchanged as the error.
     pub fn tuple(self) -> OResult<Vec<Self>> {
         match self {
             Self::Tuple(t) => Ok(t),
@@ -204,6 +212,7 @@ impl Object {
         }
     }
 
+    /// The key/value pairs of a `Dict` object; otherwise returns the object unchanged as the error.
     pub fn dict(self) -> OResult<Vec<(Self, Self)>> {
         match self {
             Self::Dict(t) => Ok(t),
@@ -211,6 +220,7 @@ impl Object {
         }
     }
 
+    /// The `(module_name, class_name)` of a `Class` object; otherwise returns the object unchanged as the error.
     pub fn class(self) -> OResult<(String, String)> {
         match self {
             Self::Class {
