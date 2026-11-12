@@ -3169,6 +3169,13 @@ where
     inserted
 }
 
+/// A fused node chosen for lowering: its id, its params, and the registry's `decompose` function.
+type PickedFused = (
+    NodeId,
+    FusedOpParams,
+    fn(&mut Graph, NodeId, &FusedOpParams) -> NodeId,
+);
+
 /// Lower, in place, each reachable `Op::Fused` node that `select` picks to its primitive base map
 /// (the registered `decompose`), and rewire every consumer to the lowered output. The
 /// *selective* sibling of [`lower_to_base_map`]: that lowers every fused op; this lowers only the
@@ -3189,11 +3196,7 @@ pub fn lower_selected_fused(
 ) -> usize {
     let order = topo_order_multi(graph, roots);
     let registry = default_registry();
-    let mut picked: Vec<(
-        NodeId,
-        FusedOpParams,
-        fn(&mut Graph, NodeId, &FusedOpParams) -> NodeId,
-    )> = Vec::new();
+    let mut picked: Vec<PickedFused> = Vec::new();
     for &id in &order {
         if roots.contains(&id) {
             continue;
