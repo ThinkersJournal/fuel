@@ -270,7 +270,7 @@ const NON_SOURCE_PATHS_WITHOUT_EXTENSION: &[(&str, &str)] = &[
 /// `C:/Projects/tools/gpu-run`), carrying no identifier because the canonical bytes carry none.
 ///
 /// **They must stay unstamped HERE**: the files are pinned by SHA-256 in
-/// `fuel-test-support/tests/gpu_run_canonical_mutex.rs`, so adding a line changes the bytes and breaks the
+/// `fuel-ir/tests/gpu_run_canonical_mutex.rs`, so adding a line changes the bytes and breaks the
 /// "byte for byte" contract with the other repos that take the same file. This is not the Candle
 /// question (the author is this project's owner), so these are not in [`INHERITED_WITHOUT_NOTICE`].
 ///

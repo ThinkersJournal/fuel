@@ -26,10 +26,27 @@
 
 use std::path::PathBuf;
 
+/// The workspace root: the nearest ancestor whose `Cargo.toml` declares `[workspace]` (the same walk
+/// `no_utf8_bom.rs` and `spdx_header_ratchet.rs` use, so this test reads the workspace the way the other
+/// repo-wide guards in this crate already do).
+fn workspace_root() -> PathBuf {
+    let mut dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    loop {
+        let manifest = dir.join("Cargo.toml");
+        if manifest.is_file()
+            && std::fs::read_to_string(&manifest).is_ok_and(|s| s.contains("[workspace]"))
+        {
+            return dir;
+        }
+        assert!(
+            dir.pop(),
+            "no Cargo.toml with [workspace] above CARGO_MANIFEST_DIR"
+        );
+    }
+}
+
 fn scripts_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("scripts")
+    workspace_root().join("scripts")
 }
 
 /// SHA-256 (FIPS 180-4), std only, so the test adds no dependency. Known-answer tests below.

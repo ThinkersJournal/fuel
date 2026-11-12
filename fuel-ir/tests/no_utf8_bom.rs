@@ -71,7 +71,7 @@ const BOM_REQUIRED: &[(&str, &str)] = &[
 ];
 
 /// Files that begin with a BOM because they are BYTE-FOR-BYTE copies of a canonical file that has
-/// one, pinned by SHA-256 in `fuel-test-support/tests/gpu_run_canonical_mutex.rs`.
+/// one, pinned by SHA-256 in `fuel-ir/tests/gpu_run_canonical_mutex.rs`.
 ///
 /// These are NOT in [`BOM_REQUIRED`]: that list is for files PowerShell 5.1 needs a BOM to parse,
 /// and its self-retirement clause demands non-ASCII content. These two are pure ASCII, so 5.1 reads
