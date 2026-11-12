@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Live-GPU coverage of the CUDA `Op::Iota` arm (GAP-380 / ROADMAP row 149 (a2)): an `Iota` stamped
-//! for CUDA is generated on the host, uploaded, and read by a CUDA kernel, through the PRODUCTION
-//! `PipelinedExecutor`. Before the arm existed the executor answered
+//! for CUDA is generated on the host and uploaded, through the PRODUCTION `PipelinedExecutor`. (A CUDA
+//! KERNEL reading it is covered by `fuel-model-llama`'s `bf16_paged_decode_matches_contiguous_on_cuda`:
+//! `fuel-dispatch` cannot register CUDA kernels itself, they live in `fuel-cuda-dispatch`.) Before the arm existed the executor answered
 //! `WorkItemKind::Iota: only CPU is wired today, got Cuda`.
 //!
 //! REQUIRES an NVIDIA GPU + CUDA Runtime SDK and says so by FAILING without one (GAP-157: an early return
@@ -29,42 +30,26 @@ fn require_device() -> CudaDevice {
     )
 }
 
-/// `Iota{len}` (and, when `double`, `Add(iota, iota)`) stamped for CUDA GPU 0. Returns `(graph, root)`.
-fn build(len: usize, double: bool) -> (SharedGraph, NodeId) {
+/// `Iota{len}` stamped for CUDA GPU 0. Returns `(graph, root)`.
+fn build(len: usize) -> (SharedGraph, NodeId) {
     let graph: SharedGraph = Arc::new(RwLock::new(Graph::new()));
     let root = {
         let mut g = graph.write().unwrap();
-        let shape = Shape::from_dims(&[len]);
         let iota = g.push(Node {
             op: Op::Iota { len },
             inputs: vec![],
-            shape: shape.clone(),
+            shape: Shape::from_dims(&[len]),
             dtype: DType::F32,
         });
-        let mut stamp = vec![iota];
-        let root = if double {
-            let add = g.push(Node {
-                op: Op::Add,
-                inputs: vec![iota, iota],
-                shape,
-                dtype: DType::F32,
-            });
-            stamp.push(add);
-            add
-        } else {
-            iota
-        };
-        for n in stamp {
-            g.set_target_backend(n, BackendId::Cuda);
-            g.set_placement(n, DeviceLocation::Cuda { gpu_id: 0 });
-        }
-        root
+        g.set_target_backend(iota, BackendId::Cuda);
+        g.set_placement(iota, DeviceLocation::Cuda { gpu_id: 0 });
+        iota
     };
     (graph, root)
 }
 
-fn realize_on_cuda(dev: &CudaDevice, len: usize, double: bool) -> Vec<f32> {
-    let (graph, root) = build(len, double);
+fn realize_on_cuda(dev: &CudaDevice, len: usize) -> Vec<f32> {
+    let (graph, root) = build(len);
     let (out, _) = PipelinedExecutor::realize_with_devices(
         graph,
         root,
@@ -83,22 +68,12 @@ fn realize_on_cuda(dev: &CudaDevice, len: usize, double: bool) -> Vec<f32> {
 #[test]
 fn a_cuda_iota_is_the_position_ramp_and_stays_on_the_device() {
     let dev = require_device();
-    assert_eq!(
-        realize_on_cuda(&dev, 4, false),
-        vec![0.0_f32, 1.0, 2.0, 3.0]
-    );
+    assert_eq!(realize_on_cuda(&dev, 4), vec![0.0_f32, 1.0, 2.0, 3.0]);
     // A length that is not a power of two or a warp multiple: the upload is exact-sized.
-    let v = realize_on_cuda(&dev, 37, false);
+    let v = realize_on_cuda(&dev, 37);
     assert_eq!(v.len(), 37);
     assert!(
         v.iter().enumerate().all(|(i, &x)| x == i as f32),
         "ramp 0..37: {v:?}"
     );
-}
-
-/// The recipe's actual use: a CUDA kernel READS the Iota (no host hop for the consumer).
-#[test]
-fn a_cuda_kernel_reads_a_cuda_iota() {
-    let dev = require_device();
-    assert_eq!(realize_on_cuda(&dev, 4, true), vec![0.0_f32, 2.0, 4.0, 6.0]);
 }
