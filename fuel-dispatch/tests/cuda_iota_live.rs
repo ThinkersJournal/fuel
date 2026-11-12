@@ -25,6 +25,7 @@ use fuel_ir::{DType, DeviceLocation, Shape, probe::BackendId};
 use fuel_memory::{BackendStorage, Storage};
 
 fn require_device() -> CudaDevice {
+    fuel_test_support::require_gpu_run_lock();
     CudaDevice::new(0).expect(
         "this test REQUIRES a live CUDA device (GAP-157: it must fail, not skip, without one)",
     )
