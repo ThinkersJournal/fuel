@@ -144,6 +144,18 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.18 - 2026-11-12 (tentative; the PM allocates)
+
+### Added
+
+- `fuel-dispatch` (`pipelined.rs`): a CUDA arm for `Op::Iota` (host-generated F32 ramp uploaded to the node's placed GPU; before this a CUDA-stamped Iota failed with "only CPU is wired today, got Cuda"). GAP-380 / ROADMAP row 149 (a2), the prerequisite of (a1).
+- `fuel-dispatch` (`optimize.rs`, `pipelined::check_direct_arms_wired`): a plan-time guard so a node placed on a backend the executor has no arm for fails at PLAN time naming the node and op (today: `Iota`).
+- `fuel-dispatch/tests/cuda_iota_live.rs` (feature `cuda`, requires a GPU, fails without one): the CUDA Iota is the position ramp (lengths 4 and 37); passes under `gpu-run`.
+
+### Not verified
+
+- A CUDA kernel consuming the CUDA Iota is covered only by `fuel-model-llama` `bf16_paged_decode_matches_contiguous_on_cuda` on the (a1)+(a2) stack, not on this branch alone.
+
 ## v0.47.17 - 2026-11-12 (tentative; the PM allocates)
 
 ### Changed
