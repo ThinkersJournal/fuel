@@ -27,4 +27,5 @@ LICENSE         text eol=lf
 # the next Windows checkout and the hash check fails for a reason nobody guesses.
 scripts/gpu-run-mutex.ps1 text eol=lf
 scripts/test-gpu-run-interleave.ps1 text eol=lf
+scripts/test-gpu-run-mutex-acl.ps1 text eol=lf
 scripts/gpu-run-canonical.SHA256SUMS text eol=lf

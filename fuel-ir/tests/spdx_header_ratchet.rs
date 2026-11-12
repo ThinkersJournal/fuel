@@ -286,6 +286,10 @@ const CANONICAL_COPIES_WITHOUT_STAMP: &[(&str, &str)] = &[
         "scripts/test-gpu-run-interleave.ps1",
         "canonical GPU-lock interleave test (Baracuda#355), byte for byte, SHA-256 pinned",
     ),
+    (
+        "scripts/test-gpu-run-mutex-acl.ps1",
+        "canonical GPU-lock ACL test (Baracuda#358), byte for byte, SHA-256 pinned",
+    ),
 ];
 
 /// Inherited from Candle before the `815abd04` fork rename, carrying NO

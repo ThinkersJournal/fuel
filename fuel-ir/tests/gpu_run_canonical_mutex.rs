@@ -166,8 +166,8 @@ fn canonical_helper_files_match_their_recorded_sha256() {
     let sums = recorded_sums();
     assert_eq!(
         sums.len(),
-        2,
-        "CONTROL: the sums file lists the helper and its interleave test, got {sums:?}"
+        3,
+        "CONTROL: the sums file lists the helper, its interleave test and its ACL test, got {sums:?}"
     );
     for (want, name) in &sums {
         let bytes = std::fs::read(scripts_dir().join(name))

@@ -133,6 +133,17 @@ This documents the main changes to the `fuel` workspace.
 
 - That every shared recipe earns a pass on every kernel it reaches (batch 2 and the rest are not run); the code is CUDA-gated, so no CI job compiles it and its tests run locally with `--features cuda`.
 
+## v0.47.16 - 2026-11-12 (tentative; the PM allocates)
+
+### Changed
+
+- `scripts/gpu-run-mutex.ps1`, `scripts/test-gpu-run-interleave.ps1` retaken byte for byte from `C:/Projects/tools/gpu-run` after baracuda#358 dropped their BOM (pure ASCII; `gpu-run.ps1` keeps its BOM and is not touched). New canonical copy `scripts/test-gpu-run-mutex-acl.ps1` (checks that Authenticated Users hold Synchronize|Modify on the `gpu-run` mutex). `scripts/gpu-run-canonical.SHA256SUMS` now pins three files; the pin test asserts 3.
+- `fuel-ir/tests/no_utf8_bom.rs`: the `BOM_CANONICAL_COPIES` exemption and its self-retiring test are deleted (they retired exactly as designed: the canonical copies no longer carry a BOM). `fuel-ir/tests/spdx_header_ratchet.rs`: `CANONICAL_COPIES_WITHOUT_STAMP` gains the ACL test. `.gitattributes` pins it `eol=lf`.
+
+### Measured
+
+- `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
+
 ## v0.47.17 - 2026-11-12 (tentative; the PM allocates)
 
 ### Changed
