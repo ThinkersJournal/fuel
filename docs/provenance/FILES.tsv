@@ -14,7 +14,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 612 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 617 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1383 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 295 lines verbatim
@@ -592,7 +592,7 @@ fuel-dispatch/src/fkc/verify/mod.rs	own		no lineage; 0 of 142 lines verbatim in 
 fuel-dispatch/src/fkc/verify/probe_recipes.rs	own		no lineage; 0 of 834 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/verify/seed_cpu_ledger.rs	own		no lineage; 1 of 1362 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/verify/seed_cuda_accuracy.rs	own		no lineage; 0 of 255 lines verbatim in candle (0%)
-fuel-dispatch/src/fkc/verify/seed_cuda_ledger.rs	own		no lineage; 0 of 289 lines verbatim in candle (0%)
+fuel-dispatch/src/fkc/verify/seed_cuda_ledger.rs	own		no lineage; 0 of 373 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/verify/seed_vulkan_ledger.rs	own		no lineage; 0 of 249 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/verify/seed_vulkan_matmul_accuracy.rs	own		no lineage; 0 of 128 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/verify/ulp.rs	own		no lineage; 4 of 490 lines verbatim in candle (1%)
