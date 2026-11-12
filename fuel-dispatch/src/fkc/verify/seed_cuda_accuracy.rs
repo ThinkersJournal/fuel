@@ -250,7 +250,7 @@ fn measure_cuda_half_attention(
     register: fn(&mut KernelBindingTable),
     dtype: DType,
 ) -> Result<OpAccuracy, VerifyError> {
-    use crate::ranker::filters::DEFAULT_ACCURACY_BOUND;
+    use crate::ranker::DEFAULT_ACCURACY_BOUND;
     let mut table = KernelBindingTable::new();
     register(&mut table);
     let device = shared_device()?;
@@ -302,7 +302,7 @@ fn measure_cuda_half_decode_ops(
     register: fn(&mut KernelBindingTable),
     dtype: DType,
 ) -> Result<Vec<OpAccuracy>, VerifyError> {
-    use crate::ranker::filters::DEFAULT_ACCURACY_BOUND;
+    use crate::ranker::DEFAULT_ACCURACY_BOUND;
     let mut table = KernelBindingTable::new();
     register(&mut table);
     let device = shared_device()?;
@@ -484,7 +484,7 @@ mod tests {
     /// win by default.
     #[test]
     fn every_claim_is_within_the_default_bound() {
-        use crate::ranker::filters::DEFAULT_ACCURACY_BOUND;
+        use crate::ranker::DEFAULT_ACCURACY_BOUND;
         for (_, _, c, _, _) in claim_rows() {
             assert!(c.max_relative <= DEFAULT_ACCURACY_BOUND.max_relative);
             assert!(c.max_absolute <= DEFAULT_ACCURACY_BOUND.max_absolute);
