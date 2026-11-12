@@ -1049,6 +1049,7 @@ fuel-ir/tests/gap302_known_absent.txt	own		no lineage; 0 of 31 lines verbatim in
 fuel-ir/tests/gap_hedge_allowlist.txt	own		no lineage; 0 of 200 lines verbatim in candle (0%)
 fuel-ir/tests/gap_hedges.rs	own		no lineage; 2 of 314 lines verbatim in candle (1%)
 fuel-ir/tests/gap_refs.rs	own		no lineage; 1 of 258 lines verbatim in candle (0%)
+fuel-ir/tests/gpu_run_canonical_mutex.rs	own		no lineage; 0 of 114 lines verbatim in candle (0%)
 fuel-ir/tests/method_rules_index_join.rs	own		no lineage; 0 of 223 lines verbatim in candle (0%)
 fuel-ir/tests/no_utf8_bom.rs	own		judged: names candle only to describe the fork rename
 fuel-ir/tests/registrar_caller_allowlist.tsv	own		no lineage; 0 of 5 lines verbatim in candle (0%)
@@ -1432,7 +1433,6 @@ fuel-test-support/src/hardware.rs	own		no lineage; 3 of 285 lines verbatim in ca
 fuel-test-support/src/hub.rs	own		no lineage; 2 of 82 lines verbatim in candle (2%)
 fuel-test-support/src/lib.rs	own		no lineage; 0 of 120 lines verbatim in candle (0%)
 fuel-test-support/tests/gpu_lock_ratchet.rs	own		no lineage; 1 of 124 lines verbatim in candle (1%)
-fuel-test-support/tests/gpu_run_canonical_mutex.rs	own		no lineage; 0 of 106 lines verbatim in candle (0%)
 fuel-test-support/tests/skip_sites_are_opt_in.rs	own		no lineage; 1 of 168 lines verbatim in candle (1%)
 fuel-training/Cargo.toml	own		no lineage; 2 of 29 lines verbatim in candle (7%)
 fuel-training/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
