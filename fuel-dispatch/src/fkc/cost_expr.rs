@@ -611,7 +611,6 @@ pub fn cost_estimate(
         flops: flops.max(0.0) as u64,
         bytes_moved: bytes_moved.max(0.0) as u64,
         kernel_overhead_ns,
-        ..CostEstimate::default()
     })
 }
 
