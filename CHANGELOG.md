@@ -73,6 +73,16 @@ This documents the main changes to the `fuel` workspace.
 
 - The `fuel-inference` and `fuel-model-llama` prefix tests were not run for the Phase 0 report; `cargo test -p fuel-kv-pool` was (42 passed, 0 failed).
 
+## v0.47.8 - 2026-11-12 (PM-allocated; docs only)
+
+### Changed
+
+- `docs/gaps.md`: new row GAP-382 (Tier A, Owner Fuel 1): a contract's declared `overhead_ns` never reaches its `CostEstimate` (`fuel-dispatch/src/fkc/lower.rs` `compile_cost`, `schema.rs` `CostBlock::overhead_ns`), so `kernel_overhead_ns` is 0 for every candidate costed from a declared expression. 780 `overhead_ns:` lines across every `*.fkc.md`, of which 272 carry a number (247 CPU-side trees, 25 CUDA, 0 Vulkan) and 508 are `~` placeholders. The fix is the next PR (0.47.9).
+
+### Not verified
+
+- How many placements the fix changes.
+
 ## v0.47.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.46.2)
 
 ### Breaking
