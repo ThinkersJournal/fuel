@@ -325,6 +325,7 @@ pub struct Stack {
 }
 
 impl Stack {
+    /// A stack with no objects and an empty memo.
     pub fn empty() -> Self {
         Self {
             stack: Vec::with_capacity(512),
@@ -332,6 +333,7 @@ impl Stack {
         }
     }
 
+    /// The objects currently on the stack, bottom first.
     pub fn stack(&self) -> &[Object] {
         self.stack.as_slice()
     }
