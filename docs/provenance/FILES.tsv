@@ -3,7 +3,7 @@ path	class	candle_source	basis
 .cargo/config.toml	candle-modified	.cargo/config.toml	same path; 6% of 48 lines verbatim
 .coderipper.toml	own		no lineage; 1 of 21 lines verbatim in candle (5%)
 .git-blame-ignore-revs	own		no lineage; 0 of 19 lines verbatim in candle (0%)
-.gitattributes	own		no lineage; 0 of 24 lines verbatim in candle (0%)
+.gitattributes	own		no lineage; 0 of 25 lines verbatim in candle (0%)
 .github/CODEOWNERS	own		no lineage; 0 of 1 lines verbatim in candle (0%)
 .github/dependabot.yml	candle	.github/dependabot.yml	identical path; 100% of 2 lines verbatim
 .github/workflows/checkpoint-tests.yml	own		no lineage; 0 of 29 lines verbatim in candle (0%)
@@ -14,7 +14,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 623 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 5% of 627 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1383 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 295 lines verbatim
@@ -1923,7 +1923,7 @@ scripts/g2_sweep.py	own		no lineage; 1 of 96 lines verbatim in candle (1%)
 scripts/g2_undo_const_like.py	own		no lineage; 1 of 74 lines verbatim in candle (1%)
 scripts/gap326_guarded_functions.txt	own		no lineage; 0 of 61 lines verbatim in candle (0%)
 scripts/gen_iq_grids.py	own		no lineage; 0 of 51 lines verbatim in candle (0%)
-scripts/gpu-run-canonical.SHA256SUMS	own		no lineage; 0 of 2 lines verbatim in candle (0%)
+scripts/gpu-run-canonical.SHA256SUMS	own		no lineage; 0 of 3 lines verbatim in candle (0%)
 scripts/gpu-run-mutex.ps1	own		no lineage; 0 of 44 lines verbatim in candle (0%)
 scripts/gpu-run.ps1	own		no lineage; 0 of 185 lines verbatim in candle (0%)
 scripts/hooks/pre-commit	own		no lineage; 0 of 171 lines verbatim in candle (0%)
@@ -1983,4 +1983,5 @@ scripts/step5_sweep.py	own		no lineage; 0 of 63 lines verbatim in candle (0%)
 scripts/structure_report.py	own		no lineage; 1 of 273 lines verbatim in candle (0%)
 scripts/sync-packaged-notices.py	own		judged: names candle only to describe its licences
 scripts/test-gpu-run-interleave.ps1	own		no lineage; 0 of 85 lines verbatim in candle (0%)
+scripts/test-gpu-run-mutex-acl.ps1	own		no lineage; 0 of 44 lines verbatim in candle (0%)
 scripts/verify-packaged-crates.py	own		judged: names candle only to describe its licences
