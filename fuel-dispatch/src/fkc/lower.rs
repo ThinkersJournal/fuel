@@ -2527,8 +2527,9 @@ return:
         };
         // (backend, op, signature) -> (records, records declaring a claim, records meeting the bound
         // AFTER the gate, records meeting the bound BEFORE the gate)
-        let mut pairs: BTreeMap<(String, String, String), (usize, usize, usize, usize)> =
-            BTreeMap::new();
+        type PairKey = (String, String, String);
+        type PairStats = (usize, usize, usize, usize);
+        let mut pairs: BTreeMap<PairKey, PairStats> = BTreeMap::new();
         let mut lower_errors = 0usize;
         for f in &files {
             let Ok(src) = std::fs::read_to_string(f) else {
@@ -2606,7 +2607,7 @@ return:
                 .is_some_and(|v| v.2 > 0)
         };
         for backend in ["Cuda", "Vulkan"] {
-            let mine: Vec<(&(String, String, String), &(usize, usize, usize, usize))> =
+            let mine: Vec<(&PairKey, &PairStats)> =
                 pairs.iter().filter(|((b, _, _), _)| b == backend).collect();
             let n_pairs = mine.len();
             let records: usize = mine.iter().map(|(_, v)| v.0).sum();
