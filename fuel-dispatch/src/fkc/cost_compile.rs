@@ -95,7 +95,7 @@ pub fn fused_cost_estimate(
     Ok(CostEstimate {
         flops: eval(expr, &b)?.max(0.0) as u64,
         bytes_moved: crate::fkc::cost_expr::eval_bytes_moved(expr, &b)?.max(0.0) as u64,
-        ..Default::default()
+        kernel_overhead_ns: crate::fkc::cost_expr::eval_overhead_ns(expr, &b)?,
     })
 }
 

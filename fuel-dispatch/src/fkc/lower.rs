@@ -943,9 +943,26 @@ fn compile_cost(block: Option<&CostBlock>, section: &str) -> Result<CompiledCost
     {
         let _ = parse("memory.device_bytes", Some(s))?;
     }
-    if let Some(serde_yaml_ng::Value::String(s)) = &cost.overhead_ns {
-        let _ = parse("overhead_ns", Some(s))?;
-    }
+    // GAP-382: a declared `overhead_ns` reaches the estimate. A number is held
+    // as a literal, an expression STRING is compiled like flops/bytes, and an
+    // absent or `~` field declares none. Any other YAML type is a typed error,
+    // not a silent drop.
+    let overhead_ns = match &cost.overhead_ns {
+        None | Some(serde_yaml_ng::Value::Null) => None,
+        Some(serde_yaml_ng::Value::Number(n)) => n.as_f64().map(cost_expr::CostNode::Lit),
+        Some(serde_yaml_ng::Value::String(s)) => match parse("overhead_ns", Some(s))? {
+            CompiledCostExpr::Expr(n) => Some(n),
+            _ => None,
+        },
+        Some(other) => {
+            return Err(FkcError::CostExprParse {
+                section: section.to_string(),
+                field: "overhead_ns".to_string(),
+                expr: format!("{other:?}"),
+                reason: "expected a number, an expression string or `~`".to_string(),
+            });
+        }
+    };
 
     // Hold BOTH expressions (GAP-376): a declared `bytes_moved` must reach
     // the `CostEstimate`, and a bytes-only block must not have its bytes
@@ -955,10 +972,14 @@ fn compile_cost(block: Option<&CostBlock>, section: &str) -> Result<CompiledCost
         CompiledCostExpr::Expr(n) => Some(n),
         _ => None,
     };
-    match (node(flops), node(bytes_moved)) {
-        (None, None) => Ok(CompiledCostExpr::Unknown),
-        (Some(f), None) => Ok(CompiledCostExpr::Expr(f)),
-        (flops, bytes_moved) => Ok(CompiledCostExpr::Declared { flops, bytes_moved }),
+    match (node(flops), node(bytes_moved), overhead_ns) {
+        (None, None, None) => Ok(CompiledCostExpr::Unknown),
+        (Some(f), None, None) => Ok(CompiledCostExpr::Expr(f)),
+        (flops, bytes_moved, overhead_ns) => Ok(CompiledCostExpr::Declared {
+            flops,
+            bytes_moved,
+            overhead_ns,
+        }),
     }
 }
 
@@ -1426,7 +1447,8 @@ mod tests {
             p.cost,
             CompiledCostExpr::Declared {
                 flops: Some(_),
-                bytes_moved: Some(_)
+                bytes_moved: Some(_),
+                ..
             }
         ));
         assert_eq!(p.kernel_source, "portable-cpu");
@@ -2182,6 +2204,274 @@ return:
         let est = gap376_estimate(Some("2 * n"), None);
         assert_eq!(est.flops, 8);
         assert_eq!(est.bytes_moved, 0);
+    }
+
+    /// GAP-382: a declared `overhead_ns` must reach the `CostEstimate`.
+    fn gap382_estimate(
+        flops: Option<&str>,
+        bytes: Option<&str>,
+        overhead: Option<serde_yaml_ng::Value>,
+    ) -> crate::fused::CostEstimate {
+        let block = CostBlock {
+            provenance: Some("declared".into()),
+            class: None,
+            cost_fn: None,
+            flops: flops.map(Into::into),
+            bytes_moved: bytes.map(Into::into),
+            overhead_ns: overhead,
+            memory: None,
+        };
+        let expr = compile_cost(Some(&block), "k").expect("cost block compiles");
+        let params = crate::kernel::OpParams::Matmul {
+            lhs_batch_dims: vec![2],
+            rhs_batch_dims: vec![2],
+            m: 3,
+            n: 4,
+            k: 5,
+            m_compute: crate::kernel::MatmulM::All,
+        };
+        crate::fkc::cost_estimate(
+            &expr,
+            OpKind::MatMul,
+            &[],
+            &[DType::F32, DType::F32, DType::F32],
+            &params,
+        )
+        .expect("declared cost evaluates")
+    }
+
+    fn num(v: u64) -> Option<serde_yaml_ng::Value> {
+        Some(serde_yaml_ng::Value::Number(v.into()))
+    }
+
+    #[test]
+    fn declared_overhead_ns_number_reaches_the_cost_estimate() {
+        // `overhead_ns: 40` beside flops "2 * n" (n = 4 -> 8).
+        let est = gap382_estimate(Some("2 * n"), None, num(40));
+        assert_eq!(est.flops, 8, "flops expression still evaluates");
+        assert_eq!(
+            est.kernel_overhead_ns, 40,
+            "GAP-382: a declared overhead_ns was dropped"
+        );
+    }
+
+    #[test]
+    fn overhead_only_block_reaches_the_cost_estimate() {
+        // No flops, no bytes_moved: the block must not collapse to Unknown.
+        let est = gap382_estimate(None, None, num(40));
+        assert_eq!(
+            est.kernel_overhead_ns, 40,
+            "GAP-382: overhead-only block dropped"
+        );
+        assert_eq!(est.flops, 0);
+        assert_eq!(est.bytes_moved, 0);
+    }
+
+    #[test]
+    fn overhead_ns_expression_string_is_evaluated() {
+        // An expression STRING is evaluated like flops/bytes (n = 4 -> 40).
+        let est = gap382_estimate(
+            Some("n"),
+            Some("3 * n"),
+            Some(serde_yaml_ng::Value::String("n * 10".into())),
+        );
+        assert_eq!(
+            est.kernel_overhead_ns, 40,
+            "GAP-382: string overhead_ns dropped"
+        );
+        assert_eq!(est.flops, 4);
+        assert_eq!(est.bytes_moved, 12, "GAP-376 bytes_moved is unaffected");
+    }
+
+    #[test]
+    fn absent_or_null_overhead_ns_stays_zero() {
+        // Sabotage sibling: the tests above cannot pass by filling the field
+        // unconditionally.
+        let none = gap382_estimate(Some("2 * n"), Some("3 * n"), None);
+        assert_eq!(none.kernel_overhead_ns, 0);
+        let null = gap382_estimate(
+            Some("2 * n"),
+            Some("3 * n"),
+            Some(serde_yaml_ng::Value::Null),
+        );
+        assert_eq!(null.kernel_overhead_ns, 0, "`~` means no declared overhead");
+    }
+
+    #[test]
+    fn a_real_contract_overhead_ns_reaches_the_cost_estimate() {
+        // cpu/compare-where.fkc.md declares `overhead_ns: 40` beside
+        // `flops: "n"`. Lower it and evaluate a primitive's cost at n = 8.
+        const COMPARE_WHERE: &str = include_str!("../../kernel-contracts/cpu/compare-where.fkc.md");
+        let file = parse_file(COMPARE_WHERE).expect("compare-where parses");
+        let declared: Vec<u64> = file
+            .kernels
+            .iter()
+            .filter_map(|k| k.cost.as_ref())
+            .filter_map(|c| c.overhead_ns.as_ref())
+            .filter_map(|v| v.as_u64())
+            .collect();
+        assert!(
+            declared.contains(&40),
+            "PRECONDITION: the contract declares overhead_ns: 40, got {declared:?}"
+        );
+        let resolved = lower_file(&file, &StubLink, &mut Vec::new()).expect("lowers");
+        let prim = resolved
+            .iter()
+            .find_map(|r| match r {
+                Resolved::Primitive(p) if p.op == OpKind::EqualElementwise => Some(p),
+                _ => None,
+            })
+            .expect("an EqualElementwise primitive");
+        let est = crate::fkc::cost_estimate(
+            &prim.cost,
+            prim.op,
+            &[fuel_ir::Shape::from_dims(&[8])],
+            &[DType::F32, DType::F32, DType::U8],
+            &crate::kernel::OpParams::None,
+        )
+        .expect("declared compare cost evaluates");
+        assert_eq!(est.flops, 8, "flops: \"n\" at n = 8");
+        assert_eq!(
+            est.kernel_overhead_ns, 40,
+            "GAP-382: the corpus contract's declared overhead_ns never reached the estimate"
+        );
+    }
+
+    /// GAP-382 corpus run: every contract section across the three kernel-contract
+    /// trees (this crate, `fuel-cuda-dispatch`, `fuel-vulkan-dispatch`) is compiled
+    /// and costed at n = 8; every section declaring a numeric `overhead_ns` must
+    /// give an estimate carrying exactly that value. Prints how many sections
+    /// changed their candidate cost (before the fix: 0 for all of them).
+    #[test]
+    fn corpus_declared_overhead_ns_reaches_every_estimate() {
+        fn walk(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+            let Ok(rd) = std::fs::read_dir(dir) else {
+                return;
+            };
+            for e in rd.flatten() {
+                let path = e.path();
+                if path.is_dir() {
+                    walk(&path, out);
+                } else if path.to_string_lossy().ends_with(".fkc.md") {
+                    out.push(path);
+                }
+            }
+        }
+        let base = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut files = Vec::new();
+        for tree in [
+            "kernel-contracts",
+            "../fuel-cuda-dispatch/kernel-contracts",
+            "../fuel-vulkan-dispatch/kernel-contracts",
+        ] {
+            walk(&base.join(tree), &mut files);
+        }
+        files.sort();
+        assert!(
+            files.len() > 50,
+            "CONTROL: the walk must find the corpus, found {}",
+            files.len()
+        );
+
+        let mut sections = 0usize;
+        let mut with_number = 0usize;
+        let mut with_expression = 0usize;
+        let mut full_ok = 0usize;
+        let mut full_err = 0usize;
+        let mut unparsed_files = 0usize;
+        let mut mismatches: Vec<String> = Vec::new();
+        let mut by_tree: std::collections::BTreeMap<String, usize> = Default::default();
+        for f in &files {
+            let Ok(src) = std::fs::read_to_string(f) else {
+                continue;
+            };
+            let Ok(file) = parse_file(&src) else {
+                unparsed_files += 1;
+                continue;
+            };
+            for k in &file.kernels {
+                sections += 1;
+                let Some(cost) = k.cost.as_ref() else {
+                    continue;
+                };
+                let declared = match &cost.overhead_ns {
+                    Some(serde_yaml_ng::Value::Number(n)) => n.as_f64(),
+                    Some(serde_yaml_ng::Value::String(_)) => {
+                        with_expression += 1;
+                        continue;
+                    }
+                    _ => continue,
+                };
+                let Some(want) = declared else { continue };
+                with_number += 1;
+                let tree = f
+                    .strip_prefix(base)
+                    .ok()
+                    .and_then(|p| p.components().next())
+                    .map(|c| c.as_os_str().to_string_lossy().to_string())
+                    .unwrap_or_else(|| "../".to_string());
+                *by_tree.entry(tree).or_default() += 1;
+                let expr = match compile_cost(Some(cost), &k.kernel) {
+                    Ok(e) => e,
+                    Err(e) => {
+                        mismatches.push(format!("{}: {}: compile {e:?}", f.display(), k.kernel));
+                        continue;
+                    }
+                };
+                // The overhead is a literal: evaluate it directly, independent of
+                // whether the flops / bytes_moved expressions bind under this generic
+                // context (some use `b`, `batch`, `out_shape[0]`, bound per op in
+                // production, or answered by the entry's hand-written cost fn).
+                let direct = crate::fkc::cost_expr::eval_overhead_ns(&expr, &Default::default());
+                if direct != Ok(want.max(0.0) as u32) {
+                    mismatches.push(format!(
+                        "{}: {}: declared {want} got {direct:?}",
+                        f.display(),
+                        k.kernel
+                    ));
+                }
+                match crate::fkc::cost_estimate(
+                    &expr,
+                    OpKind::AddElementwise,
+                    &[fuel_ir::Shape::from_dims(&[8])],
+                    &[DType::F32],
+                    &crate::kernel::OpParams::None,
+                ) {
+                    Ok(est) => {
+                        full_ok += 1;
+                        if Ok(est.kernel_overhead_ns) != direct {
+                            mismatches.push(format!(
+                                "{}: {}: estimate {} != direct {direct:?}",
+                                f.display(),
+                                k.kernel,
+                                est.kernel_overhead_ns
+                            ));
+                        }
+                    }
+                    Err(_) => full_err += 1,
+                }
+            }
+        }
+        println!(
+            "\nGAP-382 corpus: {} files ({} unparsed), {} sections; sections with a numeric overhead_ns \
+             (candidate cost changes 0 -> declared): {}; with an expression-string overhead_ns: {};              of the numeric ones the whole estimate evaluates under the generic n = 8 context for {} and              needs op-bound symbols (hand-written cost fn answers in production) for {}; by tree: {:?}",
+            files.len(),
+            unparsed_files,
+            sections,
+            with_number,
+            with_expression,
+            full_ok,
+            full_err,
+            by_tree
+        );
+        assert!(
+            with_number > 100,
+            "CONTROL: the corpus declares far more than 100 numeric overhead_ns sections, saw {with_number}"
+        );
+        assert!(
+            mismatches.is_empty(),
+            "declared overhead_ns not reaching the estimate: {mismatches:#?}"
+        );
     }
 
     #[test]

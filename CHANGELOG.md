@@ -83,6 +83,17 @@ This documents the main changes to the `fuel` workspace.
 
 - How many placements the fix changes.
 
+## v0.47.9 - 2026-11-12 (PM-allocated)
+
+### Fixed
+
+- `fuel-dispatch` (GAP-382): a contract's declared `overhead_ns` now reaches its `CostEstimate`. `CompiledCostExpr::Declared` gains `overhead_ns` (a number is held as a literal, an expression string is compiled like `flops` / `bytes_moved`, absent or `~` declares none, any other YAML type is a typed `FkcError::CostExprParse`); `cost_estimate` and `fused_cost_estimate` set `kernel_overhead_ns` through the new `eval_overhead_ns` (saturating into `u32`). 272 of the 1227 contract sections across the three kernel-contract trees declare a number and change their candidate cost from 0 to the declared value (247 CPU-side trees, 25 CUDA, 0 Vulkan); candidates from those contracts now carry their launch overhead, so CPU candidates cost more relative to GPU candidates whose contracts leave it `~`, and rankings can change.
+- Tests: four born-red tests (red at 0 against the declared 40, including the real `cpu/compare-where` contract) with a sabotage sibling, and `corpus_declared_overhead_ns_reaches_every_estimate` over all three trees.
+
+### Not verified
+
+- Whether any CPU-versus-GPU placement flips; that needs a GPU run, and the CPU-only suites cannot show one.
+
 ## v0.47.0 - 2026-11-08 (provisional; tentative number, the PM allocates; Breaking, on main 0.46.2)
 
 ### Breaking
