@@ -144,6 +144,12 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.20 - 2026-11-12 (tentative; the PM allocates)
+
+### Changed
+
+- `fuel-dispatch`: `variant_bake.rs` and `fkc/verify/seed_cuda_accuracy.rs` import `JudgeOracle`, `composite_ns`, `default_backend_rates` and `DEFAULT_ACCURACY_BOUND` from `crate::ranker` (the owner's re-export) instead of its inner files. ARC/MOD programme (PM 2026-11-12), coderipper MOD-003: 2 findings -> 0 (`coderipper check MOD-003 -p fuel-dispatch`; the same command at `d082e554` reports 2). No behaviour change.
+
 ## v0.47.19 - 2026-11-12 (PM-allocated)
 
 ### Changed
