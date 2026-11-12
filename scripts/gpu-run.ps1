@@ -107,7 +107,7 @@ $ErrorActionPreference = 'Stop'
 # once, the exact failure this prevents (same trap as Local\ vs Global\). Version
 # skew is surfaced by $GpuRunVersion (logged, not enforced), never by the name.
 $MutexName     = 'Global\gpu-run'                   # MUST be Global\ (machine-wide), not Local\ — DO NOT VERSION
-$GpuRunVersion = 3                                  # bump on behavioral change; written to the log + lockfile so drift is visible
+$GpuRunVersion = 4                                  # bump on behavioral change; written to the log + lockfile so drift is visible
 $LockPath  = Join-Path $env:TEMP 'gpu-run.lock'     # metadata only, cleared on reboot (a lock must not survive one)
 $LogPath   = Join-Path $env:TEMP 'gpu-run.log'
 
@@ -149,25 +149,8 @@ if ($env:GPU_RUN_HELD -eq '1') {
 }
 
 # --- Acquire the machine-wide mutex (the real mutual exclusion) ----------------
-# The mutex is created with an explicit ACL: Authenticated Users get Synchronize|Modify. With the
-# default ACL only the creating account may open it, so a run started by another account (a CI
-# runner service, a lane session) died with 'Access to the path Global\gpu-run is denied'.
-# Windows PowerShell (.NET Framework) takes the MutexSecurity overload; PowerShell 7 (.NET Core)
-# goes through System.Threading.MutexAcl.
-$createdNew   = $false
-$mutexSid     = New-Object System.Security.Principal.SecurityIdentifier(
-                    [System.Security.Principal.WellKnownSidType]::AuthenticatedUserSid, $null)
-$mutexRule    = New-Object System.Security.AccessControl.MutexAccessRule(
-                    $mutexSid,
-                    ([System.Security.AccessControl.MutexRights]::Synchronize -bor [System.Security.AccessControl.MutexRights]::Modify),
-                    [System.Security.AccessControl.AccessControlType]::Allow)
-$mutexSec     = New-Object System.Security.AccessControl.MutexSecurity
-$mutexSec.AddAccessRule($mutexRule)
-if ($PSVersionTable.PSEdition -eq 'Core') {
-    $mutex = [System.Threading.MutexAcl]::Create($false, $MutexName, [ref]$createdNew, $mutexSec)
-} else {
-    $mutex = New-Object System.Threading.Mutex($false, $MutexName, [ref]$createdNew, $mutexSec)
-}
+. (Join-Path $PSScriptRoot 'gpu-run-mutex.ps1')
+$mutex        = New-GpuRunMutex $MutexName   # ACL open to Authenticated Users (v4); see gpu-run-mutex.ps1
 $acquired     = $false
 $t0           = Get-Date
 $holderBefore = if (Test-Path -LiteralPath $LockPath) {
@@ -242,6 +225,13 @@ try {
     # pid means the holder died without cleanup. Pid reuse can mask it (an
     # unrelated live process now owning that pid keeps us quiet) — a
     # false-NEGATIVE, never a false alarm.
+    # Re-read the lockfile NOW. $holderBefore was read before we waited: a holder that finished cleanly
+    # while we waited deletes its lockfile and is no longer running, which looked exactly like a crashed
+    # holder ("RECLAIMED stale GPU lock from DEAD pid") on every contended acquire. Only a lockfile that is
+    # STILL there after we own the mutex was left behind by a holder that died without cleanup.
+    $holderBefore = if (Test-Path -LiteralPath $LockPath) {
+                        (Get-Content -Raw -LiteralPath $LockPath -ErrorAction SilentlyContinue)
+                    } else { $null }
     if ($holderBefore) {
         $stalePid = $null
         try { $stalePid = ([regex]::Match($holderBefore, '"pid"\s*:\s*(\d+)')).Groups[1].Value } catch {}
