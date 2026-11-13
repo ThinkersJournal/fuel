@@ -180,6 +180,16 @@ This documents the main changes to the `fuel` workspace.
 
 - `fuel-dispatch`: `variant_bake.rs` and `fkc/verify/seed_cuda_accuracy.rs` import `JudgeOracle`, `composite_ns`, `default_backend_rates` and `DEFAULT_ACCURACY_BOUND` from `crate::ranker` (the owner's re-export) instead of its inner files. ARC/MOD programme (PM 2026-11-12), coderipper MOD-003: 2 findings -> 0 (`coderipper check MOD-003 -p fuel-dispatch`; the same command at `d082e554` reports 2). No behaviour change.
 
+## v0.47.25 - 2026-11-13 (tentative; the PM allocates)
+
+### Changed
+
+- `fuel-metal-backend`: doc comments on the public items of `device.rs`, `storage.rs` and `quantized.rs` (`MetalDevice`, `MetalStorage`, `QMetalStorage` and their methods, the resource-option consts). ARC/MOD programme, coderipper MOD-001 on `-p fuel-metal-backend` (local 0.43.20): 77 of 97 public items undocumented (Low) -> Info. Docs are one-line descriptions from the item names and signatures. Documentation only.
+
+### Not verified
+
+- That the crate compiles: `fuel-metal-backend` does not build on this Windows box (macOS-only), so only rustfmt and the MOD-001 check ran locally; CI builds it on the macOS legs.
+
 ## v0.47.19 - 2026-11-12 (PM-allocated)
 
 ### Changed
