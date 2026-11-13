@@ -49,55 +49,52 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 |---|--:|--:|--:|--:|--:|--:|--:|--:|
 | `(root)` | 24 | 4 | 4 |  |  | 16 |  |  |
 | `.cargo` | 1 |  | 1 |  |  |  |  |  |
-| `.github` | 7 | 1 | 2 |  |  | 4 |  |  |
-| `docs` | 196 |  |  |  |  | 196 |  |  |
-| `fuel` | 8 |  |  |  |  | 5 |  | 3 |
-| `fuel-aocl-cpu-backend` | 7 |  |  |  |  | 4 |  | 3 |
-| `fuel-backend-contract` | 9 |  |  | 3 |  | 3 |  | 3 |
-| `fuel-conv` | 6 |  |  |  |  | 3 |  | 3 |
-| `fuel-correctness-fixtures` | 7 |  |  |  |  | 4 |  | 3 |
-| `fuel-cpu-backend` | 30 | 2 | 3 | 5 |  | 17 |  | 3 |
-| `fuel-cpu-kernels` | 12 | 1 | 4 |  |  | 4 |  | 3 |
-| `fuel-cuda-backend` | 56 |  | 3 | 11 |  | 39 |  | 3 |
-| `fuel-cuda-dispatch` | 76 |  |  |  |  | 73 |  | 3 |
+| `.github` | 8 | 1 | 2 |  |  | 5 |  |  |
+| `docs` | 198 |  |  |  |  | 198 |  |  |
+| `fuel` | 9 |  |  |  |  | 6 |  | 3 |
+| `fuel-aocl-cpu-backend` | 8 |  |  |  |  | 5 |  | 3 |
+| `fuel-backend-contract` | 10 |  |  | 3 |  | 4 |  | 3 |
+| `fuel-conv` | 7 |  |  |  |  | 4 |  | 3 |
+| `fuel-correctness-fixtures` | 8 |  |  |  |  | 5 |  | 3 |
+| `fuel-cpu-backend` | 31 | 2 | 3 | 5 |  | 18 |  | 3 |
+| `fuel-cpu-kernels` | 13 | 1 | 4 |  |  | 5 |  | 3 |
+| `fuel-cuda-backend` | 57 |  | 3 | 11 |  | 40 |  | 3 |
+| `fuel-cuda-dispatch` | 79 |  |  |  |  | 76 |  | 3 |
 | `fuel-datasets` | 13 |  | 7 |  |  | 3 |  | 3 |
-| `fuel-dispatch` | 207 |  |  | 1 |  | 203 |  | 3 |
-| `fuel-examples` | 250 | 56 | 162 | 21 |  | 8 |  | 3 |
+| `fuel-dispatch` | 208 |  |  | 1 |  | 204 |  | 3 |
+| `fuel-examples` | 247 | 56 | 162 | 21 |  | 8 |  |  |
 | `fuel-formats` | 11 |  | 2 | 2 |  | 4 |  | 3 |
-| `fuel-graph` | 38 |  |  | 3 |  | 32 |  | 3 |
-| `fuel-hardware` | 10 |  | 1 |  |  | 6 |  | 3 |
+| `fuel-graph` | 39 |  |  | 3 |  | 33 |  | 3 |
+| `fuel-hardware` | 11 |  | 1 |  |  | 7 |  | 3 |
 | `fuel-inference` | 26 |  |  | 2 |  | 21 |  | 3 |
-| `fuel-ir` | 64 |  | 6 | 8 |  | 47 |  | 3 |
-| `fuel-kernel-seam` | 5 |  |  |  |  | 2 |  | 3 |
-| `fuel-kernel-seam-announce` | 6 |  |  |  |  | 3 |  | 3 |
-| `fuel-kernel-seam-types` | 8 |  |  |  |  | 5 |  | 3 |
-| `fuel-kernels-source` | 185 |  |  |  |  | 182 |  | 3 |
-| `fuel-kiss-ref-backend` | 8 |  |  |  |  | 5 |  | 3 |
-| `fuel-kv-pool` | 8 |  |  |  |  | 5 |  | 3 |
-| `fuel-lazy-examples` | 27 |  |  | 21 |  | 3 |  | 3 |
-| `fuel-loaders` | 22 |  | 1 | 3 |  | 15 |  | 3 |
-| `fuel-memory` | 8 |  |  |  |  | 5 |  | 3 |
-| `fuel-metal-backend` | 10 | 1 | 2 |  |  | 4 |  | 3 |
+| `fuel-ir` | 66 |  | 6 | 8 |  | 49 |  | 3 |
+| `fuel-kernels-source` | 34 |  |  |  |  | 31 |  | 3 |
+| `fuel-kiss-ref-backend` | 9 |  |  |  |  | 6 |  | 3 |
+| `fuel-kv-pool` | 9 |  |  |  |  | 6 |  | 3 |
+| `fuel-lazy-examples` | 25 |  |  | 21 |  | 4 |  |  |
+| `fuel-loaders` | 23 |  | 1 | 3 |  | 16 |  | 3 |
+| `fuel-memory` | 9 |  |  |  |  | 6 |  | 3 |
+| `fuel-metal-backend` | 11 | 1 | 2 |  |  | 5 |  | 3 |
 | `fuel-metal-kernels` | 53 | 43 | 4 | 1 |  | 2 |  | 3 |
-| `fuel-mkl-cpu-backend` | 7 |  |  |  |  | 4 |  | 3 |
-| `fuel-model-core` | 8 |  |  |  |  | 5 |  | 3 |
+| `fuel-mkl-cpu-backend` | 8 |  |  |  |  | 5 |  | 3 |
+| `fuel-model-core` | 9 |  |  |  |  | 6 |  | 3 |
 | `fuel-model-fixture` | 2 |  | 1 |  |  | 1 |  |  |
-| `fuel-model-llama` | 8 |  |  | 1 |  | 4 |  | 3 |
-| `fuel-model-phi` | 5 |  |  | 1 |  | 1 |  | 3 |
+| `fuel-model-llama` | 10 |  |  | 1 |  | 6 |  | 3 |
+| `fuel-model-phi` | 6 |  |  | 1 |  | 2 |  | 3 |
 | `fuel-model-umbrella-fixture` | 2 |  |  |  |  | 2 |  |  |
-| `fuel-nn` | 27 |  | 1 | 11 |  | 12 |  | 3 |
+| `fuel-nn` | 28 |  | 1 | 11 |  | 13 |  | 3 |
 | `fuel-onnx` | 13 | 1 | 3 | 2 |  | 4 |  | 3 |
-| `fuel-parallel` | 13 |  |  |  |  | 10 |  | 3 |
-| `fuel-posttrain` | 6 |  |  | 2 |  | 1 |  | 3 |
-| `fuel-quantized` | 15 |  | 2 | 1 | 4 | 5 |  | 3 |
-| `fuel-tensor` | 66 | 1 | 2 | 4 |  | 54 | 2 | 3 |
-| `fuel-tensor-tools` | 5 |  | 1 | 1 |  |  |  | 3 |
-| `fuel-test-support` | 11 |  |  |  |  | 8 |  | 3 |
+| `fuel-parallel` | 14 |  |  |  |  | 11 |  | 3 |
+| `fuel-posttrain` | 7 |  |  | 2 |  | 2 |  | 3 |
+| `fuel-quantized` | 16 |  | 2 | 1 | 4 | 6 |  | 3 |
+| `fuel-tensor` | 68 | 1 | 2 | 4 |  | 56 | 2 | 3 |
+| `fuel-tensor-tools` | 6 |  | 1 | 1 |  | 1 |  | 3 |
+| `fuel-test-support` | 12 |  |  |  |  | 9 |  | 3 |
 | `fuel-training` | 9 |  |  |  |  | 6 |  | 3 |
 | `fuel-transformers` | 194 | 2 | 4 | 153 |  | 29 | 3 | 3 |
-| `fuel-vulkan-backend` | 26 |  |  |  |  | 23 |  | 3 |
-| `fuel-vulkan-dispatch` | 41 |  |  |  |  | 38 |  | 3 |
-| `fuel-vulkan-kernels` | 185 |  |  |  |  | 2 | 180 | 3 |
-| `scripts` | 75 |  |  | 1 |  | 74 |  |  |
-| **all** | **2116** | **112** | **216** | **258** | **4** | **1206** | **185** | **135** |
+| `fuel-vulkan-backend` | 27 |  |  |  |  | 24 |  | 3 |
+| `fuel-vulkan-dispatch` | 43 |  |  |  |  | 40 |  | 3 |
+| `fuel-vulkan-kernels` | 187 |  |  |  |  | 4 | 180 | 3 |
+| `scripts` | 79 |  |  | 1 |  | 78 |  |  |
+| **all** | **1987** | **112** | **216** | **258** | **4** | **1092** | **185** | **120** |
 <!-- provenance-summary:end -->

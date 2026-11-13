@@ -584,7 +584,13 @@ enum WorkItemKind {
     /// binding-table lookup), like `WorkItemKind::Alloc`: a leaf has no
     /// `inputs[0]` to inherit a backend from, so it can't take the normal
     /// kernel path. The executor fills the sequence on CPU.
-    Iota { len: usize },
+    ///
+    /// `target_location` is the node's resolved placement when the planner stamped one: the CUDA
+    /// arm reads its GPU ordinal from it (`None` on an unplaced graph, which falls back to GPU 0).
+    Iota {
+        len: usize,
+        target_location: Option<DeviceLocation>,
+    },
     /// `Op::Release` — metadata-only "this storage is no longer
     /// needed" directive. Per `Op::Release`'s contract: the output
     /// is a zero-element marker (NodeId placeholder for graph
@@ -3239,7 +3245,10 @@ fn compile_one(
             elem_count,
             dtype: node.dtype,
             target_backend,
-            kind: WorkItemKind::Iota { len },
+            kind: WorkItemKind::Iota {
+                len,
+                target_location: graph.placement(id),
+            },
             compiled: None,
             output_layout,
             destructive_input,
@@ -3654,6 +3663,43 @@ fn op_is_softmax_last_dim(op: &Op) -> bool {
 /// FUSED_LINEAR, _)` post-step-5.
 fn op_is_fused_linear(op: &Op) -> bool {
     matches!(op, Op::Fused(fid, _) if *fid == fuel_graph::registry::FusedOps::FUSED_LINEAR)
+}
+
+/// Does the executor have an arm that runs `op` on `backend`? Only for ops it dispatches DIRECTLY
+/// (no binding-table kernel, so the planner cannot reject them for lack of a binding). `None` means
+/// the op is not direct-dispatched and this answer does not apply (the binding table decides).
+///
+/// Source of truth for [`check_direct_arms_wired`]; keep in step with the `execute_work_item` arms.
+pub(crate) fn direct_arm_wired(op: &Op, backend: BackendId) -> Option<bool> {
+    match op {
+        // CPU generates it; CUDA generates on the host and uploads (GAP-380 a2). The cuda arm is
+        // compiled only with the `cuda` feature, and a CUDA stamp cannot arise without it.
+        Op::Iota { .. } => Some(
+            backend == BackendId::Cpu || (cfg!(feature = "cuda") && backend == BackendId::Cuda),
+        ),
+        _ => None,
+    }
+}
+
+/// Plan-time guard (PM, 2026-11-12): a node stamped for a backend whose executor has no arm for its
+/// op fails HERE, with the node and op named, instead of as an `Err` inside the executor mid-run.
+/// Run after the backend stamp. A graph with every arm wired is a no-op.
+pub(crate) fn check_direct_arms_wired(graph: &Graph, roots: &[NodeId]) -> Result<()> {
+    for id in fuel_graph::topo_order_multi(graph, roots) {
+        let node = graph.node(id);
+        let backend = graph.target_backend(id).unwrap_or(BackendId::Cpu);
+        if direct_arm_wired(&node.op, backend) == Some(false) {
+            return Err(Error::Msg(format!(
+                "plan: Node#{} ({:?}, out shape={:?} dtype={:?}) is placed on {backend:?} but the executor                  has no {backend:?} arm for this op (wired arms: see pipelined::direct_arm_wired)",
+                id.0,
+                node.op,
+                node.shape,
+                node.dtype,
+            ))
+            .bt());
+        }
+    }
+    Ok(())
 }
 
 /// Map a `fuel_graph::Op` to a `fuel_ir::dispatch::OpKind`.
@@ -6330,12 +6376,39 @@ fn execute_work_item(
             layout_cache.insert(item.node_id, item.output_layout.clone());
             Ok(CompletionHandle::Ready)
         }
-        WorkItemKind::Iota { len } => {
+        WorkItemKind::Iota {
+            len,
+            target_location,
+        } => {
             // Op::Iota { len }: 0-input F32 position generator
             // [0.0, 1.0, …, (len-1)]. Direct executor dispatch (no kernel /
-            // binding-table lookup), like WorkItemKind::Alloc. CPU-only
-            // today — GPU flash-attn keeps its fused kernel, so the alibi
-            // decomposition (the sole Iota consumer) realizes on CPU.
+            // binding-table lookup), like WorkItemKind::Alloc. Generated on the host, then, for a
+            // CUDA target, uploaded (an Iota is a tiny index constant: a device kernel would cost a
+            // launch to save a few hundred bytes of transfer). The decomposed PAGED_ATTN recipe
+            // (GAP-380) is the CUDA consumer; a build without the `cuda` feature, or any other
+            // non-CPU backend, still errors rather than guessing.
+            #[cfg(feature = "cuda")]
+            if item.target_backend == BackendId::Cuda {
+                let gpu_id = match target_location {
+                    Some(DeviceLocation::Cuda { gpu_id }) => *gpu_id,
+                    _ => 0,
+                };
+                let cuda_dev = devices.cuda(gpu_id).ok_or_else(|| {
+                    Error::Msg(format!(
+                        "Op::Iota on Cuda {{ gpu_id: {gpu_id} }}: no CUDA device registered for                          this place. Hand the device to the realize via a `*_with_devices` entry point."
+                    ))
+                    .bt()
+                })?;
+                let bytes: Vec<u8> = (0..*len).flat_map(|i| (i as f32).to_le_bytes()).collect();
+                let cuda_bytes =
+                    fuel_cuda_backend::CudaStorageBytes::from_cpu_bytes(&cuda_dev, &bytes)?;
+                let st = Storage::new(fuel_memory::BackendStorage::Cuda(cuda_bytes), item.dtype);
+                cache.insert(item.node_id, Arc::new(RwLock::new(st)));
+                layout_cache.insert(item.node_id, item.output_layout.clone());
+                return Ok(CompletionHandle::Ready);
+            }
+            #[cfg(not(feature = "cuda"))]
+            let _ = target_location;
             if item.target_backend != BackendId::Cpu {
                 return Err(Error::Msg(format!(
                     "WorkItemKind::Iota: only CPU is wired today, got {:?}",
@@ -7922,6 +7995,56 @@ mod backend_neutral_tests {
 
 #[cfg(test)]
 mod tests {
+    // ---- GAP-380 (a2): the plan-time arm guard ----------------------------------------------
+
+    fn iota_graph(backend: BackendId) -> (Graph, NodeId) {
+        let mut g = Graph::new();
+        let id = g.push(Node {
+            op: Op::Iota { len: 4 },
+            inputs: vec![],
+            shape: fuel_ir::Shape::from_dims(&[4]),
+            dtype: DType::F32,
+        });
+        g.set_target_backend(id, backend);
+        (g, id)
+    }
+
+    #[test]
+    fn an_iota_on_a_backend_with_no_arm_fails_at_plan_time_naming_node_and_op() {
+        let (g, id) = iota_graph(BackendId::Vulkan);
+        let err = check_direct_arms_wired(&g, &[id])
+            .expect_err("Vulkan has no Iota arm")
+            .to_string();
+        assert!(
+            err.contains(&format!("Node#{}", id.0)),
+            "names the node: {err}"
+        );
+        assert!(err.contains("Iota"), "names the op: {err}");
+        assert!(err.contains("Vulkan"), "names the backend: {err}");
+    }
+
+    /// Sabotage siblings: the same guard passes where the arm IS wired, so the red above is the
+    /// missing arm and not the guard rejecting everything.
+    #[test]
+    fn an_iota_on_cpu_passes_the_arm_guard_and_other_ops_are_not_direct_dispatched() {
+        let (g, id) = iota_graph(BackendId::Cpu);
+        check_direct_arms_wired(&g, &[id]).expect("CPU Iota is wired");
+        assert_eq!(
+            direct_arm_wired(&Op::Add, BackendId::Cuda),
+            None,
+            "Add goes through the binding table"
+        );
+        assert_eq!(
+            direct_arm_wired(&Op::Iota { len: 1 }, BackendId::Cpu),
+            Some(true)
+        );
+        assert_eq!(
+            direct_arm_wired(&Op::Iota { len: 1 }, BackendId::Cuda),
+            Some(cfg!(feature = "cuda")),
+            "the CUDA arm is wired exactly when the cuda feature compiles it"
+        );
+    }
+
     use super::*;
     use fuel_graph::Node;
     use fuel_ir::Shape;
