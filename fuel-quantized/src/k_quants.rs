@@ -3,8 +3,8 @@
 // at commit 549eacb011f25b2c6fc765d6c3dbd26e42f72ee6, modified here. candle's code is itself a port of ggml / llama.cpp (MIT), which its own comments cite by commit.
 // Contributors, how this was verified and the licence texts: THIRD-PARTY-NOTICES.md (section "candle").
 use crate::utils::{
-    get_scale_min_k4, group_for_dequantization, group_for_quantization, make_q3_quants,
-    make_qkx1_quants, make_qkx3_quants, make_qp_quants, make_qx_quants, nearest_int,
+    get_scale_min_k4, make_q3_quants, make_qkx1_quants, make_qkx3_quants, make_qp_quants,
+    make_qx_quants, nearest_int,
 };
 use byteorder::{ByteOrder, LittleEndian};
 use fuel_ir::Result;
@@ -30,6 +30,50 @@ pub const QK5_1: usize = 32;
 pub const QK8_0: usize = 32;
 /// Elements per `Q8_1` block.
 pub const QK8_1: usize = 32;
+
+/// Validates that the input and output are the right size and returns an iterator which maps each
+/// input region `xs` to its corresponding output block in `ys`. Each output region is guaranteed
+/// to be `T::BLCK_SIZE` long.
+fn group_for_quantization<'a, 'b, T: GgmlType>(
+    xs: &'b [f32],
+    ys: &'a mut [T],
+) -> Vec<(&'a mut T, &'b [f32])> {
+    let block_size = T::BLCK_SIZE;
+    let dtype = T::DTYPE;
+
+    let expected_blocks = xs.len() / block_size;
+    let actual_blocks = ys.len();
+
+    // Validate that the input is the right size
+    debug_assert_eq!(
+        expected_blocks, actual_blocks,
+        "quantize {dtype:?}: expected {expected_blocks} blocks but only {actual_blocks} were provided!"
+    );
+
+    ys.iter_mut().zip(xs.chunks_exact(block_size)).collect()
+}
+
+/// Validates that the input and output are the right size and returns an iterator which maps each
+/// input block `xs` to its corresponding output region in `ys`. Each output region is guaranteed
+/// to be `T::BLCK_SIZE` long.
+fn group_for_dequantization<'a, 'b, T: GgmlType>(
+    xs: &'a [T],
+    ys: &'b mut [f32],
+) -> Vec<(&'a T, &'b mut [f32])> {
+    let block_size = T::BLCK_SIZE;
+    let dtype = T::DTYPE;
+
+    let actual_output_len = ys.len();
+    let expected_output_len = xs.len() * block_size;
+    // Validate that the output is the right size
+    debug_assert_eq!(
+        expected_output_len, actual_output_len,
+        "dequantize {dtype:?}: ys (len = {actual_output_len}) does not match the expected length of {expected_output_len}!"
+    );
+
+    // Zip the blocks and outputs together
+    xs.iter().zip(ys.chunks_exact_mut(block_size)).collect()
+}
 
 /// A GGML block type (or a dense scalar standing in for one).
 ///
