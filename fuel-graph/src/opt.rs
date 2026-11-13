@@ -3169,6 +3169,70 @@ where
     inserted
 }
 
+/// A fused node chosen for lowering: its id, its params, and the registry's `decompose` function.
+type PickedFused = (
+    NodeId,
+    FusedOpParams,
+    fn(&mut Graph, NodeId, &FusedOpParams) -> NodeId,
+);
+
+/// Lower, in place, each reachable `Op::Fused` node that `select` picks to its primitive base map
+/// (the registered `decompose`), and rewire every consumer to the lowered output. The
+/// *selective* sibling of [`lower_to_base_map`]: that lowers every fused op; this lowers only the
+/// ones the caller's predicate names, so the optimizer can decide per node, from facts only it has
+/// (which backend is pinned, which kernels are bound), without the graph layer knowing a backend.
+///
+/// Contract: total and never-panic. A fused id with no registry entry, or a `decompose` that
+/// declines (returns the node's own id: wrong params, malformed node), leaves the node untouched
+/// (the driver's fixpoint signal). **Roots are not remapped** (the caller's slice is immutable), so
+/// a selected node that IS a root is skipped and stays fused: still correct, just not lowered.
+/// The lowered node's orphaned original stays in the arena, unreachable from any root.
+///
+/// Returns the number of nodes lowered.
+pub fn lower_selected_fused(
+    graph: &mut Graph,
+    roots: &[NodeId],
+    select: &dyn Fn(&Graph, NodeId) -> bool,
+) -> usize {
+    let order = topo_order_multi(graph, roots);
+    let registry = default_registry();
+    let mut picked: Vec<PickedFused> = Vec::new();
+    for &id in &order {
+        if roots.contains(&id) {
+            continue;
+        }
+        let Op::Fused(fid, params) = &graph.node(id).op else {
+            continue;
+        };
+        let Some(entry) = registry.entry(*fid) else {
+            continue;
+        };
+        if select(graph, id) {
+            picked.push((id, params.clone(), entry.decompose));
+        }
+    }
+    let mut remap: HashMap<NodeId, NodeId> = HashMap::new();
+    for (id, params, decompose) in picked {
+        let new_id = decompose(graph, id, &params);
+        if new_id != id {
+            remap.insert(id, new_id);
+        }
+    }
+    if remap.is_empty() {
+        return 0;
+    }
+    let n_nodes = graph.len();
+    for nid in 0..n_nodes {
+        let inputs = graph.node(NodeId(nid)).inputs.clone();
+        for cur in inputs {
+            if let Some(&new) = remap.get(&cur) {
+                graph.rewrite_input(NodeId(nid), cur, new);
+            }
+        }
+    }
+    remap.len()
+}
+
 /// Insert `Op::Cast` fixups that CHANGE a consumer's input dtype — the sibling of
 /// [`insert_layout_fixups`], for dtype rather than layout. Given precomputed
 /// `(consumer, input, target_dtype)` edges (an input whose dtype should be
@@ -6600,5 +6664,109 @@ mod tests {
             inserted, 0,
             "view ops preserve strided layouts; no Contiguize should be inserted",
         );
+    }
+}
+
+#[cfg(test)]
+mod lower_selected_tests {
+    use super::*;
+    use crate::registry::{FusedOpParams, FusedOps};
+    use fuel_ir::Shape;
+
+    /// `[q, k_cache, v_cache, block_table, context_lens]` consts, one fused PAGED_ATTN over them and
+    /// one `Contiguize` consumer. Returns `(graph, fused, consumer)`.
+    fn graph_with_paged_attn() -> (Graph, NodeId, NodeId) {
+        let mut g = Graph::new();
+        let mut leaf = |dims: &[usize], dtype: DType| {
+            g.push(Node {
+                op: Op::Const,
+                inputs: vec![],
+                shape: Shape::from_dims(dims),
+                dtype,
+            })
+        };
+        let q = leaf(&[1, 2, 1, 4], DType::F32);
+        let kc = leaf(&[3, 2, 2, 4], DType::F32);
+        let vc = leaf(&[3, 2, 2, 4], DType::F32);
+        let bt = leaf(&[1, 2], DType::U32);
+        let cl = leaf(&[1], DType::U32);
+        let fused = g.push(Node {
+            op: Op::Fused(
+                FusedOps::PAGED_ATTN,
+                FusedOpParams::PagedAttn {
+                    softmax_scale: 0.5,
+                    block_size: 2,
+                    softcap: None,
+                },
+            ),
+            inputs: vec![q, kc, vc, bt, cl],
+            shape: Shape::from_dims(&[1, 2, 1, 4]),
+            dtype: DType::F32,
+        });
+        let consumer = g.push(Node {
+            op: Op::Contiguize,
+            inputs: vec![fused],
+            shape: Shape::from_dims(&[1, 2, 1, 4]),
+            dtype: DType::F32,
+        });
+        (g, fused, consumer)
+    }
+
+    fn reachable_fused(g: &Graph, roots: &[NodeId]) -> usize {
+        topo_order_multi(g, roots)
+            .into_iter()
+            .filter(|&n| matches!(g.node(n).op, Op::Fused(FusedOps::PAGED_ATTN, _)))
+            .count()
+    }
+
+    #[test]
+    fn a_selected_fused_node_is_lowered_and_its_consumer_rewired() {
+        let (mut g, fused, consumer) = graph_with_paged_attn();
+        assert_eq!(
+            reachable_fused(&g, &[consumer]),
+            1,
+            "PRECONDITION: one fused node"
+        );
+        let n = lower_selected_fused(&mut g, &[consumer], &|_, _| true);
+        assert_eq!(n, 1);
+        assert_eq!(
+            reachable_fused(&g, &[consumer]),
+            0,
+            "no fused PAGED_ATTN stays reachable"
+        );
+        let new_in = g.node(consumer).inputs[0];
+        assert_ne!(new_in, fused, "the consumer reads the lowered output");
+        assert_eq!(
+            g.node(new_in).shape,
+            g.node(fused).shape,
+            "lowering preserves shape"
+        );
+        assert_eq!(
+            g.node(new_in).dtype,
+            g.node(fused).dtype,
+            "lowering preserves dtype"
+        );
+    }
+
+    /// Sabotage sibling: the same call with a predicate that picks nothing changes nothing, so the
+    /// test above cannot pass because the pass lowers everything unconditionally.
+    #[test]
+    fn an_unselected_fused_node_is_left_alone() {
+        let (mut g, fused, consumer) = graph_with_paged_attn();
+        let n = lower_selected_fused(&mut g, &[consumer], &|_, _| false);
+        assert_eq!(n, 0);
+        assert_eq!(g.node(consumer).inputs[0], fused);
+        assert_eq!(reachable_fused(&g, &[consumer]), 1);
+    }
+
+    /// Roots are not remapped, so a selected root is skipped rather than lowered into a node the
+    /// caller does not know about.
+    #[test]
+    fn a_selected_root_is_skipped() {
+        let (mut g, fused, _consumer) = graph_with_paged_attn();
+        let before = g.len();
+        let n = lower_selected_fused(&mut g, &[fused], &|_, _| true);
+        assert_eq!(n, 0);
+        assert_eq!(g.len(), before, "nothing was pushed");
     }
 }

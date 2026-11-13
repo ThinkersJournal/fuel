@@ -296,7 +296,21 @@ fn optimize_graph_with_passes(
     // (1) The dispatch order today: data-flow topo refined by ordering
     //     edges. `compile_plan` copies this verbatim into
     //     `ExecutionPlan::order`, so it IS the executor's walk order.
-    let order = fuel_graph::opt::execution_plan(graph, roots);
+    let mut order = fuel_graph::opt::execution_plan(graph, roots);
+
+    // (1a) GAP-380 (a1): lower a fused op with NO kernel on the pinned device to its primitive recipe
+    //      BEFORE placement, so the recipe's nodes are placed on the device instead of the whole fused
+    //      op landing on the host (a round trip of its device-resident operands every call). Runs first
+    //      because it changes what the planner enumerates; the order is re-derived if it rewrote.
+    if lower_fused_unbound_on_pinned_device(graph, roots, opts, &|id, backend| {
+        crate::fused::default_kernel_registry()
+            .impls_for(id)
+            .iter()
+            .any(|(b, _)| *b == backend)
+    }) > 0
+    {
+        order = fuel_graph::opt::execution_plan(graph, roots);
+    }
 
     // (2) Reuse the placement/cost/validation machinery. The plan is a
     //     transient, optimizer-INTERNAL by-product — we drive `compile_plan`
@@ -443,6 +457,48 @@ fn optimize_graph_with_passes(
         placements: resolved_placements,
         eviction,
     })
+}
+
+/// Fused ops the optimizer lowers to their primitive recipe when the pinned device has no kernel
+/// for them (GAP-380 / ROADMAP row 149 (a1)). Deliberately a short allowlist: a fused op belongs
+/// here only after the recipe's placement was measured on the device. `PAGED_ATTN`: 25 -> 1
+/// host-placed nodes and 104.8 -> 50.7 ms/token at the mid Llama decode fixture (Fuel 1,
+/// 2026-11-12, n=1, ROADMAP row 149).
+const LOWER_WHEN_NO_DEVICE_KERNEL: &[fuel_graph::registry::FusedOpId] =
+    &[fuel_graph::registry::FusedOps::PAGED_ATTN];
+
+/// Lower every reachable [`LOWER_WHEN_NO_DEVICE_KERNEL`] fused node whose pinned backend has no
+/// kernel (`bound(op, backend)` is false) to its primitive recipe, in place. A no-op unless the
+/// pinned device is CUDA (the measured case; a CPU or Vulkan pin keeps the fused host kernel).
+/// Returns the number of nodes lowered; reported through `tracing` so a deoptimization is visible
+/// (C-6: fuel never changes a plan silently).
+///
+/// Not a numerics-neutral swap: the recipe computes the attention in the primitives' dtype order,
+/// so a consumer that needs the fused kernel's exact bits must pin a backend that has one.
+fn lower_fused_unbound_on_pinned_device(
+    graph: &mut Graph,
+    roots: &[NodeId],
+    opts: &PlanOptions<'_>,
+    bound: &dyn Fn(fuel_graph::registry::FusedOpId, fuel_ir::probe::BackendId) -> bool,
+) -> usize {
+    let Some(pinned) = opts.pinned_device else {
+        return 0;
+    };
+    let backend = pinned.backend();
+    if backend != fuel_ir::probe::BackendId::Cuda {
+        return 0;
+    }
+    let lowered = fuel_graph::opt::lower_selected_fused(graph, roots, &|g, id| {
+        matches!(&g.node(id).op, Op::Fused(fid, _)
+            if LOWER_WHEN_NO_DEVICE_KERNEL.contains(fid) && !bound(*fid, backend))
+    });
+    if lowered > 0 {
+        tracing::info!(
+            lowered,
+            "GAP-380: lowered {lowered} fused node(s) with no {backend:?} kernel to their primitive              recipe so they place on the pinned device instead of the host"
+        );
+    }
+    lowered
 }
 
 /// Dtype-reconciliation fixup (runs BEFORE `compile_plan`): for any kernel-
@@ -2701,5 +2757,127 @@ mod tests {
             );
         }
         println!("--- END VERDICT ---\n");
+    }
+
+    // ---- GAP-380 (a1): lower a fused op with no kernel on the pinned device -------------------
+
+    /// `[q, k_cache, v_cache, block_table, context_lens]` consts, a fused PAGED_ATTN, and a
+    /// `Contiguize` consumer. Returns `(graph, consumer)`.
+    fn paged_attn_graph() -> (Graph, NodeId) {
+        use fuel_graph::registry::{FusedOpParams, FusedOps};
+        let mut g = Graph::new();
+        let mut leaf = |dims: &[usize], dtype: DType| {
+            g.push(Node {
+                op: Op::Const,
+                inputs: vec![],
+                shape: Shape::from_dims(dims),
+                dtype,
+            })
+        };
+        let q = leaf(&[1, 2, 1, 4], DType::F32);
+        let kc = leaf(&[3, 2, 2, 4], DType::F32);
+        let vc = leaf(&[3, 2, 2, 4], DType::F32);
+        let bt = leaf(&[1, 2], DType::U32);
+        let cl = leaf(&[1], DType::U32);
+        let fused = g.push(Node {
+            op: Op::Fused(
+                FusedOps::PAGED_ATTN,
+                FusedOpParams::PagedAttn {
+                    softmax_scale: 0.5,
+                    block_size: 2,
+                    softcap: None,
+                },
+            ),
+            inputs: vec![q, kc, vc, bt, cl],
+            shape: Shape::from_dims(&[1, 2, 1, 4]),
+            dtype: DType::F32,
+        });
+        let consumer = g.push(Node {
+            op: Op::Contiguize,
+            inputs: vec![fused],
+            shape: Shape::from_dims(&[1, 2, 1, 4]),
+            dtype: DType::F32,
+        });
+        (g, consumer)
+    }
+
+    fn paged_attn_nodes(g: &Graph, root: NodeId) -> usize {
+        topo_order_multi(g, &[root])
+            .into_iter()
+            .filter(|&n| {
+                matches!(
+                    g.node(n).op,
+                    Op::Fused(fuel_graph::registry::FusedOps::PAGED_ATTN, _)
+                )
+            })
+            .count()
+    }
+
+    #[test]
+    fn a_cuda_pin_with_no_cuda_paged_attn_kernel_lowers_the_fused_node() {
+        let (mut g, root) = paged_attn_graph();
+        let opts = PlanOptions::new().with_pinned_device(DeviceLocation::Cuda { gpu_id: 0 });
+        assert_eq!(
+            paged_attn_nodes(&g, root),
+            1,
+            "PRECONDITION: one fused node"
+        );
+        let n = lower_fused_unbound_on_pinned_device(&mut g, &[root], &opts, &|_, _| false);
+        assert_eq!(n, 1);
+        assert_eq!(
+            paged_attn_nodes(&g, root),
+            0,
+            "no fused PAGED_ATTN stays reachable"
+        );
+    }
+
+    /// Sabotage siblings: each condition of the gate, taken away alone, leaves the node fused.
+    #[test]
+    fn the_gate_needs_a_cuda_pin_no_bound_kernel_and_a_listed_op() {
+        // A bound CUDA kernel: keep the fused node (the fast path wins when it exists).
+        let (mut g, root) = paged_attn_graph();
+        let cuda = PlanOptions::new().with_pinned_device(DeviceLocation::Cuda { gpu_id: 0 });
+        assert_eq!(
+            lower_fused_unbound_on_pinned_device(&mut g, &[root], &cuda, &|_, _| true),
+            0
+        );
+        assert_eq!(paged_attn_nodes(&g, root), 1);
+        // A CPU pin: the host kernel IS the right place, so nothing lowers.
+        let (mut g, root) = paged_attn_graph();
+        let cpu = PlanOptions::new().with_pinned_device(DeviceLocation::Cpu);
+        assert_eq!(
+            lower_fused_unbound_on_pinned_device(&mut g, &[root], &cpu, &|_, _| false),
+            0
+        );
+        assert_eq!(paged_attn_nodes(&g, root), 1);
+        // No pin at all (bare-graph callers): untouched.
+        let (mut g, root) = paged_attn_graph();
+        let bare = PlanOptions::new();
+        assert_eq!(
+            lower_fused_unbound_on_pinned_device(&mut g, &[root], &bare, &|_, _| false),
+            0
+        );
+        assert_eq!(paged_attn_nodes(&g, root), 1);
+    }
+
+    /// The production predicate is the real registry: CUDA has no PAGED_ATTN kernel today, CPU does.
+    /// Red the day a CUDA kernel is bound (then the recipe is the slower path and this list must be
+    /// revisited, which is the point).
+    #[test]
+    fn the_registry_has_a_cpu_paged_attn_kernel_and_no_cuda_one() {
+        let impls = crate::fused::default_kernel_registry()
+            .impls_for(fuel_graph::registry::FusedOps::PAGED_ATTN);
+        assert!(
+            impls
+                .iter()
+                .any(|(b, _)| *b == fuel_ir::probe::BackendId::Cpu),
+            "CONTROL: the registry lookup sees the CPU PAGED_ATTN kernels"
+        );
+        assert!(
+            !impls
+                .iter()
+                .any(|(b, _)| *b == fuel_ir::probe::BackendId::Cuda),
+            "a CUDA PAGED_ATTN kernel is bound: revisit LOWER_WHEN_NO_DEVICE_KERNEL (the fused kernel may now beat the recipe)"
+        );
     }
 }
