@@ -6,50 +6,6 @@ pub(super) fn nearest_int(v: f32) -> i32 {
     v.round() as i32
 }
 
-/// Validates that the input and output are the right size and returns an iterator which maps each
-/// input region `xs` to its corresponding output block in `ys`. Each output region is guaranteed
-/// to be `T::BLCK_SIZE` long.
-pub(super) fn group_for_quantization<'a, 'b, T: super::k_quants::GgmlType>(
-    xs: &'b [f32],
-    ys: &'a mut [T],
-) -> Vec<(&'a mut T, &'b [f32])> {
-    let block_size = T::BLCK_SIZE;
-    let dtype = T::DTYPE;
-
-    let expected_blocks = xs.len() / block_size;
-    let actual_blocks = ys.len();
-
-    // Validate that the input is the right size
-    debug_assert_eq!(
-        expected_blocks, actual_blocks,
-        "quantize {dtype:?}: expected {expected_blocks} blocks but only {actual_blocks} were provided!"
-    );
-
-    ys.iter_mut().zip(xs.chunks_exact(block_size)).collect()
-}
-
-/// Validates that the input and output are the right size and returns an iterator which maps each
-/// input block `xs` to its corresponding output region in `ys`. Each output region is guaranteed
-/// to be `T::BLCK_SIZE` long.
-pub(super) fn group_for_dequantization<'a, 'b, T: super::k_quants::GgmlType>(
-    xs: &'a [T],
-    ys: &'b mut [f32],
-) -> Vec<(&'a T, &'b mut [f32])> {
-    let block_size = T::BLCK_SIZE;
-    let dtype = T::DTYPE;
-
-    let actual_output_len = ys.len();
-    let expected_output_len = xs.len() * block_size;
-    // Validate that the output is the right size
-    debug_assert_eq!(
-        expected_output_len, actual_output_len,
-        "dequantize {dtype:?}: ys (len = {actual_output_len}) does not match the expected length of {expected_output_len}!"
-    );
-
-    // Zip the blocks and outputs together
-    xs.iter().zip(ys.chunks_exact_mut(block_size)).collect()
-}
-
 pub(super) fn get_scale_min_k4(j: usize, q: &[u8]) -> (u8, u8) {
     if j < 4 {
         let d = q[j] & 63;
