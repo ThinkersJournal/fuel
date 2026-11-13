@@ -135,6 +135,7 @@ macro_rules! vk_binary_f32_wrapper {
     };
 }
 
+/// Vulkan dispatch wrappers for f32 elementwise binary ops (add, sub, mul, div, maximum, minimum).
 pub mod binary {
     use super::*;
 
@@ -193,6 +194,7 @@ macro_rules! vk_binary_f16_wrapper {
     };
 }
 
+/// Vulkan dispatch wrappers for f16 elementwise binary ops (add, sub, mul, div, maximum, minimum).
 pub mod binary_f16 {
     use super::*;
 
@@ -249,6 +251,7 @@ macro_rules! vk_binary_f64_wrapper {
     };
 }
 
+/// Vulkan dispatch wrappers for f64 elementwise binary ops.
 pub mod binary_f64 {
     use super::*;
 
@@ -306,6 +309,7 @@ macro_rules! vk_unary_f32_wrapper {
     };
 }
 
+/// Vulkan dispatch wrappers for f32 elementwise unary ops (neg, sqr, sqrt, exp, log, sin, cos, tanh, ...).
 pub mod unary {
     use super::*;
 
@@ -371,6 +375,7 @@ macro_rules! vk_unary_f16_wrapper {
     };
 }
 
+/// Vulkan dispatch wrappers for f16 elementwise unary ops.
 pub mod unary_f16 {
     use super::*;
 
@@ -436,6 +441,7 @@ macro_rules! vk_unary_f64_wrapper {
     };
 }
 
+/// Vulkan dispatch wrappers for f64 elementwise unary ops.
 pub mod unary_f64 {
     use super::*;
 
@@ -465,6 +471,7 @@ pub mod unary_f64 {
 // Pulls `(outer_count, last_dim)` from `OpParams::SoftmaxLastDim` and
 // forwards to `VulkanBackend::softmax_last_dim_f32_bytes`.
 
+/// Vulkan dispatch wrappers for softmax over the last dimension, forward and backward, per dtype.
 pub mod softmax {
     use super::*;
 
@@ -479,6 +486,7 @@ pub mod softmax {
         }
     }
 
+    /// `softmax_f32` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn softmax_f32(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -510,6 +518,7 @@ pub mod softmax {
         backend.softmax_last_dim_f32_bytes(a, out, outer_count, last_dim)
     }
 
+    /// `softmax_f16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn softmax_f16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -539,6 +548,7 @@ pub mod softmax {
         backend.softmax_last_dim_f16_bytes(a, out, outer_count, last_dim)
     }
 
+    /// `softmax_bf16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn softmax_bf16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -568,6 +578,7 @@ pub mod softmax {
         backend.softmax_last_dim_bf16_bytes(a, out, outer_count, last_dim)
     }
 
+    /// `softmax_f64` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn softmax_f64(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -601,6 +612,7 @@ pub mod softmax {
     // 2 inputs (y, g) → 1 output (dx). Reuses OpParams::SoftmaxLastDim
     // (same outer × last_dim contract as the forward).
 
+    /// `softmax_last_dim_backward_f32` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn softmax_last_dim_backward_f32(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -617,6 +629,7 @@ pub mod softmax {
         )
     }
 
+    /// `softmax_last_dim_backward_f16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn softmax_last_dim_backward_f16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -633,6 +646,7 @@ pub mod softmax {
         )
     }
 
+    /// `softmax_last_dim_backward_bf16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn softmax_last_dim_backward_bf16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -649,6 +663,7 @@ pub mod softmax {
         )
     }
 
+    /// `softmax_last_dim_backward_f64` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn softmax_last_dim_backward_f64(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -713,6 +728,7 @@ pub mod softmax {
 // LayerNorm is V.3 (no Slang kernel yet). RmsNorm pulls
 // `(outer_count, last_dim, eps)` from `OpParams::NormLastDim`.
 
+/// Vulkan dispatch wrappers for last-dimension normalisation (RMSNorm and LayerNorm, forward and backward), per dtype.
 pub mod norm {
     use super::*;
 
@@ -733,6 +749,7 @@ pub mod norm {
         }
     }
 
+    /// `rms_f32` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn rms_f32(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -764,6 +781,7 @@ pub mod norm {
         backend.rms_norm_last_dim_f32_bytes(a, out, outer_count, last_dim, eps)
     }
 
+    /// `rms_f16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn rms_f16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -792,6 +810,7 @@ pub mod norm {
         backend.rms_norm_last_dim_f16_bytes(a, out, outer_count, last_dim, eps)
     }
 
+    /// `rms_bf16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn rms_bf16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -823,6 +842,7 @@ pub mod norm {
     // ----- LayerNormLastDimBackward (V.3.G.layer_norm_bwd, 2026-05-30) -----
     // 2 inputs (x, g) → 1 output (dx). Reuses OpParams::NormLastDim.
 
+    /// `layer_norm_backward_f32` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn layer_norm_backward_f32(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -839,6 +859,7 @@ pub mod norm {
             },
         )
     }
+    /// `layer_norm_backward_f16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn layer_norm_backward_f16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -855,6 +876,7 @@ pub mod norm {
             },
         )
     }
+    /// `layer_norm_backward_bf16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn layer_norm_backward_bf16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -871,6 +893,7 @@ pub mod norm {
             },
         )
     }
+    /// `layer_norm_backward_f64` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn layer_norm_backward_f64(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -932,6 +955,7 @@ pub mod norm {
 
     // ----- LayerNorm (V.3.G.layer_norm, 2026-05-30) -----
 
+    /// `layer_norm_f32` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn layer_norm_f32(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -946,6 +970,7 @@ pub mod norm {
             |b, i, o, oc, ld, eps| b.layer_norm_last_dim_f32_bytes(i, o, oc, ld, eps),
         )
     }
+    /// `layer_norm_f16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn layer_norm_f16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -960,6 +985,7 @@ pub mod norm {
             |b, i, o, oc, ld, eps| b.layer_norm_last_dim_f16_bytes(i, o, oc, ld, eps),
         )
     }
+    /// `layer_norm_bf16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn layer_norm_bf16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -974,6 +1000,7 @@ pub mod norm {
             |b, i, o, oc, ld, eps| b.layer_norm_last_dim_bf16_bytes(i, o, oc, ld, eps),
         )
     }
+    /// `layer_norm_f64` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn layer_norm_f64(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -1028,6 +1055,7 @@ pub mod norm {
         call(backend, a, out, outer_count, last_dim, eps)
     }
 
+    /// `rms_f64` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn rms_f64(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -1065,9 +1093,11 @@ pub mod norm {
 // cos/sin tables (unlike the CUDA baracuda path which rebuilds them
 // from `seq + head_dim`). `OpParams::Rope` carries the geometry.
 
+/// Vulkan dispatch wrappers for rotary position embedding (RoPE), per dtype.
 pub mod attention {
     use super::*;
 
+    /// `rope_f32` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn rope_f32(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -1119,6 +1149,7 @@ pub mod attention {
         backend.rope_f32_bytes(x, cos, sin, out, &layouts[0])
     }
 
+    /// `rope_f16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn rope_f16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -1135,6 +1166,7 @@ pub mod attention {
         )
     }
 
+    /// `rope_bf16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn rope_bf16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -1151,6 +1183,7 @@ pub mod attention {
         )
     }
 
+    /// `rope_f64` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn rope_f64(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -1228,9 +1261,11 @@ pub mod attention {
 // PowI — y = x^exp, f32 (V.3.A.3)
 // ===========================================================================
 
+/// Vulkan dispatch wrappers for integer power, `y = x^exp` (f32).
 pub mod powi {
     use super::*;
 
+    /// `powi_f32` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn powi_f32(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -1291,6 +1326,7 @@ pub mod powi {
 //
 // 4-byte-keyed (f32/i32/u32 only in V.3.J — b2/b8 are follow-up).
 
+/// Vulkan dispatch wrappers for in-place slice write into a destination buffer (4-byte element widths).
 pub mod write_slice {
     use super::*;
 
@@ -1366,6 +1402,7 @@ pub mod write_slice {
 // v1 constraint: rotating axis must be axis 0 (matches Mistral /
 // Phi-3 sliding-window K/V layout). Same v1 constraint as CPU + CUDA.
 
+/// Vulkan dispatch wrappers for rotating slice write for sliding-window K/V caches (rotating axis must be axis 0).
 pub mod write_slice_rotating {
     use super::*;
 
@@ -1521,9 +1558,11 @@ pub mod write_slice_rotating {
 // Requires `n` even (half-precision dtypes are u32-packed 2-per-word);
 // odd-count tensors return Err and the route picker falls back to CPU.
 
+/// Vulkan dispatch wrappers for dtype casts between f32 and f64 / half precision.
 pub mod cast {
     use super::*;
 
+    /// `cast_f32_f64` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn cast_f32_f64(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -1573,6 +1612,7 @@ pub mod cast {
         backend.cast_f32_f64_bytes(a, out, n, src_dtype, dst_dtype)
     }
 
+    /// `cast_f32_half` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn cast_f32_half(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -1630,9 +1670,11 @@ pub mod cast {
 // Clamp — y = clamp(x, lo, hi), f32 (V.3.A.1)
 // ===========================================================================
 
+/// Vulkan dispatch wrappers for `y = clamp(x, lo, hi)` (f32).
 pub mod clamp {
     use super::*;
 
+    /// `clamp_f32` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn clamp_f32(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -1684,9 +1726,11 @@ pub mod clamp {
 // Affine — y = mul*x + add, f32 (V.2.E)
 // ===========================================================================
 
+/// Vulkan dispatch wrappers for `y = mul * x + add`, per dtype.
 pub mod affine {
     use super::*;
 
+    /// `affine_f32` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn affine_f32(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -1733,6 +1777,7 @@ pub mod affine {
         backend.affine_f32_bytes(a, out, mul, add, &layouts[0])
     }
 
+    /// `affine_f64` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn affine_f64(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -1749,6 +1794,7 @@ pub mod affine {
         )
     }
 
+    /// `affine_f16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn affine_f16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -1765,6 +1811,7 @@ pub mod affine {
         )
     }
 
+    /// `affine_bf16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn affine_bf16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -1844,9 +1891,11 @@ pub mod affine {
 // cooperative-matrix paths are deferred to V.3. GQA broadcast is
 // honored (lhs_batch > rhs_batch with even divisibility).
 
+/// Vulkan dispatch wrappers for matrix multiplication entry points, per input/output dtype combination.
 pub mod matmul {
     use super::*;
 
+    /// `matmul_f32` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn matmul_f32(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -2209,6 +2258,7 @@ pub mod matmul {
 // + the first input's layout (outer_count = product of dims before
 // the concat axis).
 
+/// Vulkan dispatch wrappers for gather along a dimension.
 pub mod gather {
     use super::*;
 
@@ -2271,6 +2321,7 @@ pub mod gather {
     }
 }
 
+/// Vulkan dispatch wrappers for masked fill with a Bool mask.
 pub mod masked_fill {
     use super::*;
 
@@ -2326,6 +2377,7 @@ pub mod masked_fill {
     }
 }
 
+/// Vulkan dispatch wrappers for padding forward/backward.
 pub mod pad {
     use super::*;
 
@@ -2455,6 +2507,7 @@ pub mod pad {
     }
 }
 
+/// Vulkan dispatch wrappers for concatenation along an axis, per dtype.
 pub mod concat {
     use super::*;
     use fuel_ir::Shape;
@@ -2657,6 +2710,7 @@ pub mod concat {
         )
     }
 
+    /// `concat_f16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn concat_f16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -2675,6 +2729,7 @@ pub mod concat {
         )
     }
 
+    /// `concat_bf16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn concat_bf16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -2693,6 +2748,7 @@ pub mod concat {
         )
     }
 
+    /// `concat_f64` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn concat_f64(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -2711,6 +2767,7 @@ pub mod concat {
         )
     }
 
+    /// `concat_f32` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn concat_f32(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -3075,9 +3132,11 @@ macro_rules! vk_arg_reduce_wrapper {
     };
 }
 
+/// Vulkan dispatch wrappers for `index_add` along a dimension, per dtype.
 pub mod index_add {
     use super::*;
 
+    /// `index_add_f32` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn index_add_f32(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -3095,6 +3154,7 @@ pub mod index_add {
         )
     }
 
+    /// `index_add_f64` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn index_add_f64(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -3112,6 +3172,7 @@ pub mod index_add {
         )
     }
 
+    /// `index_add_bf16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn index_add_bf16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -3129,6 +3190,7 @@ pub mod index_add {
         )
     }
 
+    /// `index_add_f16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn index_add_f16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -3220,6 +3282,7 @@ pub mod index_add {
     }
 }
 
+/// Vulkan dispatch wrappers for `scatter_add` along a dimension, per dtype.
 pub mod scatter_add {
     use super::*;
 
@@ -3440,6 +3503,7 @@ pub mod scatter_add {
     }
 }
 
+/// Vulkan dispatch wrappers for argmax / argmin reductions, per dtype.
 pub mod arg_reduce {
     use super::*;
 
@@ -3503,6 +3567,7 @@ macro_rules! vk_reduce_last_dim_wrapper {
     };
 }
 
+/// Vulkan dispatch wrappers for sum / max / min / mean reductions.
 pub mod reduce {
     use super::*;
 
@@ -3539,9 +3604,11 @@ pub mod reduce {
 // index count). The Slang kernel is dtype-aware via the descriptor
 // binding (f32 storage buffer); V.3 fans out to other source dtypes.
 
+/// Vulkan dispatch wrappers for `index_select`, per dtype.
 pub mod indexing {
     use super::*;
 
+    /// `index_select_f32` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn index_select_f32(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -3601,6 +3668,7 @@ pub mod indexing {
         )
     }
 
+    /// `index_select_f16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn index_select_f16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -3617,6 +3685,7 @@ pub mod indexing {
         )
     }
 
+    /// `index_select_bf16` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn index_select_bf16(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -3633,6 +3702,7 @@ pub mod indexing {
         )
     }
 
+    /// `index_select_f64` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn index_select_f64(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -3759,6 +3829,7 @@ macro_rules! vk_unary_bf16_wrapper {
     };
 }
 
+/// Vulkan dispatch wrappers for bf16 elementwise unary ops (neg, sqr, sqrt, exp, log, sin, cos, tanh, ...).
 pub mod unary_bf16 {
     use super::*;
     vk_unary_bf16_wrapper!(neg_bf16, 0, "unary_neg_bf16");
@@ -3822,6 +3893,7 @@ macro_rules! vk_binary_bf16_wrapper {
     };
 }
 
+/// Vulkan dispatch wrappers for bf16 elementwise binary ops (add, sub, mul, div, maximum, minimum).
 pub mod binary_bf16 {
     use super::*;
     vk_binary_bf16_wrapper!(add_bf16, 0, "binary_add_bf16");
@@ -3907,15 +3979,18 @@ macro_rules! vk_triangular_wrapper {
     };
 }
 
+/// Vulkan dispatch wrappers for `triu` / `tril`.
 pub mod triangular {
     use super::*;
     vk_triangular_wrapper!(triu, true, "triu");
     vk_triangular_wrapper!(tril, false, "tril");
 }
 
+/// Vulkan dispatch wrappers for flip along an axis.
 pub mod flip {
     use super::*;
 
+    /// `flip` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn flip(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -3962,9 +4037,11 @@ pub mod flip {
     }
 }
 
+/// Vulkan dispatch wrappers for roll along an axis.
 pub mod roll {
     use super::*;
 
+    /// `roll` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn roll(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -4011,6 +4088,7 @@ pub mod roll {
     }
 }
 
+/// Vulkan dispatch wrappers for cumulative sum, per dtype.
 pub mod cumsum {
     use super::*;
 
@@ -4090,10 +4168,12 @@ pub mod cumsum {
 // Other QuantTypes (Q4_1, Q5_*, Q2K/Q3K/Q5K, Q8_1) have no Vulkan kernel —
 // the wrapper returns an error so the route picker falls back to CPU.
 
+/// Vulkan dispatch wrappers for quantized matmul (only the quant types with a Vulkan kernel; others return an error so the route picker falls back to CPU).
 pub mod qmatmul {
     use super::*;
     use fuel_graph::QuantType;
 
+    /// `qmatmul_vk` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn qmatmul_vk(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -4152,6 +4232,7 @@ pub mod qmatmul {
 // Conv2D f32 — im2col + matmul, groups=1.
 // ===========================================================================
 
+/// Vulkan dispatch wrappers for FlashAttention-shape attention forward and backward.
 pub mod flash_attn {
     use super::*;
 
@@ -4639,9 +4720,11 @@ pub mod flash_attn {
     }
 }
 
+/// Vulkan dispatch wrappers for 2-D convolution, per dtype.
 pub mod conv2d {
     use super::*;
 
+    /// `conv2d_f32` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn conv2d_f32(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
@@ -4851,9 +4934,11 @@ pub mod conv2d {
 // Cast F8E4M3 ↔ {F32, F16, BF16} — single wrapper dispatches by dtype pair
 // ===========================================================================
 
+/// Vulkan dispatch wrappers for casts between F8E4M3 and F32 / F16 / BF16.
 pub mod cast_f8e4m3 {
     use super::*;
 
+    /// `cast_f8e4m3` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn cast_f8e4m3(
         inputs: &[Arc<RwLock<Storage>>],
         outputs: &mut [Arc<RwLock<Storage>>],
