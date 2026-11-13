@@ -16,8 +16,10 @@ use std::io::Write;
 use byteorder::{LittleEndian, WriteBytesExt};
 use fuel_ir::{Context, GgmlDType, Result, Shape, bail};
 
+/// Tensor-data alignment, in bytes, used when a file does not carry `general.alignment`.
 pub const DEFAULT_ALIGNMENT: u64 = 32;
 
+/// The GGUF magic plus format version a file starts with (`GGUF`, then a little-endian `u32` version).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VersionedMagic {
     GgufV1,
@@ -34,6 +36,7 @@ pub struct TensorInfo {
     pub offset: u64,
 }
 
+/// Write a GGUF string: a little-endian `u64` byte length, then the UTF-8 bytes (no terminator).
 pub fn write_string<W: Write>(w: &mut W, s: &str) -> Result<()> {
     let bytes = s.as_bytes();
     w.write_u64::<LittleEndian>(bytes.len() as u64)?;
@@ -41,6 +44,7 @@ pub fn write_string<W: Write>(w: &mut W, s: &str) -> Result<()> {
     Ok(())
 }
 
+/// The wire-format tag of a metadata value; [`ValueType::to_u32`] gives its on-disk number.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ValueType {
     /// 8-bit unsigned integer.
@@ -73,6 +77,7 @@ pub enum ValueType {
 }
 
 impl ValueType {
+    /// Decode a wire-format value-type number. Errors on a number the format does not define.
     pub fn from_u32(v: u32) -> Result<Self> {
         let v = match v {
             0 => Self::U8,
@@ -93,6 +98,7 @@ impl ValueType {
         Ok(v)
     }
 
+    /// The wire-format number of this value type (the inverse of [`ValueType::from_u32`]).
     pub fn to_u32(self) -> u32 {
         match self {
             Self::U8 => 0,
@@ -112,6 +118,7 @@ impl ValueType {
     }
 }
 
+/// A GGUF metadata value. An `Array` is not forced to hold one element type; [`Value::write`] enforces that.
 #[derive(Debug, Clone)]
 pub enum Value {
     U8(u8),
@@ -130,6 +137,7 @@ pub enum Value {
 }
 
 impl Value {
+    /// The wire-format type tag of this value.
     pub fn value_type(&self) -> ValueType {
         match self {
             Self::U8(_) => ValueType::U8,
@@ -148,6 +156,7 @@ impl Value {
         }
     }
 
+    /// The value as a `u8`; errors if it is a different variant.
     pub fn to_u8(&self) -> Result<u8> {
         match self {
             Self::U8(v) => Ok(*v),
@@ -155,6 +164,7 @@ impl Value {
         }
     }
 
+    /// The value as a `i8`; errors if it is a different variant.
     pub fn to_i8(&self) -> Result<i8> {
         match self {
             Self::I8(v) => Ok(*v),
@@ -162,6 +172,7 @@ impl Value {
         }
     }
 
+    /// The value as a `u16`; errors if it is a different variant.
     pub fn to_u16(&self) -> Result<u16> {
         match self {
             Self::U16(v) => Ok(*v),
@@ -169,6 +180,7 @@ impl Value {
         }
     }
 
+    /// The value as a `i16`; errors if it is a different variant.
     pub fn to_i16(&self) -> Result<i16> {
         match self {
             Self::I16(v) => Ok(*v),
@@ -176,6 +188,7 @@ impl Value {
         }
     }
 
+    /// The value as a `u32`; errors if it is a different variant.
     pub fn to_u32(&self) -> Result<u32> {
         match self {
             Self::U32(v) => Ok(*v),
@@ -183,6 +196,7 @@ impl Value {
         }
     }
 
+    /// The value as a `i32`; errors if it is a different variant.
     pub fn to_i32(&self) -> Result<i32> {
         match self {
             Self::I32(v) => Ok(*v),
@@ -202,6 +216,7 @@ impl Value {
         }
     }
 
+    /// The value as a `i64`; errors if it is a different variant.
     pub fn to_i64(&self) -> Result<i64> {
         match self {
             Self::I64(v) => Ok(*v),
@@ -209,6 +224,7 @@ impl Value {
         }
     }
 
+    /// The value as a `f32`; errors if it is a different variant.
     pub fn to_f32(&self) -> Result<f32> {
         match self {
             Self::F32(v) => Ok(*v),
@@ -216,6 +232,7 @@ impl Value {
         }
     }
 
+    /// The value as a `f64`; errors if it is a different variant.
     pub fn to_f64(&self) -> Result<f64> {
         match self {
             Self::F64(v) => Ok(*v),
@@ -223,6 +240,7 @@ impl Value {
         }
     }
 
+    /// The value as a `bool`; errors if it is a different variant.
     pub fn to_bool(&self) -> Result<bool> {
         match self {
             Self::Bool(v) => Ok(*v),
@@ -230,6 +248,7 @@ impl Value {
         }
     }
 
+    /// The elements of an `Array` value; errors if it is a different variant.
     pub fn to_vec(&self) -> Result<&Vec<Value>> {
         match self {
             Self::Array(v) => Ok(v),
@@ -237,6 +256,7 @@ impl Value {
         }
     }
 
+    /// The text of a `String` value; errors if it is a different variant.
     #[allow(clippy::inherent_to_string_shadow_display)]
     pub fn to_string(&self) -> Result<&String> {
         match self {
@@ -245,6 +265,7 @@ impl Value {
         }
     }
 
+    /// Write the value's payload in wire format (no leading type tag). An `Array` writes its element type and length first and errors if its elements are not all one type.
     pub fn write<W: Write>(&self, w: &mut W) -> Result<()> {
         match self {
             &Self::U8(v) => w.write_u8(v)?,
