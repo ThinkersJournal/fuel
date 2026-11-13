@@ -29,6 +29,7 @@ impl DeviceId {
     }
 }
 
+/// A Metal GPU device handle: the raw `MTLDevice`, its command queue, kernel library and the RNG seed state. Cheap to clone (shared state behind `Arc`).
 #[derive(Clone)]
 pub struct MetalDevice {
     /// Unique identifier, the registryID is not sufficient as it identifies the GPU rather than
@@ -69,14 +70,17 @@ pub struct MetalDevice {
 }
 
 // Resource options used for creating buffers. Shared storage mode allows both CPU and GPU to access the buffer.
+/// Resource options for ordinary buffers: shared storage mode, so both CPU and GPU can access them.
 pub const RESOURCE_OPTIONS: MTLResourceOptions =
     objc2_metal::MTLResourceOptions(MTLResourceOptions::StorageModeShared.bits());
 //| MTLResourceOptions::HazardTrackingModeUntracked.bits(),
 //);
 
 // Resource options used for `new_private_buffer`. This uses `private` where supported.
+/// Resource options for private buffers (`new_private_buffer`): private storage where the platform supports it, shared on iOS.
 #[cfg(target_os = "ios")]
 pub const PRIVATE_RESOURCE_OPTIONS: MTLResourceOptions = MTLResourceOptions::StorageModeShared;
+/// Resource options for private buffers (`new_private_buffer`): private storage where the platform supports it, shared on iOS.
 #[cfg(not(target_os = "ios"))]
 pub const PRIVATE_RESOURCE_OPTIONS: MTLResourceOptions = MTLResourceOptions::StorageModePrivate;
 
@@ -95,10 +99,12 @@ impl std::ops::Deref for MetalDevice {
 }
 
 impl MetalDevice {
+    /// This device's unique [`DeviceId`] (distinct from the GPU's registry id).
     pub fn id(&self) -> DeviceId {
         self.id
     }
 
+    /// The underlying raw Metal [`Device`].
     pub fn metal_device(&self) -> &Device {
         &self.device
     }
@@ -116,6 +122,7 @@ impl MetalDevice {
         Ok(())
     }
 
+    /// A compute command encoder on the current command buffer.
     pub fn command_encoder(&self) -> Result<ComputeCommandEncoder> {
         let commands = self.commands.write().map_err(MetalError::from)?;
         let (flush, command_encoder) = commands.command_encoder().map_err(MetalError::from)?;
@@ -125,6 +132,7 @@ impl MetalDevice {
         Ok(command_encoder)
     }
 
+    /// A blit command encoder on the current command buffer.
     pub fn blit_command_encoder(&self) -> Result<BlitCommandEncoder> {
         let commands = self.commands.write().map_err(MetalError::from)?;
         let (flush, command_encoder) = commands.blit_command_encoder().map_err(MetalError::from)?;
@@ -134,16 +142,19 @@ impl MetalDevice {
         Ok(command_encoder)
     }
 
+    /// Commits pending work and blocks until the GPU has finished it.
     pub fn wait_until_completed(&self) -> Result<()> {
         let commands = self.commands.write().map_err(MetalError::from)?;
         commands.wait_until_completed().map_err(MetalError::from)?;
         Ok(())
     }
 
+    /// The compiled Metal kernel library for this device.
     pub fn kernels(&self) -> &Kernels {
         &self.kernels
     }
 
+    /// The underlying raw Metal [`Device`].
     pub fn device(&self) -> &Device {
         &self.device
     }
@@ -211,6 +222,7 @@ impl MetalDevice {
         Ok(new_buffer)
     }
 
+    /// Allocates a buffer of `size_in_bytes` bytes filled with zeros.
     pub fn allocate_zeros(&self, size_in_bytes: usize) -> Result<Arc<Buffer>> {
         let buffer = self.allocate_buffer(size_in_bytes)?;
         let blit = self.blit_command_encoder()?;
