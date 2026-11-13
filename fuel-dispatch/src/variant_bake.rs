@@ -74,8 +74,7 @@ use crate::cost::{cost_flash_decoding_cuda, cost_matmul_cpu, default_cost_for_op
 use crate::fused::CostEstimate;
 use crate::kernel::OpParams;
 use crate::pipelined::op_to_op_kind;
-use crate::ranker::cost::{composite_ns, default_backend_rates};
-use crate::ranker::judge::JudgeOracle;
+use crate::ranker::{JudgeOracle, composite_ns, default_backend_rates};
 use crate::runtime_fused_kernels::fused_kernel_available;
 
 /// The composite-nanosecond cost of a branch arm, or `None` when it is
