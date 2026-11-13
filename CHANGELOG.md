@@ -144,6 +144,12 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.26 - 2026-11-13 (PM-allocated)
+
+### Changed
+
+- `fuel-quantized`: `group_for_quantization` / `group_for_dequantization` moved from `utils.rs` into `k_quants.rs`, next to the `GgmlType` trait they are bounded by, which removes the `k_quants` <-> `utils` 2-module cycle (ARC/MOD programme, coderipper MOD-002 on `-p fuel-quantized` (local 0.43.20): 1 Low -> 0). Behaviour unchanged: the functions were `pub(super)` with `k_quants` their only caller; `cargo test -p fuel-quantized` 40 passed, clippy `-D warnings --tests` clean. The other MOD-002 cycles are not touched; `fuel-backend-contract` `dyn_backend` <-> `quantized` is structural (a trait method returns the quantized trait, which takes the dyn storage) and needs a design ruling.
+
 ## v0.47.24 - 2026-11-12 (PM-allocated)
 
 ### Changed
