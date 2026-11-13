@@ -23,6 +23,7 @@ use fuel_ir::{HostBuffer, Result};
 use half::{bf16, f16};
 use std::borrow::Cow;
 
+/// A host-resident quantized (or dense) weight buffer: its dtype, its size, a dequantizing view and the quantized matmuls over it.
 pub trait QuantizedType: Send + Sync {
     fn dtype(&self) -> GgmlDType;
     fn matmul_t(&self, mkn: (usize, usize, usize), lhs: &[f32], dst: &mut [f32]) -> Result<()>;
@@ -102,6 +103,7 @@ fn blocks_from_bytes<T: GgmlType>(data: &[u8]) -> Result<Vec<T>> {
         .collect())
 }
 
+/// A zero-filled buffer of `elem_count` elements of `dtype`, boxed as a [`QuantizedType`].
 pub fn cpu_zeros(dtype: GgmlDType, elem_count: usize) -> Box<dyn QuantizedType> {
     match dtype {
         GgmlDType::F32 => Box::new(vec![f32::zeros(); elem_count]),
