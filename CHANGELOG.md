@@ -144,6 +144,12 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.24 - 2026-11-12 (tentative; the PM allocates)
+
+### Changed
+
+- `fuel-vulkan-dispatch`: doc comments on all 85 undocumented public items in `vulkan_dispatch.rs` (37 `pub mod` groups and the per-dtype kernel-binding wrapper fns). ARC/MOD programme, coderipper MOD-001 on `-p fuel-vulkan-dispatch` (local 0.43.20): 85 of 127 public items undocumented (Low, 67%) -> 0 findings. The wrapper docs are uniform one-liners naming the op and dtype; they state no per-op contract beyond what the code does. Documentation only; clippy `-D warnings --tests` clean.
+
 ## v0.47.23 - 2026-11-12 (PM-allocated)
 
 ### Changed
