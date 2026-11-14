@@ -190,7 +190,87 @@ impl Content {
             mlmf_gguf::GgufMetadata::parse(bytes, &origin).map_err(gguf_err)?;
         let (tensors, tensors_report) =
             mlmf_gguf::parse_tensors(bytes, &meta, &origin).map_err(gguf_err)?;
-        Self::from_parsed(&header, &meta, &tensors, &tensors_report, path)
+        use mlmf_core::TensorContainer as _;
+        Self::from_parsed(
+            &header,
+            &meta,
+            ParsedTensors {
+                descriptors: tensors.tensors(),
+                declared: header.tensor_count,
+                report: &tensors_report,
+                data_start: tensors.data_start(),
+                offset_base: tensors.data_start(),
+            },
+            path,
+        )
+    }
+
+    /// Parse the shards of a `gguf-split` model (`<prefix>-00001-of-0000N.gguf`) as ONE model.
+    ///
+    /// `shards` are the files' names (no directory) and full bytes, in any order; they must be
+    /// exactly one complete set (`mlmf-gguf`'s `validate_shard_set`: same count, every number
+    /// once, matching `split.*` keys). Metadata is shard 1's (nothing is merged across shards).
+    ///
+    /// **Offsets.** The returned [`Content::tensor_data_offset`] is `0` and every
+    /// [`TensorInfo::offset`] is a position in the shards laid END TO END in `split.no` order,
+    /// each shard's own bytes included (header and padding too), NOT an offset in any file. Read
+    /// bytes through `MmapedContent::bytes_at`, which resolves such a position to its shard, never
+    /// by slicing one mapping. The single-file arithmetic `tensor_data_offset + info.offset`
+    /// still gives the position, so callers that already compute it keep their expression.
+    ///
+    /// Returns the content and the shard file names in `split.no` order (the order the end-to-end
+    /// positions use).
+    pub fn from_shards(shards: &[(&str, &[u8])], path: &Path) -> Result<(Self, Vec<String>)> {
+        use mlmf_core::TensorContainer as _;
+
+        for (_, bytes) in shards {
+            refuse_v1(bytes, path)?;
+        }
+        let gguf_err = |e: mlmf_gguf::GgufError| Error::Msg(format!("gguf: {e}")).with_path(path);
+        let inputs: Vec<mlmf_gguf::sharded::ShardInput<'_>> = shards
+            .iter()
+            .map(|(name, bytes)| mlmf_gguf::sharded::ShardInput::new(name, bytes))
+            .collect();
+        let sharded = mlmf_gguf::sharded::ShardedGguf::parse(&inputs)
+            .map_err(|e| Error::Msg(format!("gguf: shard set: {e}")).with_path(path))?;
+        // Shard 1's header (version) and every shard's declared tensor count: the sum is what
+        // the set declares, checked against what resolved exactly as a single file is.
+        let mut declared = 0u64;
+        for (_, bytes) in shards {
+            let mut cursor = mlmf_gguf::cursor::Cursor::new(bytes);
+            declared += mlmf_gguf::parse_header(&mut cursor)
+                .map_err(gguf_err)?
+                .tensor_count;
+        }
+        let first_name = sharded
+            .shard_file_name(0)
+            .ok_or_else(|| Error::Msg("gguf: shard set is empty".to_string()).with_path(path))?;
+        let first_bytes = shards
+            .iter()
+            .find(|(n, _)| *n == first_name)
+            .map(|(_, b)| *b)
+            .ok_or_else(|| {
+                Error::Msg(format!("gguf: shard {first_name:?} not among the inputs"))
+                    .with_path(path)
+            })?;
+        let header = mlmf_gguf::parse_header(&mut mlmf_gguf::cursor::Cursor::new(first_bytes))
+            .map_err(gguf_err)?;
+        let order: Vec<String> = (0..sharded.shard_count())
+            .filter_map(|n| sharded.shard_file_name(n).map(str::to_string))
+            .collect();
+        let content = Self::from_parsed(
+            &header,
+            sharded.metadata(),
+            ParsedTensors {
+                descriptors: sharded.tensors(),
+                declared,
+                report: sharded.report(),
+                data_start: 0,
+                offset_base: 0,
+            },
+            path,
+        )?;
+        Ok((content, order))
     }
 
     /// Turn MLMF's parsed header, metadata and tensor directory into fuel's [`Content`],
@@ -198,24 +278,35 @@ impl Content {
     fn from_parsed(
         header: &mlmf_gguf::Header,
         meta: &mlmf_gguf::GgufMetadata<'_>,
-        tensors: &mlmf_gguf::GgufTensors<'_>,
-        tensors_report: &mlmf_core::Report,
+        tensors: ParsedTensors<'_>,
         path: &Path,
     ) -> Result<Self> {
         let metadata = decode_metadata(meta, path)?;
         check_alignment_agrees(&metadata, meta.alignment(), path)?;
-        let mut unsupported_tensors =
-            check_all_tensors_resolved(tensors, tensors_report, header, path)?;
-        let (tensor_infos, more_unsupported) = build_tensor_infos(tensors, path)?;
+        let mut unsupported_tensors = check_all_tensors_resolved(&tensors, path)?;
+        let (tensor_infos, more_unsupported) = build_tensor_infos(&tensors, path)?;
         unsupported_tensors.extend(more_unsupported);
         Ok(Self {
             magic: resolve_magic(header.version, path)?,
             metadata,
             tensor_infos,
             unsupported_tensors,
-            tensor_data_offset: tensors.data_start(),
+            tensor_data_offset: tensors.data_start,
         })
     }
+}
+
+/// The tensor directory `from_parsed` reads: one file's, or a shard set's rebased into the
+/// end-to-end position space (see [`Content::from_shards`]).
+struct ParsedTensors<'a> {
+    descriptors: &'a [mlmf_core::TensorDescriptor],
+    /// Tensors the header(s) declare (summed over shards).
+    declared: u64,
+    report: &'a mlmf_core::Report,
+    /// Reported as [`Content::tensor_data_offset`].
+    data_start: u64,
+    /// Subtracted from a descriptor's byte start to give [`TensorInfo::offset`].
+    offset_base: u64,
 }
 
 /// Decodes every metadata key up front into an eager `HashMap<String,
@@ -329,15 +420,12 @@ fn check_alignment_agrees(
 /// `Content::read` does, rather than silently returning fewer tensors than
 /// the file declares.
 fn check_all_tensors_resolved(
-    tensors: &mlmf_gguf::GgufTensors<'_>,
-    tensors_report: &mlmf_core::Report,
-    header: &mlmf_gguf::Header,
+    tensors: &ParsedTensors<'_>,
     path: &Path,
 ) -> Result<HashMap<String, u32>> {
-    use mlmf_core::TensorContainer as _;
-
-    let missing =
-        header.tensor_count as usize - tensors.tensors().len().min(header.tensor_count as usize);
+    let tensors_report = tensors.report;
+    let declared = tensors.declared as usize;
+    let missing = declared - tensors.descriptors.len().min(declared);
     if missing == 0 {
         return Ok(HashMap::new());
     }
@@ -362,8 +450,7 @@ fn check_all_tensors_resolved(
         return Ok(unresolved);
     }
     Err(Error::Msg(format!(
-        "gguf: {missing} of {} declared tensors were dropped by MLMF and only {} carry a recordable type code: {unresolved:?}",
-        header.tensor_count,
+        "gguf: {missing} of {declared} declared tensors were dropped by MLMF and only {} carry a recordable type code: {unresolved:?}",
         unresolved.len(),
     ))
     .with_path(path))
@@ -371,14 +458,12 @@ fn check_all_tensors_resolved(
 
 /// Maps every MLMF `TensorDescriptor` to fuel's `TensorInfo` shape.
 fn build_tensor_infos(
-    tensors: &mlmf_gguf::GgufTensors<'_>,
+    tensors: &ParsedTensors<'_>,
     path: &Path,
 ) -> Result<(HashMap<String, TensorInfo>, HashMap<String, u32>)> {
-    use mlmf_core::TensorContainer as _;
-
     let mut tensor_infos = HashMap::new();
     let mut unsupported = HashMap::new();
-    for d in tensors.tensors() {
+    for d in tensors.descriptors {
         let code = encoding_ggml_code(&d.encoding).ok_or_else(|| {
             Error::Msg(format!(
                 "gguf: tensor {:?}: dense dtype has no ggml code mapping",
@@ -406,7 +491,7 @@ fn build_tensor_infos(
                 // `TensorInfo::offset`'s existing contract (`Content::read`
                 // stores the on-disk relative offset, not an absolute file
                 // position).
-                offset: d.bytes.start - tensors.data_start(),
+                offset: d.bytes.start - tensors.offset_base,
                 ggml_dtype,
             },
         );
