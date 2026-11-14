@@ -269,9 +269,7 @@ impl QuantizedQwen3Model {
     pub fn from_gguf<P: AsRef<std::path::Path>>(path: P, cfg: &Qwen3Config) -> Result<Self> {
         use fuel_loaders::quantized::gguf_mmap::MmapedContent;
         let mc = MmapedContent::from_path(path)?;
-        let mmap_arc = mc.mmap();
-        let mmap_bytes: &[u8] = &mmap_arc[..];
-        Self::from_gguf_content_and_bytes(mc.content(), mmap_bytes, cfg)
+        Self::from_gguf_content_and_bytes(mc.content(), &|start, len| mc.bytes_at(start, len), cfg)
     }
 
     /// Load a GGUF-quantized Qwen3 checkpoint from an in-memory byte
@@ -283,15 +281,28 @@ impl QuantizedQwen3Model {
     pub fn from_gguf_bytes(bytes: &[u8], cfg: &Qwen3Config) -> Result<Self> {
         use fuel_loaders::quantized::gguf_file::Content;
         let content = Content::from_bytes(bytes, std::path::Path::new("<in-memory GGUF>"))?;
-        Self::from_gguf_content_and_bytes(&content, bytes, cfg)
+        let fetch = |start: usize, len: usize| -> Result<&[u8]> {
+            start
+                .checked_add(len)
+                .and_then(|end| bytes.get(start..end))
+                .ok_or_else(|| {
+                    fuel_ir::error::Error::Msg(format!(
+                        "gguf: tensor bytes {start}..+{len} are outside the {}-byte buffer",
+                        bytes.len()
+                    ))
+                    .bt()
+                })
+        };
+        Self::from_gguf_content_and_bytes(&content, &fetch, cfg)
     }
 
-    /// Shared body for the path- and bytes-based GGUF loaders. `bytes`
-    /// must cover the entire GGUF file starting at byte 0 — tensor
-    /// offsets are interpreted relative to `content.tensor_data_offset`.
-    fn from_gguf_content_and_bytes(
+    /// Shared body for the path- and bytes-based GGUF loaders. `fetch(start, len)` returns the
+    /// `len` bytes at tensor position `start` (`content.tensor_data_offset + info.offset`): a
+    /// slice of the whole file (starting at byte 0), or of the shard the position falls in for a
+    /// sharded model.
+    fn from_gguf_content_and_bytes<'b>(
         content: &fuel_loaders::quantized::gguf_file::Content,
-        bytes: &[u8],
+        fetch: &dyn Fn(usize, usize) -> Result<&'b [u8]>,
         cfg: &Qwen3Config,
     ) -> Result<Self> {
         let data_off = content.tensor_data_offset as usize;
@@ -307,7 +318,7 @@ impl QuantizedQwen3Model {
                 let bytes_len = elems / block_size * info.ggml_dtype.type_size();
                 let start = data_off + info.offset as usize;
                 Ok((
-                    &bytes[start..start + bytes_len],
+                    fetch(start, bytes_len)?,
                     info.ggml_dtype,
                     info.shape.dims().to_vec(),
                 ))

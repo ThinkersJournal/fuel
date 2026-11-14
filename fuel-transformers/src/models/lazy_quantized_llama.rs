@@ -266,8 +266,6 @@ impl QuantizedLlama3Model {
         use fuel_loaders::quantized::gguf_mmap::MmapedContent;
         let mc = MmapedContent::from_path(path)?;
         let content = mc.content();
-        let mmap_arc = mc.mmap();
-        let mmap_bytes: &[u8] = &mmap_arc[..];
         let data_off = content.tensor_data_offset as usize;
 
         let get_tensor_bytes =
@@ -281,7 +279,7 @@ impl QuantizedLlama3Model {
                 let bytes_len = elems / block_size * info.ggml_dtype.type_size();
                 let start = data_off + info.offset as usize;
                 Ok((
-                    &mmap_bytes[start..start + bytes_len],
+                    mc.bytes_at(start, bytes_len)?,
                     info.ggml_dtype,
                     info.shape.dims().to_vec(),
                 ))

@@ -144,6 +144,27 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.31 - 2026-11-14 (PM-allocated)
+
+### Added
+
+- `fuel-loaders`: sharded GGUF (`gguf-split`, `<prefix>-00001-of-0000N.gguf`) loads as one model (fuel#660, Lightbulb B5). `MmapedContent::from_path` given any `-NNNNN-of-MMMMM.gguf` name opens the whole set found next to it; `MmapedContent::from_paths(&[..])` takes an explicit list in any order; `Content::from_shards` parses the set over `mlmf-gguf`'s `ShardedGguf` (set validated: count, numbering, `split.*` keys; metadata is shard 1's; nothing copied or merged). New `MmapedContent::bytes_at(start, len)` resolves a tensor position to its shard (typed error for a range outside or across shards, never a panic); `shard_count`, `shard_mmaps`.
+- Tensor positions of a shard set are in the shards laid end to end (`Content::tensor_data_offset` is 0, `TensorInfo::offset` the position), so the existing `tensor_data_offset + info.offset` expression still gives the position.
+
+### Changed
+
+- `mlmf-core`/`-gguf`/`-source-file`/`-awq`/`-safetensors` 0.7.26 -> 0.11.29 (`fuel-loaders`).
+- The `from_gguf` loaders (`lazy_quantized_{llama,qwen2,qwen3,qwen3_moe,gemma3,glm4,lfm2,phi3,smollm3,t5}`, `fuel-model-phi`) read tensor bytes through `MmapedContent::bytes_at`, so a first-shard path loads a sharded model; an out-of-range tensor is now a typed error instead of a slice panic.
+- `MmapedContent::mmap()` / `into_parts()` return the FIRST shard's mapping for a sharded model (documented; use `bytes_at`).
+
+### Measured
+
+- `cargo test -p fuel-loaders`: all ok, including the new `tests/gguf_sharded.rs` (6 tests on synthetic 1-3 shard sets with distinct per-shard values); with `bytes_at` forced to shard 0 the two read-from-the-right-shard tests fail (sabotage, reverted). `cargo test -p fuel-transformers --test gguf_resident_quantized_qwen3` ok (4); clippy `-D warnings --tests` clean on loaders, transformers, model-phi; `cargo check --all-targets` clean on those plus fuel-tensor-tools, fuel-examples, fuel-lazy-examples, fuel-inference.
+
+### Not verified
+
+- No end-to-end `from_gguf` on a real or synthetic sharded MODEL (only the loader and `bytes_at` layers are tested); no real split file (the 15 GiB 27B is not on this box). `fuel-tensor-tools` still reads a single file by seek.
+
 ## v0.47.30 - 2026-11-14 (PM-allocated)
 
 ### Added
