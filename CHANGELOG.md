@@ -144,6 +144,16 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.30 - 2026-11-14 (PM-allocated)
+
+### Added
+
+- `.coderipper.toml`: fuel's `[architecture]` declaration (ARC/MOD programme, ROADMAP row 153): 14 components over the 44 workspace crates, 13 layers bottom first (foundation, contract, graph, backends, runtime, kernel-adapters, tensor, models, facade, applications, examples), derived from the committed crate graph, with the fuel-graph module cycle recorded as an exception (owner fuel, after GAP-380 (b), ROADMAP row 154). `ratchet = true`. No code changes.
+
+### Measured
+
+- coderipper 0.43.54 on this branch, `--workspace --profile extended`: ARC-001 0 findings over 178 judged edges, ARC-002 0 cycles over 14 components and 62 edges, ARC-005 0 reported. (ARC-003/-004/-006/-007/-012 still report not-run: they need `[architecture.volatile]`, `api_budget`, `owns_data` or `composition` entries, not declared yet.)
+
 ## v0.47.29 - 2026-11-14 (PM-allocated)
 
 ### Changed
