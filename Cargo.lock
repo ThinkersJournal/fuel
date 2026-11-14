@@ -417,9 +417,9 @@ checksum = "487159558999c873a086b559b6b8539250b1db9d223db5fd862917107269b209"
 
 [[package]]
 name = "baracuda-core"
-version = "0.1.0-alpha.94"
+version = "0.1.0-alpha.139"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94ff891f4f3d4c4203b89ad90a4cfb3c113737de57a3bb3b0bb2498de31f9cf3"
+checksum = "1ed9163922f97d5132ddd66ea8296d2e583ed28fb2ea0ee996058ef6df347fd5"
 dependencies = [
  "baracuda-types",
  "libloading 0.9.0",
@@ -460,7 +460,7 @@ checksum = "60bc81e38f2563ae31cfbfcefd392b9b7653ccd10ad307c950dea77a9de4453f"
 dependencies = [
  "baracuda-nvrtc",
  "unpopped",
- "unpopped-vocab",
+ "unpopped-vocab 0.43.2",
 ]
 
 [[package]]
@@ -473,7 +473,7 @@ dependencies = [
  "fireline-grammar",
  "fireline-synth",
  "unpopped",
- "unpopped-vocab",
+ "unpopped-vocab 0.43.2",
 ]
 
 [[package]]
@@ -627,7 +627,7 @@ dependencies = [
  "float8",
  "half",
  "thiserror 2.0.21",
- "unpopped-vocab",
+ "unpopped-vocab 0.43.2",
 ]
 
 [[package]]
@@ -682,13 +682,13 @@ dependencies = [
 
 [[package]]
 name = "baracuda-types"
-version = "0.1.0-alpha.94"
+version = "0.1.0-alpha.139"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38833ab0fb8297479dbf4f2b14b020fc7dcedccd959f91d4b32be4d9d85206bd"
+checksum = "a5c644468bf33abc284c6ec23da4e86ac5e60899d76738004413e2ef47d72df4"
 dependencies = [
  "float8",
  "half",
- "unpopped-vocab",
+ "unpopped-vocab 0.45.12",
 ]
 
 [[package]]
@@ -1717,7 +1717,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e12efcb226c6793f3aa2152063d21e640c1d4e0ec3ffc66d46fba3dd0c3fda91"
 dependencies = [
  "fireline-grammar",
- "unpopped-vocab",
+ "unpopped-vocab 0.43.2",
 ]
 
 [[package]]
@@ -1952,7 +1952,7 @@ dependencies = [
  "fuel-quantized",
  "fuel-test-support",
  "half",
- "unpopped-vocab",
+ "unpopped-vocab 0.43.2",
 ]
 
 [[package]]
@@ -2003,7 +2003,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tracing",
- "unpopped-vocab",
+ "unpopped-vocab 0.43.2",
 ]
 
 [[package]]
@@ -6006,7 +6006,7 @@ dependencies = [
  "libm",
  "serde",
  "serde_json",
- "unpopped-vocab",
+ "unpopped-vocab 0.43.2",
 ]
 
 [[package]]
@@ -6014,6 +6014,16 @@ name = "unpopped-vocab"
 version = "0.43.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3e08887b4d3ef4b9e1fb5f1adc26871f6b1a9bcaec9e65972649e5f8e826ad5"
+dependencies = [
+ "float8",
+ "half",
+]
+
+[[package]]
+name = "unpopped-vocab"
+version = "0.45.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb1e241d0c39756c213bd9ca8122dbd1cc688283fa62f04cbed9d3342e7b1154"
 dependencies = [
  "float8",
  "half",
