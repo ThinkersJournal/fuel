@@ -15,6 +15,7 @@ use std::sync::{Arc, Mutex, PoisonError, RwLock, TryLockError};
 
 use crate::device::MetalDevice;
 
+/// Wraps `buffer` with the byte offset of `l` for a given dtype, as a kernel argument.
 pub fn buffer_o<'a>(buffer: &'a Buffer, l: &Layout, dtype: DType) -> BufferOffset<'a> {
     BufferOffset {
         buffer,
@@ -75,6 +76,7 @@ impl From<MetalError> for fuel_ir::Error {
     }
 }
 
+/// Typed tensor storage in a Metal buffer: the buffer, its device, element count and dtype.
 #[derive(Debug, Clone)]
 pub struct MetalStorage {
     /// The actual buffer containing the data.
@@ -88,18 +90,22 @@ pub struct MetalStorage {
 }
 
 impl MetalStorage {
+    /// Clones the storage handle (shares the buffer).
     pub fn try_clone(&self, _: &Layout) -> Result<Self> {
         Ok(self.clone())
     }
 
+    /// This storage's element dtype.
     pub fn dtype(&self) -> DType {
         self.dtype
     }
 
+    /// The device owning the buffer.
     pub fn device(&self) -> &MetalDevice {
         &self.device
     }
 
+    /// Copies the contents to a host buffer.
     pub fn to_cpu_storage(&self) -> Result<HostBuffer> {
         match self.dtype {
             DType::U8 => Ok(HostBuffer::U8(self.to_cpu()?)),
@@ -139,6 +145,7 @@ impl MetalStorage {
         }
     }
 
+    /// `y = mul * x + add` over the layout.
     pub fn affine(&self, layout: &Layout, mul: f64, add: f64) -> Result<Self> {
         let device = self.device().clone();
 
@@ -202,6 +209,7 @@ impl MetalStorage {
         Ok(Self::new(buffer, device.clone(), el, dtype))
     }
 
+    /// Elementwise `x^pow` over the layout.
     pub fn powf(&self, layout: &Layout, pow: f64) -> Result<Self> {
         let device = self.device().clone();
 
@@ -257,6 +265,7 @@ impl MetalStorage {
         Ok(Self::new(buffer, device.clone(), el, dtype))
     }
 
+    /// Elementwise ELU with parameter `alpha`.
     pub fn elu(&self, layout: &Layout, alpha: f64) -> Result<Self> {
         let device = self.device().clone();
 
@@ -310,6 +319,7 @@ impl MetalStorage {
         Ok(Self::new(buffer, device.clone(), el, dtype))
     }
 
+    /// Reduction `op` over the dims in `sum_dims`.
     pub fn reduce_op(&self, op: ReduceOp, layout: &Layout, sum_dims: &[usize]) -> Result<Self> {
         let device = self.device.clone();
 
@@ -456,6 +466,7 @@ impl MetalStorage {
         Ok(Self::new(buffer, device, dst_el, dtype))
     }
 
+    /// Elementwise comparison `op` of `self` against `rhs`.
     pub fn cmp(&self, op: CmpOp, rhs: &Self, lhs_l: &Layout, rhs_l: &Layout) -> Result<Self> {
         let name = match op {
             CmpOp::Eq => "eq",
@@ -468,6 +479,7 @@ impl MetalStorage {
         self.binary(name, rhs, lhs_l, rhs_l)
     }
 
+    /// Fills the layout region with the scalar `s`.
     pub fn const_set(&mut self, s: fuel_ir::Scalar, l: &Layout) -> Result<()> {
         use fuel_ir::Scalar;
         fn set<S: fuel_ir::dtype::WithDType + fuel_metal_kernels::utils::EncoderParam>(
@@ -582,6 +594,7 @@ impl MetalStorage {
         }
     }
 
+    /// Converts the storage to `dtype`.
     pub fn to_dtype(&self, layout: &Layout, dtype: DType) -> Result<Self> {
         let device = self.device();
         let shape = layout.shape();
@@ -700,10 +713,12 @@ impl MetalStorage {
         Ok(Self::new(buffer, device.clone(), el_count, dtype))
     }
 
+    /// Applies the unary op `B` over the layout.
     pub fn unary_impl<B: UnaryOpT>(&self, layout: &Layout) -> Result<Self> {
         self.unary(B::KERNEL, layout)
     }
 
+    /// Applies the named unary op over the layout.
     pub fn unary(&self, op: &'static str, layout: &Layout) -> Result<Self> {
         let device = self.device();
         let dtype = self.dtype;
@@ -869,6 +884,7 @@ impl MetalStorage {
         Ok(Self::new(buffer, device.clone(), el_count, dtype))
     }
 
+    /// Applies the binary op `B` to `self` and `rhs`.
     pub fn binary_impl<B: BinaryOpT>(
         &self,
         rhs: &Self,
@@ -878,6 +894,7 @@ impl MetalStorage {
         self.binary(B::KERNEL, rhs, lhs_l, rhs_l)
     }
 
+    /// Elementwise select: `self` as the condition between the true and false branches.
     pub fn where_cond(
         &self,
         layout: &Layout,
@@ -938,6 +955,7 @@ impl MetalStorage {
         Ok(Self::new(buffer, device, el, dtype))
     }
 
+    /// 1-D convolution.
     pub fn conv1d(
         &self,
         layout: &Layout,
@@ -1015,6 +1033,7 @@ impl MetalStorage {
         Ok(res_t)
     }
 
+    /// 1-D transposed convolution.
     pub fn conv_transpose1d(
         &self,
         layout: &Layout,
@@ -1132,6 +1151,7 @@ impl MetalStorage {
         Ok(Self::new(buffer, self.device.clone(), dst_el, self.dtype))
     }
 
+    /// 2-D convolution.
     pub fn conv2d(
         &self,
         layout: &Layout,
@@ -1216,6 +1236,7 @@ impl MetalStorage {
         Ok(res_t)
     }
 
+    /// 2-D transposed convolution.
     pub fn conv_transpose2d(
         &self,
         l: &Layout,
@@ -1281,6 +1302,7 @@ impl MetalStorage {
         Ok(Self::new(buffer, self.device.clone(), dst_el, self.dtype))
     }
 
+    /// 2-D average pooling.
     pub fn avg_pool2d(
         &self,
         inp_l: &Layout,
@@ -1324,6 +1346,7 @@ impl MetalStorage {
         Ok(Self::new(buffer, self.device.clone(), dst_el, self.dtype))
     }
 
+    /// 2-D max pooling.
     pub fn max_pool2d(
         &self,
         inp_l: &Layout,
@@ -1367,10 +1390,12 @@ impl MetalStorage {
         Ok(Self::new(buffer, self.device.clone(), dst_el, self.dtype))
     }
 
+    /// 1-D nearest-neighbour upsampling.
     pub fn upsample_nearest1d(&self, _: &Layout, _: usize) -> Result<Self> {
         fuel_ir::bail!("Metal upsample_nearest1d not implemented")
     }
 
+    /// 2-D nearest-neighbour upsampling to `out_w` x `out_h`.
     pub fn upsample_nearest2d(&self, inp_l: &Layout, out_w: usize, out_h: usize) -> Result<Self> {
         // let inp = &inp.slice(inp_l.start_offset()..);
         let shape = inp_l.shape();
@@ -1411,6 +1436,7 @@ impl MetalStorage {
         Ok(Self::new(buffer, self.device.clone(), dst_el, self.dtype))
     }
 
+    /// 2-D bilinear upsampling.
     pub fn upsample_bilinear2d(
         &self,
         inp_l: &Layout,
@@ -1468,6 +1494,7 @@ impl MetalStorage {
         Ok(Self::new(buffer, self.device.clone(), dst_el, self.dtype))
     }
 
+    /// Gathers along `dim` using `ids`.
     pub fn gather(&self, src_l: &Layout, ids: &Self, ids_l: &Layout, dim: usize) -> Result<Self> {
         if !ids_l.is_contiguous() {
             return Err(fuel_ir::Error::RequiresContiguous { op: "gather" }.bt());
@@ -1518,6 +1545,7 @@ impl MetalStorage {
         Ok(Self::new(buffer, device.clone(), dst_el, dtype))
     }
 
+    /// Scatters source values into `self` along a dimension, overwriting.
     pub fn scatter_set(
         &mut self,
         l: &Layout,
@@ -1568,6 +1596,7 @@ impl MetalStorage {
         Ok(())
     }
 
+    /// Scatters source values into `self` along a dimension, accumulating.
     pub fn scatter_add_set(
         &mut self,
         l: &Layout,
@@ -1618,6 +1647,7 @@ impl MetalStorage {
         Ok(())
     }
 
+    /// Selects slices along `dim` by index.
     pub fn index_select(
         &self,
         ids: &Self,
@@ -1683,6 +1713,7 @@ impl MetalStorage {
         Ok(Self::new(buffer, device.clone(), dst_el, dtype))
     }
 
+    /// Adds source slices into `self` at the given indices along `dim`.
     pub fn index_add(
         &self,
         l: &Layout,
@@ -1746,6 +1777,7 @@ impl MetalStorage {
         Ok(acc)
     }
 
+    /// Batched matrix multiplication.
     pub fn matmul(
         &self,
         rhs: &Self,
@@ -1790,6 +1822,7 @@ impl MetalStorage {
         ))
     }
 
+    /// Copies a 2-D region into `dst`.
     pub fn copy2d(
         &self,
         dst: &mut Self,
@@ -1850,6 +1883,7 @@ impl MetalStorage {
         Ok(())
     }
 
+    /// Copies a strided source into `dst` at an offset.
     pub fn copy_strided_src(
         &self,
         dst: &mut Self,
@@ -1903,6 +1937,7 @@ impl MetalStorage {
 }
 
 impl MetalStorage {
+    /// Wraps an existing buffer as a typed storage of `count` elements.
     pub fn new(buffer: Arc<Buffer>, device: MetalDevice, count: usize, dtype: DType) -> Self {
         Self {
             buffer,
@@ -1916,6 +1951,7 @@ impl MetalStorage {
         &self.buffer
     }
 
+    /// Applies the named binary op to `self` and `rhs`.
     pub fn binary(
         &self,
         op: &'static str,
@@ -2001,6 +2037,7 @@ impl MetalStorage {
 }
 
 impl MetalDevice {
+    /// Opens the Metal device with the given `ordinal`.
     pub fn new(ordinal: usize) -> Result<Self> {
         let device = Device::all().swap_remove(ordinal);
         let command_queue = device.new_command_queue().map_err(MetalError::from)?;
@@ -2027,16 +2064,19 @@ impl MetalDevice {
         })
     }
 
+    /// This device as a [`fuel_ir::DeviceLocation`].
     pub fn location(&self) -> fuel_ir::DeviceLocation {
         fuel_ir::DeviceLocation::Metal {
             gpu_id: self.registry_id() as usize,
         }
     }
 
+    /// Whether `rhs` is the same device.
     pub fn same_device(&self, rhs: &Self) -> bool {
         self.id == rhs.id
     }
 
+    /// Allocates an uninitialised storage of `shape` and `dtype`.
     pub unsafe fn alloc_uninit(&self, shape: &Shape, dtype: DType) -> Result<MetalStorage> {
         let buffer = self.new_buffer(shape.elem_count(), dtype, "alloc-uninit")?;
         Ok(MetalStorage::new(
@@ -2047,6 +2087,7 @@ impl MetalDevice {
         ))
     }
 
+    /// A zero-filled storage of `shape` and `dtype`.
     pub fn zeros_impl(&self, shape: &Shape, dtype: DType) -> Result<MetalStorage> {
         let size = shape.elem_count() * dtype.size_in_bytes();
         let buffer = self.allocate_zeros(size)?;
@@ -2063,6 +2104,7 @@ impl MetalDevice {
     // UNTESTED — fuel-metal-backend cannot be built/verified on this dev box (no
     // macOS access). The edit is mechanical (a trait-bound addition mirroring the
     // verified fuel-cuda-backend change at device.rs:707) and the body is unchanged.
+    /// Uploads a host slice to a new storage.
     pub fn storage_from_slice<T: fuel_ir::dtype::WithDType + fuel_ir::HostDType>(
         &self,
         s: &[T],
@@ -2092,6 +2134,7 @@ impl MetalDevice {
         Ok(MetalStorage::new(buffer?, self.clone(), count, T::DTYPE))
     }
 
+    /// Uploads a host buffer to a new storage.
     pub fn storage_from_cpu_storage(&self, storage: &HostBuffer) -> Result<MetalStorage> {
         let (count, buffer) = match storage {
             HostBuffer::U8(storage) => (storage.len(), self.new_buffer_with_data(storage)),
@@ -2123,10 +2166,12 @@ impl MetalDevice {
         ))
     }
 
+    /// Uploads an owned host buffer to a new storage.
     pub fn storage_from_cpu_storage_owned(&self, storage: HostBuffer) -> Result<MetalStorage> {
         self.storage_from_cpu_storage(&storage)
     }
 
+    /// A storage filled with uniform random values.
     pub fn rand_uniform(
         &self,
         shape: &Shape,
@@ -2164,6 +2209,7 @@ impl MetalDevice {
         ))
     }
 
+    /// A storage filled with normally distributed random values.
     pub fn rand_normal(
         &self,
         shape: &Shape,
@@ -2201,6 +2247,7 @@ impl MetalDevice {
         ))
     }
 
+    /// Sets the RNG seed on this device.
     pub fn set_seed(&self, seed: u64) -> Result<()> {
         *self.seed_value.write().unwrap() = seed;
 
@@ -2214,10 +2261,12 @@ impl MetalDevice {
         Ok(())
     }
 
+    /// The last RNG seed set on this device.
     pub fn get_current_seed(&self) -> Result<u64> {
         Ok(*self.seed_value.read().unwrap())
     }
 
+    /// Blocks until all queued work on the device has completed.
     pub fn synchronize(&self) -> Result<()> {
         self.wait_until_completed()
     }

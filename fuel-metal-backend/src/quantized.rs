@@ -8,6 +8,7 @@ use std::any::Any;
 use std::borrow::Cow;
 use std::sync::Arc;
 
+/// Quantized (GGML-format) tensor storage resident in a Metal buffer.
 pub struct QMetalStorage {
     dtype: GgmlDType,
     device: MetalDevice,
@@ -15,6 +16,7 @@ pub struct QMetalStorage {
 }
 
 impl QMetalStorage {
+    /// A zero-initialised quantized storage for `elem_count` elements of `dtype`.
     pub fn zeros(device: &MetalDevice, elem_count: usize, dtype: GgmlDType) -> Result<Self> {
         let size = elem_count * dtype.type_size() / dtype.block_size();
         let buffer = device.allocate_zeros(size)?;
@@ -25,18 +27,22 @@ impl QMetalStorage {
         })
     }
 
+    /// This storage's GGML quantization type.
     pub fn dtype(&self) -> GgmlDType {
         self.dtype
     }
 
+    /// The device owning the buffer.
     pub fn device(&self) -> &MetalDevice {
         &self.device
     }
 
+    /// The underlying Metal buffer.
     pub fn buffer(&self) -> &Buffer {
         &self.buffer
     }
 
+    /// Dequantizes the first `elem_count` elements into a [`MetalStorage`].
     pub fn dequantize(&self, elem_count: usize) -> Result<MetalStorage> {
         use fuel_quantized::GgmlType;
 
@@ -204,11 +210,13 @@ impl QMetalStorage {
         Ok(())
     }
 
+    /// Quantizes `src` into this storage.
     pub fn quantize(&mut self, src: &MetalStorage) -> Result<()> {
         let src = src.to_cpu::<f32>()?;
         self.quantize_from_f32(&src, None)
     }
 
+    /// Quantizes `src` into this storage using an importance matrix.
     pub fn quantize_imatrix(
         &mut self,
         src: &MetalStorage,
@@ -219,6 +227,7 @@ impl QMetalStorage {
         self.quantize_from_f32(&src, Some((imatrix_weights, n_per_row)))
     }
 
+    /// Quantizes host data into this storage using an importance matrix.
     pub fn quantize_imatrix_onto(
         &mut self,
         src: &fuel_ir::HostBuffer,
@@ -228,10 +237,12 @@ impl QMetalStorage {
         self.quantize_from_f32(src.as_slice::<f32>()?, Some((imatrix_weights, n_per_row)))
     }
 
+    /// Quantizes host data into this storage.
     pub fn quantize_onto(&mut self, src: &fuel_ir::HostBuffer) -> Result<()> {
         self.quantize_from_f32(src.as_slice::<f32>()?, None)
     }
 
+    /// Size of the quantized data in bytes.
     pub fn storage_size_in_bytes(&self) -> usize {
         self.buffer.length()
     }
@@ -293,6 +304,7 @@ impl QMetalStorage {
         Ok((dst_storage, dst_shape))
     }
 
+    /// Quantized matmul forward pass against this storage.
     pub fn fwd(
         &self,
         self_shape: &Shape,
@@ -385,6 +397,7 @@ impl QMetalStorage {
         Ok((dst_storage, dst_shape))
     }
 
+    /// Reads the raw quantized bytes back to the host.
     pub fn data(&self) -> Result<Vec<u8>> {
         let buffer = self.device.allocate_buffer(self.buffer.length())?;
         {

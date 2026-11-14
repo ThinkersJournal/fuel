@@ -144,6 +144,16 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.27 - 2026-11-13 (PM-allocated)
+
+### Changed
+
+- `fuel-metal-backend`: doc comments on the public items of `device.rs`, `storage.rs` and `quantized.rs` (`MetalDevice`, `MetalStorage`, `QMetalStorage` and their methods, the resource-option consts). ARC/MOD programme, coderipper MOD-001 on `-p fuel-metal-backend` (local 0.43.20): 77 of 97 public items undocumented (Low) -> Info. Docs are one-line descriptions from the item names and signatures. Documentation only.
+
+### Not verified
+
+- That the crate compiles: `fuel-metal-backend` does not build on this Windows box (macOS-only), so only rustfmt and the MOD-001 check ran locally; CI builds it on the macOS legs.
+
 ## v0.47.26 - 2026-11-13 (PM-allocated)
 
 ### Changed
