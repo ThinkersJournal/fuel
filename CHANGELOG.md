@@ -144,6 +144,21 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.29 - 2026-11-14 (PM-allocated)
+
+### Changed
+
+- Repin to the Unpopped 0.45.12 line: workspace `unpopped-vocab` 0.43.2 -> 0.45.12, `fireline-synth` ~0.1 -> ~0.2, `baracuda-cuda-seam` `=0.1.0-alpha.106` -> 0.45.0 (the first seam release that requires `unpopped`/`unpopped-vocab` ^0.45.12 and `fireline-synth` ~0.2, so the lock keeps one copy of each on the seam path). `kiss-ops-vocab` was already at its newest (0.4.0). `Cargo.lock` also moved `baracuda-nvrtc`/`-nvrtc-sys`/`-types` alpha.94 -> alpha.139 as the seam requires.
+- KISS 0.16.0 window-op OpAttrs (`padding_lo`/`padding_hi`): fuel has no window-op blob encoder or pinned blob fixture (searched `*.rs`/`*.json`), so nothing to regenerate here; the encoding arrives through the vocab crates.
+
+### Measured
+
+- `cargo test -p fuel-dispatch --features jit --no-fail-fast`: all result lines ok (896 lib tests among them); `cargo check -p fuel-dispatch --features jit --all-targets` clean.
+
+### Not verified
+
+- `fuel-cuda-dispatch` (`jit` feature) and the CUDA path: not compiled (needs the CUDA forge; warm worktree only). `baracuda-kernels-types` still carries its own `unpopped-vocab` 0.43.2 copy in the lock (latest published is alpha.95).
+
 ## v0.47.28 - 2026-11-13 (PM-allocated)
 
 ### Changed
