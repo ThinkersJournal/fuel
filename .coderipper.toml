@@ -48,3 +48,150 @@ reason = "deliberately self-hosted and CPU-only, as the workflow header records 
 check = "licence"
 file = "fuel-quantized/src/iq4.rs"
 reason = "four fuel-quantized sources are deliberately unstamped because they derive from llama.cpp / ggml (MIT), not from us: iq4.rs, iq_grid_types.rs, iq_grids.rs and tq_mx_types.rs. Each opens with a comment saying so and pointing at the licence text in THIRD-PARTY-NOTICES.md; an identifier line there would claim a licence we cannot grant. The rule reports the group as one finding located at the first file, so this one entry covers the four and nothing else."
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# The architecture Fuel declares for itself (ARC/MOD programme, ROADMAP row 153; PM [TASK] arc-mod-programme). Normative:
+# coderipper's ARC rules report where the code disagrees. Advisory, not gating. Crate level, plus one pair of module groups
+# inside fuel-graph (the waived cycle below). Layers are bottom first: a component may depend on its own layer or any layer below.
+# Derived from the committed workspace graph (`cargo metadata --no-deps`, normal and build dependencies; dev-dependencies are
+# not judged), so it starts with no violation except the one waiver.
+
+[architecture]
+style = "layered"
+# The number of waivers may only fall; there is one today. (Not read by coderipper 0.43.x: kept so the declaration is whole.)
+ratchet = true
+
+# Leaf crates every other layer reads: the IR (dtypes, shapes, ops), the model-config vocabulary, and the kernel sources.
+[[architecture.component]]
+name = "foundation"
+paths = ["fuel-ir", "fuel-model-core", "fuel-conv", "fuel-cpu-kernels", "fuel-vulkan-kernels", "fuel-metal-kernels", "fuel-kernels-source", "fuel-kv-pool"]
+role = "policy"
+volatility = "stable"
+
+# The backend contract and the readers of external formats; they depend on the IR only.
+[[architecture.component]]
+name = "contract"
+paths = ["fuel-backend-contract", "fuel-formats", "fuel-datasets"]
+role = "policy"
+volatility = "stable"
+
+# Fixtures and test support: read by tests, read by no production crate.
+[[architecture.component]]
+name = "fixtures"
+paths = ["fuel-test-support", "fuel-correctness-fixtures", "fuel-model-fixture", "fuel-model-umbrella-fixture"]
+role = "test-support"
+
+# The lazy graph and its optimizer. Module groups are NOT declared inside it: its one module cycle (see the note at the end) runs
+# over inline `crate::opt::` paths, which ARC-001's module graph does not follow (it reads `mod`/`use` edges), so a waiver for
+# it would be reported as stale.
+[[architecture.component]]
+name = "graph"
+paths = ["fuel-graph"]
+role = "policy"
+
+[[architecture.component]]
+name = "quantized"
+paths = ["fuel-quantized"]
+role = "policy"
+
+# One crate per target; each holds that target's storage, device and kernels glue and never decides strategy.
+[[architecture.component]]
+name = "backends"
+paths = ["fuel-cpu-backend", "fuel-cuda-backend", "fuel-metal-backend", "fuel-vulkan-backend", "fuel-kiss-ref-backend"]
+role = "adapter"
+volatility = "volatile"
+
+[[architecture.component]]
+name = "loaders"
+paths = ["fuel-loaders"]
+role = "adapter"
+
+# Hardware discovery, memory accounting, and the dispatcher that binds kernels to nodes.
+[[architecture.component]]
+name = "dispatch"
+paths = ["fuel-hardware", "fuel-memory", "fuel-dispatch"]
+role = "policy"
+
+# The per-vendor kernel registration crates: they depend on the dispatcher, never the reverse.
+[[architecture.component]]
+name = "kernel-adapters"
+paths = ["fuel-aocl-cpu-backend", "fuel-mkl-cpu-backend", "fuel-cuda-dispatch", "fuel-vulkan-dispatch"]
+role = "adapter"
+volatility = "volatile"
+
+[[architecture.component]]
+name = "tensor"
+paths = ["fuel-tensor"]
+role = "policy"
+
+[[architecture.component]]
+name = "models"
+paths = ["fuel-model-llama", "fuel-model-phi", "fuel-nn", "fuel-posttrain", "fuel-transformers"]
+role = "policy"
+
+# The public facade crate.
+[[architecture.component]]
+name = "facade"
+paths = ["fuel"]
+role = "policy"
+
+[[architecture.component]]
+name = "applications"
+paths = ["fuel-inference", "fuel-onnx", "fuel-parallel", "fuel-tensor-tools", "fuel-training"]
+role = "composition"
+
+[[architecture.component]]
+name = "examples"
+paths = ["fuel-examples", "fuel-lazy-examples"]
+role = "composition"
+
+[[architecture.layer]]
+name = "foundation"
+components = ["foundation"]
+
+[[architecture.layer]]
+name = "contract"
+components = ["contract", "fixtures"]
+
+[[architecture.layer]]
+name = "graph"
+components = ["graph", "quantized"]
+
+[[architecture.layer]]
+name = "backends"
+components = ["backends", "loaders"]
+
+[[architecture.layer]]
+name = "runtime"
+components = ["dispatch"]
+
+[[architecture.layer]]
+name = "kernel-adapters"
+components = ["kernel-adapters"]
+
+[[architecture.layer]]
+name = "tensor"
+components = ["tensor"]
+
+[[architecture.layer]]
+name = "models"
+components = ["models"]
+
+[[architecture.layer]]
+name = "facade"
+components = ["facade"]
+
+[[architecture.layer]]
+name = "applications"
+components = ["applications"]
+
+[[architecture.layer]]
+name = "examples"
+components = ["examples"]
+
+# RECORDED EXCEPTION (not an `[[architecture.waiver]]`: the tool cannot see this edge, and a waiver for an unseen edge is reported
+# stale). The fuel-graph module cycle (26 modules in one strongly connected set per coderipper MOD-002): `opt` reaches `registry`
+# and `runtime_fused`, and `runtime_fused` calls back into `crate::opt` (`lower_to_base_map`, `base_map_hash`, `optimize`).
+# Waived, not fixed, now: `opt` is the optimizer core (GPU/perf-adjacent), so cutting it needs a numeric golden and a graph
+# node-count check first, and GAP-380 (b) is the higher-priority work. Owner: fuel lane. PM ruling fuel-mod002-C, 2026-11-13.
+# Revisit: after GAP-380 (b) lands, ROADMAP row 154 (until then, MOD-002 reports it as advisory Low).
