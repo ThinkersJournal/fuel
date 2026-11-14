@@ -72,7 +72,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-kiss-ref-backend` | 9 |  |  |  |  | 6 |  | 3 |
 | `fuel-kv-pool` | 9 |  |  |  |  | 6 |  | 3 |
 | `fuel-lazy-examples` | 25 |  |  | 21 |  | 4 |  |  |
-| `fuel-loaders` | 23 |  | 1 | 3 |  | 16 |  | 3 |
+| `fuel-loaders` | 24 |  | 1 | 3 |  | 17 |  | 3 |
 | `fuel-memory` | 9 |  |  |  |  | 6 |  | 3 |
 | `fuel-metal-backend` | 11 | 1 | 2 |  |  | 5 |  | 3 |
 | `fuel-metal-kernels` | 53 | 43 | 4 | 1 |  | 2 |  | 3 |
@@ -96,5 +96,5 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-vulkan-dispatch` | 43 |  |  |  |  | 40 |  | 3 |
 | `fuel-vulkan-kernels` | 187 |  |  |  |  | 4 | 180 | 3 |
 | `scripts` | 79 |  |  | 1 |  | 78 |  |  |
-| **all** | **1987** | **112** | **216** | **258** | **4** | **1092** | **185** | **120** |
+| **all** | **1988** | **112** | **216** | **258** | **4** | **1093** | **185** | **120** |
 <!-- provenance-summary:end -->
