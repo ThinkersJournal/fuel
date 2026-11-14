@@ -144,6 +144,16 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.28 - 2026-11-13 (PM-allocated)
+
+### Changed
+
+- `fuel-backend-contract`: the quantized traits (`DynQuantizedStorage`, `QuantizedDeviceKernels`) now live in `dyn_backend.rs` next to `DynBackendStorage`/`DynBackendDevice`, which name each other; `quantized.rs` is a re-export facade, so `fuel_backend_contract::quantized::*` and the crate-root re-exports are unchanged. Removes the `dyn_backend` <-> `quantized` 2-module cycle (ARC/MOD programme, PM ruling C 2026-11-13; coderipper MOD-002 on `-p fuel-backend-contract` (local 0.43.20): 1 Low -> 0). No behaviour change: `cargo test -p fuel-backend-contract` 17 passed, clippy `-D warnings --tests` clean, `cargo check --all-targets` clean for fuel-backend-contract, fuel-cpu-backend, fuel-quantized, fuel-loaders, fuel-graph, fuel-tensor.
+
+### Not verified
+
+- `fuel-cuda-backend` and `fuel-metal-backend` (they import the traits through the unchanged `quantized::` path) were not compiled here.
+
 ## v0.47.27 - 2026-11-13 (PM-allocated)
 
 ### Changed
