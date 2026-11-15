@@ -14,7 +14,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 704 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 711 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1384 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 295 lines verbatim
@@ -1567,6 +1567,7 @@ fuel-transformers/src/models/lazy_qwen3_5_attn.rs	not-traced		lives in a directo
 fuel-transformers/src/models/lazy_qwen3_5_decode.rs	not-traced		lives in a directory that mirrors candle-transformers/src/models/; no same-name file; not judged
 fuel-transformers/src/models/lazy_qwen3_5_forward.rs	not-traced		lives in a directory that mirrors candle-transformers/src/models/; no same-name file; not judged
 fuel-transformers/src/models/lazy_qwen3_5_gdn.rs	not-traced		lives in a directory that mirrors candle-transformers/src/models/; no same-name file; not judged
+fuel-transformers/src/models/lazy_qwen3_5_gguf.rs	not-traced		lives in a directory that mirrors candle-transformers/src/models/; no same-name file; not judged
 fuel-transformers/src/models/lazy_qwen3_moe.rs	not-traced	candle-transformers/src/models/granite.rs	33 of 700 lines also appear in candle (mostly candle-transformers/src/models/granite.rs); not judged
 fuel-transformers/src/models/lazy_qwen3_vl.rs	not-traced		lives in a directory that mirrors candle-transformers/src/models/; no same-name file; not judged
 fuel-transformers/src/models/lazy_qwen3_vl_text.rs	not-traced	candle-transformers/src/models/llama.rs	25 of 621 lines also appear in candle (mostly candle-transformers/src/models/llama.rs); not judged
@@ -1617,6 +1618,7 @@ fuel-transformers/src/pipelines/mod.rs	candle-modified	candle-transformers/src/p
 fuel-transformers/src/pipelines/text_generation.rs	not-traced	candle-transformers/src/pipelines/text_generation.rs	same file name as candle candle-transformers/src/pipelines/text_generation.rs; a port or re-expression is presumed until judged
 fuel-transformers/src/utils.rs	own		no lineage; 1 of 22 lines verbatim in candle (5%)
 fuel-transformers/tests/config_parser_membership.rs	own		no lineage; 0 of 248 lines verbatim in candle (0%)
+fuel-transformers/tests/fixtures/qwen35_27b_q4km_tensors.tsv	own		no lineage; 0 of 771 lines verbatim in candle (0%)
 fuel-transformers/tests/fixtures/qwen3_0_6b_awq_greedy.PROVENANCE.md	own		no lineage; 0 of 16 lines verbatim in candle (0%)
 fuel-transformers/tests/fixtures/qwen3_0_6b_awq_greedy.json	own		no lineage; 0 of 13 lines verbatim in candle (0%)
 fuel-transformers/tests/fixtures/qwen3_0_6b_cpu_reference.PROVENANCE.md	own		no lineage; 0 of 25 lines verbatim in candle (0%)
@@ -1629,6 +1631,7 @@ fuel-transformers/tests/fixtures/qwen3_5_0_8b_gdn_mixer_reference.PROVENANCE.md	
 fuel-transformers/tests/fixtures/qwen3_5_0_8b_gdn_mixer_reference.safetensors	data		binary file; no path or similarity match to a candle file
 fuel-transformers/tests/gap314_spatial_population.rs	own		no lineage; 0 of 154 lines verbatim in candle (0%)
 fuel-transformers/tests/generation_tests.rs	candle-modified	candle-transformers/tests/generation_tests.rs	rename/copy 64%; 67% of 39 lines verbatim
+fuel-transformers/tests/gguf_qwen35_loader.rs	own		no lineage; 3 of 291 lines verbatim in candle (1%)
 fuel-transformers/tests/gguf_resident_quantized.rs	own		no lineage; 3 of 147 lines verbatim in candle (2%)
 fuel-transformers/tests/gguf_resident_quantized_qwen3.rs	own		no lineage; 3 of 138 lines verbatim in candle (2%)
 fuel-transformers/tests/nms_tests.rs	candle	candle-transformers/tests/nms_tests.rs	rename/copy 96%; 94% of 54 lines verbatim
