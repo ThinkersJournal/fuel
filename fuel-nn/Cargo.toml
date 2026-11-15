@@ -18,6 +18,7 @@ fuel-tensor = { workspace = true }
 fuel-ir = { workspace = true }
 fuel-graph = { workspace = true }
 fuel-loaders = { workspace = true }
+fuel-formats = { workspace = true }
 safetensors = { workspace = true }
 half = { workspace = true }
 rand = { workspace = true }

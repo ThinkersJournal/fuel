@@ -537,7 +537,7 @@ impl Rwkv5Weights {
     /// safetensors. Tensor names follow the HF wrapper at `rwkv.embeddings.*`
     /// and `rwkv.blocks.{i}.*`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Rwkv5Config,
     ) -> Result<Self> {
         use fuel_tensor::{

@@ -570,7 +570,7 @@ impl Qwen3VlWeights {
     /// into a sequential MLP, and zero-fill the bias as a last
     /// resort.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Qwen3VlConfig,
     ) -> Result<Self> {
         use fuel_tensor::{lazy::load_tensor_as_f32, lazy::load_transposed_matrix_preserve_dtype};

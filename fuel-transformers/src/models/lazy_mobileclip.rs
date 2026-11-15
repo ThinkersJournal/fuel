@@ -158,7 +158,7 @@ impl MobileClipWeights {
     /// `text.` prefix will need a prefix-stripping wrapper at the call
     /// site.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &MobileClipConfig,
     ) -> Result<Self> {
         use fuel_tensor::{lazy::load_tensor_as_f32, lazy::load_transposed_matrix_preserve_dtype};

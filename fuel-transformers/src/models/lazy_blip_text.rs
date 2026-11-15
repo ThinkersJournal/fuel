@@ -391,7 +391,7 @@ fn apply_attention(
 // ---- HuggingFace safetensors loader ----------------------------------------
 
 fn load_ln(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
 ) -> Result<LayerNormWeights> {
     use fuel_tensor::lazy::load_tensor_as_f32;
@@ -402,7 +402,7 @@ fn load_ln(
 }
 
 fn load_blip_text_attn(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     hidden_size: usize,
     kv_in_dim: usize,
@@ -461,7 +461,7 @@ impl BlipTextWeights {
     /// `prefix` typically `"text_decoder."` for full BLIP, or `""` for
     /// bare-text checkpoints.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &BlipTextConfig,
         encoder_hidden_size: usize,
         prefix: &str,

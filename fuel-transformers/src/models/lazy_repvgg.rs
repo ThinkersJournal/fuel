@@ -441,7 +441,7 @@ impl RepVggWeights {
     /// bias at load time via [`fuse_repvgg_block`], following the
     /// "deploy-time" reparameterization from the paper.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &RepVggConfig,
     ) -> fuel_ir::error::Result<Self> {
         let stem_dim = cfg.channels_at(0);
@@ -506,7 +506,7 @@ impl RepVggWeights {
 /// checkpoint. Reads the kxk + 1×1 + (optional) identity BN tuples,
 /// runs `fuse_repvgg_block`, and emits the fused 3×3 conv + bias.
 fn repvgg_load_layer(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     has_identity: bool,
     c_in: usize,
@@ -573,7 +573,7 @@ fn repvgg_load_layer(
 }
 
 fn repvgg_load_check(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     name: &str,
     expected_len: usize,
 ) -> fuel_ir::error::Result<Vec<f32>> {
@@ -590,7 +590,7 @@ fn repvgg_load_check(
 }
 
 fn repvgg_load_transposed(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     name: &str,
     out_features: usize,
     in_features: usize,
@@ -626,7 +626,7 @@ impl RepVggModel {
         let weights_path = repo
             .get(filename)
             .map_err(|e| fuel_ir::error::Error::Msg(format!("hf-hub repvgg safetensors: {e}")))?;
-        let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&weights_path) }?;
+        let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&weights_path) }?;
         let weights = RepVggWeights::load_from_mmapped(&st, &config)?;
         Ok(Self { config, weights })
     }
@@ -1035,7 +1035,7 @@ mod tests {
             std::process::id(),
         ));
         std::fs::write(&tmp, &serialized).expect("write tmp");
-        let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&tmp) }
+        let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&tmp) }
             .expect("MmapedSafetensors::new");
         let loaded =
             RepVggWeights::load_from_mmapped(&st, &cfg).expect("RepVggWeights::load_from_mmapped");

@@ -107,16 +107,16 @@ fn load_config(dir: &std::path::Path) -> Qwen3_5Config {
     .expect("config parses")
 }
 
-fn open_checkpoint(dir: &std::path::Path) -> fuel_loaders::safetensors::MmapedSafetensors {
+fn open_checkpoint(dir: &std::path::Path) -> fuel_formats::safetensors::MmapedSafetensors {
     let file = safetensors_file(dir).expect("checked by checkpoint_dir");
     // SAFETY: the file is a read-only checkpoint this test does not modify, and it is mapped for
     // the duration of the test only.
-    unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(file) }.expect("mmap")
+    unsafe { fuel_formats::safetensors::MmapedSafetensors::new(file) }.expect("mmap")
 }
 
 /// Independent accounting: the names the config implies vs the names in the file.
 fn assert_tensor_accounting(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     cfg: &Qwen3_5Config,
 ) {
     let in_file: BTreeSet<String> = st

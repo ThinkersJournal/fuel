@@ -512,7 +512,7 @@ impl Rwkv6Weights {
     /// Tensor names mirror RWKV-v5 with extra `time_mix_x`, two-stage
     /// `time_mix_w1/w2` and `time_decay_w1/w2`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Rwkv6Config,
     ) -> Result<Self> {
         use fuel_tensor::{

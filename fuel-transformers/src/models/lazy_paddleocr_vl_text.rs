@@ -584,7 +584,7 @@ fn build_causal_mask(anchor: &Tensor, seq: usize) -> Tensor {
 ///   - `<prefix>model.norm.weight`
 ///   - `<prefix>lm_head.weight` (absent when `tie_word_embeddings`)
 pub fn load_paddleocr_vl_text_weights_with_prefix(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     cfg: &PaddleOcrVlTextConfig,
     prefix: &str,
 ) -> Result<PaddleOcrVlTextWeights> {
@@ -704,7 +704,7 @@ impl PaddleOcrVlTextWeights {
     /// (no prefix). See [`load_paddleocr_vl_text_weights_with_prefix`]
     /// for the multimodal-embedded form.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &PaddleOcrVlTextConfig,
     ) -> Result<Self> {
         load_paddleocr_vl_text_weights_with_prefix(st, cfg, "")
@@ -1230,7 +1230,7 @@ mod tests {
         fn round_trip_synthetic_safetensors() {
             let cfg = tiny_cfg();
             let path = build_tiny_safetensors(&cfg);
-            let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&path) }
+            let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&path) }
                 .expect("mmap safetensors");
             let weights = PaddleOcrVlTextWeights::load_from_mmapped(&st, &cfg)
                 .expect("PaddleOcrVlTextWeights::load_from_mmapped");

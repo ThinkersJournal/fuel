@@ -317,7 +317,7 @@ impl Mamba2Weights {
     /// Load Mamba2 (state-spaces/mamba2-*) weights from HF safetensors.
     /// Tensor names follow the reference repo at `backbone.*` + `lm_head.weight`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Mamba2Config,
     ) -> Result<Self> {
         use fuel_tensor::{

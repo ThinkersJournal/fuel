@@ -458,7 +458,7 @@ impl VitWeights {
     ///   - vit.layernorm.{weight,bias}
     ///   - classifier.{weight,bias} (when present)
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &VitConfig,
         num_classes: Option<usize>,
     ) -> Result<Self> {

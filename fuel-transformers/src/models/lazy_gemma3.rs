@@ -969,7 +969,7 @@ impl Gemma3Weights {
     /// `q_dim = num_attention_heads * head_dim`, and o_proj inverts
     /// that to `[hidden_size, q_dim]`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Gemma3Config,
     ) -> Result<Self> {
         use fuel_tensor::{lazy::load_tensor_as_f32, lazy::load_transposed_matrix_preserve_dtype};

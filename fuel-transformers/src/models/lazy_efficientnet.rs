@@ -351,7 +351,7 @@ fn swish(x: &Tensor) -> Result<Tensor> {
 /// Load ConvBN from `prefix` where the conv weight sits at `{prefix}.0.weight`
 /// and BN parameters at `{prefix}.1.{weight,bias,running_mean,running_var}`.
 fn load_conv_bn(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     c_in: usize,
     c_out: usize,
@@ -382,7 +382,7 @@ fn load_conv_bn(
 }
 
 fn load_conv_bias(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     c_in: usize,
     c_out: usize,
@@ -400,7 +400,7 @@ impl EfficientNetWeights {
     /// Load EfficientNet (torchvision "efficientnet_b{0..7}") weights from HF
     /// safetensors. Follows torchvision Sequential indexing for ConvBNActivation.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &EfficientNetConfig,
     ) -> Result<Self> {
         use fuel_tensor::{

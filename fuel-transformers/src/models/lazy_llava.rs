@@ -501,7 +501,7 @@ fn clip_encoder_layer(
 ///   - `encoder.layers.{i}.mlp.{fc1,fc2}.{weight,bias}`
 ///   - `post_layernorm.{weight,bias}`
 pub fn load_clip_vision_weights(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     cfg: &ClipVisionConfig,
     prefix: &str,
 ) -> Result<ClipVisionWeights> {
@@ -611,7 +611,7 @@ pub fn load_clip_vision_weights(
 /// variant simply prepends an outer prefix so LLaVA's
 /// `language_model.model.embed_tokens.weight` (etc.) resolve cleanly.
 pub fn load_llama_weights_with_prefix(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     cfg: &LlamaConfig,
     prefix: &str,
 ) -> Result<LlamaWeights> {
@@ -751,7 +751,7 @@ impl LlavaWeights {
     ///   - `language_model.model.*` and `language_model.lm_head.weight`
     ///     for the LLaMA decoder
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &LlavaConfig,
     ) -> Result<Self> {
         let v_cfg = &cfg.vision_config;
@@ -1263,7 +1263,7 @@ mod tests {
             let proj_dim = t_cfg.dim;
             let path = build_tiny_safetensors(&v_cfg, &t_cfg, proj_dim);
 
-            let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&path) }
+            let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&path) }
                 .expect("mmap safetensors");
             let cfg = LlavaConfig {
                 vision_config: v_cfg.clone(),

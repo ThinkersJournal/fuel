@@ -381,7 +381,7 @@ impl PersimmonModel {
 impl PersimmonWeights {
     /// Load Persimmon (adept/persimmon-8b-{chat,base}) weights from HF safetensors.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &PersimmonConfig,
     ) -> Result<Self> {
         use fuel_tensor::{

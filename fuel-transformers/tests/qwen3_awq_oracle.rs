@@ -115,7 +115,7 @@ fn load(dir: &Path) -> Qwen3Model {
     let config = Qwen3Config::from_hf_json_str(&config_json).expect("Qwen3Config");
     // SAFETY: the file is read-only for the lifetime of the test process.
     let st =
-        unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(dir.join("model.safetensors")) }
+        unsafe { fuel_formats::safetensors::MmapedSafetensors::new(dir.join("model.safetensors")) }
             .expect("mmap model.safetensors");
     let weights = Qwen3Weights::load_awq_from_mmapped(&st, &config, group).expect("load AWQ");
     Qwen3Model { config, weights }

@@ -534,7 +534,7 @@ impl NomicBertWeights {
     /// Tensor names follow the upstream layout under `embeddings.*` and
     /// `encoder.layer.{i}.*` (no `model.` / `bert.` prefix).
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &NomicBertConfig,
     ) -> Result<Self> {
         use fuel_tensor::{

@@ -20,6 +20,9 @@
     smallvec        = { workspace = true }
     thiserror       = { workspace = true }
     memmap2         = { workspace = true }
+    yoke            = { workspace = true }
+    mlmf-core        = { version = "0.11.29" }
+    mlmf-safetensors = { version = "0.11.29" }
     zip             = { workspace = true }
 
 [features]

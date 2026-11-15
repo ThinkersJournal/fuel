@@ -1368,7 +1368,7 @@ pub fn make_paella_weights(cfg: &WuerstchenConfig) -> PaellaVqWeights {
 
 /// Load a tensor as Arc<[f32]>, asserting the element count.
 fn load_arc_f32(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     name: &str,
     expected: usize,
 ) -> fuel_ir::error::Result<Arc<[f32]>> {
@@ -1387,7 +1387,7 @@ fn load_arc_f32(
 /// Load a linear weight as `[in_f, out_f]` (transposed from HF
 /// `[out_f, in_f]`).
 fn load_linear_f32(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     name: &str,
     out_f: usize,
     in_f: usize,
@@ -1397,7 +1397,7 @@ fn load_linear_f32(
 }
 
 fn load_grn(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     c: usize,
 ) -> fuel_ir::error::Result<GrnWeights> {
@@ -1408,7 +1408,7 @@ fn load_grn(
 }
 
 fn load_res_block(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     c: usize,
     c_skip: usize,
@@ -1445,7 +1445,7 @@ fn load_res_block(
 }
 
 fn load_ts_block(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     c: usize,
     c_timestep: usize,
@@ -1461,7 +1461,7 @@ fn load_ts_block(
 }
 
 fn load_attn_block(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     c: usize,
     c_cond: usize,
@@ -1510,7 +1510,7 @@ impl PriorWeights {
     /// - `out.0.weight` / `.bias` for the LN-free 1×1 conv
     ///   (`c → 2*c_in`) at the final output projection.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &WuerstchenConfig,
     ) -> fuel_ir::error::Result<Self> {
         let c = cfg.prior_c;
@@ -1561,7 +1561,7 @@ impl DiffNextWeights {
     /// - `up_blocks.{i}.{0,1,...}.{0,1,2}.*` per sub-block triple
     /// - `clf.1.weight` / `.bias` (1×1 conv to `2*c_out*p²`)
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &WuerstchenConfig,
     ) -> fuel_ir::error::Result<Self> {
         let levels = &cfg.diffnext_c_hidden;
@@ -1690,7 +1690,7 @@ impl DiffNextWeights {
 }
 
 fn load_paella_mixing_res(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     c: usize,
 ) -> fuel_ir::error::Result<PaellaMixingResWeights> {
@@ -1729,7 +1729,7 @@ impl PaellaVqWeights {
     /// - `out_block.1.weight` / `.bias` — 1×1 `out` conv
     ///   (`paella_levels.last() → out_channels * 4`).
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &WuerstchenConfig,
     ) -> fuel_ir::error::Result<Self> {
         let levels = &cfg.paella_levels;
@@ -2047,7 +2047,7 @@ mod tests {
         t.push(("out.0.bias".into(), vec![c_in * 2], vec![0.0; c_in * 2]));
 
         let path = write_tmp_safetensors_w(&t);
-        let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&path).unwrap() };
+        let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&path).unwrap() };
         let w = PriorWeights::load_from_mmapped(&st, &cfg).unwrap();
         assert_eq!(w.blocks.len(), cfg.prior_depth);
         assert_eq!(w.projection_w.len(), c * c_in);

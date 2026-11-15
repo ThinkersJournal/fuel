@@ -414,7 +414,7 @@ impl JinaBertWeights {
     /// Load Jina-BERT (jinaai/jina-embeddings-v2-base-*) weights from HuggingFace
     /// safetensors. Tensor names: `embeddings.*` + `encoder.layer.{i}.*`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &JinaBertConfig,
     ) -> Result<Self> {
         use fuel_tensor::{

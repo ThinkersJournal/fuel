@@ -295,7 +295,7 @@ impl MobileOneWeights {
     /// - Classifier: `head.fc.weight` (`[nclasses, last_channels]` →
     ///   transposed to `[in, out]`), `head.fc.bias`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &MobileOneConfig,
     ) -> fuel_ir::error::Result<Self> {
         let has_se = cfg.has_se();
@@ -378,7 +378,7 @@ impl MobileOneWeights {
 /// RepVGG-style branch fusion (`k`-sum + scale + identity), bakes BN into
 /// the conv weights, and optionally attaches SE.
 fn mobileone_load_layer(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     cfg: &MobileOneConfig,
     has_identity: bool,
@@ -576,7 +576,7 @@ fn fuse_conv_bn_kernel(
 type BatchNormParams = (Vec<f32>, Vec<f32>, Vec<f32>, Vec<f32>);
 
 fn mobileone_load_bn(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     channels: usize,
 ) -> fuel_ir::error::Result<BatchNormParams> {
@@ -588,7 +588,7 @@ fn mobileone_load_bn(
 }
 
 fn mobileone_load_check(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     name: &str,
     expected_len: usize,
 ) -> fuel_ir::error::Result<Vec<f32>> {
@@ -605,7 +605,7 @@ fn mobileone_load_check(
 }
 
 fn mobileone_load_transposed(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     name: &str,
     out_features: usize,
     in_features: usize,
@@ -638,7 +638,7 @@ impl MobileOneModel {
         let weights_path = repo.get(filename).map_err(|e| {
             fuel_ir::error::Error::Msg(format!("hf-hub mobileone safetensors: {e}"))
         })?;
-        let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&weights_path) }?;
+        let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&weights_path) }?;
         let weights = MobileOneWeights::load_from_mmapped(&st, &config)?;
         Ok(Self { config, weights })
     }
@@ -966,7 +966,7 @@ mod tests {
             std::process::id(),
         ));
         std::fs::write(&tmp, &serialized).expect("write tmp");
-        let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&tmp) }
+        let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&tmp) }
             .expect("MmapedSafetensors::new");
 
         let loaded = MobileOneWeights::load_from_mmapped(&st, &cfg)

@@ -450,7 +450,7 @@ fn f32_from_le_bytes(bytes: &[u8], key: &str) -> fuel_ir::Result<Vec<f32>> {
 /// Load a single NF4-quantized layer from a parsed safetensors view
 /// (typically obtained via the `safetensors` crate's
 /// `SafeTensors::deserialize` or fuel-core's
-/// [`fuel_loaders::safetensors::MmapedSafetensors`]).
+/// [`fuel_formats::safetensors::MmapedSafetensors`]).
 ///
 /// `prefix` is the layer's name in the safetensors file
 /// (e.g. `"model.layers.0.self_attn.q_proj"`). The function expects

@@ -461,7 +461,7 @@ impl PaddleOcrVlModel {
     ///   - Text: top-level `model.*` + `lm_head.weight` (ERNIE-style
     ///     decoder with LLaMA-shape weight layout).
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &PaddleOcrVlConfig,
     ) -> Result<Self> {
         let vision =
@@ -1213,7 +1213,7 @@ mod tests {
                 max_tiles_per_side: 2,
             };
             let path = build_tiny_safetensors(&cfg);
-            let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&path) }
+            let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&path) }
                 .expect("mmap safetensors");
             let model = PaddleOcrVlModel::load_from_mmapped(&st, &cfg)
                 .expect("PaddleOcrVlModel::load_from_mmapped");

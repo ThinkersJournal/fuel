@@ -20,10 +20,9 @@
 //!   `fuel-formats`: it owns the bytes, and the parser surface
 //!   above sits on top.
 //!
-//! The mmap/view wrappers `fuel_loaders::safetensors::MmapedSafetensors`
-//! and `fuel_loaders::safetensors::BufferedSafetensors` sit downstream in
-//! `fuel-loaders`. They hand out `TensorView`s and nothing more — the
-//! caller decodes the bytes.
+//! - [`MmapedSafetensors`] and [`BufferedSafetensors`] — mmap/buffer wrappers that hand out
+//!   `TensorView`s and nothing more (the caller decodes the bytes). They moved here from
+//!   `fuel-loaders` (ROADMAP row 156, fuel#680); `fuel_loaders::safetensors` re-exports them.
 //!
 //! B6 deleted the eager tensor-construction half that used to live
 //! alongside them (`load`, `load_buffer`, `save`, `SliceSafetensors`,
@@ -35,6 +34,7 @@ use std::path::{Path, PathBuf};
 
 use fuel_ir::{Error, Result};
 
+pub use crate::safetensors_view::{BufferedSafetensors, MmapedSafetensors};
 pub use safetensors::SafeTensors;
 pub use safetensors::tensor::{Dtype, TensorView, View};
 

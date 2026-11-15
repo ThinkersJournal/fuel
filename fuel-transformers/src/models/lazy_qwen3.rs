@@ -806,7 +806,7 @@ impl Qwen3Weights {
     ///   post_attention_layernorm}.weight + model.layers.{i}.mlp.{gate,up,down}_proj
     ///   + model.norm + lm_head (or tied).
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Qwen3Config,
     ) -> Result<Self> {
         use fuel_tensor::lazy::load_transposed_matrix_preserve_dtype;
@@ -823,7 +823,7 @@ impl Qwen3Weights {
     /// [`Self::load_from_mmapped`]. `group_size` is
     /// `quantization_config.group_size` from the checkpoint's `config.json`.
     pub fn load_awq_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Qwen3Config,
         group_size: usize,
     ) -> Result<Self> {
@@ -843,7 +843,7 @@ impl Qwen3Weights {
     /// Shared body of the two loaders; `proj(name, out_features, in_features)`
     /// reads one projection (`name` is the tensor prefix without `.weight`).
     fn load_with(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Qwen3Config,
         proj: impl Fn(&str, usize, usize) -> Result<WeightStorage>,
     ) -> Result<Self> {
@@ -881,7 +881,7 @@ impl Qwen3Weights {
     /// One decoder layer's projections (through `proj`), optional Q/K/V biases
     /// and norm gains.
     fn load_layer(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Qwen3Config,
         i: usize,
         proj: &impl Fn(&str, usize, usize) -> Result<WeightStorage>,
@@ -910,7 +910,7 @@ impl Qwen3Weights {
 
     /// The layer's input/post-attention RmsNorm gains and the Q/K-norm gains.
     fn load_norm_gains(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         p: &str,
     ) -> Result<(Gain, Gain, Qwen3LayerExtras)> {
         use fuel_tensor::lazy::load_tensor_as_f32;
@@ -960,7 +960,7 @@ impl Qwen3Weights {
 
     /// The Q/K/V biases, present only when `cfg.attention_bias`.
     fn load_qkv_biases(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Qwen3Config,
         p: &str,
     ) -> Result<(Bias, Bias, Bias)> {

@@ -60,14 +60,14 @@ use std::sync::Arc;
 fn _keep_helpers_alive() {
     let _ = load_transposed_matrix
         as fn(
-            &fuel_loaders::safetensors::MmapedSafetensors,
+            &fuel_formats::safetensors::MmapedSafetensors,
             &str,
             usize,
             usize,
         ) -> fuel_ir::error::Result<Vec<f32>>;
     let _ = load_transposed_matrix_preserve_dtype
         as fn(
-            &fuel_loaders::safetensors::MmapedSafetensors,
+            &fuel_formats::safetensors::MmapedSafetensors,
             &str,
             usize,
             usize,
@@ -614,7 +614,7 @@ fn canonical_layer_indices() -> [usize; 75] {
 }
 
 fn load_cbn(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     layer_idx: usize,
     c_out: usize,
     c_in: usize,
@@ -651,7 +651,7 @@ fn load_cbn(
 }
 
 fn load_detect(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     layer_idx: usize,
     c_out: usize,
     c_in: usize,
@@ -677,7 +677,7 @@ impl YoloV3Weights {
     /// following the canonical `i.conv_i.*` / `i.batch_norm_i.*`
     /// naming used by the fuel-examples YOLOv3 example.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &YoloV3Config,
     ) -> fuel_ir::error::Result<Self> {
         let eps = cfg.bn_eps;

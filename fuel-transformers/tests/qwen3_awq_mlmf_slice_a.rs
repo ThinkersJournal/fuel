@@ -19,8 +19,8 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+use fuel_formats::safetensors::MmapedSafetensors;
 use fuel_loaders::awq::{awq_group_size, locate_awq_layers};
-use fuel_loaders::safetensors::MmapedSafetensors;
 use fuel_test_support::hardware::{Hardware, Missing, skip};
 use fuel_transformers::models::lazy_qwen3::Qwen3Config;
 

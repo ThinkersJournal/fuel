@@ -845,7 +845,7 @@ impl VoxtralWeights {
     /// (so bf16 stays bf16); LayerNorm gains/biases, conv kernels, and
     /// position-embedding tables go through [`fuel_tensor::lazy::load_tensor_as_f32`].
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &VoxtralConfig,
     ) -> fuel_ir::error::Result<Self> {
         use fuel_tensor::{
