@@ -144,6 +144,20 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.35 - 2026-11-14 (PM-allocation pending; docs only)
+
+### Added
+
+- `docs/design-notes/2026-11-14-qwen35-27b-plan.md` and ROADMAP row 155: plan for the Qwen3.5/3.8 27B: the real 27B Q4_K_M header (read by HTTP range request), the recurrent-state slot layout, the paged hybrid decode trait with prefix sharing off by design, the Pascal (P40) route and milestones M0-M5. No code change.
+
+### Measured
+
+- Header of `unsloth/Qwen3.8-27B-GGUF` `Qwen3.8-27B-UD-Q4_K_M.gguf`, bytes 0-33,554,431: 866 tensors, 50 keys, header ends at byte 10,996,621; 65 blocks (48 recurrent, 16 full attention, 1 MTP); `output.weight` present.
+
+### Not verified
+
+- The name map and value rules against 27B tensor values; sm_61 kernels; any speed or memory figure beyond arithmetic.
+
 ## v0.47.34 - 2026-11-14 (PM-allocation pending; docs only)
 
 ### Added
