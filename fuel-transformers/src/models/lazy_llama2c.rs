@@ -419,7 +419,7 @@ impl Llama2cModel {
                 })?],
             };
 
-        let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::multi(&weight_paths) }?;
+        let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::multi(&weight_paths) }?;
         let weights = LlamaWeights::load_from_mmapped(&st, &config.to_llama_config())?;
 
         Ok(Llama2cModel { config, weights })

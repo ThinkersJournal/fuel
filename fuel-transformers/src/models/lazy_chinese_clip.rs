@@ -152,7 +152,7 @@ impl ChineseClipWeights {
     /// shipped BertWeights + ClipVisionWeights loaders and reads the
     /// two projection heads + logit_scale at the top level.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &ChineseClipConfig,
     ) -> Result<Self> {
         use fuel_tensor::{lazy::load_tensor_as_f32, lazy::load_transposed_matrix_preserve_dtype};

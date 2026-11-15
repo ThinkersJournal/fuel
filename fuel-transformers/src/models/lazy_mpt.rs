@@ -329,7 +329,7 @@ impl MptWeights {
     /// `Wqkv` of shape `[d_model + 2*kv_dim, d_model]` (multi-group
     /// QKV) — split at load.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &MptConfig,
     ) -> Result<Self> {
         use fuel_tensor::{lazy::load_tensor_as_f32, lazy::load_transposed_matrix};

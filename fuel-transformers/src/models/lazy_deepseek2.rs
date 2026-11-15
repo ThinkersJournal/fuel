@@ -241,7 +241,7 @@ impl DeepSeek2Weights {
     /// the v1 forward path which uses `apply_linear` without bias. Most
     /// public DeepSeek-V2 checkpoints set `attention_bias=false`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &DeepSeek2Config,
     ) -> Result<Self> {
         use fuel_tensor::{

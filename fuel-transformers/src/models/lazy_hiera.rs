@@ -446,7 +446,7 @@ impl HieraWeights {
     /// weights from HF safetensors. Uses the upstream block-schedule derivation
     /// to figure out per-block dims at load time.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &HieraConfig,
     ) -> Result<Self> {
         use fuel_tensor::{

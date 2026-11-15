@@ -772,7 +772,7 @@ impl WhisperWeights {
     /// conv / embedding tensors stay 1:1 with HF and go through
     /// [`fuel_tensor::lazy::load_tensor_as_f32`].
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &WhisperConfig,
     ) -> fuel_ir::error::Result<Self> {
         use fuel_tensor::{lazy::load_tensor_as_f32, lazy::load_transposed_matrix};
@@ -940,7 +940,7 @@ impl WhisperModel {
         let weights_path = repo
             .get("model.safetensors")
             .map_err(|e| fuel_ir::error::Error::Msg(format!("hf-hub whisper safetensors: {e}")))?;
-        let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&weights_path) }?;
+        let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&weights_path) }?;
         let weights = WhisperWeights::load_from_mmapped(&st, &config)?;
         Ok(Self { config, weights })
     }

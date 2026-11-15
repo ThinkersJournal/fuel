@@ -345,7 +345,7 @@ impl Olmo2Weights {
     /// Load OLMo2 (allenai/OLMo2-*) weights from HuggingFace safetensors.
     /// Standard LLaMA-shape attention with QK-norm gains.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Olmo2Config,
     ) -> Result<Self> {
         use fuel_tensor::{

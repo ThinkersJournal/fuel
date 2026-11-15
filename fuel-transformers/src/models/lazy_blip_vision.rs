@@ -308,7 +308,7 @@ fn apply_mlp(
 // ---- HuggingFace safetensors loader ----------------------------------------
 
 fn load_ln(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
 ) -> Result<LayerNormWeights> {
     use fuel_tensor::lazy::load_tensor_as_f32;
@@ -329,7 +329,7 @@ impl BlipVisionWeights {
     /// `prefix` typically `"vision_model."` for full BLIP, or `""` for
     /// bare-vision checkpoints.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &BlipVisionConfig,
         prefix: &str,
     ) -> Result<Self> {

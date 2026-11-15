@@ -474,7 +474,7 @@ impl ChatGlmWeights {
     /// `[hidden_size, qkv_hidden_size]` layout that `apply_linear`
     /// consumes for `x @ W` with `x.shape() = (b, s, hidden_size)`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &ChatGlmConfig,
     ) -> Result<Self> {
         use fuel_tensor::{lazy::load_tensor_as_f32, lazy::load_transposed_matrix_preserve_dtype};

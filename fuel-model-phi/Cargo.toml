@@ -25,6 +25,7 @@
     # GAP-347 PR 3): repoints this crate's `fuel_core::hf_config::` sites
     # to the real crate directly.
     fuel-loaders   = { workspace = true }
+    fuel-formats   = { workspace = true }
     fuel-quantized = { workspace = true }
     fuel-tensor    = { workspace = true }
     half           = { workspace = true }

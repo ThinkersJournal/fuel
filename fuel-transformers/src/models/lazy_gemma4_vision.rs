@@ -460,7 +460,7 @@ impl Gemma4VisionWeights {
     /// are not loaded — v1 of the lazy port omits the standardise
     /// post-processing.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Gemma4VisionConfig,
     ) -> Result<Self> {
         Self::load_from_mmapped_with_prefix(st, cfg, "")
@@ -470,7 +470,7 @@ impl Gemma4VisionWeights {
     /// `"vision_tower."` (note the trailing dot) when loading from a
     /// full Gemma 4 multimodal checkpoint.
     pub fn load_from_mmapped_with_prefix(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Gemma4VisionConfig,
         prefix: &str,
     ) -> Result<Self> {

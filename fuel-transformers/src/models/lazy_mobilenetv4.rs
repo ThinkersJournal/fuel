@@ -553,7 +553,7 @@ impl Mv4Weights {
     /// BN parameters fold into the layer's per-channel affine at load
     /// time via [`BatchNormParams::from_raw`].
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Mv4Config,
         with_head: Option<usize>,
     ) -> fuel_ir::error::Result<Self> {
@@ -618,7 +618,7 @@ impl Mv4Weights {
 }
 
 fn mv4_load_block(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     spec: &BlockSpec,
     in_ch: usize,
@@ -840,7 +840,7 @@ fn mv4_load_block(
 /// Load a `conv2d_no_bias` + `batch_norm` pair into a `Conv2dBnWeights`,
 /// baking BN at load time.
 fn mv4_load_conv_bn(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     conv_prefix: &str,
     bn_prefix: &str,
     c_in: usize,
@@ -871,7 +871,7 @@ fn mv4_load_conv_bn(
 /// MQA 1×1 projection (no stride/pad). Uses BN that fuses into the
 /// per-channel affine.
 fn mv4_load_proj(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     c_in: usize,
     c_out: usize,
@@ -899,7 +899,7 @@ fn mv4_load_proj(
 
 /// MQA depthwise downsample (`groups = in_channels`) with BN.
 fn mv4_load_dw(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     conv_prefix: &str,
     bn_prefix: &str,
     channels: usize,
@@ -925,7 +925,7 @@ fn mv4_load_dw(
 }
 
 fn mv4_load_bn(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     channels: usize,
 ) -> fuel_ir::error::Result<BatchNormParams> {
@@ -939,7 +939,7 @@ fn mv4_load_bn(
 }
 
 fn mv4_load_check(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     name: &str,
     expected_len: usize,
 ) -> fuel_ir::error::Result<Vec<f32>> {
@@ -956,7 +956,7 @@ fn mv4_load_check(
 }
 
 fn mv4_load_transposed(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     name: &str,
     out_features: usize,
     in_features: usize,
@@ -996,7 +996,7 @@ impl Mv4Model {
         let weights_path = repo
             .get(filename)
             .map_err(|e| fuel_ir::error::Error::Msg(format!("hf-hub mv4 safetensors: {e}")))?;
-        let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&weights_path) }?;
+        let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&weights_path) }?;
         let weights = Mv4Weights::load_from_mmapped(&st, &config, nclasses)?;
         Ok(Self { config, weights })
     }
@@ -1616,7 +1616,7 @@ mod tests {
             std::process::id(),
         ));
         std::fs::write(&tmp, &serialized).expect("write tmp");
-        let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&tmp) }
+        let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&tmp) }
             .expect("MmapedSafetensors::new");
 
         let loaded = Mv4Weights::load_from_mmapped(&st, &cfg, /* with_head = */ None)

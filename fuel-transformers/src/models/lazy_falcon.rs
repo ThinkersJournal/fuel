@@ -387,7 +387,7 @@ impl FalconWeights {
     /// `(num_heads, 3, head_dim) × hidden_size`. After transpose,
     /// pull out Q/K/V by stride-3 indexing.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &FalconConfig,
     ) -> Result<Self> {
         use fuel_tensor::{lazy::load_tensor_as_f32, lazy::load_transposed_matrix};

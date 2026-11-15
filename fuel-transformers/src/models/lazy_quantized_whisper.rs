@@ -217,7 +217,7 @@ impl QuantizedWhisperModel {
     /// quantize the projection matrices to Q4_0. Equivalent to
     /// `Self::from_f32_bake(&WhisperModel { config, weights: WhisperWeights::load_from_mmapped(st, &config)? })`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: WhisperConfig,
     ) -> fuel_ir::error::Result<Self> {
         use crate::models::lazy_whisper::{WhisperModel, WhisperWeights};

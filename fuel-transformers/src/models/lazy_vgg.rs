@@ -238,7 +238,7 @@ impl VggWeights {
     /// `head.fc.{weight,bias}` (timm) or `classifier.{0,3,6}.{weight,bias}`
     /// (torchvision-style). This loader checks both and chooses what's present.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &VggConfig,
     ) -> Result<Self> {
         use fuel_tensor::{

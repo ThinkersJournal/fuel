@@ -504,7 +504,7 @@ impl BeitWeights {
     /// The HF wrapper prefixes with `beit.` for the backbone; classification
     /// head sits at `classifier.weight`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &BeitConfig,
     ) -> Result<Self> {
         use fuel_tensor::{

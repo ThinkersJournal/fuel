@@ -491,7 +491,7 @@ impl EfficientVitWeights {
     /// weights from HF safetensors. CGA + Sandwich blocks have nested
     /// per-head structure; canonical name mapping is pending.
     pub fn load_from_mmapped(
-        _st: &fuel_loaders::safetensors::MmapedSafetensors,
+        _st: &fuel_formats::safetensors::MmapedSafetensors,
         _cfg: &EfficientVitConfig,
     ) -> Result<Self> {
         Err(fuel_ir::error::Error::Msg(

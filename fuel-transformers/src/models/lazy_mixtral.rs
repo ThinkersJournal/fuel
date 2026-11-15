@@ -443,7 +443,7 @@ impl MixtralWeights {
     /// Standard Mistral-style attn (no biases) + per-expert SwiGLU under
     /// `model.layers.{i}.block_sparse_moe.experts.{e}.{w1,w2,w3}.weight`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &MixtralConfig,
     ) -> Result<Self> {
         use fuel_tensor::{

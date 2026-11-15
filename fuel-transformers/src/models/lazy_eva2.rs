@@ -376,7 +376,7 @@ impl EvaWeights {
     /// safetensors. Q/V have biases; K has none. MLP uses SwiGLU with
     /// separate gate/x projections and a sub-LayerNorm between them.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &EvaConfig,
     ) -> Result<Self> {
         use fuel_tensor::{

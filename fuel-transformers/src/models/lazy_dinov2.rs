@@ -418,7 +418,7 @@ impl Dinov2Weights {
     /// Load DINOv2 (facebook/dinov2-{small,base,large}) weights from HF
     /// safetensors. Wrapper prefix `dinov2.`; classifier is `classifier.weight`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Dinov2Config,
     ) -> Result<Self> {
         use fuel_tensor::{

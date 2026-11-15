@@ -383,7 +383,7 @@ impl StarCoder2Weights {
     /// Load StarCoder2 weights from HF safetensors (e.g. `bigcode/starcoder2-3b`).
     /// StarCoder2 has biases throughout when `use_bias=true`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &StarCoder2Config,
     ) -> Result<Self> {
         use fuel_tensor::{lazy::load_tensor_as_f32, lazy::load_transposed_matrix_preserve_dtype};
@@ -392,7 +392,7 @@ impl StarCoder2Weights {
         let kv_dim = cfg.num_key_value_heads * cfg.head_dim;
         let inter = cfg.intermediate_size;
         let opt_bias =
-            |st: &fuel_loaders::safetensors::MmapedSafetensors, n: &str| -> Option<Arc<[f32]>> {
+            |st: &fuel_formats::safetensors::MmapedSafetensors, n: &str| -> Option<Arc<[f32]>> {
                 if cfg.use_bias {
                     load_tensor_as_f32(st, n).ok().map(Arc::from)
                 } else {

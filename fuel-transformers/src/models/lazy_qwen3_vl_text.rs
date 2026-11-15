@@ -555,7 +555,7 @@ impl Qwen3VlTextWeights {
     /// either the `model.language_model.*` or the bare `language_model.*`
     /// prefix to cover variants.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Qwen3VlTextConfig,
     ) -> Result<Self> {
         use fuel_tensor::{lazy::load_tensor_as_f32, lazy::load_transposed_matrix_preserve_dtype};

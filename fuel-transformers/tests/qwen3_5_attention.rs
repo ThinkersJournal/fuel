@@ -11,8 +11,8 @@
 
 use std::path::PathBuf;
 
+use fuel_formats::safetensors::{BufferedSafetensors, MmapedSafetensors};
 use fuel_ir::Shape;
-use fuel_loaders::safetensors::{BufferedSafetensors, MmapedSafetensors};
 use fuel_tensor::{Device, lazy::Tensor};
 use fuel_test_support::hub::{RepoKind, hf_cache_dir, require_cached};
 use fuel_transformers::models::lazy_qwen3_5::{

@@ -360,7 +360,7 @@ impl StableLmModel {
 impl StableLmWeights {
     /// Load StableLM weights (e.g. `stabilityai/stablelm-2-1_6b`).
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &StableLmConfig,
     ) -> Result<Self> {
         use fuel_tensor::{lazy::load_tensor_as_f32, lazy::load_transposed_matrix_preserve_dtype};

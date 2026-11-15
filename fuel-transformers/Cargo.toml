@@ -29,6 +29,7 @@ fuel-ir = { workspace = true }
 # PR 3): repoints this crate's 30 `fuel_core::hf_config::` sites to the
 # real crate directly.
 fuel-loaders = { workspace = true }
+fuel-formats = { workspace = true }
 fuel-quantized = { workspace = true }
 # LlamaModel/PhiModel moved to their own crates (fuel-core dissolution) --
 # lazy_llama_full.rs/lazy_llama2c.rs/lazy_llava.rs/lazy_quantized_llama.rs still

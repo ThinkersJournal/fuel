@@ -351,7 +351,7 @@ impl XlmrWeights {
     /// safetensors file. Naming follows the upstream RoBERTa layout at
     /// `roberta.embeddings.*` / `roberta.encoder.layer.{i}.*`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &XlmrConfig,
     ) -> Result<Self> {
         use fuel_tensor::{
@@ -542,7 +542,7 @@ impl ForMaskedLMWeights {
     /// existing XlmrWeights loader (F32 vectors via `load_tensor_as_f32`,
     /// transposed matrices via `load_transposed_matrix_preserve_dtype`).
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &XlmrConfig,
     ) -> Result<Self> {
         use fuel_tensor::{
@@ -571,7 +571,7 @@ impl XlmrForMaskedLM {
     /// Load the full MaskedLM model (base encoder + lm_head) from a
     /// HuggingFace safetensors file in one call.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: XlmrConfig,
     ) -> Result<Self> {
         let base_weights = XlmrWeights::load_from_mmapped(st, &cfg)?;
@@ -654,7 +654,7 @@ impl ForSequenceClassificationWeights {
     /// Load the classifier head tensors using the HF
     /// `classifier.{dense,out_proj}.{weight,bias}` naming.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &XlmrConfig,
         num_labels: usize,
     ) -> Result<Self> {
@@ -680,7 +680,7 @@ impl XlmrForSequenceClassification {
     /// Load the full sequence-classification model (base encoder +
     /// classifier head) from a HuggingFace safetensors file in one call.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: XlmrConfig,
         num_labels: usize,
     ) -> Result<Self> {
@@ -1161,7 +1161,7 @@ mod tests {
         );
 
         let tmp = build_safetensors_file(owned, "mlm");
-        let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&tmp) }
+        let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&tmp) }
             .expect("MmapedSafetensors::new");
 
         let model = XlmrForMaskedLM::load_from_mmapped(&st, cfg.clone())
@@ -1203,7 +1203,7 @@ mod tests {
         );
 
         let tmp = build_safetensors_file(owned, "seq");
-        let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&tmp) }
+        let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&tmp) }
             .expect("MmapedSafetensors::new");
 
         let model = XlmrForSequenceClassification::load_from_mmapped(&st, cfg.clone(), num_labels)

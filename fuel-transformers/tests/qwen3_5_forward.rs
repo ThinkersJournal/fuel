@@ -12,7 +12,7 @@
 
 use std::path::PathBuf;
 
-use fuel_loaders::safetensors::{BufferedSafetensors, MmapedSafetensors};
+use fuel_formats::safetensors::{BufferedSafetensors, MmapedSafetensors};
 use fuel_test_support::hub::{RepoKind, hf_cache_dir, require_cached};
 use fuel_transformers::models::lazy_qwen3_5::{Qwen3_5Config, Qwen3_5Model, Qwen3_5Weights};
 

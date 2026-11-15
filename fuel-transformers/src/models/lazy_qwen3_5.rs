@@ -317,7 +317,7 @@ pub struct Qwen3_5Weights {
     pub output: WeightStorage,
 }
 
-type St = fuel_loaders::safetensors::MmapedSafetensors;
+type St = fuel_formats::safetensors::MmapedSafetensors;
 
 /// `(conv1d_weight, a_log, dt_bias, norm_gain)` of a Gated DeltaNet layer.
 type GdnVectors = (Arc<[f32]>, Arc<[f32]>, Arc<[f32]>, Arc<[f32]>);

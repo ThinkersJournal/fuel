@@ -219,7 +219,7 @@ fn l2_normalize_last(x: &Tensor, eps: f64) -> Result<Tensor> {
 /// The pooling head is **NOT** loaded — PaliGemma uses SigLIP without
 /// a head, matching the existing forward path.
 pub fn load_siglip_vision_weights(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     cfg: &SiglipVisionConfig,
     prefix: &str,
 ) -> Result<SiglipVisionWeights> {
@@ -319,7 +319,7 @@ pub fn load_siglip_vision_weights(
 /// Output projection ties to `model.embed_tokens.weight` when
 /// `lm_head.weight` is absent (HF Gemma tied default).
 pub fn load_gemma_weights_with_prefix(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     cfg: &GemmaConfig,
     prefix: &str,
 ) -> Result<GemmaWeights> {
@@ -449,7 +449,7 @@ impl PaligemmaWeights {
     ///   - `multi_modal_projector.linear.{weight,bias}` — MM projector
     ///   - `language_model.*` — Gemma decoder (model.embed_tokens.weight, etc.)
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &PaligemmaConfig,
     ) -> Result<Self> {
         let v_cfg = &cfg.vision_config;
@@ -959,7 +959,7 @@ mod tests {
             let t_cfg = tiny_text_cfg();
             let proj_dim = t_cfg.hidden_size;
             let path = build_tiny_safetensors(&v_cfg, &t_cfg, proj_dim);
-            let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&path) }
+            let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&path) }
                 .expect("mmap safetensors");
             let cfg = PaligemmaConfig {
                 vision_config: v_cfg.clone(),

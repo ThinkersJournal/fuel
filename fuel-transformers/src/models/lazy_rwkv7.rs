@@ -614,7 +614,7 @@ impl Rwkv7Weights {
     /// Load RWKV-v7 ("Goose") weights from HF safetensors. Tensor naming
     /// follows the upstream BlinkDL/rwkv-7-* layout.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &Rwkv7Config,
     ) -> Result<Self> {
         use fuel_tensor::{

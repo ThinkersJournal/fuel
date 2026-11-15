@@ -39,3 +39,4 @@ pub mod gguf;
 pub mod imatrix;
 pub mod pickle;
 pub mod safetensors;
+mod safetensors_view;

@@ -510,7 +510,7 @@ impl MusicGenWeights {
     ///   installed (callers must use
     ///   [`MusicGenModel::forward_with_encoder_states`]).
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &MusicGenConfig,
     ) -> Result<Self> {
         let h = cfg.hidden_size;

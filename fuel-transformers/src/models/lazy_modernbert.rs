@@ -437,7 +437,7 @@ impl ModernBertWeights {
     /// HuggingFace safetensors file. Tensor names follow the upstream layout
     /// at `model.embeddings.*`, `model.layers.{i}.*`, `model.final_norm.weight`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &ModernBertConfig,
     ) -> Result<Self> {
         use fuel_tensor::{

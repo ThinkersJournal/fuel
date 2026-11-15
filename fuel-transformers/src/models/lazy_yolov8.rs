@@ -921,7 +921,7 @@ impl YoloV8Weights {
     /// from HF safetensors. Detection head + C2f/SPPF blocks have nested
     /// per-scale naming; canonical mapping is pending.
     pub fn load_from_mmapped(
-        _st: &fuel_loaders::safetensors::MmapedSafetensors,
+        _st: &fuel_formats::safetensors::MmapedSafetensors,
         _cfg: &YoloV8Config,
     ) -> fuel_ir::error::Result<Self> {
         Err(fuel_ir::error::Error::Msg(

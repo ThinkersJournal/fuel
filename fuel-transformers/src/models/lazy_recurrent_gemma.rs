@@ -777,7 +777,7 @@ impl RecurrentGemmaWeights {
     /// Layer kind alternates between recurrent and attention per
     /// `cfg.block_types`. lm_head is tied to token embedding.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &RecurrentGemmaConfig,
     ) -> Result<Self> {
         use fuel_tensor::{

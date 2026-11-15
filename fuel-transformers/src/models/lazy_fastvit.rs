@@ -500,7 +500,7 @@ impl FastVitWeights {
     /// convs) — feed the post-reparam checkpoint. For raw training-mode
     /// checkpoints, run the upstream `model.reparameterize()` and re-save.
     pub fn load_from_mmapped(
-        _st: &fuel_loaders::safetensors::MmapedSafetensors,
+        _st: &fuel_formats::safetensors::MmapedSafetensors,
         _cfg: &FastVitConfig,
     ) -> Result<Self> {
         Err(fuel_ir::error::Error::Msg(

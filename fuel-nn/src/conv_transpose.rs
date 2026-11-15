@@ -273,7 +273,7 @@ impl ConvTranspose1d {
     /// as `[Cout]`. Source dtype is upcast to f32 via
     /// [`fuel_tensor::lazy::load_tensor_as_f32`].
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         prefix: &str,
         config: ConvTranspose1dConfig,
         in_channels: usize,
@@ -520,7 +520,7 @@ impl ConvTranspose2d {
     /// `[Cin, Cout / groups, Kh, Kw]` tensor and `{prefix}.bias`
     /// (optional) as `[Cout]`.
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         prefix: &str,
         config: ConvTranspose2dConfig,
         in_channels: usize,

@@ -695,7 +695,7 @@ impl LFM2Weights {
     /// - `model.norm.weight` `[hidden]`
     /// - `lm_head.weight` `[vocab, hidden]` (optional; tied otherwise)
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &LFM2Config,
     ) -> Result<Self> {
         use fuel_tensor::{

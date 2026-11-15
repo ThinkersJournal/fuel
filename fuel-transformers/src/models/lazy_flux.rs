@@ -1327,7 +1327,7 @@ pub fn generate(
 /// tensor namespace (e.g. `"img_in"`, `"double_blocks.0.img_attn.qkv"`);
 /// the loader pulls `{prefix}.weight` and (if `bias` is true) `{prefix}.bias`.
 fn load_flux_linear(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     in_features: usize,
     out_features: usize,
@@ -1362,7 +1362,7 @@ fn load_flux_linear(
 }
 
 fn load_flux_qknorm(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     head_dim: usize,
 ) -> Result<FluxQkNorm> {
@@ -1382,7 +1382,7 @@ fn load_flux_qknorm(
 }
 
 fn load_flux_mlp_embedder(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     in_sz: usize,
     h_sz: usize,
@@ -1394,7 +1394,7 @@ fn load_flux_mlp_embedder(
 }
 
 fn load_flux_self_attention(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     dim: usize,
     num_heads: usize,
@@ -1411,7 +1411,7 @@ fn load_flux_self_attention(
 }
 
 fn load_flux_mlp(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     in_sz: usize,
     mlp_sz: usize,
@@ -1424,7 +1424,7 @@ fn load_flux_mlp(
 }
 
 fn load_flux_modulation(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     dim: usize,
     num_chunks: usize,
@@ -1442,7 +1442,7 @@ fn load_flux_modulation(
 }
 
 fn load_flux_double_block(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     cfg: &FluxConfig,
 ) -> Result<FluxDoubleStreamBlockWeights> {
@@ -1471,7 +1471,7 @@ fn load_flux_double_block(
 }
 
 fn load_flux_single_block(
-    st: &fuel_loaders::safetensors::MmapedSafetensors,
+    st: &fuel_formats::safetensors::MmapedSafetensors,
     prefix: &str,
     cfg: &FluxConfig,
 ) -> Result<FluxSingleStreamBlockWeights> {
@@ -1509,7 +1509,7 @@ impl FluxWeights {
     /// - `final_layer.linear.{weight,bias}`
     /// - `final_layer.adaLN_modulation.1.{weight,bias}`
     pub fn load_from_mmapped(
-        st: &fuel_loaders::safetensors::MmapedSafetensors,
+        st: &fuel_formats::safetensors::MmapedSafetensors,
         cfg: &FluxConfig,
     ) -> Result<Self> {
         let h = cfg.hidden_size;
@@ -2263,7 +2263,7 @@ mod tests {
             .collect();
         let path = write_tmp_safetensors(&refs);
 
-        let st = unsafe { fuel_loaders::safetensors::MmapedSafetensors::new(&path).unwrap() };
+        let st = unsafe { fuel_formats::safetensors::MmapedSafetensors::new(&path).unwrap() };
         let weights = FluxWeights::load_from_mmapped(&st, &cfg).unwrap();
 
         // Verify a specific tensor came through correctly.

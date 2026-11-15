@@ -15,7 +15,6 @@
     fuel-ir               = { workspace = true }
     fuel-quantized        = { workspace = true }
     safetensors           = { workspace = true }
-    yoke                  = { workspace = true }
 
 # gguf_file.rs's mmap-backed Content::open constructor (fuel-core
 # dissolution: MLMF repoint, CireSnave's "fuel should use MLMF for loading"

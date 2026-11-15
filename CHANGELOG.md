@@ -144,6 +144,19 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.36 - 2026-11-14 (PM-allocation pending)
+
+### Changed
+
+- `MmapedSafetensors` and `BufferedSafetensors` moved from `fuel-loaders` to `fuel-formats` (`fuel_formats::safetensors`), next to `MmapedFile` (ROADMAP row 156, fuel#680: ARC-004 cure, step 1). `fuel_loaders::safetensors` re-exports them, so they are the same types and no caller or published path breaks. About 144 files repoint their `use` / signature paths to `fuel_formats::safetensors`; `fuel-nn`, `fuel-transformers`, `fuel-model-llama` and `fuel-model-phi` gain a `fuel-formats` dependency; `fuel-formats` gains `mlmf-core`, `mlmf-safetensors` and `yoke`, and `fuel-loaders` drops `yoke`.
+
+### Measured
+
+- See the PR body for ARC-004 before/after (local coderipper 0.43.54 on committed HEAD).
+
+### Not verified
+
+- CI on this head; the move was checked on this Windows box only (`--all-targets` check of the seven touched crates, tests of `fuel-formats` and `fuel-loaders`, clippy `-D warnings` on `fuel-formats`, `fuel-loaders`, `fuel-nn`).
 ## v0.47.35 - 2026-11-14 (PM-allocation pending; docs only)
 
 ### Added
