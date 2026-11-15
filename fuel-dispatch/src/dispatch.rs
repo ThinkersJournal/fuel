@@ -2577,6 +2577,33 @@ pub fn qmatmul_cpu_by_type(
             n,
             k,
         ),
+        QuantType::Iq4Nl => fuel_cpu_backend::byte_kernels::qmatmul_iq4_nl_f32(
+            act_cpu,
+            w_cpu,
+            out_cpu,
+            batch_count,
+            m,
+            n,
+            k,
+        ),
+        QuantType::Iq4Xs => fuel_cpu_backend::byte_kernels::qmatmul_iq4_xs_f32(
+            act_cpu,
+            w_cpu,
+            out_cpu,
+            batch_count,
+            m,
+            n,
+            k,
+        ),
+        QuantType::Iq3S => fuel_cpu_backend::byte_kernels::qmatmul_iq3_s_f32(
+            act_cpu,
+            w_cpu,
+            out_cpu,
+            batch_count,
+            m,
+            n,
+            k,
+        ),
     }
 }
 

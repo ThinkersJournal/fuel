@@ -11615,6 +11615,105 @@ mod tests {
         );
     }
 
+    /// E2E: `QMatMul` through the pipelined executor for the formats added with the float route
+    /// (Q3_K, Q5_K, IQ4_NL, IQ4_XS, IQ3_S; board 307: dequantized tile by tile, multiplied in
+    /// float). The weights are the type's own blocks from random bytes (a small finite `d`), the
+    /// reference is `fuel_quantized::matmul`, and the dispatch arm must be the one for that type:
+    /// a wrong `quant_type` arm decodes the same bytes differently and is far from the reference.
+    fn qmatmul_e2e_random_blocks<T: fuel_quantized::GgmlType>(quant_type: fuel_graph::QuantType) {
+        let (m, n, k) = (3, 5, 512);
+        let size = std::mem::size_of::<T>();
+        let count = n * k / T::BLCK_SIZE;
+        let mut seed = 0x9E37_79B9_u32;
+        let mut w_bytes: Vec<u8> = (0..count * size)
+            .map(|_| {
+                seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                (seed >> 24) as u8
+            })
+            .collect();
+        let d = half::f16::from_f32(0.02).to_le_bytes();
+        for b in 0..count {
+            w_bytes[b * size..b * size + 2].copy_from_slice(&d);
+        }
+        let mut w_blocks = vec![T::zeros(); count];
+        bytemuck::cast_slice_mut::<T, u8>(&mut w_blocks).copy_from_slice(&w_bytes);
+        let act_vec: Vec<f32> = (0..m * k).map(|x| ((x % 17) as f32 - 8.0) / 8.0).collect();
+        let mut ref_out = vec![0.0_f32; m * n];
+        fuel_quantized::matmul::<T>((m, k, n), &act_vec, &w_blocks, &mut ref_out).expect("ref");
+
+        let w_storage = fuel_memory::Storage::new(
+            fuel_memory::BackendStorage::Cpu(fuel_cpu_backend::CpuStorageBytes::from_bytes(
+                &w_bytes,
+            )),
+            DType::U32,
+        );
+        let graph = Arc::new(RwLock::new(Graph::new()));
+        let (act_id, w_id, mm_id) = {
+            let mut g = graph.write().unwrap();
+            let act = g.push(Node {
+                op: Op::Const,
+                inputs: vec![],
+                shape: Shape::from_dims(&[m, k]),
+                dtype: DType::F32,
+            });
+            let w = g.push(Node {
+                op: Op::Const,
+                inputs: vec![],
+                shape: Shape::from_dims(&[w_bytes.len() / 4]),
+                dtype: DType::U32,
+            });
+            let mm = g.push(Node {
+                op: Op::Fused(
+                    fuel_graph::registry::FusedOps::QMATMUL,
+                    fuel_graph::registry::FusedOpParams::QMatMul { quant_type, k, n },
+                ),
+                inputs: vec![act, w],
+                shape: Shape::from_dims(&[m, n]),
+                dtype: DType::F32,
+            });
+            g.set_target_backend(mm, BackendId::Cpu);
+            (act, w, mm)
+        };
+        let mut inputs = StorageCache::new();
+        inputs.insert(
+            act_id,
+            Arc::new(RwLock::new(fuel_memory::from_slice_cpu(&act_vec))),
+        );
+        inputs.insert(w_id, Arc::new(RwLock::new(w_storage)));
+        let (result_arc, _) = PipelinedExecutor::realize(graph, mm_id, inputs).expect("realize");
+        let guard = result_arc.read().unwrap();
+        let fuel_memory::BackendStorage::Cpu(c) = &guard.inner else {
+            panic!("expected Cpu storage");
+        };
+        let r: &[f32] = c.as_slice().unwrap();
+        let scale = ref_out.iter().fold(1e-6_f32, |a, v| a.max(v.abs()));
+        let worst = r
+            .iter()
+            .zip(&ref_out)
+            .fold(0.0_f32, |a, (x, y)| a.max((x - y).abs()));
+        assert!(
+            worst <= 1e-5 * scale,
+            "{quant_type:?}: pipelined differs from the reference by {worst} (scale {scale})"
+        );
+        assert!(
+            scale > 1e-3,
+            "{quant_type:?}: the product is all zeros, the test is vacuous"
+        );
+    }
+
+    #[test]
+    fn pipelined_realize_qmatmul_float_route_formats_against_reference() {
+        use fuel_graph::QuantType;
+        use fuel_quantized::iq_grid_types::BlockIq3S;
+        use fuel_quantized::iq4::{BlockIq4Nl, BlockIq4Xs};
+        use fuel_quantized::{BlockQ3K, BlockQ5K};
+        qmatmul_e2e_random_blocks::<BlockQ3K>(QuantType::Q3K);
+        qmatmul_e2e_random_blocks::<BlockQ5K>(QuantType::Q5K);
+        qmatmul_e2e_random_blocks::<BlockIq4Nl>(QuantType::Iq4Nl);
+        qmatmul_e2e_random_blocks::<BlockIq4Xs>(QuantType::Iq4Xs);
+        qmatmul_e2e_random_blocks::<BlockIq3S>(QuantType::Iq3S);
+    }
+
     /// E2E: BF16 RmsNormLastDim through the pipelined executor.
     /// Verifies that capability-driven dispatch routes the
     /// half-float norm op to the bf16-specific kernel (which

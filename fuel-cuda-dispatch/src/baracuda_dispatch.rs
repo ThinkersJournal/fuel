@@ -817,7 +817,8 @@ pub mod qmatmul {
             QuantType::Q4_K_M => Some(GgmlDType::Q4K),
             QuantType::Q5K => Some(GgmlDType::Q5K),
             QuantType::Q6K => Some(GgmlDType::Q6K),
-            QuantType::Q8_1 => None,
+            // No baracuda MMVQ kernel for the IQ formats (float-only CPU route, board 307).
+            QuantType::Q8_1 | QuantType::Iq4Nl | QuantType::Iq4Xs | QuantType::Iq3S => None,
         }
     }
 
@@ -845,7 +846,9 @@ pub mod qmatmul {
             QuantType::Q4_K_M => (bk::mmvq_q4_k, bk::mmvq_rows_q4_k),
             QuantType::Q5K => (bk::mmvq_q5_k, bk::mmvq_rows_q5_k),
             QuantType::Q6K => (bk::mmvq_q6_k, bk::mmvq_rows_q6_k),
-            QuantType::Q8_1 => return None,
+            QuantType::Q8_1 | QuantType::Iq4Nl | QuantType::Iq4Xs | QuantType::Iq3S => {
+                return None;
+            }
         })
     }
 

@@ -144,6 +144,28 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.49.0 - 2026-11-15 (PM-allocation pending; BREAKING)
+
+### Breaking
+
+- `fuel-graph::QuantType` gains `Iq4Nl`, `Iq4Xs` and `Iq3S` (the enum is not `non_exhaustive`: a downstream exhaustive `match` fails to compile). Storage and dequantization only.
+
+### Added
+
+- CPU `QMatMul` for IQ4_NL, IQ4_XS and IQ3_S (`qmatmul_iq4_nl_f32`, `qmatmul_iq4_xs_f32`, `qmatmul_iq3_s_f32`, wired in `fuel-dispatch`). **Float route only (board 307, PM 2026-11-15):** weights stay quantized in memory, each weight row is dequantized to f32 and multiplied against the f32 activations; there is no quantized-by-quantized product and no integer dot. (The integer-dot kernels were already removed from every published crate on 2026-11-01; `fuel_quantized::matmul` is dequantize-then-`dot_f32`.)
+- `WeightStorage::from_ggml_bytes` keeps Q3_K, Q5_K, IQ4_NL, IQ4_XS and IQ3_S quantized (it admitted Q8_0, Q4_K, Q6_K): the five types that held the 27B's 297 projection tensors on the 4-8x f32 path.
+- `fuel-cpu-backend/tests/qmatmul_float_route.rs`: each of nine formats against an f64 product of the f32 activations and the dequantized weights (worst error < 2e-6 of the term scale, ragged tile included), with a control that the kernel is far from the same product with 8-bit-rounded activations. `fuel-dispatch` end-to-end test through the pipelined executor for the five new formats.
+
+### Changed
+
+- ROADMAP row 129 and the `qmatmul_q4_0_f32` doc comment said the CPU kernel quantizes the activations to 8 bits (3e-3 to 8e-3 off the exact product); both were stale since 2026-11-01 and now say what the kernel does.
+- No CUDA or Vulkan kernel exists for the IQ formats: the CUDA dispatch returns "no device kernel" for them (the host fallback runs), Vulkan reports them unwired.
+
+### Not verified
+
+- No CUDA build, no GPU run (the CUDA arms were edited, and `fuel-cuda-dispatch` is not compiled without `--features cuda`, which needs the forge). `Q8_1` still has no float dequantization (GAP-125) and is not a weight format.
+- IQ4_NL / IQ4_XS / IQ3_S are tested on random blocks (a small finite `d`), not on a real file's blocks; their `to_float` is `fuel-quantized`'s own, checked there.
+- The qwen35 GGUF loader (fuel#685) has a test that pins these five types as "cannot stay quantized"; whichever of the two lands second must update it.
 ## v0.48.2 - 2026-11-15 (PM-allocation pending)
 
 ### Added

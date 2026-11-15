@@ -162,6 +162,16 @@ pub enum QuantType {
     Q5K,
     /// 256-element super-block = 128-byte ql + 64-byte qh + 16-byte i8 scales + 2 bytes f16 d.
     Q6K,
+    /// llama.cpp `IQ4_NL`: 32-element block = 2 bytes f16 d + 16 bytes packed 4-bit indices into a
+    /// non-linear codebook. Storage and dequantization only: `QMatMul` dequantizes tile by tile and
+    /// multiplies in float (board 307: no quantized-by-quantized product).
+    Iq4Nl,
+    /// llama.cpp `IQ4_XS`: 256-element super-block = 2 bytes f16 d + 2 bytes high scale bits + 4 bytes
+    /// low scale bits + 128 bytes packed 4-bit codebook indices. Same float-only route as `Iq4Nl`.
+    Iq4Xs,
+    /// llama.cpp `IQ3_S`: 256-element super-block = 2 bytes f16 d + 64 bytes grid indices + 8 bytes
+    /// high bits + 32 bytes signs + 4 bytes sub-block scales. Same float-only route as `Iq4Nl`.
+    Iq3S,
 }
 
 impl QuantType {
@@ -179,6 +189,9 @@ impl QuantType {
             QuantType::Q4_K_M => 144,
             QuantType::Q5K => 176,
             QuantType::Q6K => 210,
+            QuantType::Iq4Nl => 18,
+            QuantType::Iq4Xs => 136,
+            QuantType::Iq3S => 110,
         }
     }
     /// Elements per quantization block.
@@ -189,12 +202,15 @@ impl QuantType {
             | QuantType::Q5_0
             | QuantType::Q5_1
             | QuantType::Q8_0
-            | QuantType::Q8_1 => 32,
+            | QuantType::Q8_1
+            | QuantType::Iq4Nl => 32,
             QuantType::Q2K
             | QuantType::Q3K
             | QuantType::Q4_K_M
             | QuantType::Q5K
-            | QuantType::Q6K => 256,
+            | QuantType::Q6K
+            | QuantType::Iq4Xs
+            | QuantType::Iq3S => 256,
         }
     }
 }

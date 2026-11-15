@@ -8425,7 +8425,8 @@ impl WeightStorage {
     /// Keep a GGUF weight tensor quantized (ROADMAP row 124): `bytes` is the tensor's block
     /// stream in GGUF's native `[out_features, in_features]` order. Returns `None` when the
     /// tensor must take the dequantize-to-f32 path instead: the format has no `QMatMul` kernel
-    /// here (only Q8_0, Q4_K and Q6_K are admitted; `Q4_0` has its own variant), or
+    /// here (Q8_0, Q3_K, Q4_K, Q5_K, Q6_K, IQ4_NL, IQ4_XS and IQ3_S are admitted; `Q4_0` has its
+    /// own variant), or
     /// `in_features` is not a whole number of blocks (32 for Q8_0, 256 for the K-quants), or the
     /// byte count is not `out_features * in_features / block * bytes_per_block`. A caller that
     /// gets `None` for a quantized dtype is taking the 4x-memory path and should say so.
@@ -8440,6 +8441,11 @@ impl WeightStorage {
             GgmlDType::Q8_0 => fuel_graph::QuantType::Q8_0,
             GgmlDType::Q4K => fuel_graph::QuantType::Q4_K_M,
             GgmlDType::Q6K => fuel_graph::QuantType::Q6K,
+            GgmlDType::Q3K => fuel_graph::QuantType::Q3K,
+            GgmlDType::Q5K => fuel_graph::QuantType::Q5K,
+            GgmlDType::Iq4Nl => fuel_graph::QuantType::Iq4Nl,
+            GgmlDType::Iq4Xs => fuel_graph::QuantType::Iq4Xs,
+            GgmlDType::Iq3S => fuel_graph::QuantType::Iq3S,
             _ => return None,
         };
         let block = qtype.elements_per_block();

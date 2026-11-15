@@ -317,8 +317,23 @@ fn from_ggml_bytes_refuses_what_it_cannot_keep() {
     assert!(WeightStorage::from_ggml_bytes(GgmlDType::Q4K, &[0; 144 * 3], 96, 8).is_none());
     // Byte count that does not match out * in / block * bytes_per_block.
     assert!(WeightStorage::from_ggml_bytes(GgmlDType::Q8_0, &q8[..q8.len() - 1], 256, 4).is_none());
-    // A format with no QMatMul kernel here, and f32.
-    assert!(WeightStorage::from_ggml_bytes(GgmlDType::Q5K, &[0; 176 * 4], 256, 4).is_none());
+    // The formats admitted with the float route (board 307) stay quantized: block bytes in, the same
+    // bytes resident.
+    for (dt, bytes_per_block, block) in [
+        (GgmlDType::Q3K, 110, 256),
+        (GgmlDType::Q5K, 176, 256),
+        (GgmlDType::Iq4Nl, 18, 32),
+        (GgmlDType::Iq4Xs, 136, 256),
+        (GgmlDType::Iq3S, 110, 256),
+    ] {
+        let bytes = vec![0_u8; bytes_per_block * (512 / block) * 3];
+        let w = WeightStorage::from_ggml_bytes(dt, &bytes, 512, 3)
+            .unwrap_or_else(|| panic!("{dt:?} must stay quantized"));
+        assert_eq!(w.resident_bytes(), bytes.len(), "{dt:?}");
+    }
+    // A format with no QMatMul kernel here (Q2_K, IQ2_XXS), and f32.
+    assert!(WeightStorage::from_ggml_bytes(GgmlDType::Q2K, &[0; 84 * 4], 256, 4).is_none());
+    assert!(WeightStorage::from_ggml_bytes(GgmlDType::Iq2Xxs, &[0; 66 * 4], 256, 4).is_none());
     assert!(WeightStorage::from_ggml_bytes(GgmlDType::F32, &[0; 4 * 4], 4, 1).is_none());
     // Resident bytes of what it kept: the block bytes, not 4 bytes per element.
     let w = WeightStorage::from_ggml_bytes(GgmlDType::Q8_0, &q8, 256, 4).unwrap();

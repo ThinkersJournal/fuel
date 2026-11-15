@@ -715,6 +715,9 @@ fn quant_type_key(q: crate::QuantType) -> i64 {
         Q4_K_M => 9,
         Q5K => 10,
         Q6K => 11,
+        Iq4Nl => 12,
+        Iq4Xs => 13,
+        Iq3S => 14,
     }
 }
 

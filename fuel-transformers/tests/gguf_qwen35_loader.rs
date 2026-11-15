@@ -550,27 +550,29 @@ fn all_866_tensors_of_the_27b_are_accounted_for() {
 }
 
 #[test]
-fn the_27b_needs_more_than_the_three_admitted_k_quant_types() {
-    // The M1 part (b) gap, measured on the real table: which projection tensors cannot stay
-    // quantized today because `WeightStorage::from_ggml_bytes` admits only Q8_0, Q4_K and Q6_K.
-    let admitted = |c: u32| matches!(c, 8 | 12 | 14);
+fn the_27b_matrices_all_stay_quantized_after_the_float_route_types() {
+    // The M1 part (b) gap, closed (0.49.0): `WeightStorage::from_ggml_bytes` now admits Q8_0, Q4_K,
+    // Q6_K plus Q3_K, Q5_K, IQ4_NL, IQ3_S and IQ4_XS, so no projection matrix of the real table
+    // is left on the f32 path. The five extra types are asserted present, so this cannot pass
+    // vacuously on a table that lost them.
+    let admitted = |c: u32| matches!(c, 8 | 11 | 12 | 13 | 14 | 20 | 21 | 23);
     let mut stuck: std::collections::BTreeMap<u32, usize> = Default::default();
+    let mut seen: std::collections::BTreeMap<u32, usize> = Default::default();
     for (name, raw, code) in table() {
         let is_matrix = raw.len() == 2 && !name.contains("conv1d");
-        if is_matrix && !name.starts_with("blk.64.") && code != 0 && !admitted(code) {
-            *stuck.entry(code).or_default() += 1;
+        if is_matrix && !name.starts_with("blk.64.") && code != 0 {
+            *seen.entry(code).or_default() += 1;
+            if !admitted(code) {
+                *stuck.entry(code).or_default() += 1;
+            }
         }
     }
-    // 11 Q3_K, 13 Q5_K, 20 IQ4_NL, 21 IQ3_S, 23 IQ4_XS: all present, all stuck on the f32 path.
-    for code in [11, 13, 20, 21, 23] {
-        assert!(
-            stuck.contains_key(&code),
-            "type {code} not found: {stuck:?}"
-        );
+    // Counts read off the header: Q3_K x2, Q5_K x142, IQ4_NL x9, IQ3_S x2, IQ4_XS x142.
+    for (code, n) in [(11u32, 2usize), (13, 142), (20, 9), (21, 2), (23, 142)] {
+        assert_eq!(seen.get(&code), Some(&n), "type {code}: {seen:?}");
     }
-    // Counts read off the header (the plan note's table): Q3_K x2, Q5_K x142, IQ4_NL x9, IQ3_S x2,
-    // IQ4_XS x142 projection tensors; a change here means the admitted set grew or the file changed.
-    let want: std::collections::BTreeMap<u32, usize> =
-        [(11, 2), (13, 142), (20, 9), (21, 2), (23, 142)].into();
-    assert_eq!(stuck, want);
+    assert!(
+        stuck.is_empty(),
+        "types still off the quantized path: {stuck:?}"
+    );
 }
