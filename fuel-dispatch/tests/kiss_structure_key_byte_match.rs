@@ -202,6 +202,24 @@ fn f8(dims: &[usize]) -> FdxOperandDesc {
     )
 }
 
+/// An operand of `dtype` at a base offset of 4 elements, which derives `v4` for
+/// every dtype whose four elements fit the 16-byte cap (`sk8` sub-keys carry each
+/// operand's own dtype, so a mixed-dtype cell needs the same `v4` on each).
+fn off4(dims: &[usize], dtype: DType) -> FdxOperandDesc {
+    FdxOperandDesc::from_layout(
+        &Layout::new(
+            Shape::from_dims(dims),
+            Layout::contiguous(Shape::from_dims(dims))
+                .stride()
+                .iter()
+                .copied()
+                .collect::<StrideVec>(),
+            4,
+        ),
+        dtype,
+    )
+}
+
 /// A bit-stable non-batched f32 gem cell with the given role extents.
 fn gem_f32(m: i64, n: i64, k: i64) -> GemCell {
     GemCell {
@@ -214,6 +232,7 @@ fn gem_f32(m: i64, n: i64, k: i64) -> GemCell {
         out_dtype: DType::F32,
         math_precision: GemMathPrecision::BitStable,
         scale_dtype: None,
+        block_length: None,
     }
 }
 
@@ -507,7 +526,11 @@ fn cells() -> BTreeMap<&'static str, Cell> {
                 out_dtype: DType::F16,
                 ..gem_f32(8, 4096, 4096)
             }),
-            io(vec![f8(&[8, 4096]), f8(&[4096, 4096]), f8(&[8, 4096])]),
+            io(vec![
+                f8(&[8, 4096]),
+                f8(&[4096, 4096]),
+                off4(&[8, 4096], DType::F16),
+            ]),
             "cuda:sm90",
         ),
     );
@@ -520,7 +543,11 @@ fn cells() -> BTreeMap<&'static str, Cell> {
                 out_dtype: DType::F32,
                 ..gem_f32(8, 4096, 4096)
             }),
-            io(vec![f8(&[8, 4096]), f8(&[4096, 4096]), f8(&[8, 4096])]),
+            io(vec![
+                f8(&[8, 4096]),
+                off4(&[4096, 4096], DType::F8E5M2),
+                off4(&[8, 4096], DType::F32),
+            ]),
             "cuda:sm90",
         ),
     );
@@ -577,17 +604,19 @@ fn cells() -> BTreeMap<&'static str, Cell> {
         ),
     );
     // Table + index + output, the index-operand ROLE declared (slot 1): `ndx`,
-    // rule 2, ahead of the pointwise rule. The index is an i32 operand, which
-    // is the realistic case AND the discriminating one: §6.6-0012 says the
-    // index is identified by its declared role and never by dtype, and the cell
-    // would derive `ew2` if the declared slot were ignored.
+    // rule 2, ahead of the pointwise rule. The index operand is **f32**, because
+    // the vector's own token spells `f32` for all three sub-keys (from `sk8` every
+    // sub-key carries its operand's dtype, so an `i32` index would not match the
+    // bytes). That is the discriminating case: §6.6-0012 says the index is
+    // identified by its declared role and never by dtype, and the cell would
+    // derive `ew2` if the declared slot were ignored.
     m.insert(
         "cell_class_ndx_index_role_declared",
         cell(
             DeclaredFacts::indexed(1),
             io(vec![
                 f32c(&[128, 256]),
-                co(&[128, 256], DType::I32),
+                f32c(&[128, 256]),
                 f32c(&[128, 256]),
             ]),
             "cuda:sm89",
@@ -603,6 +632,17 @@ fn cells() -> BTreeMap<&'static str, Cell> {
             "cuda:sm89",
         ),
     );
+
+    // -- operand count (sk7: MAX_OPERANDS 8 -> 16) -------------------------
+    // n - 1 inputs of the frame extents and an output that does not have them:
+    // not pointwise by shape, so `oth` with n identical sub-keys.
+    let oth_n = |n: usize| {
+        let mut descs = vec![f32c(&[128, 256]); n - 1];
+        descs.push(f32c(&[64, 256]));
+        cell(none(), io(descs), "cuda:sm89")
+    };
+    m.insert("operand_count_9_above_the_sk6_limit", oth_n(9));
+    m.insert("operand_count_16_at_max_operands", oth_n(16));
 
     m
 }
@@ -660,8 +700,8 @@ fn decline<'a>(c: &'a serde_json::Value, name: &str) -> &'a serde_json::Value {
 fn corpus_is_the_artifact_this_leg_was_bound_to() {
     let c = corpus();
     assert_eq!(field(&c, "schema"), "kiss-structure-key-vectors-v1");
-    assert_eq!(field(&c, "token_prefix"), "sk6");
-    assert_eq!(c["structure_key_schema_version"].as_u64(), Some(6));
+    assert_eq!(field(&c, "token_prefix"), "sk8");
+    assert_eq!(c["structure_key_schema_version"].as_u64(), Some(8));
     assert_eq!(c["recognition_count"].as_u64(), Some(27));
     assert_eq!(c["usable_count"].as_u64(), Some(24));
     assert_eq!(strs(&c, "dtype_recognition_set").len(), 27);
@@ -682,10 +722,10 @@ fn corpus_is_the_artifact_this_leg_was_bound_to() {
     assert_eq!(c["namespace_vocabulary_versions"]["cuda"].as_u64(), Some(1));
     assert_eq!(
         c["namespace_vocabulary_versions"]["vulkan"].as_u64(),
-        Some(5)
+        Some(6)
     );
-    assert_eq!(vectors(&c, "positive_vectors").len(), 34);
-    assert_eq!(vectors(&c, "decline_vectors").len(), 27);
+    assert_eq!(vectors(&c, "positive_vectors").len(), 36);
+    assert_eq!(vectors(&c, "decline_vectors").len(), 38);
 }
 
 /// Every positive vector is either **constructed** or **explicitly excluded** —
@@ -870,7 +910,7 @@ fn every_class_is_exercised_by_a_byte_matched_cell() {
 /// strictly stronger than declining it on parse.
 ///
 /// Each is excluded by a **field**, never by a count:
-/// - field 1 `<version>` — `sk9`/`sk3`/`sk04`: the prefix is a `sk6|` literal.
+/// - field 1 `<version>` — `sk9`/`sk3`/`sk04`: the prefix is a `sk8|` literal.
 /// - field 2 `<cell class>` — `zzz` and the retired `gem`: `CellClass` is a
 ///   closed seven-variant enum and `code()` is wildcard-free.
 /// - field 3 `<dtype>` — `f99`, `f8e4m3fnuz`, `f8e6m2`: sourced from
@@ -898,7 +938,7 @@ fn fuel_never_emits_a_published_decline_token() {
     // one. Assert BOTH, so the pair is a real injectivity check on the
     // published decline set rather than an accident of two numbers matching.
     let published = vectors(&c, "decline_vectors").len();
-    assert_eq!(published, 27, "published decline vectors");
+    assert_eq!(published, 38, "published decline vectors");
     assert_eq!(
         declines.len(),
         published,
@@ -914,8 +954,8 @@ fn fuel_never_emits_a_published_decline_token() {
             declines[token.as_str()]
         );
         assert!(
-            token.starts_with("sk6|"),
-            "cell `{name}` emitted a non-sk6 prefix: {token}"
+            token.starts_with("sk8|"),
+            "cell `{name}` emitted a non-sk8 prefix: {token}"
         );
     }
 }
@@ -999,8 +1039,8 @@ fn new_sk5_declines_are_unrepresentable_on_the_emit_path() {
         let token = field(v, "token");
         let first_sub_key = token.split('|').nth(7).unwrap().split(';').next().unwrap();
         let parts: Vec<&str> = first_sub_key.split('/').collect();
-        let bad_spelling = parts.get(5).is_some_and(|p| *p != "dl" && *p != "dc");
-        let too_many = parts.len() > 6;
+        let bad_spelling = parts.get(6).is_some_and(|p| *p != "dl" && *p != "dc");
+        let too_many = parts.len() > 7;
         assert!(
             bad_spelling || too_many,
             "`{name}`: the vector's first sub-key `{first_sub_key}` is not the bad form"
@@ -1017,8 +1057,8 @@ fn new_sk5_declines_are_unrepresentable_on_the_emit_path() {
             .expect("derives");
         let sub_key = token.split('|').nth(7).unwrap().split(';').next().unwrap();
         let parts: Vec<&str> = sub_key.split('/').collect();
-        assert_eq!(parts.len(), 6, "{sub_key}");
-        assert!(matches!(parts[5], "dl" | "dc"), "{sub_key}");
+        assert_eq!(parts.len(), 7, "{sub_key}");
+        assert!(matches!(parts[6], "dl" | "dc"), "{sub_key}");
     }
 }
 
@@ -1044,17 +1084,15 @@ fn dequant_form_vectors_match_modulo_the_i4_coordinate() {
         ("dequant_form_codebook_weight", DequantForm::Codebook),
     ] {
         let vector = field(positive(&c, name), "token");
-        // The vector token with the two i4 coordinates respelled f32.
-        assert_eq!(vector.matches("|i4|").count(), 1, "{name}: {vector}");
-        assert_eq!(vector.matches("/i4/").count(), 1, "{name}: {vector}");
-        let analog_expected = vector
-            .replacen("|i4|", "|f32|", 1)
-            .replacen("/i4/", "/f32/", 1);
+        // The vector token with its three i4 spellings (the primary dtype, the
+        // weight's own sub-key and `<wdt>`) respelled f32.
+        assert_eq!(vector.matches("i4").count(), 3, "{name}: {vector}");
+        let analog_expected = vector.replace("i4", "f32");
 
         let mut ops = io(vec![
             f32c(&[8, 4096]),
-            f32c(&[4096, 4096]),
-            f32c(&[8, 4096]),
+            off4(&[4096, 4096], DType::BF16),
+            off4(&[8, 4096], DType::BF16),
         ]);
         ops[0] = ops[0].clone().with_dequant_form(form);
         let got = derive_structure_key_token(
@@ -1086,19 +1124,38 @@ fn dequant_form_vectors_match_modulo_the_i4_coordinate() {
 /// each substitution applied exactly once.
 /// The f32-weight analog of the published quantized cells, with `scale` as the
 /// designated scale-operand dtype.
-fn scale_cell_token(weight: DType, out: DType, scale: Option<DType>) -> Option<String> {
-    derive_structure_key_token(
+fn scale_cell_token(
+    weight: DType,
+    out: DType,
+    scale: Option<DType>,
+    block: Option<u32>,
+) -> Option<String> {
+    scale_cell_typed(weight, out, scale, block).ok()
+}
+
+/// [`scale_cell_token`] with the decline reason. The middle operand is the
+/// scale (or an f32 filler when none is designated) and the output operand is
+/// `out`, so `<out>` and `q<sdt>` are dtypes the sub-keys carry (§6.6-0015).
+fn scale_cell_typed(
+    weight: DType,
+    out: DType,
+    scale: Option<DType>,
+    block: Option<u32>,
+) -> Result<String, fuel_dispatch::telemetry::structure_key_derive::DeriveDecline> {
+    use fuel_dispatch::telemetry::structure_key_derive::derive_structure_key_token_typed;
+    derive_structure_key_token_typed(
         &DeclaredFacts::contraction(GemCell {
             weight_dtype: weight,
             acc_dtype: DType::F32,
             out_dtype: out,
             scale_dtype: scale,
+            block_length: block,
             ..gem_f32(8, 4096, 4096)
         }),
         &io(vec![
-            f32c(&[8, 4096]),
-            f32c(&[4096, 4096]),
-            f32c(&[8, 4096]),
+            off4(&[8, 4096], weight),
+            off4(&[4096, 4096], scale.unwrap_or(DType::F32)),
+            off4(&[8, 4096], out),
         ]),
         "cuda:sm90",
         None,
@@ -1108,17 +1165,15 @@ fn scale_cell_token(weight: DType, out: DType, scale: Option<DType>) -> Option<S
 #[test]
 fn quantized_scale_vectors_match_modulo_the_i4_coordinate() {
     let c = corpus();
-    for (name, scale) in [
-        ("quantized_ctr_scale_f8e8m0", DType::F8E8M0),
-        ("quantized_ctr_scale_f16", DType::F16),
+    for (name, scale, block) in [
+        ("quantized_ctr_scale_f8e8m0", DType::F8E8M0, 32),
+        ("quantized_ctr_scale_f16", DType::F16, 16),
     ] {
         let vector = field(positive(&c, name), "token");
-        assert_eq!(vector.matches("|i4|").count(), 1, "{name}: {vector}");
-        assert_eq!(vector.matches("/i4/").count(), 1, "{name}: {vector}");
-        let analog_expected = vector
-            .replacen("|i4|", "|f32|", 1)
-            .replacen("/i4/", "/f32/", 1);
-        let got = scale_cell_token(DType::F32, DType::BF16, Some(scale))
+        // The primary dtype, the weight's own sub-key and `<wdt>`.
+        assert_eq!(vector.matches("i4").count(), 3, "{name}: {vector}");
+        let analog_expected = vector.replace("i4", "f32");
+        let got = scale_cell_token(DType::F32, DType::BF16, Some(scale), Some(block))
             .expect("the f32 analog must derive");
         assert_eq!(got, analog_expected, "{name}");
     }
@@ -1131,19 +1186,87 @@ fn quantized_scale_vectors_match_modulo_the_i4_coordinate() {
 #[test]
 fn scale_dtype_is_keyed_omitted_or_declined() {
     let c = corpus();
-    let derive = |scale| scale_cell_token(DType::F32, DType::F32, scale);
-    let none = derive(None).unwrap();
-    let e8 = derive(Some(DType::F8E8M0)).unwrap();
-    let f16 = derive(Some(DType::F16)).unwrap();
-    assert!(!none.contains("/q"), "{none}");
-    assert_eq!(e8, format!("{none}/qf8e8m0"));
-    assert_eq!(f16, format!("{none}/qf16"));
+    let derive = |scale, block| scale_cell_token(DType::F32, DType::F32, scale, block);
+    let none = derive(None, None).unwrap();
+    let e8 = derive(Some(DType::F8E8M0), Some(32)).unwrap();
+    let f16 = derive(Some(DType::F16), Some(32)).unwrap();
+    assert!(!none.contains("/q") && !none.contains("/g"), "{none}");
+    assert!(e8.ends_with("/st/qf8e8m0/g32"), "{e8}");
+    assert!(f16.ends_with("/st/qf16/g32"), "{f16}");
     assert_ne!(e8, f16);
     assert_eq!(
         field(decline(&c, "scale_dtype_reserved"), "decline"),
         "ReservedDtype"
     );
-    assert!(derive(Some(DType::F8E6M2)).is_none());
+    assert!(derive(Some(DType::F8E6M2), Some(32)).is_none());
+}
+
+/// sk8 (§6.6-0022a): the block length is keyed, closed to `{16, 32}`, present
+/// iff a scale operand is designated, and never rounded, clamped or omitted.
+/// Each decline the published decline vectors name has its emit-side dual here.
+#[test]
+fn block_length_is_keyed_closed_and_paired_with_the_scale() {
+    use fuel_dispatch::telemetry::structure_key_derive::DeriveDecline;
+    let c = corpus();
+    let cell = |scale, block| scale_cell_typed(DType::F32, DType::F32, scale, block);
+    let g16 = cell(Some(DType::F16), Some(16)).unwrap();
+    let g32 = cell(Some(DType::F16), Some(32)).unwrap();
+    assert!(g16.ends_with("/qf16/g16") && g32.ends_with("/qf16/g32"));
+    assert_ne!(
+        g16, g32,
+        "cells differing only in block length must not share a key"
+    );
+    // `block_length_outside_closed_set`: 64 declines, it is never rounded or clamped.
+    assert_eq!(
+        field(decline(&c, "block_length_outside_closed_set"), "decline"),
+        "BadBlockLength"
+    );
+    for bad in [0, 8, 24, 64] {
+        assert_eq!(
+            cell(Some(DType::F16), Some(bad)),
+            Err(DeriveDecline::BlockLengthUnsupported)
+        );
+    }
+    // `block_length_missing_beside_scale` and `block_length_without_scale`: the
+    // coordinate exists iff `q<sdt>` does.
+    assert_eq!(
+        cell(Some(DType::F16), None),
+        Err(DeriveDecline::BlockLengthMissing)
+    );
+    assert_eq!(cell(None, Some(32)), Err(DeriveDecline::BlockLengthMissing));
+    assert!(cell(None, None).is_ok());
+    // `contraction_weight_dtype_not_carried`: `<wdt>`, `<out>` and `q<sdt>` must be
+    // dtypes some sub-key carries.
+    assert_eq!(
+        field(
+            decline(&c, "contraction_weight_dtype_not_carried"),
+            "decline"
+        ),
+        "OperandDtypeDisagrees"
+    );
+    let mismatched = derive_structure_key_token_typed_for_scale_without_operand();
+    assert_eq!(mismatched, Err(DeriveDecline::OperandDtypeDisagrees));
+}
+
+/// A scale dtype no operand carries: the filler middle operand is f32 while the
+/// cell names an `f16` scale.
+fn derive_structure_key_token_typed_for_scale_without_operand()
+-> Result<String, fuel_dispatch::telemetry::structure_key_derive::DeriveDecline> {
+    use fuel_dispatch::telemetry::structure_key_derive::derive_structure_key_token_typed;
+    derive_structure_key_token_typed(
+        &DeclaredFacts::contraction(GemCell {
+            scale_dtype: Some(DType::F16),
+            block_length: Some(32),
+            ..gem_f32(8, 4096, 4096)
+        }),
+        &io(vec![
+            f32c(&[8, 4096]),
+            f32c(&[4096, 4096]),
+            f32c(&[8, 4096]),
+        ]),
+        "cuda:sm90",
+        None,
+    )
 }
 
 /// §6.7-0013(d) — the all-default `(acc + mp)` spelling is a **forbidden
@@ -1337,7 +1460,23 @@ fn mx_element_dtype_declines_as_a_contraction_accumulator_but_derives_as_weight(
     let mut acc = gem_f32(8, 4096, 4096);
     acc.acc_dtype = DType::F4;
     assert_eq!(derive(acc), Err(DeriveDecline::ElementDtypeAsAccumulator));
+    // The weight operand presents the f4 it names (`sk8` §6.6-0015).
+    let mx_ops = io(vec![
+        f32c(&[8, 4096]),
+        co(&[4096, 4096], DType::F4),
+        f32c(&[8, 4096]),
+    ]);
     let mut weight = gem_f32(8, 4096, 4096);
     weight.weight_dtype = DType::F4;
-    assert!(derive(weight).is_ok());
+    assert!(
+        derive_structure_key_token_typed(
+            &DeclaredFacts::contraction(weight),
+            &mx_ops,
+            "cuda:sm89",
+            None
+        )
+        .is_ok()
+    );
+    // With an f32 weight operand it is the typed decline, never a key.
+    assert_eq!(derive(weight), Err(DeriveDecline::OperandDtypeDisagrees));
 }

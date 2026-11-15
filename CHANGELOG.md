@@ -144,6 +144,31 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.48.0 - 2026-11-15 (PM-allocation pending; BREAKING)
+
+### Breaking
+
+- `fuel-dispatch` (`telemetry` feature): the structure-key deriver moves **sk6 to sk8** (KISS 0.18.0 at `11407f7`). Every derived token changes (`sk8|` prefix), so a persisted `sk6`/`sk7` token is re-derived, never decoded.
+  - Every per-operand sub-key carries the operand's own dtype as a mandatory part before `dl`/`dc`; cells differing in any one operand's dtype derive different keys, and a reserved dtype in any operand declines.
+  - `GemCell` gains `block_length: Option<u32>` (the `g16`/`g32` coordinate after `q<sdt>`; a source break for every `GemCell { .. }` literal), and a `ctr` cell whose `<wdt>`, `<out>` or `q<sdt>` is not a dtype some operand carries declines.
+  - `DeriveDecline` gains `BlockLengthMissing`, `BlockLengthUnsupported` and `OperandDtypeDisagrees` (the enum is `non_exhaustive`).
+  - `MAX_OPERANDS` is 16 (was 8).
+
+### Added
+
+- `DeclaredFacts::vec_access_cap_bytes` and `with_vec_access_cap_bytes`: the target namespace's vector-access cap (KISS-CLASSIFY §6.8-0018), 16 when absent, a zero cap declines (ROADMAP row 110).
+- `tests/kiss_derivation_vectors.rs` feeds the 75 derivation vectors, `ctr` included (ROADMAP row 109): operand-axis roles become a `GemCell`, role-level declines are compared by name, and the outcome sets are pinned.
+
+### Changed
+
+- Corpus re-vendored byte-for-byte at KISS `11407f7`: `structure_key_vectors.json` (36 positive, 38 decline), `structure_key_derivation_vectors.json`, `dtype_manifest.json` (`fuel-dispatch/fixtures/kiss-corpus/PROVENANCE.md`). The `cell_class_ndx_index_role_declared` cell now uses an f32 index operand because the vector's bytes spell `f32` for it.
+- `op_manifest.json` and the OpAttrs corpora are not re-vendored (the matmul accuracy-bound blob has no Fuel consumer yet).
+
+### Not verified
+
+- 14 derivation vectors are NOT-EXPRESSIBLE (an `i4` or `f8e4m3fnuz` operand; no such `DType`, GAP-097); the block-length logic they exercise is measured on f32 analogs in `kiss_structure_key_byte_match.rs`.
+- Baracuda's own `structure_key_token` is unchanged; this is Fuel's independent deriver.
+
 ## v0.47.36 - 2026-11-14 (PM-allocation pending)
 
 ### Changed

@@ -59,7 +59,7 @@
 
 use fuel_dispatch::telemetry::structure_key::FdxOperandDesc;
 use fuel_dispatch::telemetry::structure_key_derive::{
-    AccMp, CellOperand, DeclaredFacts, DequantForm, GemMathPrecision, ReduceAxes,
+    AccMp, CellOperand, DeclaredFacts, DequantForm, GemCell, GemMathPrecision, ReduceAxes,
     derive_structure_key_token_typed,
 };
 use fuel_ir::{DType, Layout, Shape};
@@ -86,6 +86,9 @@ fn dtype_of(token: &str) -> Option<DType> {
         "f8e5m2" => DType::F8E5M2,
         "f8e8m0" => DType::F8E8M0,
         "f8e6m2" => DType::F8E6M2,
+        "f4e2m1" => DType::F4,
+        "f6e2m3" => DType::F6E2M3,
+        "f6e3m2" => DType::F6E3M2,
         _ => return None,
     })
 }
@@ -233,16 +236,189 @@ fn acc_mp_of(v: &serde_json::Value, compute: DType) -> Result<AccMp, String> {
     })
 }
 
-/// A contraction is out of scope for a derivation vector (no M/N/K roles).
-fn check_in_scope(v: &serde_json::Value) -> Result<(), String> {
-    if v["contraction_declared"].as_bool() == Some(true) {
-        return Err(
-            "contraction declared, but the vector carries no M/N/K/batch roles \
-             (batch role undefined upstream, KISS#543)"
-                .to_string(),
-        );
+/// Why a vector's cell could not be handed to the deriver.
+enum BuildErr {
+    /// Fuel has no way to state the cell (an absent surface).
+    NotExpressible(String),
+    /// The role hints themselves are invalid: a decline (KISS reason code) made
+    /// while turning operand-axis roles into the extents a `GemCell` carries.
+    /// KISS's reference decides these from the roles, before any key exists.
+    Decline(&'static str),
+}
+
+impl From<String> for BuildErr {
+    fn from(s: String) -> Self {
+        Self::NotExpressible(s)
     }
-    Ok(())
+}
+
+impl From<&str> for BuildErr {
+    fn from(s: &str) -> Self {
+        Self::NotExpressible(s.to_string())
+    }
+}
+
+/// An `{operand, axis}` role as the extent of that operand axis, declining on
+/// an out-of-range slot or axis. Also returns the iteration-frame axis it
+/// occupies (right-aligned, §6.6-0013).
+fn role_extent(
+    ops: &[serde_json::Value],
+    frame_rank: usize,
+    role: &serde_json::Value,
+) -> Result<(i64, usize, (u64, u64)), BuildErr> {
+    let slot = role["operand"].as_u64().ok_or("role operand")?;
+    let axis = role["axis"].as_u64().ok_or("role axis")?;
+    let op = ops
+        .get(slot as usize)
+        .ok_or(BuildErr::Decline("ContractionAxisInvalid"))?;
+    let ext = op["extents"].as_array().ok_or("extents")?;
+    let e = ext
+        .get(axis as usize)
+        .ok_or(BuildErr::Decline("ContractionAxisInvalid"))?;
+    let frame_axis = frame_rank - ext.len() + axis as usize;
+    Ok((e.as_i64().ok_or("extent")?, frame_axis, (slot, axis)))
+}
+
+/// The slot a `weight`/`scale` role names, declining when it is out of range.
+fn role_slot(
+    v: &serde_json::Value,
+    key: &str,
+    n_operands: usize,
+) -> Result<Option<usize>, BuildErr> {
+    match v["contraction"][key].as_u64() {
+        None => Ok(None),
+        Some(s) if (s as usize) < n_operands => Ok(Some(s as usize)),
+        Some(_) => Err(BuildErr::Decline("RoleSlotOutOfRange")),
+    }
+}
+
+/// The batch role: frame axes (outermost = 0) validated against the frame, the
+/// M/N/K roles and the output, returning the batch extent (their product), or
+/// `None` when the cell is not batched.
+fn batch_extent(
+    ops: &[serde_json::Value],
+    frame: &[i64],
+    mnk_frame_axes: &[usize],
+    axes: &[serde_json::Value],
+) -> Result<Option<i64>, BuildErr> {
+    if axes.is_empty() {
+        return Ok(None);
+    }
+    let out_rank = ops
+        .iter()
+        .find(|o| o["use"] == "out")
+        .map(|o| o["extents"].as_array().map_or(0, |e| e.len()))
+        .unwrap_or(0);
+    let mut seen: Vec<usize> = Vec::new();
+    let mut product = 1i64;
+    for a in axes {
+        let ax = a.as_u64().ok_or("batch axis")? as usize;
+        if ax >= frame.len() {
+            return Err(BuildErr::Decline("BatchAxisOutOfRange"));
+        }
+        if seen.contains(&ax) {
+            return Err(BuildErr::Decline("BatchAxisDuplicate"));
+        }
+        if mnk_frame_axes.contains(&ax) {
+            return Err(BuildErr::Decline("BatchAxisOverlapsContractionRole"));
+        }
+        if ax < frame.len() - out_rank {
+            return Err(BuildErr::Decline("BatchAxisNotInOutput"));
+        }
+        if frame[ax] < 1 {
+            return Err(BuildErr::Decline("BatchAxisNonPositiveExtent"));
+        }
+        seen.push(ax);
+        product *= frame[ax];
+    }
+    Ok(Some(product))
+}
+
+/// The element-count product of the weight's `quant` `block_shape`: the block
+/// length (§6.6-0022a), `None` when the weight carries no `block_shape`.
+fn block_length_of(weight: &serde_json::Value) -> Option<u32> {
+    let shape = weight["block_shape"].as_array()?;
+    if shape.is_empty() {
+        return None;
+    }
+    Some(
+        shape
+            .iter()
+            .map(|x| x.as_u64().unwrap_or(0) as u32)
+            .product(),
+    )
+}
+
+/// The `ctr` contraction facts of a vector: the roles (operand axes) turned
+/// into the extents and dtype coordinates a [`GemCell`] carries.
+fn contraction_of(v: &serde_json::Value) -> Result<GemCell, BuildErr> {
+    let ops = v["operands"].as_array().ok_or("no operands")?;
+    let c = &v["contraction"];
+    let rank = ops
+        .iter()
+        .map(|o| o["extents"].as_array().map_or(0, |e| e.len()))
+        .max()
+        .unwrap_or(0);
+    // Per-axis maximum extent (§6.5-0010); an axis no operand has stays 1, and a
+    // zero every operand agrees on stays 0 (a max seeded at 1 would hide it).
+    let mut frame: Vec<Option<i64>> = vec![None; rank];
+    for o in ops {
+        let ext = o["extents"].as_array().ok_or("extents")?;
+        let off = rank - ext.len();
+        for (i, e) in ext.iter().enumerate() {
+            let e = e.as_i64().ok_or("extent")?;
+            frame[off + i] = Some(frame[off + i].map_or(e, |f| f.max(e)));
+        }
+    }
+    let frame: Vec<i64> = frame.into_iter().map(|f| f.unwrap_or(1)).collect();
+    let weight = role_slot(v, "weight", ops.len())?;
+    let scale = role_slot(v, "scale", ops.len())?;
+    let (m, mf, mr) = role_extent(ops, rank, &c["m"])?;
+    let (n, nf, nr) = role_extent(ops, rank, &c["n"])?;
+    let (k, kf, kr) = role_extent(ops, rank, &c["k"])?;
+    if mr == nr || mr == kr || nr == kr {
+        return Err(BuildErr::Decline("ContractionAxisInvalid"));
+    }
+    let out = ops
+        .iter()
+        .find(|o| o["use"] == "out")
+        .ok_or(BuildErr::Decline("ContractionNoOutput"))?;
+    let batch = batch_extent(
+        ops,
+        &frame,
+        &[mf, nf, kf],
+        c["batch_axes"].as_array().ok_or("batch_axes")?,
+    )?;
+    let dt = |o: &serde_json::Value| {
+        let tok = o["dtype"].as_str().ok_or("operand dtype")?;
+        dtype_of(tok).ok_or_else(|| format!("no Fuel DType for `{tok}` (GAP-097 absent surface)"))
+    };
+    // The weight defaults to operand 1, the usual rhs, when none is designated.
+    let weight_op = &ops[weight.unwrap_or(1.min(ops.len() - 1))];
+    let compute = dt(&ops[0])?;
+    let acc_dtype = match v["accumulator"].as_str() {
+        None => compute,
+        Some(t) => dtype_of(t).ok_or_else(|| format!("no Fuel DType for accumulator `{t}`"))?,
+    };
+    let math_precision = match v["math_fidelity"].as_str().ok_or("math_fidelity")? {
+        "st" => GemMathPrecision::BitStable,
+        "rm" => GemMathPrecision::ReducedMantissa,
+        other => return Err(format!("unknown math_fidelity `{other}`").into()),
+    };
+    Ok(GemCell {
+        m,
+        n,
+        k,
+        batch,
+        weight_dtype: dt(weight_op)?,
+        acc_dtype,
+        out_dtype: dt(out)?,
+        math_precision,
+        scale_dtype: scale.map(|s| dt(&ops[s])).transpose()?,
+        // A designated scale needs the weight's block length; with none the
+        // deriver is handed `None` and declines `BlockLengthMissing`.
+        block_length: scale.and_then(|_| block_length_of(weight_op)),
+    })
 }
 
 /// The operands in CALL order, each with its call-order slot.
@@ -263,14 +439,21 @@ fn facts_of(v: &serde_json::Value, index: Option<usize>) -> Result<DeclaredFacts
 
 /// Build Fuel's cell from one vector. `canonicalize` applies the §6.6-0014
 /// stable partition and maps the call-order index slot through it.
-fn build(v: &serde_json::Value, canonicalize: bool) -> Result<Built, String> {
-    check_in_scope(v)?;
+fn build(v: &serde_json::Value, canonicalize: bool) -> Result<Built, BuildErr> {
     let mut cells = cells_of(v)?;
     let mut index = v["index_operand"].as_u64().map(|x| x as usize);
     if canonicalize {
         (cells, index) = canonicalized(cells, index);
     }
-    let facts = facts_of(v, index)?;
+    let mut facts = facts_of(v, index)?;
+    // §6.8-0018: the target namespace's declared vector-access cap, when the vector states one.
+    if let Some(cap) = v["target_vec_access_cap_bytes"].as_u64() {
+        facts = facts.with_vec_access_cap_bytes(cap as u32);
+    }
+    let contraction = v["contraction_declared"].as_bool() == Some(true);
+    if contraction {
+        facts.contraction = Some(contraction_of(v)?);
+    }
     let operands: Vec<CellOperand> = cells.into_iter().map(|(_, c)| c).collect();
     let compute = operands
         .first()
@@ -280,14 +463,30 @@ fn build(v: &serde_json::Value, canonicalize: bool) -> Result<Built, String> {
         facts,
         operands,
         target: v["target"].as_str().ok_or("target")?.to_string(),
-        acc_mp: Some(acc_mp_of(v, compute)?),
+        // §6.7-0013: a contraction carries its precision in the `ctr` field, never
+        // beside it, so the `(acc + mp)` coordinate is supplied only otherwise.
+        acc_mp: if contraction {
+            None
+        } else {
+            Some(acc_mp_of(v, compute)?)
+        },
     })
 }
 
 fn evaluate(v: &serde_json::Value, canonicalize: bool) -> Outcome {
     let built = match build(v, canonicalize) {
         Ok(b) => b,
-        Err(why) => return Outcome::NotExpressible(why),
+        Err(BuildErr::NotExpressible(why)) => return Outcome::NotExpressible(why),
+        // A role-level decline is the harness's own, so it compares by name.
+        Err(BuildErr::Decline(wire)) => {
+            return match (v["expect"].as_str(), v["value"].as_str()) {
+                (Some("decline"), Some(want)) if want == wire => Outcome::Pass,
+                (Some("decline"), Some(want)) => {
+                    Outcome::ReasonDiffers(wire.to_string(), want.to_string())
+                }
+                _ => Outcome::UnexpectedDecline(format!("{wire}; the vector expects a token")),
+            };
+        }
     };
     // KISS (cell_note, `call_order_is_not_canonical_order`): a deriver whose input
     // contract is canonical order reports NOT-EXPRESSIBLE on call-order input,
@@ -330,7 +529,7 @@ fn load() -> Vec<serde_json::Value> {
     let doc: serde_json::Value = serde_json::from_str(VECTORS).expect("vectors parse");
     assert_eq!(
         doc["structure_key_schema_version"].as_u64(),
-        Some(6),
+        Some(8),
         "schema version moved: re-measure"
     );
     doc["vectors"].as_array().expect("vectors").clone()
@@ -348,18 +547,30 @@ fn load() -> Vec<serde_json::Value> {
 /// keying it was right and the vector was corrected, see the provenance note.)
 const EMITS_WHERE_KISS_DECLINES: &[&str] = &[];
 
-/// Vectors Fuel cannot state at all (an absent surface, not a mismatch).
+/// Vectors Fuel cannot state at all (an absent surface, not a mismatch). Every
+/// one needs a `DType` Fuel does not have (GAP-097): `i4` (no sub-byte integer)
+/// or `f8e4m3fnuz` (no `fnuz` layouts), so the cell cannot be built and a
+/// decline, where one is required, is by construction. The block-length and
+/// scale-role logic these `i4` weight cells exercise is measured on `f32`
+/// weights instead, modulo the `i4` coordinate, in
+/// `kiss_structure_key_byte_match.rs`.
 const NOT_EXPRESSIBLE: &[&str] = &[
-    // The batch role is undefined upstream (KISS#543) and the vector carries no
-    // M/N/K extents for a `GemCell`.
-    "decline_contraction_out_of_scope",
-    // `i4` has no Fuel `DType` (GAP-097), so both the `/dl` dequant placement
-    // and the bare sub-byte cell are unstatable.
+    // `i4` weight or primary.
+    "ctr_block_length_is_the_product_of_block_shape",
+    "ctr_quantized_no_scale_designated",
+    "ctr_quantized_scale_e8m0",
+    "ctr_quantized_scale_f16",
+    "ctr_weight_first_undeclared_accumulator_defaults_to_operand0_dtype",
+    "ctr_weight_role_not_operand_one",
+    "ctr_weight_second_undeclared_accumulator_defaults_to_operand0_dtype",
+    "decline_ctr_block_length_outside_closed_set",
+    "decline_ctr_scale_without_block_shape",
     "quantized_operand_dequant_form",
     "sub_byte_dtype_i4",
-    // The reserved dtype is `f8e4m3fnuz`: Fuel has no `DType` for the `fnuz`
-    // layouts at all, so the cell cannot be built (the decline is by construction).
+    // `f8e4m3fnuz`, the reserved dtype.
+    "decline_ctr_reserved_weight_dtype",
     "decline_reserved_dtype",
+    "decline_reserved_dtype_in_nonprimary_operand",
 ];
 
 /// Fed in CALL order, Fuel's deriver declines because it documents that it takes
@@ -381,7 +592,7 @@ fn rows() -> BTreeMap<String, (Outcome, Outcome, bool)> {
 #[test]
 fn report_every_vector_under_both_feeding_disciplines() {
     let rows = rows();
-    assert_eq!(rows.len(), 36, "vector count changed: re-pin the tables");
+    assert_eq!(rows.len(), 75, "vector count changed: re-pin the tables");
     for (name, (given, canon, golden)) in &rows {
         println!(
             "[kiss-deriv] {:<44} golden={:<5} as-given={:<18} canonicalized={}",
@@ -464,7 +675,7 @@ fn divergences_and_absent_surfaces_are_exactly_the_pinned_sets() {
     let vs = load();
     let tok = vs.iter().find(|v| v["expect"] == "token").unwrap();
     let mut wrong = tok.clone();
-    wrong["value"] = serde_json::Value::String("sk6|not-the-token".to_string());
+    wrong["value"] = serde_json::Value::String("sk8|not-the-token".to_string());
     assert!(matches!(evaluate(&wrong, true), Outcome::Fail(..)));
     let dec = vs
         .iter()
@@ -496,5 +707,5 @@ fn divergences_and_absent_surfaces_are_exactly_the_pinned_sets() {
         .values()
         .filter(|r| r.0 == Outcome::Pass && r.1 == Outcome::Pass)
         .count();
-    assert_eq!(both_pass + accounted, 36, "an unpinned outcome exists");
+    assert_eq!(both_pass + accounted, 75, "an unpinned outcome exists");
 }
