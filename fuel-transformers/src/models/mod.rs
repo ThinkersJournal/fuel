@@ -118,6 +118,7 @@ pub mod lazy_qwen3_5_attn;
 pub mod lazy_qwen3_5_decode;
 pub mod lazy_qwen3_5_forward;
 pub mod lazy_qwen3_5_gdn;
+pub mod lazy_qwen3_5_gguf;
 pub mod lazy_qwen3_moe;
 pub mod lazy_qwen3_vl;
 pub mod lazy_qwen3_vl_text;
