@@ -144,6 +144,21 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.48.1 - 2026-11-15 (PM-allocation pending)
+
+### Changed
+
+- Dependency lockstep onto the published Baracuda / Unpopped / Fireline line: `baracuda-*` `0.1.0-alpha.94` to `0.1.0-alpha.148` (all 18 workspace pins), `baracuda-cuda-seam` `0.45.0` to `0.47.0` (pulls `baracuda-cuda-emit` 0.47.0), `unpopped-vocab` `0.45.12` to `0.47.0`, `fireline-grammar` `~0.1` to `~0.4`, `fireline-synth` `~0.2` to `~0.4`. The lock now holds ONE `unpopped-vocab` (0.47.0); the duplicate that `baracuda-kernels-types` alpha.94 forced is gone.
+
+### Verified
+
+- `cargo check --all-targets` and `cargo test` on `fuel-dispatch --features telemetry,baracuda-types,jit`, `fuel-kiss-ref-backend` and `fuel-graph`: no source change needed, no failure.
+
+### Not verified
+
+- No CUDA build and no GPU run: `--features cuda` re-runs the baracuda kernel forge (the forge hash follows the pin, so a cold 2 h forge) and `fuel-cuda-backend` / `fuel-cuda-dispatch` have not been compiled against alpha.148 or cuda-emit 0.47.0 (breaking: `Cuda::lower_kernel` lowers memory/control statements). Needs a forge slot and the PM's go.
+- Baracuda's own `structure_key_token` is now sk8; Fuel's deriver moved to sk8 in fuel#683 (0.48.0, merged), so the two now agree on the version; a Baracuda-vs-Fuel byte-match on a CUDA build has not been run.
+
 ## v0.48.0 - 2026-11-15 (PM-allocation pending; BREAKING)
 
 ### Breaking
