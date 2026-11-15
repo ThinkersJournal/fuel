@@ -5492,11 +5492,11 @@ fn qmatmul_generic_f32<T: fuel_quantized::GgmlType>(
 /// Q4_0 quantized matmul. Activations F32, weights `[n,
 /// k/32]` `BlockQ4_0`s, output F32.
 ///
-/// **Accuracy is ggml's, not the exact product's** (ROADMAP row 129, not a defect): like ggml's
-/// CPU path (`vec_dot_type = Q8_0` for Q4_0 and Q8_0, `Q8_K` for the K-quants) the activations
-/// are quantized to 8 bits before the integer dot, so the result is about 3e-3 to 8e-3 off the
-/// f64 product of the f32 activations and the dequantized weights (scale-relative, measured).
-/// Do not change this toward the exact product: it would stop matching ggml's reference output.
+/// **Float route (board 307): the weights are dequantized per row and multiplied against the f32
+/// activations; nothing is quantized on the activation side.** (This comment used to say the
+/// activations were quantized to 8 bits for an integer dot, 3e-3 to 8e-3 off the exact product,
+/// ROADMAP row 129: those kernels were removed on 2026-11-01, see `fuel_quantized::matmul`.
+/// `tests/qmatmul_float_route.rs` pins the float behavior against an 8-bit-activation control.)
 pub fn qmatmul_q4_0_f32(
     activations: &CpuStorageBytes,
     weight_bytes: &CpuStorageBytes,
@@ -5611,6 +5611,21 @@ qmatmul_thin_wrapper!(qmatmul_q2k_f32, fuel_quantized::BlockQ2K, "qmatmul_q2k_f3
 qmatmul_thin_wrapper!(qmatmul_q3k_f32, fuel_quantized::BlockQ3K, "qmatmul_q3k_f32");
 qmatmul_thin_wrapper!(qmatmul_q5k_f32, fuel_quantized::BlockQ5K, "qmatmul_q5k_f32");
 qmatmul_thin_wrapper!(qmatmul_q6k_f32, fuel_quantized::BlockQ6K, "qmatmul_q6k_f32");
+qmatmul_thin_wrapper!(
+    qmatmul_iq4_nl_f32,
+    fuel_quantized::iq4::BlockIq4Nl,
+    "qmatmul_iq4_nl_f32"
+);
+qmatmul_thin_wrapper!(
+    qmatmul_iq4_xs_f32,
+    fuel_quantized::iq4::BlockIq4Xs,
+    "qmatmul_iq4_xs_f32"
+);
+qmatmul_thin_wrapper!(
+    qmatmul_iq3_s_f32,
+    fuel_quantized::iq_grid_types::BlockIq3S,
+    "qmatmul_iq3_s_f32"
+);
 
 // =============================================================================
 // 2D Convolution — multi-dtype (f64 native, bf16/f16 via f32 acc)
