@@ -144,6 +144,15 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.32 - 2026-11-14 (PM-allocated; CI only)
+
+### Changed
+
+- `.github/workflows/rust-ci.yml`: the `portfolio` job now calls coderipper's reusable workflow at 58e2f7ab (installs 0.43.77) instead of 33bd9292 (0.9.37). The old binary could not parse the `[architecture]` table from v0.47.30 (TOML parse error at `.coderipper.toml` line 59). No code change.
+
+### Not verified
+
+- The portfolio job on this PR: read its whole log before calling it green. The `fuel-cuda-backend` "multiple versions of unpopped_vocab" error is separate (baracuda-kernels-types alpha.95 still requires unpopped-vocab ^0.43.2) and waits on a Baracuda publish.
 ## v0.47.31 - 2026-11-14 (PM-allocated)
 
 ### Added
