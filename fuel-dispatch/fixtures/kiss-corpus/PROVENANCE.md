@@ -25,9 +25,9 @@ vendoring (2026-10-14) added `ops-narrow-move-nan`, `ops-narrow-select-nan`,
 | `ops-arith.json` | `f4952b4c` (same blob at `5b28bf51`) | `aee2de79a709e722f3c439047bf90c638aec9b24` | `kiss-oracle-vectors-v1.json` |
 | `ops-minmax-ordinary.json` | `f4952b4c` (same blob at `5b28bf51`) | `7bd6cc394bd247f9ca34edfc957d70a37432af97` | `kiss-oracle-vectors-v1.json` |
 | `ops-minmax-signed-zero.json` | `f4952b4c` (same blob at `5b28bf51`) | `d06bdb85c8e626750318b61585b4af3ea5c8d4b4` | `kiss-oracle-vectors-v1.json` |
-| `dtype_manifest.json` | **`e786097`** (was `bafbe07`) | `129690fe20618e3c2b702c008e1e730369d72de9` | `kiss-dtype-manifest` |
-| `structure_key_vectors.json` | **`bafbe07`** (was `86196f7`) | `05c7a99bff4451dad318393c3360ac254d598da1` | `kiss-structure-key-vectors` |
-| `structure_key_derivation_vectors.json` | **`86196f7`** (sk6) | `393138b0540bfec0e81e78666ecf1c18f6c665f9` | derivation vectors |
+| `dtype_manifest.json` | **`11407f7`** (sk8; was `e786097`) | `195db1a26fb7c557ed8defbaa084be8e5ba670db` | `kiss-dtype-manifest` |
+| `structure_key_vectors.json` | **`11407f7`** (sk8; was `bafbe07`) | `8422a0420c3d929beaacbdc1f4219da3c544d624` | `kiss-structure-key-vectors` |
+| `structure_key_derivation_vectors.json` | **`11407f7`** (sk8; was `86196f7`) | `e28bb6b29ed809580e46132a331754ee2aa2e498` | derivation vectors |
 | `ops-narrow-move-nan.json` | **`5b28bf51`** | `c108226af556aa1c6a45e8e43b85ab29b96dec2d` | `kiss-oracle-vectors-v1.json` |
 | `ops-narrow-select-nan.json` | **`5b28bf51`** | `2efbfd259c43936d8cf6dc24b1375f6c9b5ae81b` | `kiss-oracle-vectors-v1.json` |
 | `ops-transcendental-nan.json` | **`ff9f52f5`** (blob first at `9ea8c05d`) | `d4f8b7486ca2b082252f4d305dff8edff2db5672` | `kiss-oracle-vectors-v1.json` |
@@ -256,3 +256,19 @@ Copy the current `conformance/corpus/*.json` from KISS at a named commit, update
 the pinned commit + blob hashes + date above, add any NEW file to the
 `include_str!` set in `kiss_corpus.rs` (not just to this directory), and re-run
 `cargo test -p fuel-dispatch --features jit --lib kiss_corpus`.
+
+## sk8 re-vendor (2026-11-15, KISS 0.18.0 at `11407f7`)
+
+`structure_key_vectors.json`, `structure_key_derivation_vectors.json` and `dtype_manifest.json` were re-vendored
+byte-for-byte (`git show 11407f7:conformance/corpus/<file>`; the git blob ids in the table equal `git hash-object
+--no-filters` of the vendored files). The deriver moved sk6 to sk8 (fuel-dispatch 0.48.0, breaking): every token changes.
+
+- `structure_key_vectors.json`: 36 positive vectors (two new: `operand_count_9_above_the_sk6_limit`,
+  `operand_count_16_at_max_operands`) and 38 decline vectors (eleven new). Every sub-key now ends `/<dtype>`.
+- `structure_key_derivation_vectors.json`: 75 vectors (was 36), `ctr` cells included, each operand carries a `block_shape`,
+  and `target_vec_access_cap_bytes` states the target namespace's vector-access cap (§6.8-0018). The harness
+  (`tests/kiss_derivation_vectors.rs`) turns a `ctr` vector's operand-axis roles into a `GemCell`; role-level declines
+  (`ContractionAxisInvalid`, `RoleSlotOutOfRange`, `Batch*`, ...) are the harness's, compared by name.
+- `dtype_manifest.json`: only `structure_key_schema_version` and `token_prefix` change.
+- NOT re-vendored: `op_manifest.json` (still `e786097`; the 0.18.0 manifest adds six ops) and the OpAttrs corpora
+  (`opattrs_vectors.json`, `opattrs_value_vectors.json`), which the matmul accuracy-bound blob needs and no Fuel code reads yet.

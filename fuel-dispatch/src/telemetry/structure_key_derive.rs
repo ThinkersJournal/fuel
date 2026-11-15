@@ -2,7 +2,7 @@
 //! Fuel's INDEPENDENT `structure_key` derivation — the second implementation
 //! for the two-implementation freeze-gate (KISS-CLASSIFY §6.6/§6.7).
 //!
-//! This is deliberately **Baracuda-free**: it recomputes the same `sk6` token
+//! This is deliberately **Baracuda-free**: it recomputes the same `sk8` token
 //! from Fuel's own [`FdxOperandDesc`] projection, with **no** `baracuda_kernels_*`
 //! import, so a byte-match against Baracuda's emitted token is a genuine
 //! two-implementation agreement. (K1 opacity — "Fuel never derives the key" —
@@ -10,9 +10,33 @@
 //! deliberate exception: Fuel derives the key independently *to check* it, never
 //! to route.)
 //!
-//! Schema version: **sk6** (KISS-CLASSIFY §6.6-0022 / §6.7-0014, KISS #588 at
-//! `86196f7`, conformance 0.4.0). Derived from the spec clauses, not from
+//! Schema version: **sk8** (KISS-CLASSIFY §6.6-0007 / §6.6-0015 / §6.6-0022a,
+//! KISS 0.18.0 at `11407f7`). Derived from the spec clauses, not from
 //! Baracuda's implementation.
+//!
+//! # The sk6→sk8 delta this deriver implements (a breaking change: every token moves)
+//!
+//! - **The version prefix is `sk8|`**; a persisted `sk6` (or `sk7`) token is
+//!   re-derived, never decoded (§6.7-0014).
+//! - **Every per-operand sub-key carries its operand's own dtype** as a mandatory
+//!   sixth part, before the optional `dl`/`dc` (§6.6-0007, §6.7-0004), so two cells
+//!   that differ in any one operand's dtype derive different keys (§6.6-0015). A
+//!   reserved dtype in any operand declines ([`DeriveDecline::ReservedDtype`]).
+//! - **A `ctr` cell's `<wdt>`, `<out>` and `q<sdt>` must be dtypes some operand
+//!   carries** ([`DeriveDecline::OperandDtypeDisagrees`]); `<acc>` is not an
+//!   operand dtype and is not checked.
+//! - **A quantized `ctr` cell keys its block length**, `g16` or `g32`, right after
+//!   `q<sdt>` ([`GemCell::block_length`], §6.6-0022a); outside `{16, 32}` or
+//!   without a scale it declines ([`DeriveDecline::BlockLengthUnsupported`],
+//!   [`DeriveDecline::BlockLengthMissing`]).
+//! - **`MAX_OPERANDS` is 16** (sk7, §6.4-0002): nine to sixteen operands, which
+//!   `sk6` declined, now derive.
+//! - **The vector-access byte cap is the target namespace's** (§6.8-0018),
+//!   [`DeclaredFacts::vec_access_cap_bytes`], 16 when none is declared.
+//! - There is no `x<n>` escape for a type KISS cannot name (§6.6-0026); Fuel's
+//!   deriver never spelled one.
+//!
+//! The sk5→sk6 notes below still describe what the deriver implements.
 //!
 //! # The sk5→sk6 delta this deriver implements
 //!
@@ -93,7 +117,7 @@ use fuel_ir::DType;
 /// §6.4-0001 — the largest rank a cell operand may carry.
 const MAX_RANK: usize = 8;
 /// §6.4-0002 — the largest number of operands a cell may carry.
-const MAX_OPERANDS: usize = 8;
+const MAX_OPERANDS: usize = 16;
 /// §6.4-0004 — the largest serialized token length, in bytes.
 const MAX_TOKEN_BYTES: usize = 4096;
 
@@ -232,6 +256,12 @@ pub struct GemCell {
     /// The caller names the role; it is never inferred from operand position
     /// or dtype (an `f16` scale is as legitimate as an `f8e8m0` one).
     pub scale_dtype: Option<DType>,
+    /// The **block length** of the designated scale: the number of elements
+    /// that share one scale, the product of the weight's `quant`
+    /// `block_shape` (KISS-CLASSIFY §6.6-0022a, `sk8`). Required iff
+    /// `scale_dtype` is `Some` (the `g16`/`g32` coordinate follows `q<sdt>`);
+    /// the closed set is `{16, 32}`.
+    pub block_length: Option<u32>,
 }
 
 /// The **non-contraction** precision coordinate `(acc + mp)` — the optional
@@ -445,6 +475,11 @@ pub struct DeclaredFacts {
     /// The reduced-axis set. Non-empty in the iteration frame ⇒ class `rdc`
     /// unless `ctr`/`ndx` (rule 3).
     pub reduced_axes: Option<ReduceAxes>,
+    /// The vector-access byte cap the target's namespace declares
+    /// (KISS-CLASSIFY §6.8-0018), in bytes. `None` is the 16 every registered
+    /// namespace (`cuda`, `vulkan`) declares; a namespace that declares another
+    /// supplies it here. It changes only the derived `vec` field.
+    pub vec_access_cap_bytes: Option<u32>,
 }
 
 impl DeclaredFacts {
@@ -467,6 +502,13 @@ impl DeclaredFacts {
             index_operand: Some(slot),
             ..Self::default()
         }
+    }
+
+    /// The target namespace declares this vector-access byte cap (§6.8-0018).
+    #[must_use]
+    pub fn with_vec_access_cap_bytes(mut self, bytes: u32) -> Self {
+        self.vec_access_cap_bytes = Some(bytes);
+        self
     }
 
     /// A reduced-axis set is declared.
@@ -667,6 +709,16 @@ pub enum DeriveDecline {
     /// (KISS-CLASSIFY-6.1-0016): usable as a weight, output or primary dtype,
     /// never as an `<acc>`.
     ElementDtypeAsAccumulator,
+    /// A scale operand is designated but no block length is available
+    /// (KISS-CLASSIFY §6.6-0022a): the weight's `quant` record has no
+    /// `block_shape`, or `block_length` was not supplied; or a block length
+    /// was supplied with no scale operand.
+    BlockLengthMissing,
+    /// The block length is outside the closed set `{16, 32}` (§6.6-0022a).
+    BlockLengthUnsupported,
+    /// A contraction coordinate (`<wdt>`, `<out>`, `q<sdt>`) is not the dtype
+    /// of any operand sub-key of the same token (§6.6-0015, `sk8`).
+    OperandDtypeDisagrees,
 }
 
 impl DeriveDecline {
@@ -688,6 +740,9 @@ impl DeriveDecline {
             DeriveDecline::InvalidContraction => "InvalidContraction",
             DeriveDecline::TokenTooLong => "TokenTooLong",
             DeriveDecline::ElementDtypeAsAccumulator => "ElementDtypeAsAccumulator",
+            DeriveDecline::BlockLengthMissing => "BlockLengthMissing",
+            DeriveDecline::BlockLengthUnsupported => "BlockLengthUnsupported",
+            DeriveDecline::OperandDtypeDisagrees => "OperandDtypeDisagrees",
         }
     }
 }
@@ -910,21 +965,27 @@ pub fn derive_structure_key_token_typed(
     // the reduce field use.
     let innermost_reduced = rank >= 1 && (reduced_mask >> (rank - 1)) & 1 == 1;
 
+    // §6.8-0018: the cap is a positive byte count, 16 when the namespace declares none.
+    let vec_cap = match facts.vec_access_cap_bytes {
+        None => 16,
+        Some(0) => return Err(DeriveDecline::InvalidTarget),
+        Some(c) => c,
+    };
     // Field 7 — per-operand sub-keys, canonical order, each derived in the frame.
     let operand_keys: Vec<String> = operands
         .iter()
-        .map(|o| operand_sub_key(o, &frame, innermost_reduced))
-        .collect();
+        .map(|o| operand_sub_key(o, &frame, innermost_reduced, vec_cap))
+        .collect::<Result<_, _>>()?;
 
     let mut token = format!(
-        "sk6|{class}|{dtype}|{target}|{idx}|{work}|r{rank}|{ops}|{reduce}",
+        "sk8|{class}|{dtype}|{target}|{idx}|{work}|r{rank}|{ops}|{reduce}",
         class = class.code(),
         idx = index_width(operands),
         work = work_class(&frame),
         ops = operand_keys.join(";"),
         reduce = reduce_field(reduced_mask, rank),
     );
-    append_precision_fields(&mut token, facts, class, acc_mp, operands[0].desc.dtype)?;
+    append_precision_fields(&mut token, facts, class, acc_mp, operands)?;
     if token.len() > MAX_TOKEN_BYTES {
         return Err(DeriveDecline::TokenTooLong); // §6.4-0004 — declines, never truncates
     }
@@ -941,8 +1002,9 @@ fn append_precision_fields(
     facts: &DeclaredFacts,
     class: CellClass,
     acc_mp: Option<AccMp>,
-    compute: DType,
+    operands: &[CellOperand],
 ) -> Result<(), DeriveDecline> {
+    let compute = operands[0].desc.dtype;
     if let Some(a) = acc_mp.filter(|a| a.deviates_from(compute)) {
         if is_mx_element(a.acc_dtype) {
             return Err(DeriveDecline::ElementDtypeAsAccumulator);
@@ -955,7 +1017,7 @@ fn append_precision_fields(
             return Err(DeriveDecline::ElementDtypeAsAccumulator);
         }
         token.push('|');
-        token.push_str(&contraction_field(&cell).ok_or(DeriveDecline::InvalidContraction)?);
+        token.push_str(&contraction_field(&cell, operands)?);
     }
     Ok(())
 }
@@ -964,23 +1026,46 @@ fn append_precision_fields(
 /// `c<m><n><k>/<kdiv>[/b<class>]/<wdt>/<acc>/<out>/<mp>` — six `/`-parts
 /// non-batched, seven batched. Declines (`None`) on a negative role extent or
 /// a dtype outside the closed §6.1 set, never guessing.
-fn contraction_field(cell: &GemCell) -> Option<String> {
-    let m = size_class(cell.m)?;
-    let n = size_class(cell.n)?;
-    let k = size_class(cell.k)?;
+fn contraction_field(cell: &GemCell, operands: &[CellOperand]) -> Result<String, DeriveDecline> {
+    // `sk8` (§6.6-0022a): the block length is closed to {16, 32}, present iff a
+    // scale operand is designated, and never rounded, clamped or omitted.
+    let block = match (cell.scale_dtype, cell.block_length) {
+        (Some(_), None) | (None, Some(_)) => return Err(DeriveDecline::BlockLengthMissing),
+        (Some(_), Some(16)) => "/g16",
+        (Some(_), Some(32)) => "/g32",
+        (Some(_), Some(_)) => return Err(DeriveDecline::BlockLengthUnsupported),
+        (None, None) => "",
+    };
+    let m = size_class(cell.m).ok_or(DeriveDecline::InvalidContraction)?;
+    let n = size_class(cell.n).ok_or(DeriveDecline::InvalidContraction)?;
+    let k = size_class(cell.k).ok_or(DeriveDecline::InvalidContraction)?;
     let kdiv = div_bucket(cell.k);
     let batch = match cell.batch {
-        Some(b) => format!("/b{}", size_class(b)?),
+        Some(b) => format!(
+            "/b{}",
+            size_class(b).ok_or(DeriveDecline::InvalidContraction)?
+        ),
         None => String::new(),
     };
-    let wdt = sk6_dtype_token(cell.weight_dtype)?;
-    let acc = sk6_dtype_token(cell.acc_dtype)?;
-    let out = sk6_dtype_token(cell.out_dtype)?;
+    let tok = |dt: DType| sk6_dtype_token(dt).ok_or_else(|| dtype_decline(dt));
+    let wdt = tok(cell.weight_dtype)?;
+    let acc = tok(cell.acc_dtype)?;
+    let out = tok(cell.out_dtype)?;
+    // §6.6-0015 (`sk8`): `<wdt>`, `<out>` and `q<sdt>` restate dtypes the
+    // sub-keys carry, so each must be some operand's dtype. `<acc>` is not an
+    // operand dtype and is not checked.
+    let carried = |dt: DType| operands.iter().any(|o| o.desc.dtype == dt);
+    if !carried(cell.weight_dtype)
+        || !carried(cell.out_dtype)
+        || cell.scale_dtype.is_some_and(|dt| !carried(dt))
+    {
+        return Err(DeriveDecline::OperandDtypeDisagrees);
+    }
     let scale = match cell.scale_dtype {
-        Some(dt) => format!("/q{}", sk6_dtype_token(dt)?),
+        Some(dt) => format!("/q{}{block}", tok(dt)?),
         None => String::new(),
     };
-    Some(format!(
+    Ok(format!(
         "c{m}{n}{k}/{kdiv}{batch}/{wdt}/{acc}/{out}/{mp}{scale}",
         mp = cell.math_precision.code(),
     ))
@@ -1082,7 +1167,12 @@ pub fn sk6_dtype_token(dt: DType) -> Option<&'static str> {
 /// operand under one sub-key -- two operands with different real memory
 /// behavior, one spelling. Splitting the two concerns (admissibility mask
 /// vs. this operand's own access pattern) is what KISS#519 fixes.
-fn operand_sub_key(co: &CellOperand, frame: &[i64], innermost_reduced: bool) -> String {
+fn operand_sub_key(
+    co: &CellOperand,
+    frame: &[i64],
+    innermost_reduced: bool,
+    vec_cap: u32,
+) -> Result<String, DeriveDecline> {
     let o = &co.desc;
     let rank = frame.len();
     let off = rank - o.shape.len();
@@ -1147,7 +1237,7 @@ fn operand_sub_key(co: &CellOperand, frame: &[i64], innermost_reduced: bool) -> 
             // uses (§6.5-0012): without it the `inner_extent % l == 0` test is
             // VACUOUSLY true at E=0 (every L divides 0), mis-deriving v4 for an
             // empty run — the §6.5-0009(c) zero-extent trap (KISS #82 F4 / #87).
-            if vbytes <= 16
+            if vbytes <= vec_cap
                 && o.align_bytes.is_multiple_of(vbytes)
                 && inner_extent >= l
                 && inner_extent % l == 0
@@ -1163,8 +1253,11 @@ fn operand_sub_key(co: &CellOperand, frame: &[i64], innermost_reduced: bool) -> 
         picked
     };
 
+    // `sk8` (§6.6-0007, §6.6-0015): the operand's OWN dtype token is mandatory
+    // in every sub-key; a reserved dtype in any operand declines.
+    let dtype = sk6_dtype_token(o.dtype).ok_or_else(|| dtype_decline(o.dtype))?;
     let mut key = format!(
-        "{layout}/{mask:02x}/{vec}/{div}/{flip}",
+        "{layout}/{mask:02x}/{vec}/{div}/{flip}/{dtype}",
         flip = if o.flipped { "r" } else { "f" },
     );
     // §6.6-0007 / §6.3-0009a: the sixth component, iff the operand carries a
@@ -1174,7 +1267,7 @@ fn operand_sub_key(co: &CellOperand, frame: &[i64], innermost_reduced: bool) -> 
         key.push('/');
         key.push_str(form.code());
     }
-    key
+    Ok(key)
 }
 
 /// Layout tag (§6.5-0002), the pinned 4-step algorithm over `|stride|`,
@@ -1381,6 +1474,7 @@ mod tests {
             out_dtype: DType::F32,
             math_precision: GemMathPrecision::BitStable,
             scale_dtype: None,
+            block_length: None,
         }
     }
 
@@ -1401,7 +1495,7 @@ mod tests {
         .expect("relu_add f32 must derive a token");
         assert_eq!(
             token,
-            "sk6|ew2|f32|cuda:sm89|ix32|grid|r1|co/00/v4/d16/f;co/00/v4/d16/f;co/00/v4/d16/f|-"
+            "sk8|ew2|f32|cuda:sm89|ix32|grid|r1|co/00/v4/d16/f/f32;co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|-"
         );
     }
 
@@ -1427,7 +1521,7 @@ mod tests {
         for f in facts {
             let token = derive(f, std::slice::from_ref(&op), "cuda:sm89")
                 .unwrap_or_else(|| panic!("{f:?} must derive"));
-            assert!(token.starts_with("sk6|"), "{token} lacks the sk6 prefix");
+            assert!(token.starts_with("sk8|"), "{token} lacks the sk6 prefix");
             assert!(!token.contains("sk2") && !token.contains("sk4"), "{token}");
             let class = token.split('|').nth(1).unwrap();
             assert!(
@@ -1463,32 +1557,44 @@ mod tests {
             (
                 vec![f32c(&[4096]), f32c(&[4096]), f32c(&[4096])],
                 "sk2|bin|f32|cuda:sm89|ix32|grid|r1|co/00/v4/d16/f;co/00/v4/d16/f;co/00/v4/d16/f|-",
-                "sk6|ew2|f32|cuda:sm89|ix32|grid|r1|co/00/v4/d16/f;co/00/v4/d16/f;co/00/v4/d16/f|-",
+                "sk8|ew2|f32|cuda:sm89|ix32|grid|r1|co/00/v4/d16/f/f32;co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|-",
             ),
             (
                 vec![f32c(&[7])],
                 "sk2|bin|f32|cuda:sm89|ix32|warp|r1|co/00/v1/da/f|-",
-                "sk6|ew1|f32|cuda:sm89|ix32|warp|r1|co/00/v1/da/f|-",
+                "sk8|ew1|f32|cuda:sm89|ix32|warp|r1|co/00/v1/da/f/f32|-",
             ),
             (
                 vec![co(&[4096], DType::I16)],
                 "sk2|bin|s16|cuda:sm89|ix32|grid|r1|co/00/v8/d16/f|-",
-                "sk6|ew1|i16|cuda:sm89|ix32|grid|r1|co/00/v8/d16/f|-",
+                "sk8|ew1|i16|cuda:sm89|ix32|grid|r1|co/00/v8/d16/f/i16|-",
             ),
             (
                 vec![f32c(&[128, 256])],
                 "sk2|bin|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f|-",
-                "sk6|ew1|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f|-",
+                "sk8|ew1|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f/f32|-",
             ),
         ];
         for (ops, sk2, expect) in cases {
             let token = derive(DeclaredFacts::none(), &ops, "cuda:sm89").expect("derives");
             assert_eq!(token, expect);
-            let tail = |t: &str| t.split('|').skip(3).collect::<Vec<_>>().join("|");
+            // `sk8` appends the operand's dtype to every sub-key; strip it so the
+            // sk2-era battery still pins everything else.
+            let tail = |t: &str| {
+                let mut f: Vec<String> = t.split('|').skip(3).map(String::from).collect();
+                let dtype = t.split('|').nth(2).unwrap().replace("s16", "i16");
+                let suffix = format!("/{dtype}");
+                f[4] = f[4]
+                    .split(';')
+                    .map(|sk| sk.strip_suffix(suffix.as_str()).unwrap_or(sk))
+                    .collect::<Vec<_>>()
+                    .join(";");
+                f.join("|")
+            };
             assert_eq!(
                 tail(&token),
                 tail(sk2),
-                "fields 4.. moved between the sk2-era battery and sk5"
+                "fields 4.. moved between the sk2-era battery and sk8 (modulo the per-operand dtype)"
             );
             let dt = |t: &str| t.split('|').nth(2).unwrap().to_string();
             assert_eq!(dt(&token), dt(sk2).replace("s16", "i16"));
@@ -1508,14 +1614,14 @@ mod tests {
         let cuda = derive(cell, &ops, "cuda:sm89").expect("derives");
         assert_eq!(
             cuda,
-            "sk6|ctr|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f;co/00/v4/d16/f;co/00/v4/d16/f|-|ctll/d16/f32/f32/f32/st"
+            "sk8|ctr|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f/f32;co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|-|ctll/d16/f32/f32/f32/st"
         );
         // The same cell for a Vulkan target is a different cell (byte-exact
         // target rule, §6.8-0002).
         let vk = derive(cell, &ops, "vulkan:spirv1.6").expect("derives");
         assert_eq!(
             vk,
-            "sk6|ctr|f32|vulkan:spirv1.6|ix32|grid|r2|co/00/v4/d16/f;co/00/v4/d16/f;co/00/v4/d16/f|-|ctll/d16/f32/f32/f32/st"
+            "sk8|ctr|f32|vulkan:spirv1.6|ix32|grid|r2|co/00/v4/d16/f/f32;co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|-|ctll/d16/f32/f32/f32/st"
         );
     }
 
@@ -1660,7 +1766,7 @@ mod tests {
             derive(DeclaredFacts::contraction(batched), &ops, "cuda:sm90").expect("derives");
         assert_eq!(
             token,
-            "sk6|ctr|f32|cuda:sm90|ix32|grid|r2|co/00/v4/d16/f;co/00/v4/d16/f;co/00/v4/d16/f|-|cmll/d16/bm/f32/f32/f32/st"
+            "sk8|ctr|f32|cuda:sm90|ix32|grid|r2|co/00/v4/d16/f/f32;co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|-|cmll/d16/bm/f32/f32/f32/st"
         );
         // The non-batched twin differs exactly by the absent /bm coordinate.
         let plain = derive(
@@ -1693,11 +1799,11 @@ mod tests {
             derive(DeclaredFacts::contraction(tf32_cell), &ops, "cuda:sm90").expect("derives");
         assert_eq!(
             simt,
-            "sk6|ctr|f32|cuda:sm90|ix32|grid|r2|co/00/v4/d16/f;co/00/v4/d16/f;co/00/v4/d16/f|-|ctll/d16/f32/f32/f32/st"
+            "sk8|ctr|f32|cuda:sm90|ix32|grid|r2|co/00/v4/d16/f/f32;co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|-|ctll/d16/f32/f32/f32/st"
         );
         assert_eq!(
             tf32,
-            "sk6|ctr|f32|cuda:sm90|ix32|grid|r2|co/00/v4/d16/f;co/00/v4/d16/f;co/00/v4/d16/f|-|ctll/d16/f32/f32/f32/rm"
+            "sk8|ctr|f32|cuda:sm90|ix32|grid|r2|co/00/v4/d16/f/f32;co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|-|ctll/d16/f32/f32/f32/rm"
         );
         assert_ne!(simt, tf32, "SIMT-f32 and TF32 must not collide");
     }
@@ -1728,7 +1834,21 @@ mod tests {
                 DType::F8E4M3,
             )
         };
-        let ops = [f8(&[8, 4096]), f8(&[4096, 4096]), f8(&[8, 4096])];
+        // `sk8` (§6.6-0015): the output coordinate `<out>` must be some operand's
+        // dtype, so the output operand is the f16 it names.
+        let f16_out = FdxOperandDesc::from_layout(
+            &Layout::new(
+                Shape::from_dims(&[8, 4096]),
+                Layout::contiguous(Shape::from_dims(&[8, 4096]))
+                    .stride()
+                    .iter()
+                    .copied()
+                    .collect::<StrideVec>(),
+                4,
+            ),
+            DType::F16,
+        );
+        let ops = [f8(&[8, 4096]), f8(&[4096, 4096]), f16_out];
         let cell = GemCell {
             weight_dtype: DType::F8E4M3,
             acc_dtype: DType::F32,
@@ -1738,7 +1858,7 @@ mod tests {
         let token = derive(DeclaredFacts::contraction(cell), &ops, "cuda:sm90").expect("derives");
         assert_eq!(
             token,
-            "sk6|ctr|f8e4m3fn|cuda:sm90|ix32|grid|r2|co/00/v4/d16/f;co/00/v4/d16/f;co/00/v4/d16/f|-|ctll/d16/f8e4m3fn/f32/f16/st"
+            "sk8|ctr|f8e4m3fn|cuda:sm90|ix32|grid|r2|co/00/v4/d16/f/f8e4m3fn;co/00/v4/d16/f/f8e4m3fn;co/00/v4/d16/f/f16|-|ctll/d16/f8e4m3fn/f32/f16/st"
         );
         // The f32-out twin is a DISTINCT token (the sk2 collision resolved
         // in-key by the precision coordinates, §6.6-0018).
@@ -1746,8 +1866,21 @@ mod tests {
             out_dtype: DType::F32,
             ..cell
         };
+        // An `f32`-out cell must present an f32 output operand: with the f16 one it is
+        // the typed decline `OperandDtypeDisagrees`, never a key for a cell it does not describe.
+        assert_eq!(
+            derive_structure_key_token_typed(
+                &DeclaredFacts::contraction(twin),
+                &canon(&ops),
+                "cuda:sm90",
+                None
+            ),
+            Err(DeriveDecline::OperandDtypeDisagrees)
+        );
+        let f32_out = f32c(&[8, 4096]);
+        let twin_ops = [ops[0].clone(), ops[1].clone(), f32_out];
         let twin_token =
-            derive(DeclaredFacts::contraction(twin), &ops, "cuda:sm90").expect("derives");
+            derive(DeclaredFacts::contraction(twin), &twin_ops, "cuda:sm90").expect("derives");
         assert_ne!(
             token, twin_token,
             "mixed-precision FP8 cells must not collide under sk5"
@@ -1773,7 +1906,23 @@ mod tests {
             weight_dtype: DType::F4,
             ..gem_f32(8, 4096, 4096)
         };
-        assert!(derive(DeclaredFacts::contraction(mx_weight), &ops, "cuda:sm89").is_some());
+        // (the weight operand presents the f4 it names, `sk8` §6.6-0015)
+        let mx_ops = [
+            f32c(&[8, 4096]),
+            co(&[4096, 4096], DType::F4),
+            f32c(&[8, 4096]),
+        ];
+        assert!(derive(DeclaredFacts::contraction(mx_weight), &mx_ops, "cuda:sm89").is_some());
+        // ...and with an f32 weight operand it is the typed decline, not a key.
+        assert_eq!(
+            derive_structure_key_token_typed(
+                &DeclaredFacts::contraction(mx_weight),
+                &canon(&ops),
+                "cuda:sm89",
+                None
+            ),
+            Err(DeriveDecline::OperandDtypeDisagrees)
+        );
         let negative_m = gem_f32(-1, 4096, 4096);
         assert_eq!(
             derive(DeclaredFacts::contraction(negative_m), &ops, "cuda:sm89"),
@@ -1919,7 +2068,7 @@ mod tests {
             "cuda:sm89",
         )
         .expect("f8e4m3fn derives");
-        assert!(token.starts_with("sk6|ew1|f8e4m3fn|"), "got {token}");
+        assert!(token.starts_with("sk8|ew1|f8e4m3fn|"), "got {token}");
     }
 
     /// **Corrected 2026-09-26, re-cut at sk5.** This test used to assert that a
@@ -2224,9 +2373,11 @@ mod tests {
         );
         // No operands → decline.
         assert_eq!(derive(DeclaredFacts::none(), &[], "cuda:sm89"), None);
-        // Over MAX_OPERANDS (8) → decline (§6.4-0002).
-        let nine = vec![f32c(&[4096]); 9];
-        assert_eq!(derive(DeclaredFacts::none(), &nine, "cuda:sm89"), None);
+        // Over MAX_OPERANDS (16 from sk7) → decline (§6.4-0002); sixteen derive.
+        let seventeen = vec![f32c(&[4096]); 17];
+        assert_eq!(derive(DeclaredFacts::none(), &seventeen, "cuda:sm89"), None);
+        let sixteen = vec![f32c(&[4096]); 16];
+        assert!(derive(DeclaredFacts::none(), &sixteen, "cuda:sm89").is_some());
         // A malformed descriptor (shape/strides length mismatch) → decline.
         let mut broken = f32c(&[4096]);
         broken.strides = vec![1, 1];
@@ -2247,7 +2398,7 @@ mod tests {
         .expect("reduction must derive");
         assert_eq!(
             token,
-            "sk6|rdc|f32|cuda:sm89|ix32|grid|r1|co/00/v1/d16/f|rall"
+            "sk8|rdc|f32|cuda:sm89|ix32|grid|r1|co/00/v1/d16/f/f32|rall"
         );
     }
 
@@ -2267,7 +2418,7 @@ mod tests {
         .expect("derives");
         assert_eq!(
             token,
-            "sk6|rdc|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f;co/01/v4/d16/f|x01"
+            "sk8|rdc|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f/f32;co/01/v4/d16/f/f32|x01"
         );
     }
 
@@ -2291,7 +2442,7 @@ mod tests {
         .expect("derives");
         assert_eq!(
             token,
-            "sk6|rdc|f32|cuda:sm89|ix32|warp|r2|co/00/v1/d8/f;co/02/v1/da/f|rlast"
+            "sk8|rdc|f32|cuda:sm89|ix32|warp|r2|co/00/v1/d8/f/f32;co/02/v1/da/f/f32|rlast"
         );
     }
 
@@ -2306,7 +2457,7 @@ mod tests {
         .expect("derives");
         assert_eq!(
             token,
-            "sk6|rdc|f32|cuda:sm89|ix32|warp|r2|co/00/v1/d8/f;co/03/v1/da/f|rall"
+            "sk8|rdc|f32|cuda:sm89|ix32|warp|r2|co/00/v1/d8/f/f32;co/03/v1/da/f/f32|rall"
         );
     }
 
@@ -2322,7 +2473,7 @@ mod tests {
         .expect("derives");
         assert_eq!(
             token,
-            "sk6|rdc|f32|cuda:sm89|ix32|warp|r1|co/00/v1/d8/f;co/01/v1/da/f|rall"
+            "sk8|rdc|f32|cuda:sm89|ix32|warp|r1|co/00/v1/d8/f/f32;co/01/v1/da/f/f32|rall"
         );
     }
 
@@ -2338,7 +2489,7 @@ mod tests {
         .expect("derives");
         assert_eq!(
             token,
-            "sk6|rdc|f32|cuda:sm89|ix32|block|r4|co/00/v1/da/f;co/0a/v1/da/f|x0a"
+            "sk8|rdc|f32|cuda:sm89|ix32|block|r4|co/00/v1/da/f/f32;co/0a/v1/da/f/f32|x0a"
         );
     }
 
@@ -2363,7 +2514,7 @@ mod tests {
         )
         .expect("derives");
         assert_eq!(
-            token, "sk6|rdc|f32|cuda:sm89|ix32|warp|r1|co/00/v1/d8/f;co/01/v1/da/f|rall",
+            token, "sk8|rdc|f32|cuda:sm89|ix32|warp|r1|co/00/v1/d8/f/f32;co/01/v1/da/f/f32|rall",
             "a rank-1 TrailingAxis reduction is the same operation as All at rank 1 \
              and must derive the same reduce field",
         );
@@ -2383,7 +2534,7 @@ mod tests {
         )
         .expect("derives");
         assert_eq!(
-            token, "sk6|rdc|f32|cuda:sm89|ix32|warp|r2|co/00/v1/d8/f;co/03/v1/da/f|rall",
+            token, "sk8|rdc|f32|cuda:sm89|ix32|warp|r2|co/00/v1/d8/f/f32;co/03/v1/da/f/f32|rall",
             "Keepdim(0x03) at rank 2 reduces every axis, same operation as All",
         );
     }
@@ -2403,7 +2554,7 @@ mod tests {
         )
         .expect("derives");
         assert_eq!(
-            token, "sk6|ew1|f32|cuda:sm89|ix32|warp|r2|co/00/v4/d8/f;co/00/v4/d8/f|-",
+            token, "sk8|ew1|f32|cuda:sm89|ix32|warp|r2|co/00/v4/d8/f/f32;co/00/v4/d8/f/f32|-",
             "an empty reduced-axis set is not a reduction (§6.5-0015 rule 3): the cell \
              derives the class its shape gives it (`ew1`, one input pointwise), never \
              `rdc` with a `-` reduce field (the reader's `RdcWithoutReduce` decline), and \
@@ -2508,7 +2659,10 @@ mod tests {
     #[test]
     fn trailing_unit_axis_reads_rank_minus_1_inner() {
         let token = derive(DeclaredFacts::none(), &[f32c(&[4, 1])], "cuda:sm89").expect("derives");
-        assert_eq!(token, "sk6|ew1|f32|cuda:sm89|ix32|warp|r2|co/00/v1/da/f|-");
+        assert_eq!(
+            token,
+            "sk8|ew1|f32|cuda:sm89|ix32|warp|r2|co/00/v1/da/f/f32|-"
+        );
     }
 
     /// A zero inner extent buckets `da` AND vectorizes `v1` — the coherent
@@ -2522,7 +2676,10 @@ mod tests {
     fn zero_extent_buckets_da() {
         let token = derive(DeclaredFacts::none(), &[f32c(&[0])], "cuda:sm89")
             .expect("derives (never panics)");
-        assert_eq!(token, "sk6|ew1|f32|cuda:sm89|ix32|warp|r1|co/00/v1/da/f|-");
+        assert_eq!(
+            token,
+            "sk8|ew1|f32|cuda:sm89|ix32|warp|r1|co/00/v1/da/f/f32|-"
+        );
     }
 
     /// A fully reversed view is `co` under the |stride| layout algorithm
@@ -2537,7 +2694,10 @@ mod tests {
         );
         let desc = FdxOperandDesc::from_layout(&layout, DType::F32);
         let token = derive(DeclaredFacts::none(), &[desc], "cuda:sm89").expect("derives");
-        assert_eq!(token, "sk6|ew1|f32|cuda:sm89|ix32|warp|r2|co/00/v1/da/r|-");
+        assert_eq!(
+            token,
+            "sk8|ew1|f32|cuda:sm89|ix32|warp|r2|co/00/v1/da/r/f32|-"
+        );
     }
 
     /// `alignment = 0` (unspecified base) cannot honor a packed load ⇒ v1
@@ -2547,7 +2707,10 @@ mod tests {
         let mut desc = f32c(&[4096]);
         desc.align_bytes = 0;
         let token = derive(DeclaredFacts::none(), &[desc], "cuda:sm89").expect("derives");
-        assert_eq!(token, "sk6|ew1|f32|cuda:sm89|ix32|grid|r1|co/00/v1/d16/f|-");
+        assert_eq!(
+            token,
+            "sk8|ew1|f32|cuda:sm89|ix32|grid|r1|co/00/v1/d16/f/f32|-"
+        );
     }
 
     /// Work class and per-operand masks read the ITERATION FRAME
@@ -2570,7 +2733,7 @@ mod tests {
         .expect("derives");
         assert_eq!(
             token,
-            "sk6|ew2|f32|cuda:sm89|ix32|grid|r2|co/01/v4/d16/f;co/00/v4/d16/f;co/00/v4/d16/f|-"
+            "sk8|ew2|f32|cuda:sm89|ix32|grid|r2|co/01/v4/d16/f/f32;co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|-"
         );
     }
 
@@ -2599,7 +2762,7 @@ mod tests {
         .expect("derives");
         assert_eq!(
             token,
-            "sk6|ew2|f32|cuda:sm89|ix32|grid|r2|co/01/v4/d16/f;co/00/v4/d16/f;co/00/v4/d16/f|-"
+            "sk8|ew2|f32|cuda:sm89|ix32|grid|r2|co/01/v4/d16/f/f32;co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|-"
         );
     }
 
@@ -2636,13 +2799,14 @@ mod tests {
         .expect("derives");
         assert_eq!(
             dense_token,
-            "sk6|ew1|f32|cuda:sm89|ix32|grid|r4|co/01/v4/d16/f;co/00/v4/d16/f|-"
+            "sk8|ew1|f32|cuda:sm89|ix32|grid|r4|co/01/v4/d16/f/f32;co/00/v4/d16/f/f32|-"
         );
 
         let strided_token =
             derive(DeclaredFacts::none(), &[strided, frame_setter], "cuda:sm89").expect("derives");
         assert_eq!(
-            strided_token, "sk6|ew1|f32|cuda:sm89|ix32|grid|r4|st/01/v1/d16/f;co/00/v4/d16/f|-",
+            strided_token,
+            "sk8|ew1|f32|cuda:sm89|ix32|grid|r4|st/01/v1/d16/f/f32;co/00/v4/d16/f/f32|-",
             "a non-forward-unit own stride must derive `st`/`v1` even though \
              the frame-padded extents are byte-identical to the dense case"
         );
@@ -2669,7 +2833,7 @@ mod tests {
         .expect("derives");
         assert_eq!(
             token,
-            "sk6|ew2|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f;br/01/v1/d16/f;co/00/v4/d16/f|-"
+            "sk8|ew2|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f/f32;br/01/v1/d16/f/f32;co/00/v4/d16/f/f32|-"
         );
     }
 
@@ -2689,7 +2853,7 @@ mod tests {
         .expect("derives");
         assert_eq!(
             canonical,
-            "sk6|ew2|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f;co/00/v4/d16/f;co/00/v4/d16/f|-"
+            "sk8|ew2|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f/f32;co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|-"
         );
         // Explicit roles: `acc += x` — input, then the in-place accumulator.
         let inplace = derive_structure_key_token(
@@ -2704,7 +2868,7 @@ mod tests {
         .expect("derives");
         assert_eq!(
             inplace,
-            "sk6|ew2|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f;co/00/v4/d16/f|-"
+            "sk8|ew2|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|-"
         );
         // The same two descriptors as input + OUTPUT are a different cell: one
         // input, so `ew1`. The in-place role is what makes it `ew2`.
@@ -2712,7 +2876,7 @@ mod tests {
             derive(DeclaredFacts::none(), &[op.clone(), op], "cuda:sm89").expect("derives");
         assert_eq!(
             in_out,
-            "sk6|ew1|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f;co/00/v4/d16/f|-"
+            "sk8|ew1|f32|cuda:sm89|ix32|grid|r2|co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|-"
         );
     }
 
@@ -2726,7 +2890,7 @@ mod tests {
         let token = derive(DeclaredFacts::none(), &[op.clone(), op], "cuda:sm89").expect("derives");
         assert_eq!(
             token,
-            "sk6|ew1|f16|cuda:sm89|ix32|grid|r2|co/00/v8/d16/f;co/00/v8/d16/f|-"
+            "sk8|ew1|f16|cuda:sm89|ix32|grid|r2|co/00/v8/d16/f/f16;co/00/v8/d16/f/f16|-"
         );
     }
 
@@ -3141,11 +3305,11 @@ mod tests {
 
         // The component sits on operand 0 only, after `flip`.
         assert!(
-            linear.contains("|co/00/v4/d16/f/dl;co/00/v4/d16/f;co/00/v4/d16/f|"),
+            linear.contains("|co/00/v4/d16/f/f32/dl;co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|"),
             "{linear}"
         );
         assert!(
-            codebook.contains("|co/00/v4/d16/f/dc;co/00/v4/d16/f;co/00/v4/d16/f|"),
+            codebook.contains("|co/00/v4/d16/f/f32/dc;co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|"),
             "{codebook}"
         );
         // An operand with no quant record is byte-identical to the
@@ -3158,9 +3322,9 @@ mod tests {
         assert_ne!(codebook, plain);
     }
 
-    /// The sub-key never has more than the six permitted parts (§6.7-0004's
+    /// The sub-key never has more than the seven permitted parts (`sk8`: dtype is mandatory) (§6.7-0004's
     /// `BadOperandSubKey` is unrepresentable on emit): a fully quantized cell,
-    /// every operand carrying a form, still serializes six parts per operand.
+    /// every operand carrying a form, still serializes seven parts per operand.
     #[test]
     fn a_sub_key_never_exceeds_six_parts() {
         let descs = [f32c(&[8, 16]), f32c(&[16, 16]), f32c(&[8, 16])];
@@ -3178,7 +3342,7 @@ mod tests {
         let sub_keys = token.split('|').nth(7).unwrap();
         for sk in sub_keys.split(';') {
             let parts = sk.split('/').count();
-            assert_eq!(parts, 6, "sub-key `{sk}` has {parts} parts: {token}");
+            assert_eq!(parts, 7, "sub-key `{sk}` has {parts} parts: {token}");
             assert!(sk.ends_with("/dc"), "{sk}");
         }
     }
@@ -3220,7 +3384,7 @@ mod tests {
         );
         assert_eq!(odd, zero);
         assert!(
-            zero.contains("|co/01/v4/d16/f;"),
+            zero.contains("|co/01/v4/d16/f/f32;"),
             "bit 0 must be set for the unit axis: {zero}"
         );
     }
@@ -3243,8 +3407,97 @@ mod tests {
         let token =
             derive(DeclaredFacts::none(), &[unit.clone(), unit], "cuda:sm89").expect("derives");
         assert!(
-            token.contains("|co/00/v4/d16/f;co/00/v4/d16/f|"),
+            token.contains("|co/00/v4/d16/f/f32;co/00/v4/d16/f/f32|"),
             "frame extent 1 must leave the bit clear: {token}"
         );
+    }
+
+    // ---- sk8: per-operand dtype, block length, operand cap, vector cap --------
+
+    /// §6.6-0015 (`sk8`): cells differing in any one operand's dtype derive
+    /// different keys, in a NON-`ctr` cell too (at `sk7` they collided on purpose).
+    #[test]
+    fn a_non_primary_operand_dtype_changes_the_key() {
+        let a = derive(
+            DeclaredFacts::none(),
+            &[f32c(&[128, 256]), f32c(&[128, 256]), f32c(&[128, 256])],
+            "cuda:sm89",
+        )
+        .expect("derives");
+        let b = derive(
+            DeclaredFacts::none(),
+            &[
+                f32c(&[128, 256]),
+                co(&[128, 256], DType::F16),
+                f32c(&[128, 256]),
+            ],
+            "cuda:sm89",
+        )
+        .expect("derives");
+        assert_ne!(a, b, "operand 1's dtype is a key position from sk8");
+        // Only the second sub-key moved, and field 2 (operand 0's dtype) did not.
+        assert_eq!(a.split('|').nth(2), b.split('|').nth(2));
+        let subs = |t: &str| {
+            t.split('|')
+                .nth(7)
+                .unwrap()
+                .split(';')
+                .map(String::from)
+                .collect::<Vec<_>>()
+        };
+        let (sa, sb) = (subs(&a), subs(&b));
+        assert_eq!(
+            (sa[0].as_str(), sa[2].as_str()),
+            (sb[0].as_str(), sb[2].as_str())
+        );
+        assert_ne!(sa[1], sb[1]);
+    }
+
+    /// The first sub-key's dtype is field 2 by construction (§6.6-0005), for a
+    /// non-f32 primary.
+    #[test]
+    fn the_first_sub_key_dtype_is_field_two() {
+        let token = derive(
+            DeclaredFacts::none(),
+            &[co(&[128, 256], DType::BF16), co(&[128, 256], DType::BF16)],
+            "cuda:sm89",
+        )
+        .expect("derives");
+        let f: Vec<&str> = token.split('|').collect();
+        assert_eq!(f[2], "bf16");
+        assert!(
+            f[7].split(';').next().unwrap().ends_with("/bf16"),
+            "{token}"
+        );
+    }
+
+    /// A reserved dtype at a NON-primary operand declines (§6.6-0007; at `sk7` it
+    /// derived a key), with the reason KISS publishes.
+    #[test]
+    fn a_reserved_dtype_in_a_non_primary_operand_declines() {
+        let r = derive_structure_key_token_typed(
+            &DeclaredFacts::none(),
+            &canon(&[f32c(&[4096]), co(&[4096], DType::F8E6M2)]),
+            "cuda:sm89",
+            None,
+        );
+        assert_eq!(r, Err(DeriveDecline::ReservedDtype));
+    }
+
+    /// §6.8-0018: the cap changes only `vec`; a zero cap is not a positive byte
+    /// count and declines; the default is the 16 bytes both registered namespaces declare.
+    #[test]
+    fn the_vector_access_cap_is_the_targets_and_positive() {
+        let ops = [f32c(&[64, 128]), f32c(&[64, 128])];
+        let at = |cap: Option<u32>| {
+            let mut f = DeclaredFacts::none();
+            f.vec_access_cap_bytes = cap;
+            derive_structure_key_token_typed(&f, &canon(&ops), "rocm:gfx942", None)
+        };
+        let v4 = at(None).expect("derives");
+        assert_eq!(at(Some(16)).as_ref(), Ok(&v4));
+        assert!(at(Some(32)).unwrap().contains("/v8/"));
+        assert!(at(Some(8)).unwrap().contains("/v2/"));
+        assert_eq!(at(Some(0)), Err(DeriveDecline::InvalidTarget));
     }
 }
