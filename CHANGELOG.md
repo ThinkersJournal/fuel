@@ -144,6 +144,20 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.47.34 - 2026-11-14 (PM-allocation pending; docs only)
+
+### Added
+
+- `docs/design-notes/2026-11-14-arc004-cure.md` (fuel#680): per group, whether the 204 ARC-004 sites are a real layering violation or a declaration question, the cure and its cost, the order, what to accept for now, and what the splits look like once clean. No code change.
+
+### Measured
+
+- coderipper 0.43.54 on `origin/main` 26c619dc4: ARC-004 reads 10,055 public signature sites in policy components and reports 204 (the same 204 as CI's 0.43.77 job). Declaration experiments in a scratch worktree: `loaders` as policy gives 24; `fuel-memory` as its own adapter component gives 93.
+
+### Not verified
+
+- That the proposed move of `MmapedSafetensors` into `fuel-formats` compiles cleanly (not tried); the declaration experiments were run on the local 0.43.54 only.
+
 ## v0.47.32 - 2026-11-14 (PM-allocated; CI only)
 
 ### Changed
