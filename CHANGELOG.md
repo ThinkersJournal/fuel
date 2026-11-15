@@ -144,6 +144,19 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.48.2 - 2026-11-15 (PM-allocation pending)
+
+### Added
+
+- `fuel-transformers::models::lazy_qwen3_5_gguf`: the GGUF `qwen35` loader (ROADMAP row 118, milestone M1 of `docs/design-notes/2026-11-14-qwen35-27b-plan.md`). `qwen3_5_config_from_gguf_content` derives `Qwen3_5Config` from the `qwen35.*` metadata (layer kinds read from the tensors and checked against `full_attention_interval`; the multi-token-prediction block is not part of the decoder), and `Qwen3_5Weights::from_gguf_paths` / `from_gguf_content_and_bytes` load the weights over a single file or a `gguf-split` set. Q8_0, Q4_K and Q6_K projections stay quantized (`WeightStorage::Ggml`); other types are dequantized to f32 within `Qwen3_5GgufOptions::f32_fallback_budget_bytes` (default 8 GiB) and refused by name beyond it; `Qwen3_5GgufReport` lists what stayed quantized.
+- The value rules (decoder norm gains stored final, `ssm_a` = `-exp(A_log)`) are explicit options (`Qwen3_5GgufValueRules`) and `Qwen3_5GgufReport::value_rules_verified` is `false`: they are hypotheses until milestone M2.
+- `tests/gguf_qwen35_loader.rs` and the header-only fixture `tests/fixtures/qwen35_27b_q4km_tensors.tsv` (866 tensors of the real 27B Q4_K_M file): the config derives (64 decoder layers = 48 Gated DeltaNet + 16 full attention, untied head), all 866 tensors are accounted for (850 mapped by the name map, the head, and 15 in the MTP block), and 297 projection tensors (Q3_K x2, Q5_K x142, IQ4_NL x9, IQ3_S x2, IQ4_XS x142) cannot stay quantized yet.
+
+### Not verified
+
+- No tensor VALUE of a real file was checked (milestone M2); the synthetic-file tests show what the loader does, not that the rules are right.
+- No forward pass runs from a GGUF-loaded model; the 4B Q6_K blob was not loaded in this change.
+- The 27B cannot be loaded for real until IQ4_XS, Q5_K, IQ4_NL, IQ3_S and Q3_K reach `QMatMul` (M1 part b: `QuantType` variants and kernels), or the f32 fallback is replaced; the token embedding is held as f32 (5 GB for the 27B).
 ## v0.48.1 - 2026-11-15 (PM-allocation pending)
 
 ### Changed

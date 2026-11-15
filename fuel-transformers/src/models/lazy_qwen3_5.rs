@@ -111,7 +111,7 @@ impl Qwen3_5Config {
         raw.resolve(tie)
     }
 
-    fn validate(&self) -> Result<()> {
+    pub(crate) fn validate(&self) -> Result<()> {
         self.validate_counts()?;
         self.validate_linear_heads()?;
         self.validate_nonzero()
