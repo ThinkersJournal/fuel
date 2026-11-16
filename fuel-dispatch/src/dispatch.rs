@@ -7703,6 +7703,63 @@ pub fn inflight_count(loc: DeviceLocation) -> u32 {
         .unwrap_or(0)
 }
 
+/// Per-device ESTIMATED BACKLOG in nanoseconds: the executor's own
+/// submitted-but-unfinished work x each op's estimated cost (row 158 slice
+/// 2). Sibling of [`DEVICE_INFLIGHT`] (which counts ops); this sums their
+/// estimated time, so a route picker can tell a 1 us queue from a 1 h one.
+///
+/// A slot exists only for a device that has had [`backlog_add_ns`] called, and
+/// [`backlog_estimate_ns`] returns `None` until then: a device nobody feeds
+/// reports NO estimate (never a fabricated "0 ns idle"), so a selector falls
+/// back to the queue-depth tier. Relaxed atomics; a scheduling hint, never a
+/// correctness gate; [`backlog_sub_ns`] saturates at 0.
+static DEVICE_BACKLOG_NS: OnceLock<RwLock<HashMap<DeviceLocation, AtomicU64>>> = OnceLock::new();
+
+fn device_backlog_table() -> &'static RwLock<HashMap<DeviceLocation, AtomicU64>> {
+    DEVICE_BACKLOG_NS.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+/// Add `ns` of estimated work to `loc`'s backlog (call at submit, with the
+/// op's estimated cost). Saturating; a poisoned lock stops tracking.
+pub fn backlog_add_ns(loc: DeviceLocation, ns: u64) {
+    let table = device_backlog_table();
+    let add = |slot: &AtomicU64| {
+        let _ = slot.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {
+            Some(v.saturating_add(ns))
+        });
+    };
+    if let Ok(guard) = table.read()
+        && let Some(slot) = guard.get(&loc)
+    {
+        add(slot);
+        return;
+    }
+    if let Ok(mut guard) = table.write() {
+        add(guard.entry(loc).or_insert_with(|| AtomicU64::new(0)));
+    }
+}
+
+/// Remove `ns` from `loc`'s backlog (call when the work it was added for
+/// retires). Saturates at 0; a no-op for a device never fed.
+pub fn backlog_sub_ns(loc: DeviceLocation, ns: u64) {
+    if let Ok(guard) = device_backlog_table().read()
+        && let Some(slot) = guard.get(&loc)
+    {
+        let _ = slot.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {
+            Some(v.saturating_sub(ns))
+        });
+    }
+}
+
+/// The estimated backlog for `loc` in ns, or `None` when nothing has ever
+/// been fed for it (no estimate; NOT idle).
+pub fn backlog_estimate_ns(loc: DeviceLocation) -> Option<u64> {
+    device_backlog_table()
+        .read()
+        .ok()
+        .and_then(|guard| guard.get(&loc).map(|slot| slot.load(Ordering::Relaxed)))
+}
+
 /// Process-wide [`KernelBindingTable`]. Initialized on first access
 /// with the CPU dispatch wrappers from [`register_cpu_kernels`].
 /// Other backends extend it when they register.
@@ -13009,6 +13066,32 @@ mod tests {
     /// `inflight_dec` is underflow-saturating: decrementing a device whose count
     /// is already 0 (or that has never been touched) leaves it at 0, never wraps
     /// to `u32::MAX`. A stray dec is harmless to scheduling, never a poison.
+    #[test]
+    fn backlog_unfed_device_has_no_estimate_then_balances() {
+        // A location no other test touches (distinct gpu_id).
+        let loc = DeviceLocation::Vulkan { gpu_id: 9_001 };
+        assert_eq!(
+            backlog_estimate_ns(loc),
+            None,
+            "a device nobody fed reports NO estimate, not 0"
+        );
+        backlog_add_ns(loc, 1_000);
+        backlog_add_ns(loc, 500);
+        assert_eq!(backlog_estimate_ns(loc), Some(1_500));
+        backlog_sub_ns(loc, 1_000);
+        assert_eq!(backlog_estimate_ns(loc), Some(500));
+        backlog_sub_ns(loc, 9_999);
+        assert_eq!(
+            backlog_estimate_ns(loc),
+            Some(0),
+            "sub saturates at 0, and a fed-then-drained device reports 0 (idle), not None"
+        );
+        // Sabotage sibling: sub on a never-fed device must not create a slot.
+        let other = DeviceLocation::Vulkan { gpu_id: 9_002 };
+        backlog_sub_ns(other, 5);
+        assert_eq!(backlog_estimate_ns(other), None);
+    }
+
     #[test]
     fn inflight_dec_is_underflow_safe() {
         let untouched = DeviceLocation::Vulkan { gpu_id: 99_002 };
