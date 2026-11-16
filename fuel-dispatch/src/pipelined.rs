@@ -2720,13 +2720,40 @@ fn compiler_thread_body(
     // `compile_one` for one node + send; returns `false` to stop the walk
     // (channel closed or compile error). Shared by both work modes so the
     // streamed and frozen-order paths compile identically.
+    // Arm exits of live branches. The reconverge node reads ARM 0's exit (the runnability invariant),
+    // so when the picker chooses an arm k >= 1 its exit is the value the reconverge must see: right
+    // after compiling that exit, alias arm 0's exit id to it (a zero-copy `ViewOf`). Non-chosen arms
+    // are never compiled, so an exit that is compiled here is the chosen one.
+    let alias_exits: HashMap<NodeId, NodeId> = {
+        let mut m = HashMap::new();
+        for i in 0..g.len() {
+            let id = NodeId(i);
+            if matches!(g.node(id).op, Op::Branch { .. }) {
+                let arms = &g.node(id).inputs;
+                for &exit in arms.iter().skip(1) {
+                    m.insert(exit, arms[0]);
+                }
+            }
+        }
+        m
+    };
     let compile_and_send = |id: NodeId, layout_cache: &mut HashMap<NodeId, Layout>| -> bool {
         let item = compile_one(&g, id, layout_cache, &bindings, &sym_env);
         let stop_on_err = item.is_err();
         if tx.send(item).is_err() {
             return false;
         }
-        !stop_on_err
+        if stop_on_err {
+            return false;
+        }
+        if let Some(&arm0_exit) = alias_exits.get(&id)
+            && tx
+                .send(Ok(arm_exit_alias_item(&g, arm0_exit, id, layout_cache)))
+                .is_err()
+        {
+            return false;
+        }
+        true
     };
 
     match work {
@@ -2767,6 +2794,39 @@ fn compiler_thread_body(
                 },
             );
         }
+    }
+}
+
+/// The work item that makes arm 0's exit id carry the value of the chosen arm's exit: a zero-copy
+/// `ViewOf` (the executor clones the source's storage into `alias_id`'s cache slot). Emitted right
+/// after the chosen exit, before the reconverge node that reads `alias_id`. The two exits agree on
+/// shape and dtype by the branch's cast-to-uniform rule, so the layout is the source's.
+fn arm_exit_alias_item(
+    graph: &Graph,
+    alias_id: NodeId,
+    source: NodeId,
+    layout_cache: &mut HashMap<NodeId, Layout>,
+) -> WorkItem {
+    let node = graph.node(alias_id);
+    let layout = layout_cache
+        .get(&source)
+        .cloned()
+        .unwrap_or_else(|| Layout::contiguous(graph.node(source).shape.clone()));
+    layout_cache.insert(alias_id, layout.clone());
+    WorkItem {
+        node_id: alias_id,
+        inputs: vec![source],
+        elem_count: node.shape.elem_count(),
+        dtype: node.dtype,
+        target_backend: graph
+            .target_backend(source)
+            .or_else(|| graph.target_backend(alias_id))
+            .unwrap_or(BackendId::Cpu),
+        kind: WorkItemKind::ViewOf { input: source },
+        compiled: None,
+        output_layout: layout,
+        destructive_input: None,
+        output_bundle: None,
     }
 }
 
@@ -10166,6 +10226,118 @@ mod tests {
                 "streamed order must equal one-shot for selector {sel:?}",
             );
         }
+    }
+
+    /// ROW 157 / GAP-385: the executor realizes a PICKED multi-node arm to the same numbers as arm 0.
+    ///
+    /// A residual block on the host: `c1 -> relu -> silu -> tanh -> add(c1, .)`. The branch is built by
+    /// the pathfinder's own `record_branch` (so the clone logic under test is the shipped code) with
+    /// the alternative backend set to `Cpu`, which lets arm 1 run on this box. The route `{branch: 1}`
+    /// makes the executor run the cloned three-node stretch; the result must equal the arm-0 result.
+    ///
+    /// What this does NOT show: a cross-device arm (the real alternative is another backend, with
+    /// copies at its entry and exit), nor which arm a live selector picks. The same-backend arms mean
+    /// the selector cannot map back to arm 1, so the route is given explicitly.
+    #[test]
+    fn a_picked_multi_node_arm_realizes_equal_to_arm_zero_on_cpu() {
+        let (arm0, arm1) = realize_residual_block_both_arms(false);
+        assert_eq!(
+            arm1, arm0,
+            "the cloned stretch computes what arm 0 computes"
+        );
+        assert_eq!(arm0.len(), 3);
+        assert!(arm0.iter().all(|v| v.is_finite()));
+    }
+
+    /// POSITIVE CONTROL for the test above: when the cloned stretch computes something else (Gelu in
+    /// place of Silu, built by hand), the picked-arm result DIFFERS from arm 0. Without this the
+    /// equality could pass by the executor ignoring the route and running arm 0 both times.
+    #[test]
+    fn a_picked_multi_node_arm_that_differs_changes_the_result() {
+        let (arm0, arm1) = realize_residual_block_both_arms(true);
+        assert_ne!(arm1, arm0, "the route must really run the cloned arm");
+    }
+
+    /// Realize `c1 -> relu -> silu -> tanh -> add(c1, .)` through arm 0 and through arm 1. Arm 1 is the
+    /// clone `record_branch` makes, or, when `control` is set, a hand-built clone whose middle node is
+    /// Gelu instead of Silu.
+    #[cfg(test)]
+    fn realize_residual_block_both_arms(control: bool) -> (Vec<f32>, Vec<f32>) {
+        use crate::optimize::OptimizedGraph;
+        let read = |arc: &Arc<RwLock<Storage>>| -> Vec<f32> {
+            match &arc.read().unwrap().inner {
+                fuel_memory::BackendStorage::Cpu(c) => c.as_slice::<f32>().expect("f32").to_vec(),
+                _ => panic!("expected CPU output"),
+            }
+        };
+        let build = || {
+            let node = |g: &mut Graph, op: Op, inputs: Vec<NodeId>| {
+                let id = g.push(Node {
+                    op,
+                    inputs,
+                    shape: Shape::from_dims(&[3]),
+                    dtype: DType::F32,
+                });
+                g.set_target_backend(id, BackendId::Cpu);
+                id
+            };
+            let mut g = Graph::new();
+            let c1 = node(&mut g, Op::Const, vec![]);
+            let r = node(&mut g, Op::Relu, vec![c1]);
+            let s = node(&mut g, Op::Silu, vec![r]);
+            let t = node(&mut g, Op::Tanh, vec![s]);
+            let res = node(&mut g, Op::Add, vec![c1, t]);
+            let branch = if control {
+                let r2 = node(&mut g, Op::Relu, vec![c1]);
+                let s2 = node(&mut g, Op::GeluTanh, vec![r2]);
+                let t2 = node(&mut g, Op::Tanh, vec![s2]);
+                let mut b = g.open_branch(c1);
+                b.add_arm(t);
+                b.add_arm(t2);
+                b.finalize_branches(&mut g, res)
+                    .expect("well-formed")
+                    .expect("2 arms")
+            } else {
+                crate::region_pathfinder::record_branch(
+                    &mut g,
+                    c1,
+                    res,
+                    &[r, s, t],
+                    t,
+                    BackendId::Cpu,
+                )
+                .expect("the region records a 2-arm branch")
+            };
+            let mut inputs = StorageCache::new();
+            inputs.insert(
+                c1,
+                Arc::new(RwLock::new(fuel_memory::from_slice_cpu(&[
+                    -1.0_f32, 0.5, 2.0,
+                ]))),
+            );
+            (Arc::new(RwLock::new(g)), res, branch, inputs)
+        };
+
+        drop(global_bindings());
+        let live_gen = crate::dispatch::topology_generation();
+        let run = |pick_arm1: bool| -> Vec<f32> {
+            let (graph, res, branch, inputs) = build();
+            let opt = OptimizedGraph {
+                roots: vec![res],
+                generation: live_gen,
+                placements: None,
+                eviction: None,
+            };
+            let mut route = PickedRoute::new();
+            if pick_arm1 {
+                route.insert(branch, 1);
+            }
+            let (arc, _) =
+                PipelinedExecutor::realize_with_optimized_route(graph, res, inputs, &opt, &route)
+                    .expect("realize");
+            read(&arc)
+        };
+        (run(false), run(true))
     }
 
     /// Realizing a node whose target_backend isn't set surfaces a

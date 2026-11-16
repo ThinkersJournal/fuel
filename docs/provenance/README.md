@@ -50,7 +50,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `(root)` | 24 | 4 | 4 |  |  | 16 |  |  |
 | `.cargo` | 1 |  | 1 |  |  |  |  |  |
 | `.github` | 8 | 1 | 2 |  |  | 5 |  |  |
-| `docs` | 200 |  |  |  |  | 200 |  |  |
+| `docs` | 202 |  |  |  |  | 202 |  |  |
 | `fuel` | 9 |  |  |  |  | 6 |  | 3 |
 | `fuel-aocl-cpu-backend` | 8 |  |  |  |  | 5 |  | 3 |
 | `fuel-backend-contract` | 10 |  |  | 3 |  | 4 |  | 3 |
@@ -61,7 +61,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-cuda-backend` | 57 |  | 3 | 11 |  | 40 |  | 3 |
 | `fuel-cuda-dispatch` | 79 |  |  |  |  | 76 |  | 3 |
 | `fuel-datasets` | 13 |  | 7 |  |  | 3 |  | 3 |
-| `fuel-dispatch` | 208 |  |  | 1 |  | 204 |  | 3 |
+| `fuel-dispatch` | 209 |  |  | 1 |  | 205 |  | 3 |
 | `fuel-examples` | 247 | 56 | 162 | 21 |  | 8 |  |  |
 | `fuel-formats` | 12 |  | 2 | 3 |  | 4 |  | 3 |
 | `fuel-graph` | 39 |  |  | 3 |  | 33 |  | 3 |
@@ -96,5 +96,5 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-vulkan-dispatch` | 43 |  |  |  |  | 40 |  | 3 |
 | `fuel-vulkan-kernels` | 187 |  |  |  |  | 4 | 180 | 3 |
 | `scripts` | 79 |  |  | 1 |  | 78 |  |  |
-| **all** | **1995** | **112** | **216** | **260** | **4** | **1098** | **185** | **120** |
+| **all** | **1998** | **112** | **216** | **260** | **4** | **1101** | **185** | **120** |
 <!-- provenance-summary:end -->
