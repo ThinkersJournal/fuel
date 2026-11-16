@@ -140,6 +140,28 @@ pub fn optimize_calls_thread_local() -> usize {
     OPTIMIZE_CALLS_TL.with(|c| c.get())
 }
 
+/// Live `Op::Branch` nodes the optimizer left in the graph, summed over every real optimize
+/// (ROADMAP row 157 / GAP-385, the measurement the planned-vs-built audit lacked). Counted AFTER
+/// `optimize_graph_with_runtime_fusion`, so same-device branches that `bake_variant_branches`
+/// collapsed are not counted: this is the number of decision points the runtime picker can see.
+/// Observation only, never a gate.
+static OPTIMIZE_BRANCHES: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+std::thread_local! {
+    /// Per-thread mirror of [`OPTIMIZE_BRANCHES`] (same isolation reason as `OPTIMIZE_CALLS_TL`).
+    static OPTIMIZE_BRANCHES_TL: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Process-global sum of live branches over every optimize (coarse; polluted by other threads).
+pub fn optimize_branches() -> usize {
+    OPTIMIZE_BRANCHES.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// THIS thread's sum of live branches over its optimizes; read a delta around one realize.
+pub fn optimize_branches_thread_local() -> usize {
+    OPTIMIZE_BRANCHES_TL.with(|c| c.get())
+}
+
 // ---------------------------------------------------------------------------
 // Public entry points
 // ---------------------------------------------------------------------------
@@ -890,7 +912,17 @@ fn build_optimized_graph(
     // before placement. With nothing adopted the sidecar scan is an empty-Vec
     // early return — byte-identical to the bare `optimize_graph` every test
     // that doesn't adopt observes (`runtime-fused-op-registration.md` §6).
-    optimize_graph_with_runtime_fusion(&mut g, roots, &bindings_guard, &options)
+    let optimized = optimize_graph_with_runtime_fusion(&mut g, roots, &bindings_guard, &options)?;
+    let live_branches = optimized.branch_count(&g);
+    OPTIMIZE_BRANCHES.fetch_add(live_branches, std::sync::atomic::Ordering::Relaxed);
+    OPTIMIZE_BRANCHES_TL.with(|c| c.set(c.get() + live_branches));
+    if std::env::var_os("FUEL_PRINT_BRANCH_COUNT").is_some() {
+        eprintln!(
+            "fuel: optimize left {live_branches} live Op::Branch node(s) over {} graph node(s)",
+            g.len()
+        );
+    }
+    Ok(optimized)
 }
 
 fn dispatch_with_plan_retry(
@@ -2359,6 +2391,47 @@ mod tests {
     /// full path (`realize_one_as_with_initial`) DOES re-optimize (the count
     /// moves) and DOES re-splice a D2H `Op::Copy` (the node count grows) —
     /// which is exactly what the prebuilt seam skips.
+    /// ROW 157 first slice: the live-branch counter is wired to the production optimize and agrees
+    /// with the optimized view it reports on. On a CPU-only realize every node has one placement, so
+    /// the placement pathfinder emits no fork and the count is 0 (stated, not assumed: the optimizer
+    /// ran, `optimize_calls_thread_local` moved). A NON-zero live count needs two admitted placements
+    /// (CUDA or Vulkan beside the CPU) and is read from a GPU run with `FUEL_PRINT_BRANCH_COUNT=1`;
+    /// this test cannot show that number and does not claim to. The pathfinder's non-zero behaviour is
+    /// pinned in `fuel-dispatch` (`deliberate_fork_emits_one_two_arm_branch`,
+    /// `transformer_shaped_graph_forks_only_single_consumer_nodes_today`).
+    #[test]
+    fn row157_live_branch_counter_agrees_with_the_view_and_is_zero_on_cpu_only() {
+        let graph = Arc::new(RwLock::new(Graph::new()));
+        let (c1, c2, add) = {
+            let mut g = graph.write().unwrap();
+            let c1 = push_node(&mut g, Op::Const, vec![]);
+            let c2 = push_node(&mut g, Op::Const, vec![]);
+            let add = push_node(&mut g, Op::Add, vec![c1, c2]);
+            (c1, c2, add)
+        };
+        let mut initial = StorageCache::new();
+        initial.insert(c1, cpu_storage_f32(&[1.0, 2.0, 3.0, 4.0]));
+        initial.insert(c2, cpu_storage_f32(&[10.0, 20.0, 30.0, 40.0]));
+        let device = crate::Device::cpu();
+
+        let calls_before = optimize_calls_thread_local();
+        let branches_before = optimize_branches_thread_local();
+        let (_target, optimized, out) =
+            prebuild_optimized_env::<f32>(&graph, add, &device, initial, &SymEnv::default())
+                .expect("realize");
+        assert_eq!(out, vec![11.0, 22.0, 33.0, 44.0]);
+        assert!(
+            optimize_calls_thread_local() > calls_before,
+            "the optimizer must have run for the counter to mean anything"
+        );
+        let delta = optimize_branches_thread_local() - branches_before;
+        assert_eq!(delta, optimized.branch_count(&graph.read().unwrap()));
+        assert_eq!(
+            delta, 0,
+            "CPU-only realize: one placement per node, no fork"
+        );
+    }
+
     #[test]
     fn d2a_prebuilt_realize_skips_optimize_and_does_not_grow_graph() {
         let graph = Arc::new(RwLock::new(Graph::new()));

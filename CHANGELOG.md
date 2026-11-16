@@ -148,11 +148,14 @@ This documents the main changes to the `fuel` workspace.
 
 ### Changed
 
+- `fuel-tensor`: live `Op::Branch` counter on the production optimize (`optimize_branches()`, `optimize_branches_thread_local()`, and `FUEL_PRINT_BRANCH_COUNT=1` to print it), counted after bake so it is what the runtime picker can see (row 157 first slice). `fuel-dispatch` test `transformer_shaped_graph_forks_only_single_consumer_nodes_today` pins today's behaviour: on a transformer-block-shaped graph with every op on two placements, 8 one-node forks, none at the fan-out or the residual join.
 - `ROADMAP.md` rows 158 to 164 and `docs/gaps.md` GAP-386 to GAP-392: plan items 1 to 7 of the planned-vs-built audit, each with the audit as evidence (item 7 folds into the FireLine-seam rows).
 - `docs/design-notes/2026-11-15-planned-vs-built-audit.md`: PM-requested audit of the architecture docs against the code at `ad9466459` (what is built, partial, stub, absent; doc-vs-code disagreements; ordered plan). Static greps only; no test was run.
 - Docs only: ROADMAP row 157 (multi-node placement pathfinder; it did not land with #687), new `docs/gaps.md` row GAP-385, and the design note `docs/design-notes/2026-11-15-multi-node-placement-pathfinder.md` (region choice, fan-out and residual joins, disagreement fallbacks, red-first tests). No code.
 
 ### Not verified
+
+- A non-zero live branch count on a real model needs a GPU run (two admitted placements); the CPU-only test shows 0 by construction. Board 446 blocks GPU use.
 
 - The note's hypotheses (nested-branch coupling, alternatives kept per node) are marked in the note and not measured.
 

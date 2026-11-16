@@ -2880,4 +2880,67 @@ mod tests {
             "a CUDA PAGED_ATTN kernel is bound: revisit LOWER_WHEN_NO_DEVICE_KERNEL (the fused kernel may now beat the recipe)"
         );
     }
+    /// ROW 157 / GAP-385 CHARACTERIZATION (green today by design; the row-157 pathfinder changes the
+    /// expected values and this test is rewritten with it).
+    ///
+    /// A transformer-block-shaped graph in which EVERY kernel op has two placements: a fan-out
+    /// (`n1` feeds q, k and v), a residual join (`x` is read by `n1` and by `res`) and a second
+    /// fan-out (`res` is read by `n2` and `res2`). `PlacementForkPathfinder` forks only a node with
+    /// exactly one consumer, so no fork may sit on `n1` or `res`, and every fork is a ONE-node arm.
+    #[test]
+    fn transformer_shaped_graph_forks_only_single_consumer_nodes_today() {
+        let mut table = KernelBindingTable::new();
+        register_two_backend(&mut table, OpKind::ReluElementwise, 1);
+        register_two_backend(&mut table, OpKind::SiluElementwise, 1);
+        register_two_backend(&mut table, OpKind::TanhElementwise, 1);
+        register_two_backend(&mut table, OpKind::AddElementwise, 2);
+
+        let mut g = Graph::new();
+        let x = f32_node(&mut g, Op::Const, vec![]);
+        let n1 = f32_node(&mut g, Op::Relu, vec![x]); // fan-out: q, k, v
+        let q = f32_node(&mut g, Op::Silu, vec![n1]);
+        let k = f32_node(&mut g, Op::Tanh, vec![n1]);
+        let v = f32_node(&mut g, Op::Relu, vec![n1]);
+        let a = f32_node(&mut g, Op::Add, vec![q, k]);
+        let b = f32_node(&mut g, Op::Add, vec![a, v]);
+        let o = f32_node(&mut g, Op::Silu, vec![b]);
+        let res = f32_node(&mut g, Op::Add, vec![x, o]); // residual join: x has 2 consumers
+        let n2 = f32_node(&mut g, Op::Relu, vec![res]); // res has 2 consumers
+        let m = f32_node(&mut g, Op::Silu, vec![n2]);
+        let res2 = f32_node(&mut g, Op::Add, vec![res, m]);
+
+        let nodes_before = g.len();
+        let optimized = optimize_graph(&mut g, &[res2], &table, &two_backend_opts())
+            .expect("optimize_graph succeeds on a transformer-shaped two-placement graph");
+
+        // The forked nodes are arm 0 (the first input) of every Op::Branch the pass added.
+        let forked: Vec<NodeId> = (nodes_before..g.len())
+            .map(NodeId)
+            .filter(|&id| matches!(g.node(id).op, Op::Branch { .. }))
+            .map(|id| g.node(id).inputs[0])
+            .collect();
+        eprintln!(
+            "row157-characterization: branch_count={} forked_nodes={:?} (n1={:?} res={:?})",
+            optimized.branch_count(&g),
+            forked,
+            n1,
+            res
+        );
+        assert_eq!(forked.len(), optimized.branch_count(&g));
+        // Fan-out and residual-join nodes never get a decision point today.
+        assert!(!forked.contains(&n1), "fan-out node n1 must not fork today");
+        assert!(
+            !forked.contains(&res),
+            "residual-join node res must not fork today"
+        );
+        // Exactly the eight single-consumer kernel nodes fork, each as a one-node arm.
+        let mut want = vec![q, k, v, a, b, o, n2, m];
+        want.sort_by_key(|n| n.0);
+        let mut got = forked.clone();
+        got.sort_by_key(|n| n.0);
+        assert_eq!(
+            got, want,
+            "the fork set is exactly the single-consumer kernel nodes"
+        );
+    }
 }
