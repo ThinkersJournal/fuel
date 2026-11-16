@@ -144,7 +144,7 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
-## v0.49.5 - 2026-11-16 (PM-allocation pending, row 158 slice 1, DRAFT)
+## v0.49.5 - 2026-11-16 (allocated by pm-assist, row 158 slice 1, DRAFT)
 
 > **RELEASE HOLD stands** (no Fuel publish / repin to a version containing `PlacementRegionPathfinder` until a GPU run shows a non-zero live branch count AND the picker choosing under injected load).
 
