@@ -144,6 +144,16 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.49.2 - 2026-11-15 (PM-allocation pending)
+
+### Changed
+
+- Docs only: ROADMAP row 157 (multi-node placement pathfinder; it did not land with #687), new `docs/gaps.md` row GAP-385, and the design note `docs/design-notes/2026-11-15-multi-node-placement-pathfinder.md` (region choice, fan-out and residual joins, disagreement fallbacks, red-first tests). No code.
+
+### Not verified
+
+- The note's hypotheses (nested-branch coupling, alternatives kept per node) are marked in the note and not measured.
+
 ## v0.49.1 - 2026-11-15 (PM-allocation pending)
 
 ### Changed
