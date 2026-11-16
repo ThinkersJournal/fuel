@@ -14,7 +14,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 732 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 733 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1382 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 295 lines verbatim
@@ -69,6 +69,7 @@ docs/design-notes/2026-11-07-row137-step63b-probe-seam.md	own		no lineage; 0 of 
 docs/design-notes/2026-11-14-arc004-cure.md	own		no lineage; 0 of 121 lines verbatim in candle (0%)
 docs/design-notes/2026-11-14-qwen35-27b-plan.md	own		no lineage; 0 of 117 lines verbatim in candle (0%)
 docs/design-notes/2026-11-15-multi-node-placement-pathfinder.md	own		no lineage; 0 of 75 lines verbatim in candle (0%)
+docs/design-notes/2026-11-15-planned-vs-built-audit.md	own		no lineage; 0 of 105 lines verbatim in candle (0%)
 docs/design/facade-inversion-recipe.md	own		no lineage; 0 of 216 lines verbatim in candle (0%)
 docs/design/gaps-status-conversion-table.md	own		no lineage; 0 of 80 lines verbatim in candle (0%)
 docs/design/gaps-status-vocabulary.md	own		no lineage; 0 of 213 lines verbatim in candle (0%)
