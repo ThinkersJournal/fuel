@@ -1481,6 +1481,18 @@ without `Tensor`, so they stay folded into `fuel-tensor`.
 **Graph optimizer architecture: transactional rewrites on a single
 primary graph.**
 
+> **Status and correction (2026-11-15, read before the "Transaction model" and "Switching semantics" bullets below).**
+> The *unit of change* below ("atomic store on the active reference", `Arc<Graph>`, "full-clone-then-mutate") describes an
+> early design and is **superseded** by `docs/architecture/03-ir.md` and `docs/architecture/06-runtime.md` (decisions-log item 19):
+> re-optimization revises the multi-path graph **per decision point (or region), not by swapping the whole graph**; each decision
+> point's path set is an `Arc`-shared slot swapped atomically. Whole-graph copy is a *memory-model* choice for one transaction,
+> never the *scope* of one. What still holds: transactions are units of consistency, the frontier only moves forward, a region
+> that has executed or is queued is off limits, and an in-flight run switches only if the change is entirely ahead of its
+> frontier. **Code at `ed3ce9746`:** none of this exists. `optimize_graph` (`fuel-dispatch/src/optimize.rs`) mutates the graph in
+> place, synchronously, to completion before execution; no transaction, frontier or in-flight graph-switch type is present in
+> `fuel-graph/src` or `fuel-dispatch/src`. The only `Arc` copy-on-write swap is the kernel-binding table
+> (`RwLock<Arc<KernelBindingTable>>`, `fuel-dispatch/src/dispatch.rs`). Rows 88 and 89 track the work.
+
 Optimization is a pipeline of rule-driven graph rewrites. Two rule
 families:
 

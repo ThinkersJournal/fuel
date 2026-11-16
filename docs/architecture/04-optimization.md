@@ -171,6 +171,13 @@ The cost — for routes that use it:
 
 This concurrent model is more aggressive than what's currently implemented. The optimizer is now multi-path (per-decision-point alternatives + the bounded per-device frontier) and the runtime route picker resolves arms by telemetry, but optimization still runs synchronously to completion before execution starts — there is no sliding frontier yet. Migrating to the concurrent model is itself a multi-phase project (transactions first, then frontier tracking, then `Concurrent`/`WholeGraph` rule classification, then per-realize concurrency policy). The architectural commitment is the destination; the migration is phase work.
 
+### Unit of change, and what the code does (clarified 2026-11-15)
+
+- **The unit of a transaction is a region, not the graph.** It is a set of nodes with an interface: the inputs it reads and the live-out tensors anything outside it still reads. A rewrite must preserve that interface (a tensor still needed later is never removed), and a region is eligible only while no node in it has executed or been queued. A decision-point boundary is one natural region edge, not the only one.
+- **The unit of swap is the decision point (or region), not the graph.** Each decision point's path set is an `Arc`-shared slot swapped atomically ([06-runtime](06-runtime.md) *Per-decision-point atomic swap*; decisions-log item 19). The older wording in ROADMAP's "Transaction model" (`Arc<Graph>` active reference, whole-graph swap) is superseded; whole-graph cloning is only a possible memory model for one transaction.
+- **Code at `ed3ce9746`:** `optimize_graph` mutates the graph in place, synchronously, to completion, then execution starts. No transaction, frontier-tracking or in-flight graph-switch type exists in `fuel-graph/src` or `fuel-dispatch/src` (searched by those names; the `snapshot` and `in-flight` hits are the kernel-binding table and per-device async counters, which are unrelated). The only `Arc` swap in code is the kernel-binding table. So the code is neither whole-graph swap nor region swap: there is no swap.
+
+
 ## Load-time incremental planning + cost-based placement (v0.4)
 
 Decided 2026-06-11. This section gives the concurrent model above its
