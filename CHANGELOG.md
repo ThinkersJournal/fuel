@@ -146,6 +146,8 @@ This documents the main changes to the `fuel` workspace.
 
 ## v0.49.2 - 2026-11-15 (PM-allocation pending)
 
+> **RELEASE HOLD (PM 2026-11-15): no Fuel publish, and no Lightbulb or other repin, to any version containing `PlacementRegionPathfinder` until (1) a GPU live-branch-count run on a real model AND (2) a numerical-equality run of a picked multi-node arm have both been shown.** The GPU run is blocked on board 446.
+
 ### Changed
 
 - `fuel-dispatch`: new `PlacementRegionPathfinder` (`region_pathfinder.rs`, public consts `MAX_REGION_NODES` = 64 and `REGION_COMPETITIVE_FACTOR` = 2, both unmeasured first-slice values) replaces `PlacementForkPathfinder` in `PassRegistry::default_passes` and `default_passes_with_runtime_fusion`. It records one `Op::Branch` per single-entry single-exit region (chain, residual block, fan-out that rejoins) with arm 1 a clone of the whole stretch on one alternative placement; a one-node region is the old fork, so isolated forks are unchanged. Born-red tests `transformer_shaped_graph_forks_residual_blocks_as_multi_node_regions` and `fan_out_that_rejoins_is_one_multi_node_region` fail under the old pathfinder (checked by swapping it back: 8 forks, then 3) and pass now; sabotage siblings cover a node read from outside, a node without the alternative kernel, and a single-placement graph. `PlacementForkPathfinder` stays exported.
