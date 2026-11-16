@@ -10319,23 +10319,34 @@ mod tests {
         };
 
         drop(global_bindings());
-        let live_gen = crate::dispatch::topology_generation();
         let run = |pick_arm1: bool| -> Vec<f32> {
-            let (graph, res, branch, inputs) = build();
-            let opt = OptimizedGraph {
-                roots: vec![res],
-                generation: live_gen,
-                placements: None,
-                eviction: None,
-            };
-            let mut route = PickedRoute::new();
-            if pick_arm1 {
-                route.insert(branch, 1);
+            // Another test registering a backend or kernels bumps the process-wide topology generation
+            // (`bump_topology_generation`, shared by every concurrently running test), and the executor
+            // then returns `TopologyChanged` ("rebuild and retry") for a plan stamped before the bump.
+            // Measured: 1 in ~55 full-suite runs at 17 threads, 6 in 110, every one the message
+            // "generation N ... generation M"; it is not arm choice. Follow the error's own contract
+            // with a bounded rebuild, and fail loudly on anything else or on 20 stale stamps in a row.
+            for _attempt in 0..20 {
+                let (graph, res, branch, inputs) = build();
+                let opt = OptimizedGraph {
+                    roots: vec![res],
+                    generation: crate::dispatch::topology_generation(),
+                    placements: None,
+                    eviction: None,
+                };
+                let mut route = PickedRoute::new();
+                if pick_arm1 {
+                    route.insert(branch, 1);
+                }
+                match PipelinedExecutor::realize_with_optimized_route(
+                    graph, res, inputs, &opt, &route,
+                ) {
+                    Ok((arc, _)) => return read(&arc),
+                    Err(e) if format!("{e}").contains("topology generation") => continue,
+                    Err(e) => panic!("realize: {e}"),
+                }
             }
-            let (arc, _) =
-                PipelinedExecutor::realize_with_optimized_route(graph, res, inputs, &opt, &route)
-                    .expect("realize");
-            read(&arc)
+            panic!("realize: topology generation changed on 20 consecutive attempts")
         };
         (run(false), run(true))
     }

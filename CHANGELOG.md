@@ -144,6 +144,19 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.49.3 - 2026-11-15 (PM-allocation pending)
+
+> **RELEASE HOLD (PM 2026-11-15) stands:** no Fuel publish and no repin to a version containing `PlacementRegionPathfinder` until a GPU live-branch-count run shows a non-zero count and a cross-device picked-arm equality run is shown.
+
+### Changed
+
+- **Fixed (`fuel-dispatch` planner): the region pathfinder could never see a second placement on a production realize.** Live run, Vulkan tiny-Llama test at `db0c1f7a2`: every optimize left 0 `Op::Branch`, and 0 of 165 nodes had two placements, because `compile_plan` prunes each node's `AlternativeSet` to the device the DP (or the greedy relaxed prune) committed. The pruned-off candidates are now kept in the new `ExecutionPlan::off_device` map (`off_device_alternatives(id)`; nothing on the realize path reads it) and `PlacementRegionPathfinder` reads both. Competitiveness now prices an inbound transfer only at an arm's entry nodes (a candidate's `time` includes the transfer of its inputs, which interior edges do not pay). Born-red test `cross_device_residual_block_forks_through_the_production_options_shape` (GPU realize device, CPU fallback, transfer estimator, cost population on: the options shape `build_optimized_graph` builds) fails without the off-device read; sibling `cross_device_cpu_arm_far_slower_than_the_gpu_is_not_competitive` keeps it from passing by recording a region unconditionally. The older `PlacementForkPathfinder` was equally unreachable on that path.
+- Test only: the two picked-arm tests in `pipelined.rs` rebuild and retry (at most 20 times, only on `TopologyChanged`) when another test bumps the process-wide topology generation between stamping and realize. Measured on the full `fuel-dispatch` lib suite at 17 threads: 4 failures in 60 runs before, 0 in 60 after; every failure message was `execution plan was built against topology generation 1, but generation N is now current`. Other `live_gen` capture sites in `pipelined.rs` have the same hazard and are not changed yet.
+
+### Not verified
+
+- Live branch count after the planner fix (same Vulkan tiny-Llama test, `gpu-run.exe`): still 0. Placements are now visible (42 and 46 of 165 nodes have two in two of the four optimize calls) but every candidate region's CPU arm is rejected by the competitive factor: arm totals of 4 to 23 ns against 0.36 to 2.1 ms, almost all of it the entry transfer of tiny tensors. A CPU arm is not competitive against a GPU on this model, so a non-zero count needs near-parity alternatives (another GPU, another backend on the same device, kernel variants), none of which this pathfinder produces. Tiny model only (dim 8, 2 layers); not measured on a real-size model.
+
 ## v0.49.2 - 2026-11-15 (PM-allocation pending)
 
 > **RELEASE HOLD (PM 2026-11-15): no Fuel publish, and no Lightbulb or other repin, to any version containing `PlacementRegionPathfinder` until (1) a GPU live-branch-count run on a real model AND (2) a numerical-equality run of a picked CROSS-DEVICE multi-node arm have both been shown.** Progress on (2): a picked multi-node arm now runs to the same numbers as arm 0 on the host with both arms on the CPU backend (executor path, see Fixed); the cross-device case (copies at the arm's entry and exit) is not shown. The GPU run is blocked on board 446.
@@ -160,7 +173,6 @@ This documents the main changes to the `fuel` workspace.
 ### Not verified
 
 - Not tested: a picked CROSS-DEVICE multi-node arm run to equal results (only the same-backend host case is), a picker choosing arm 1 through the streaming entry (the test passes the route explicitly because same-backend arms cannot be told apart by placement), nested regions (a block region and a region inside it are not both built), the effect on a real model (live branch count, node growth from cloned arms).
-- A non-zero live branch count on a real model needs a GPU run (two admitted placements); the CPU-only test shows 0 by construction. Board 446 blocks GPU use.
 
 - The note's hypotheses (nested-branch coupling, alternatives kept per node) are marked in the note and not measured.
 

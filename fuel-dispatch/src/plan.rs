@@ -59,6 +59,11 @@ pub struct ExecutionPlan {
     pub order: Vec<NodeId>,
     /// One `AlternativeSet` per kernel-bearing node. Sparse.
     pub alternatives: HashMap<NodeId, AlternativeSet>,
+    /// Candidates the placement DP priced and then pruned off a node because they sit on a device
+    /// other than the one it committed (the single-device-set invariant above). Kept so a pathfinder
+    /// can still see a second placement; nothing on the realize path reads this map. Sparse: only
+    /// nodes that had off-device candidates.
+    pub off_device: HashMap<NodeId, AlternativeSet>,
     /// `SystemTopology` generation counter snapshotted at
     /// [`compile_plan`] time. The executor (Phase 4.3) checks this
     /// against `crate::dispatch::topology_generation()` at every
@@ -78,6 +83,7 @@ impl ExecutionPlan {
         Self {
             order: Vec::new(),
             alternatives: HashMap::new(),
+            off_device: HashMap::new(),
             generation: 0,
         }
     }
@@ -93,6 +99,12 @@ impl ExecutionPlan {
     /// built).
     pub fn alternatives_mut(&mut self, node: NodeId) -> Option<&mut AlternativeSet> {
         self.alternatives.get_mut(&node)
+    }
+
+    /// Candidates of `node` on devices other than the one the DP committed (pruned from
+    /// [`Self::alternatives`]). `None` when there were none.
+    pub fn off_device_alternatives(&self, node: NodeId) -> Option<&AlternativeSet> {
+        self.off_device.get(&node)
     }
 }
 
@@ -697,6 +709,7 @@ pub fn compile_plan(
     // against the fresh topology.
     let generation = crate::dispatch::topology_generation();
     let mut alternatives_map = HashMap::with_capacity(order.len());
+    let mut off_device_map: HashMap<NodeId, AlternativeSet> = HashMap::new();
 
     // Stage-2 residency view, threaded along the walk (see the
     // doc comment). Nodes matching no resolution rule stay absent —
@@ -769,6 +782,7 @@ pub fn compile_plan(
                     {
                         close_open_inputs(&mut dp, graph, node, *single, est, &mut residency);
                     }
+                    let mut off = None;
                     let set = finalize_node_greedy(
                         graph,
                         node,
@@ -776,7 +790,11 @@ pub fn compile_plan(
                         bindings_table,
                         options,
                         &residency,
+                        &mut off,
                     )?;
+                    if let Some(off) = off {
+                        off_device_map.insert(id, off);
+                    }
                     let dev = set.winner().map(|w| w.device);
                     // Multi-device greedy sets (legacy missing-impl
                     // fallback shapes) learn their device only after
@@ -915,6 +933,11 @@ pub fn compile_plan(
                 .filter_map(|(i, c)| (c.device == chosen).then_some(i))
                 .collect();
             if keep.len() < set.len() {
+                let off_keep: Vec<usize> = (0..set.len()).filter(|i| !keep.contains(i)).collect();
+                let mut off = set.clone();
+                off.retain_indices(&off_keep);
+                off.retain_per_device_frontier(KEEP_PER_DEVICE);
+                off_device_map.insert(id, off);
                 set.retain_indices(&keep);
             }
             // PR-B2: retire the fixed top-N. The set is now pruned to
@@ -947,6 +970,7 @@ pub fn compile_plan(
     Ok(ExecutionPlan {
         order: order.to_vec(),
         alternatives: alternatives_map,
+        off_device: off_device_map,
         generation,
     })
 }
@@ -1641,6 +1665,7 @@ fn finalize_node_greedy(
     bindings_table: &KernelBindingTable,
     options: &PlanOptions<'_>,
     residency: &HashMap<NodeId, DeviceLocation>,
+    off_device_out: &mut Option<AlternativeSet>,
 ) -> Result<AlternativeSet> {
     let NodeDraft {
         mut set,
@@ -1683,6 +1708,12 @@ fn finalize_node_greedy(
             .filter_map(|(i, c)| (c.device == winner_device).then_some(i))
             .collect();
         if keep.len() < set.len() {
+            // Keep the pruned-off candidates (see `ExecutionPlan::off_device`).
+            let off_keep: Vec<usize> = (0..set.len()).filter(|i| !keep.contains(i)).collect();
+            let mut off = set.clone();
+            off.retain_indices(&off_keep);
+            off.retain_per_device_frontier(KEEP_PER_DEVICE);
+            *off_device_out = Some(off);
             set.retain_indices(&keep);
         }
     }
