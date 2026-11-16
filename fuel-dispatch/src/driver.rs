@@ -206,7 +206,9 @@ impl PassRegistry {
     /// pre-B3 hardcoded sequence re-expressed as registered passes.
     pub fn default_passes() -> Self {
         Self::new()
-            .with_pathfinder(Box::new(PlacementForkPathfinder))
+            .with_pathfinder(Box::new(
+                crate::region_pathfinder::PlacementRegionPathfinder,
+            ))
             .with_optimizer(Box::new(FrontierConvergenceOptimizer))
     }
 
@@ -227,7 +229,9 @@ impl PassRegistry {
             .with_pathfinder(Box::new(
                 crate::runtime_fused_pathfinder::RuntimeFusedArmPathfinder,
             ))
-            .with_pathfinder(Box::new(PlacementForkPathfinder))
+            .with_pathfinder(Box::new(
+                crate::region_pathfinder::PlacementRegionPathfinder,
+            ))
             .with_optimizer(Box::new(FrontierConvergenceOptimizer))
     }
 

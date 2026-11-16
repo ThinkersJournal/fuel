@@ -142,6 +142,7 @@ pub mod plan;
 #[cfg(feature = "jit")]
 pub mod probe_device;
 pub mod ranker;
+pub mod region_pathfinder;
 pub mod residency;
 pub mod runtime_fused_arm;
 pub mod runtime_fused_kernels;

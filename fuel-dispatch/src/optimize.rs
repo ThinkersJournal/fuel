@@ -2880,21 +2880,38 @@ mod tests {
             "a CUDA PAGED_ATTN kernel is bound: revisit LOWER_WHEN_NO_DEVICE_KERNEL (the fused kernel may now beat the recipe)"
         );
     }
-    /// ROW 157 / GAP-385 CHARACTERIZATION (green today by design; the row-157 pathfinder changes the
-    /// expected values and this test is rewritten with it).
-    ///
-    /// A transformer-block-shaped graph in which EVERY kernel op has two placements: a fan-out
-    /// (`n1` feeds q, k and v), a residual join (`x` is read by `n1` and by `res`) and a second
-    /// fan-out (`res` is read by `n2` and `res2`). `PlacementForkPathfinder` forks only a node with
-    /// exactly one consumer, so no fork may sit on `n1` or `res`, and every fork is a ONE-node arm.
-    #[test]
-    fn transformer_shaped_graph_forks_only_single_consumer_nodes_today() {
+    /// Helper for the row-157 region tests: every kernel op registered on two placements.
+    fn two_placement_table() -> KernelBindingTable {
         let mut table = KernelBindingTable::new();
         register_two_backend(&mut table, OpKind::ReluElementwise, 1);
         register_two_backend(&mut table, OpKind::SiluElementwise, 1);
         register_two_backend(&mut table, OpKind::TanhElementwise, 1);
         register_two_backend(&mut table, OpKind::AddElementwise, 2);
+        table
+    }
 
+    /// `(branch_id, arm-0 exit, reconverge)` of every `Op::Branch` added after `from`.
+    fn branches_after(g: &Graph, from: usize) -> Vec<(NodeId, NodeId, NodeId)> {
+        (from..g.len())
+            .map(NodeId)
+            .filter_map(|id| match g.node(id).op {
+                Op::Branch { reconverge_at } => Some((id, g.node(id).inputs[0], reconverge_at)),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// ROW 157 / GAP-385, RESIDUAL JOIN AND FAN-OUT (born red against the one-node fork, which made
+    /// 8 one-node forks here and none at `n1` or `res`).
+    ///
+    /// A transformer-block-shaped graph, every op on two placements: a residual block whose body fans
+    /// out (`n1` feeds q, k and v which rejoin through `a` and `b`), then a second residual block.
+    /// Expect one multi-node region per residual block: block 1 has diverge `x`, a seven-node arm
+    /// (`n1 q k v a b o`) and reconverge `res`, which reads `x` directly (the residual edge); block 2
+    /// has diverge `res`, a two-node arm (`n2 m`) and reconverge `res2`.
+    #[test]
+    fn transformer_shaped_graph_forks_residual_blocks_as_multi_node_regions() {
+        let table = two_placement_table();
         let mut g = Graph::new();
         let x = f32_node(&mut g, Op::Const, vec![]);
         let n1 = f32_node(&mut g, Op::Relu, vec![x]); // fan-out: q, k, v
@@ -2904,43 +2921,133 @@ mod tests {
         let a = f32_node(&mut g, Op::Add, vec![q, k]);
         let b = f32_node(&mut g, Op::Add, vec![a, v]);
         let o = f32_node(&mut g, Op::Silu, vec![b]);
-        let res = f32_node(&mut g, Op::Add, vec![x, o]); // residual join: x has 2 consumers
-        let n2 = f32_node(&mut g, Op::Relu, vec![res]); // res has 2 consumers
+        let res = f32_node(&mut g, Op::Add, vec![x, o]); // residual join
+        let n2 = f32_node(&mut g, Op::Relu, vec![res]);
         let m = f32_node(&mut g, Op::Silu, vec![n2]);
         let res2 = f32_node(&mut g, Op::Add, vec![res, m]);
 
-        let nodes_before = g.len();
+        let before = g.len();
         let optimized = optimize_graph(&mut g, &[res2], &table, &two_backend_opts())
             .expect("optimize_graph succeeds on a transformer-shaped two-placement graph");
 
-        // The forked nodes are arm 0 (the first input) of every Op::Branch the pass added.
-        let forked: Vec<NodeId> = (nodes_before..g.len())
-            .map(NodeId)
-            .filter(|&id| matches!(g.node(id).op, Op::Branch { .. }))
-            .map(|id| g.node(id).inputs[0])
-            .collect();
-        eprintln!(
-            "row157-characterization: branch_count={} forked_nodes={:?} (n1={:?} res={:?})",
-            optimized.branch_count(&g),
-            forked,
-            n1,
-            res
-        );
-        assert_eq!(forked.len(), optimized.branch_count(&g));
-        // Fan-out and residual-join nodes never get a decision point today.
-        assert!(!forked.contains(&n1), "fan-out node n1 must not fork today");
-        assert!(
-            !forked.contains(&res),
-            "residual-join node res must not fork today"
-        );
-        // Exactly the eight single-consumer kernel nodes fork, each as a one-node arm.
-        let mut want = vec![q, k, v, a, b, o, n2, m];
-        want.sort_by_key(|n| n.0);
-        let mut got = forked.clone();
-        got.sort_by_key(|n| n.0);
+        let mut branches = branches_after(&g, before);
+        branches.sort_by_key(|(_, exit, _)| exit.0);
         assert_eq!(
-            got, want,
-            "the fork set is exactly the single-consumer kernel nodes"
+            optimized.branch_count(&g),
+            2,
+            "one region per residual block"
         );
+        assert_eq!(
+            branches.iter().map(|&(_, e, r)| (e, r)).collect::<Vec<_>>(),
+            vec![(o, res), (m, res2)],
+            "arm-0 exits and reconverge nodes: (o, res) and (m, res2)"
+        );
+        // Arm 1 clones the whole stretch: 7 + 2 clone nodes beside the 2 branch nodes.
+        assert_eq!(
+            g.len() - before,
+            7 + 2 + 2,
+            "clones of both stretches plus two branch nodes"
+        );
+        // Block 1's arm-1 head reads the shared diverge node x (not a clone), and res reads x directly.
+        assert!(
+            g.node(res).inputs.contains(&x),
+            "the residual edge x -> res is untouched"
+        );
+    }
+
+    /// ROW 157 / GAP-385, PURE FAN-OUT (no residual edge): `x -> n1 -> {q, k} -> a -> t`. The region is
+    /// the fan-out and everything up to its join: diverge `x`, a four-node arm (`n1 q k a`), reconverge
+    /// `t`. Born red: the one-node fork never forked `n1` (two consumers) and made one-node forks of
+    /// `q`, `k` (sole consumer `a`) and `a`.
+    #[test]
+    fn fan_out_that_rejoins_is_one_multi_node_region() {
+        let table = two_placement_table();
+        let mut g = Graph::new();
+        let x = f32_node(&mut g, Op::Const, vec![]);
+        let n1 = f32_node(&mut g, Op::Relu, vec![x]);
+        let q = f32_node(&mut g, Op::Silu, vec![n1]);
+        let k = f32_node(&mut g, Op::Tanh, vec![n1]);
+        let a = f32_node(&mut g, Op::Add, vec![q, k]);
+        let t = f32_node(&mut g, Op::Relu, vec![a]);
+
+        let before = g.len();
+        optimize_graph(&mut g, &[t], &table, &two_backend_opts()).expect("optimize_graph");
+        let branches = branches_after(&g, before);
+        assert_eq!(
+            branches.iter().map(|&(_, e, r)| (e, r)).collect::<Vec<_>>(),
+            vec![(a, t)],
+            "one region: arm-0 exit a, reconverge t"
+        );
+        assert_eq!(
+            g.len() - before,
+            4 + 1,
+            "four cloned nodes (n1 q k a) plus the branch node"
+        );
+    }
+    /// SABOTAGE SIBLING (row 157): a node read from outside the stretch must not sit inside a region.
+    /// `n1` is read by `m` and by a second realize root `side`, so no region may contain it; `m` alone
+    /// (diverge `n1`, reconverge `t`) is still a valid one-node region.
+    #[test]
+    fn a_node_read_from_outside_the_stretch_is_not_inside_a_region() {
+        let table = two_placement_table();
+        let mut g = Graph::new();
+        let x = f32_node(&mut g, Op::Const, vec![]);
+        let n1 = f32_node(&mut g, Op::Relu, vec![x]);
+        let m = f32_node(&mut g, Op::Silu, vec![n1]);
+        let t = f32_node(&mut g, Op::Relu, vec![m]);
+        let side = f32_node(&mut g, Op::Tanh, vec![n1]);
+        let before = g.len();
+        optimize_graph(&mut g, &[t, side], &table, &two_backend_opts()).expect("optimize_graph");
+        let exits: Vec<NodeId> = branches_after(&g, before).iter().map(|b| b.1).collect();
+        assert!(
+            !exits.contains(&n1),
+            "n1 is read by a second root and cannot be an arm exit"
+        );
+    }
+
+    /// SABOTAGE SIBLING (row 157): a stretch is only as long as the nodes that have the alternative.
+    /// `s` is CPU-only, so no region may span it; the two Relu nodes each fork alone.
+    #[test]
+    fn a_node_without_the_alternative_kernel_splits_the_region() {
+        let mut table = KernelBindingTable::new();
+        register_two_backend(&mut table, OpKind::ReluElementwise, 1);
+        register_elementwise(&mut table, OpKind::SiluElementwise, 1); // CPU only
+        let mut g = Graph::new();
+        let x = f32_node(&mut g, Op::Const, vec![]);
+        let r1 = f32_node(&mut g, Op::Relu, vec![x]);
+        let s = f32_node(&mut g, Op::Silu, vec![r1]);
+        let r2 = f32_node(&mut g, Op::Relu, vec![s]);
+        let t = f32_node(&mut g, Op::Relu, vec![r2]);
+        let before = g.len();
+        optimize_graph(&mut g, &[t], &table, &two_backend_opts()).expect("optimize_graph");
+        let mut exits: Vec<NodeId> = branches_after(&g, before).iter().map(|b| b.1).collect();
+        exits.sort_by_key(|n| n.0);
+        assert!(
+            !exits.contains(&s),
+            "the CPU-only node is never an arm exit"
+        );
+        // r2 and t form one two-node stretch? t is the root, so only r1 and r2 can be interior.
+        assert_eq!(
+            exits,
+            vec![r1, r2],
+            "r1 forks alone, r2 forks alone, nothing spans s"
+        );
+    }
+
+    /// SABOTAGE SIBLING (row 157): one placement per node means no region at all.
+    #[test]
+    fn a_single_placement_graph_gets_no_regions() {
+        let mut table = KernelBindingTable::new();
+        register_elementwise(&mut table, OpKind::ReluElementwise, 1);
+        register_elementwise(&mut table, OpKind::SiluElementwise, 1);
+        let mut g = Graph::new();
+        let x = f32_node(&mut g, Op::Const, vec![]);
+        let a = f32_node(&mut g, Op::Relu, vec![x]);
+        let b = f32_node(&mut g, Op::Silu, vec![a]);
+        let c = f32_node(&mut g, Op::Relu, vec![b]);
+        let before = g.len();
+        let optimized = optimize_graph(&mut g, &[c], &table, &cpu_opts()).expect("optimize_graph");
+        assert_eq!(optimized.branch_count(&g), 0);
+        assert_eq!(g.len(), before, "no clones are left behind");
     }
 }
