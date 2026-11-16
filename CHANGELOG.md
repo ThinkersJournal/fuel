@@ -148,6 +148,7 @@ This documents the main changes to the `fuel` workspace.
 
 ### Changed
 
+- `docs/design-notes/2026-11-15-planned-vs-built-audit.md`: PM-requested audit of the architecture docs against the code at `ad9466459` (what is built, partial, stub, absent; doc-vs-code disagreements; ordered plan). Static greps only; no test was run.
 - Docs only: ROADMAP row 157 (multi-node placement pathfinder; it did not land with #687), new `docs/gaps.md` row GAP-385, and the design note `docs/design-notes/2026-11-15-multi-node-placement-pathfinder.md` (region choice, fan-out and residual joins, disagreement fallbacks, red-first tests). No code.
 
 ### Not verified
