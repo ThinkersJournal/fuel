@@ -3129,11 +3129,13 @@ mod tests {
     }
 
     /// SIBLING of the test above: the same cross-device shape, but the GPU kernel is 30x cheaper than the
-    /// CPU one (both at 10_000 flops, GPU prior 30 flops/ns). The CPU arm is not within the competitive
-    /// factor, so NO region is recorded. This is what a real GPU model looks like; the test keeps the
-    /// first one from passing by recording a region unconditionally.
+    /// CPU one (both at 10_000 flops, GPU prior 30 flops/ns). On an idle system the CPU arm is far
+    /// slower, but the optimizer must NOT drop it for that: which device is faster depends on the load at
+    /// run time (a GPU with an hour of queued work makes a short CPU stretch the faster path), and only
+    /// the executor sees that load. So the region is kept, with the idle-system winner (the GPU) as
+    /// arm 0, the default when the executor has no load signal.
     #[test]
-    fn cross_device_cpu_arm_far_slower_than_the_gpu_is_not_competitive() {
+    fn cross_device_cpu_arm_far_slower_than_the_gpu_is_still_kept_as_an_arm() {
         let mut table = KernelBindingTable::new();
         for (op, n_in) in [
             (OpKind::ReluElementwise, 1),
@@ -3187,10 +3189,16 @@ mod tests {
             .with_transfer_estimator(&est)
             .with_input_residency(&residency);
         let optimized = optimize_graph(&mut g, &[res], &table, &opts).expect("optimize_graph");
+        assert!(
+            optimized.branch_count(&g) >= 1,
+            "an idle-system-slower CPU arm must stay a branch arm: the load that decides it is only known at run time"
+        );
+        // Arm 0 (the default when no load signal exists) is the idle-system winner: the GPU backend.
+        let (_, arm0, _) = branches_after(&g, 0).first().copied().expect("a branch");
         assert_eq!(
-            optimized.branch_count(&g),
-            0,
-            "a CPU arm ~30x slower than the GPU is not competitive within the factor of 2"
+            g.target_backend(arm0),
+            Some(BackendId::Cuda),
+            "arm 0 must be the idle-system winner (GPU)"
         );
     }
 
