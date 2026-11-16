@@ -14,7 +14,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 726 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 732 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1382 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 295 lines verbatim
@@ -25,7 +25,7 @@ LICENSE-MIT	candle	LICENSE-MIT	identical path; 100% of 18 lines verbatim
 Makefile	candle	Makefile	identical path; 33% of 6 lines verbatim
 PATTERNS.md	own		no lineage; 4 of 179 lines verbatim in candle (2%)
 README.md	candle-modified	README.md	same path; 53% of 383 lines verbatim
-ROADMAP.md	own		no lineage; 0 of 2605 lines verbatim in candle (0%)
+ROADMAP.md	own		no lineage; 0 of 2617 lines verbatim in candle (0%)
 SECURITY.md	own		no lineage; 0 of 3 lines verbatim in candle (0%)
 THIRD-PARTY-NOTICES.md	own		judged: the ledger; it reproduces upstream licence texts, which is why git sees a copy of LICENSE-APACHE
 clippy.toml	own		no lineage; 0 of 30 lines verbatim in candle (0%)
@@ -37,7 +37,7 @@ docs/architecture/00-index.md	own		no lineage; 0 of 70 lines verbatim in candle 
 docs/architecture/01-identity.md	own		no lineage; 0 of 52 lines verbatim in candle (0%)
 docs/architecture/02-layers.md	own		no lineage; 0 of 139 lines verbatim in candle (0%)
 docs/architecture/03-ir.md	own		no lineage; 0 of 116 lines verbatim in candle (0%)
-docs/architecture/04-optimization.md	own		no lineage; 0 of 241 lines verbatim in candle (0%)
+docs/architecture/04-optimization.md	own		no lineage; 0 of 245 lines verbatim in candle (0%)
 docs/architecture/05-backend-contract.md	own		no lineage; 0 of 423 lines verbatim in candle (0%)
 docs/architecture/06-runtime.md	own		no lineage; 0 of 113 lines verbatim in candle (0%)
 docs/architecture/07-tolerance.md	own		no lineage; 0 of 106 lines verbatim in candle (0%)
@@ -68,6 +68,7 @@ docs/design-notes/2026-11-07-fireline-fuel-baracuda-seam-plan.md	own		no lineage
 docs/design-notes/2026-11-07-row137-step63b-probe-seam.md	own		no lineage; 0 of 39 lines verbatim in candle (0%)
 docs/design-notes/2026-11-14-arc004-cure.md	own		no lineage; 0 of 121 lines verbatim in candle (0%)
 docs/design-notes/2026-11-14-qwen35-27b-plan.md	own		no lineage; 0 of 117 lines verbatim in candle (0%)
+docs/design-notes/2026-11-15-multi-node-placement-pathfinder.md	own		no lineage; 0 of 75 lines verbatim in candle (0%)
 docs/design/facade-inversion-recipe.md	own		no lineage; 0 of 216 lines verbatim in candle (0%)
 docs/design/gaps-status-conversion-table.md	own		no lineage; 0 of 80 lines verbatim in candle (0%)
 docs/design/gaps-status-vocabulary.md	own		no lineage; 0 of 213 lines verbatim in candle (0%)
@@ -80,7 +81,7 @@ docs/frontier-paradigms-vision.md	own		no lineage; 0 of 155 lines verbatim in ca
 docs/fuel-consumer-seam.md	own		no lineage; 0 of 1061 lines verbatim in candle (0%)
 docs/fused-op-registry.md	own		no lineage; 0 of 311 lines verbatim in candle (0%)
 docs/gap-015-handoff.md	own		no lineage; 0 of 183 lines verbatim in candle (0%)
-docs/gaps.md	own		no lineage; 0 of 428 lines verbatim in candle (0%)
+docs/gaps.md	own		no lineage; 0 of 429 lines verbatim in candle (0%)
 docs/interchange/stablehlo-to-fuel-op-map.md	own		no lineage; 0 of 157 lines verbatim in candle (0%)
 docs/kernel-contracts/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
 docs/method-rules-drafts-issue-159.md	own		no lineage; 0 of 286 lines verbatim in candle (0%)
