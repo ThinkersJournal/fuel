@@ -2984,6 +2984,216 @@ mod tests {
             "four cloned nodes (n1 q k a) plus the branch node"
         );
     }
+    /// Cross-device, production-shaped options: the realize device is a GPU (`Cuda { gpu_id: 0 }`), CPU is
+    /// the always-feasible fallback device, and a transfer estimator is present, so the placement DP
+    /// runs and prunes every node's alternative set to its committed device (the single-device-set
+    /// invariant). This is the shape `build_optimized_graph` builds on a Vulkan/CUDA realize; the
+    /// co-located `two_backend_opts` above never opens a DP row and so never reaches this pruning.
+    struct FlatTransfer;
+    impl crate::ranker::cost::TransferEstimator for FlatTransfer {
+        fn estimate_transfer_ns(
+            &self,
+            src: DeviceLocation,
+            dst: DeviceLocation,
+            _bytes: u64,
+        ) -> u64 {
+            if src == dst { 0 } else { 1_000 }
+        }
+    }
+    /// A kernel cost of 10_000 flops (10 us at the caps' 1 flop/ns) on every node: a transfer of 1_000 ns
+    /// is then a small fraction of a node, as on a real model, rather than infinitely worse than a
+    /// zero-cost kernel (which `unknown_cost` would give).
+    fn ten_us_cost(
+        _: &[Shape],
+        _: &[DType],
+        _: &crate::kernel::OpParams,
+        _: &fuel_ir::backend::BackendCapabilities,
+    ) -> crate::fused::CostEstimate {
+        crate::fused::CostEstimate {
+            flops: 10_000,
+            bytes_moved: 0,
+            kernel_overhead_ns: 0,
+        }
+    }
+    /// The same node on the GPU prior (`default_backend_rates`: 30 flops/ns) at 300_000 flops, i.e. also
+    /// 10 us: the CPU arm is then within the competitive factor. Without this the CPU arm would be ~30x
+    /// slower and correctly NOT competitive, which is itself what a real GPU model looks like.
+    fn ten_us_cost_gpu(
+        _: &[Shape],
+        _: &[DType],
+        _: &crate::kernel::OpParams,
+        _: &fuel_ir::backend::BackendCapabilities,
+    ) -> crate::fused::CostEstimate {
+        crate::fused::CostEstimate {
+            flops: 300_000,
+            bytes_moved: 0,
+            kernel_overhead_ns: 0,
+        }
+    }
+    fn costed_two_placement_table() -> KernelBindingTable {
+        let mut table = KernelBindingTable::new();
+        for (op, n_in) in [
+            (OpKind::ReluElementwise, 1),
+            (OpKind::SiluElementwise, 1),
+            (OpKind::TanhElementwise, 1),
+            (OpKind::AddElementwise, 2),
+        ] {
+            let mut dtypes = vec![DType::F32; n_in];
+            dtypes.push(DType::F32);
+            for (backend, kernel, cost) in [
+                (
+                    BackendId::Cpu,
+                    noop_kernel as crate::kernel::KernelRef,
+                    ten_us_cost as crate::kernel::CostFn,
+                ),
+                (
+                    BackendId::Cuda,
+                    noop_kernel_b as crate::kernel::KernelRef,
+                    ten_us_cost_gpu as crate::kernel::CostFn,
+                ),
+            ] {
+                table.register_full(
+                    op,
+                    &dtypes,
+                    backend,
+                    kernel,
+                    KernelCaps::empty(),
+                    PrecisionGuarantee::PRIMITIVE_DETERMINISTIC_CPU,
+                    cost,
+                );
+            }
+        }
+        table
+    }
+    fn gpu_placements(dev: DeviceLocation) -> Vec<BackendId> {
+        match dev {
+            DeviceLocation::Cuda { .. } => vec![BackendId::Cuda],
+            DeviceLocation::Cpu => vec![BackendId::Cpu],
+            _ => vec![],
+        }
+    }
+    fn cpu_fallback(dev: DeviceLocation) -> Vec<(BackendId, DeviceLocation)> {
+        if dev == DeviceLocation::Cpu {
+            vec![]
+        } else {
+            vec![(BackendId::Cpu, DeviceLocation::Cpu)]
+        }
+    }
+
+    /// ROW 157 / GAP-385, PRODUCTION ENTRY (born red). Live run, Vulkan tiny-Llama, ref `db0c1f7a2`: every
+    /// optimize reported 0 live `Op::Branch`; the pathfinder saw 0 nodes with two placements because
+    /// `compile_plan` pruned each set to the DP-committed device. Here the same options shape
+    /// (GPU realize device + CPU fallback + transfer estimator) over a residual block must still yield
+    /// one multi-node region.
+    #[test]
+    fn cross_device_residual_block_forks_through_the_production_options_shape() {
+        let table = costed_two_placement_table();
+        let mut g = Graph::new();
+        let x = f32_node(&mut g, Op::Const, vec![]);
+        let n1 = f32_node(&mut g, Op::Relu, vec![x]);
+        let q = f32_node(&mut g, Op::Silu, vec![n1]);
+        let o = f32_node(&mut g, Op::Tanh, vec![q]);
+        let res = f32_node(&mut g, Op::Add, vec![x, o]);
+
+        let est = FlatTransfer;
+        let gpu = DeviceLocation::Cuda { gpu_id: 0 };
+        let caps = fuel_ir::backend::BackendCapabilities {
+            backend_id: BackendId::Cuda,
+            device_location: gpu,
+            op_dtype_support: std::collections::HashSet::new(),
+            required_alignment: 64,
+            access_granularity_bits: 8,
+            transfer_paths: vec![(gpu, fuel_ir::backend::TransferPath::SameDevice)],
+            storage_substrate: fuel_ir::backend::SubstrateClass::HostBytes,
+            compute_throughput_flops_per_ns: 1.0,
+            mem_bandwidth_bytes_per_ns: 4.0,
+        };
+        let caps_for = |_: BackendId| Some(&caps);
+        let residency = |_: NodeId| Some(gpu);
+        // Cost population stays ON (the default): `relaxed` merged enumeration, and with it the
+        // placement DP, only runs when pricing is active, exactly as `build_optimized_graph` sets it.
+        let opts = PlanOptions::new()
+            .with_pinned_device(gpu)
+            .with_placements_for_device(&gpu_placements)
+            .with_fallback_placements_for(&cpu_fallback)
+            .with_capabilities_for(&caps_for)
+            .with_transfer_estimator(&est)
+            .with_input_residency(&residency);
+        let before = g.len();
+        let optimized = optimize_graph(&mut g, &[res], &table, &opts).expect("optimize_graph");
+        assert!(
+            optimized.branch_count(&g) >= 1,
+            "a GPU realize with a CPU fallback must expose a cross-device region; branches={:?}",
+            branches_after(&g, before)
+        );
+    }
+
+    /// SIBLING of the test above: the same cross-device shape, but the GPU kernel is 30x cheaper than the
+    /// CPU one (both at 10_000 flops, GPU prior 30 flops/ns). The CPU arm is not within the competitive
+    /// factor, so NO region is recorded. This is what a real GPU model looks like; the test keeps the
+    /// first one from passing by recording a region unconditionally.
+    #[test]
+    fn cross_device_cpu_arm_far_slower_than_the_gpu_is_not_competitive() {
+        let mut table = KernelBindingTable::new();
+        for (op, n_in) in [
+            (OpKind::ReluElementwise, 1),
+            (OpKind::SiluElementwise, 1),
+            (OpKind::TanhElementwise, 1),
+            (OpKind::AddElementwise, 2),
+        ] {
+            let mut dtypes = vec![DType::F32; n_in];
+            dtypes.push(DType::F32);
+            for (backend, kernel) in [
+                (BackendId::Cpu, noop_kernel as crate::kernel::KernelRef),
+                (BackendId::Cuda, noop_kernel_b as crate::kernel::KernelRef),
+            ] {
+                table.register_full(
+                    op,
+                    &dtypes,
+                    backend,
+                    kernel,
+                    KernelCaps::empty(),
+                    PrecisionGuarantee::PRIMITIVE_DETERMINISTIC_CPU,
+                    ten_us_cost,
+                );
+            }
+        }
+        let mut g = Graph::new();
+        let x = f32_node(&mut g, Op::Const, vec![]);
+        let n1 = f32_node(&mut g, Op::Relu, vec![x]);
+        let q = f32_node(&mut g, Op::Silu, vec![n1]);
+        let o = f32_node(&mut g, Op::Tanh, vec![q]);
+        let res = f32_node(&mut g, Op::Add, vec![x, o]);
+        let est = FlatTransfer;
+        let gpu = DeviceLocation::Cuda { gpu_id: 0 };
+        let caps = fuel_ir::backend::BackendCapabilities {
+            backend_id: BackendId::Cuda,
+            device_location: gpu,
+            op_dtype_support: std::collections::HashSet::new(),
+            required_alignment: 64,
+            access_granularity_bits: 8,
+            transfer_paths: vec![(gpu, fuel_ir::backend::TransferPath::SameDevice)],
+            storage_substrate: fuel_ir::backend::SubstrateClass::HostBytes,
+            compute_throughput_flops_per_ns: 1.0,
+            mem_bandwidth_bytes_per_ns: 4.0,
+        };
+        let caps_for = |_: BackendId| Some(&caps);
+        let residency = |_: NodeId| Some(gpu);
+        let opts = PlanOptions::new()
+            .with_pinned_device(gpu)
+            .with_placements_for_device(&gpu_placements)
+            .with_fallback_placements_for(&cpu_fallback)
+            .with_capabilities_for(&caps_for)
+            .with_transfer_estimator(&est)
+            .with_input_residency(&residency);
+        let optimized = optimize_graph(&mut g, &[res], &table, &opts).expect("optimize_graph");
+        assert_eq!(
+            optimized.branch_count(&g),
+            0,
+            "a CPU arm ~30x slower than the GPU is not competitive within the factor of 2"
+        );
+    }
+
     /// SABOTAGE SIBLING (row 157): a node read from outside the stretch must not sit inside a region.
     /// `n1` is read by `m` and by a second realize root `side`, so no region may contain it; `m` alone
     /// (diverge `n1`, reconverge `t`) is still a valid one-node region.

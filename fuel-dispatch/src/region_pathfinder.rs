@@ -58,7 +58,26 @@ impl Pathfinder for PlacementRegionPathfinder {
     }
 
     fn propose(&self, graph: &mut Graph, ctx: &OptimizationContext<'_>) -> Result<()> {
-        let regions = choose_regions(find_regions(graph, ctx));
+        if std::env::var_os("FUEL_PRINT_BRANCH_COUNT").is_some() {
+            let mut hist = [0usize; 5];
+            for &id in ctx.order {
+                hist[placements(ctx, id).len().min(4)] += 1;
+            }
+            eprintln!(
+                "fuel: region pathfinder sees {} nodes; placements-per-node histogram [0,1,2,3,4+] = {:?}; pinned/cycle-guarded = {}",
+                ctx.order.len(),
+                hist,
+                ctx.cycle_guard.len()
+            );
+        }
+        let found = find_regions(graph, ctx);
+        if std::env::var_os("FUEL_PRINT_BRANCH_COUNT").is_some() {
+            eprintln!(
+                "fuel: region pathfinder found {} candidate region(s)",
+                found.len()
+            );
+        }
+        let regions = choose_regions(found);
         for region in regions {
             let _ = record_branch(
                 graph,
@@ -79,7 +98,15 @@ fn placements(
     id: NodeId,
 ) -> Vec<(BackendId, fuel_ir::DeviceLocation)> {
     let mut out: Vec<(BackendId, fuel_ir::DeviceLocation)> = Vec::new();
-    if let Some(set) = ctx.plan.alternatives(id) {
+    // The DP prunes each node's set to its committed device, so a second placement lives in the plan's
+    // off-device side map (read here; the realize path never reads it).
+    for set in [
+        ctx.plan.alternatives(id),
+        ctx.plan.off_device_alternatives(id),
+    ]
+    .into_iter()
+    .flatten()
+    {
         for c in set.alternatives() {
             let p = (c.backend, c.device);
             if !out.contains(&p) {
@@ -90,18 +117,31 @@ fn placements(
     out
 }
 
-/// Time of the best candidate of `id` on `place`, or `None` when it has none.
+/// `(compute_ns, inbound_transfer_ns)` of the best candidate of `id` on `place` (best by their sum),
+/// or `None` when it has none. A candidate's `time` includes the transfer of its inputs onto its
+/// device, which is only paid where a value actually crosses the region boundary, so the two terms are
+/// kept apart.
 fn time_on(
     ctx: &OptimizationContext<'_>,
     id: NodeId,
     place: (BackendId, fuel_ir::DeviceLocation),
-) -> Option<u64> {
-    let set = ctx.plan.alternatives(id)?;
-    set.alternatives()
-        .iter()
-        .filter(|c| (c.backend, c.device) == place)
-        .map(|c| CostVector::from_candidate(c).time)
-        .min()
+) -> Option<(u64, u64)> {
+    [
+        ctx.plan.alternatives(id),
+        ctx.plan.off_device_alternatives(id),
+    ]
+    .into_iter()
+    .flatten()
+    .flat_map(|set| set.alternatives().iter())
+    .filter(|c| (c.backend, c.device) == place)
+    .map(|c| {
+        let total = CostVector::from_candidate(c).time;
+        (
+            total.saturating_sub(c.inbound_transfer_ns),
+            c.inbound_transfer_ns,
+        )
+    })
+    .min_by_key(|&(compute, inbound)| compute.saturating_add(inbound))
 }
 
 fn find_regions(graph: &Graph, ctx: &OptimizationContext<'_>) -> Vec<Region> {
@@ -313,8 +353,28 @@ fn check_region(
     let mut win_total: u64 = 0;
     let mut alt_total: u64 = 0;
     for (&x, w) in interior.iter().zip(&winners) {
-        win_total = win_total.saturating_add(time_on(ctx, order[x], *w)?);
-        alt_total = alt_total.saturating_add(time_on(ctx, order[x], alt)?);
+        // Only an entry node (one reading a value from outside the stretch) pays an inbound transfer;
+        // interior edges stay on one device inside an arm. The exit transfer back is not priced here
+        // (unmeasured; the DP prices it when it commits a placement).
+        let is_entry = graph
+            .node(order[x])
+            .inputs
+            .iter()
+            .any(|i| !idx.get(i).is_some_and(|j| inside.contains(j)));
+        let (wc, wi) = time_on(ctx, order[x], *w)?;
+        let (ac, ai) = time_on(ctx, order[x], alt)?;
+        win_total = win_total.saturating_add(wc);
+        alt_total = alt_total.saturating_add(ac);
+        if is_entry {
+            win_total = win_total.saturating_add(wi);
+            alt_total = alt_total.saturating_add(ai);
+        }
+    }
+    if std::env::var_os("FUEL_PRINT_BRANCH_COUNT").is_some() {
+        eprintln!(
+            "fuel: region d={d} r={r} interior={} win_total={win_total} alt_total={alt_total}",
+            interior.len()
+        );
     }
     if alt_total > win_total.saturating_mul(REGION_COMPETITIVE_FACTOR) {
         return None;
