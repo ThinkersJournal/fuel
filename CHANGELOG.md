@@ -148,6 +148,7 @@ This documents the main changes to the `fuel` workspace.
 
 ### Changed
 
+- `fuel-dispatch`: new `PlacementRegionPathfinder` (`region_pathfinder.rs`, public consts `MAX_REGION_NODES` = 64 and `REGION_COMPETITIVE_FACTOR` = 2, both unmeasured first-slice values) replaces `PlacementForkPathfinder` in `PassRegistry::default_passes` and `default_passes_with_runtime_fusion`. It records one `Op::Branch` per single-entry single-exit region (chain, residual block, fan-out that rejoins) with arm 1 a clone of the whole stretch on one alternative placement; a one-node region is the old fork, so isolated forks are unchanged. Born-red tests `transformer_shaped_graph_forks_residual_blocks_as_multi_node_regions` and `fan_out_that_rejoins_is_one_multi_node_region` fail under the old pathfinder (checked by swapping it back: 8 forks, then 3) and pass now; sabotage siblings cover a node read from outside, a node without the alternative kernel, and a single-placement graph. `PlacementForkPathfinder` stays exported.
 - `fuel-tensor`: live `Op::Branch` counter on the production optimize (`optimize_branches()`, `optimize_branches_thread_local()`, and `FUEL_PRINT_BRANCH_COUNT=1` to print it), counted after bake so it is what the runtime picker can see (row 157 first slice). `fuel-dispatch` test `transformer_shaped_graph_forks_only_single_consumer_nodes_today` pins today's behaviour: on a transformer-block-shaped graph with every op on two placements, 8 one-node forks, none at the fan-out or the residual join.
 - `ROADMAP.md` rows 158 to 164 and `docs/gaps.md` GAP-386 to GAP-392: plan items 1 to 7 of the planned-vs-built audit, each with the audit as evidence (item 7 folds into the FireLine-seam rows).
 - `docs/design-notes/2026-11-15-planned-vs-built-audit.md`: PM-requested audit of the architecture docs against the code at `ad9466459` (what is built, partial, stub, absent; doc-vs-code disagreements; ordered plan). Static greps only; no test was run.
@@ -155,6 +156,7 @@ This documents the main changes to the `fuel` workspace.
 
 ### Not verified
 
+- Structural unit tests only. Not tested: running a picked multi-node arm to numerically equal results, nested regions (a block region and a region inside it are not both built), the effect on a real model (live branch count, node growth from cloned arms).
 - A non-zero live branch count on a real model needs a GPU run (two admitted placements); the CPU-only test shows 0 by construction. Board 446 blocks GPU use.
 
 - The note's hypotheses (nested-branch coupling, alternatives kept per node) are marked in the note and not measured.
