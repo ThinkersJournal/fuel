@@ -224,6 +224,18 @@ pub trait BackendStreams: BackendRuntime {
     /// slot_capacity`) and dispatch lookahead sizing.
     fn slot_capacity(&self) -> u32;
 
+    /// Estimated nanoseconds of work already submitted to this device and
+    /// not yet finished (the executor's own submitted-unfinished ops x their
+    /// estimated cost) — what a new op queued here would wait behind. A
+    /// route picker adds it to a candidate's own estimated latency to rank
+    /// arms by estimated COMPLETION time, not by a bare queue-depth bucket.
+    ///
+    /// `None` (the default) = no estimate; never read as "idle". A
+    /// synchronous backend (CPU) has no queue, so it also reports `None`.
+    fn estimated_backlog_ns(&self) -> Option<u64> {
+        None
+    }
+
     /// Block until all submitted work on this backend's slots has
     /// completed. Used at realize boundaries and by training-loop
     /// barriers (gradient accumulation, optimizer step).

@@ -161,17 +161,20 @@ impl ChainedSelector {
     /// `DeviceRuntimeHandle` the bridge hands out — which already
     /// implements `BackendStreams`, so the VRAM lookup IS the load lookup
     /// (design §3.3: one load source serves all backends).
-    fn fit_and_load_for(&self, c: &Candidate) -> (FitStatus, u8) {
+    fn fit_and_load_for(&self, c: &Candidate) -> (FitStatus, u8, Option<u64>) {
         let Some(lookup) = self.backend_runtime_lookup.as_ref() else {
-            return (FitStatus::Unknown, super::device_load::LOAD_TIER_IDLE);
+            return (FitStatus::Unknown, super::device_load::LOAD_TIER_IDLE, None);
         };
         match lookup(c.backend, c.device) {
             Some(runtime) => {
                 let fit = runtime.would_fit((self.estimate_output_bytes)(c));
                 let load = super::device_load::load_tier_of_handle(runtime.as_ref());
-                (fit, load)
+                let backlog = runtime
+                    .as_backend_streams()
+                    .and_then(|s| s.estimated_backlog_ns());
+                (fit, load, backlog)
             }
-            None => (FitStatus::Unknown, super::device_load::LOAD_TIER_IDLE),
+            None => (FitStatus::Unknown, super::device_load::LOAD_TIER_IDLE, None),
         }
     }
 
@@ -229,15 +232,40 @@ impl RuntimeSelector for ChainedSelector {
         // ABOVE the latency rank, so load reorders arms only within a VRAM
         // fit tier (VRAM outranks load) and never overrides the static
         // rank by more than a tie-break under that guard (Step E / C2).
+        //
+        // Row 158 slice 2: when ANY viable arm's device reports an estimated
+        // backlog (`BackendStreams::estimated_backlog_ns`), the load leg
+        // stops being a queue-depth bucket and becomes TIME: every arm is
+        // ranked by estimated completion = backlog + its own latency (which
+        // already carries the inbound-transfer term). A device with no
+        // estimate (CPU: synchronous, no queue) contributes 0 backlog —
+        // truthfully, it has nothing queued. With no estimate on any arm the
+        // legacy count tier applies unchanged.
+        let scored: Vec<(usize, FitStatus, u8, Option<u64>)> = alts
+            .iter()
+            .enumerate()
+            .map(|(i, c)| {
+                let (fit, tier, backlog) = self.fit_and_load_for(c);
+                (i, fit, tier, backlog)
+            })
+            .collect();
+        let timed = scored.iter().any(|&(_, _, _, b)| b.is_some());
         let mut best: Option<(u8, u8, u64, usize)> = None;
-        for (i, c) in alts.iter().enumerate() {
-            let (fit, load_tier) = self.fit_and_load_for(c);
+        for &(i, fit, load_tier, backlog) in &scored {
+            let c = &alts[i];
             let pressure_tier = match fit {
                 FitStatus::WontFit => continue,
                 FitStatus::Comfortable | FitStatus::Unknown => 0u8,
                 FitStatus::Tight => 1u8,
             };
-            let key = (pressure_tier, load_tier, self.latency_ns(c, ctx), i);
+            let mut ns = self.latency_ns(c, ctx);
+            let tier = if timed {
+                ns = ns.saturating_add(backlog.unwrap_or(0));
+                0
+            } else {
+                load_tier
+            };
+            let key = (pressure_tier, tier, ns, i);
             if best.is_none_or(|b| key < b) {
                 best = Some(key);
             }
