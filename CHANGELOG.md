@@ -144,6 +144,16 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.49.1 - 2026-11-15 (PM-allocation pending)
+
+### Changed
+
+- Docs only: `ROADMAP.md` ("Graph optimizer architecture") and `docs/architecture/04-optimization.md` (sliding window) now state that a transaction is a region and the swap unit is the decision point, superseding the whole-graph `Arc<Graph>` wording, and record that the code at `ed3ce9746` has no transaction, frontier or in-flight switch (`optimize_graph` mutates in place, synchronously).
+
+### Not verified
+
+- The code claim is a search by name over `fuel-graph/src` and `fuel-dispatch/src`; other crates were not searched.
+
 ## v0.49.0 - 2026-11-15 (PM-allocation pending; BREAKING)
 
 ### Breaking
