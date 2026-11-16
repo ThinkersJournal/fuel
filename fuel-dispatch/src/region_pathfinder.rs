@@ -60,7 +60,14 @@ impl Pathfinder for PlacementRegionPathfinder {
     fn propose(&self, graph: &mut Graph, ctx: &OptimizationContext<'_>) -> Result<()> {
         let regions = choose_regions(find_regions(graph, ctx));
         for region in regions {
-            record_branch(graph, &region);
+            let _ = record_branch(
+                graph,
+                region.diverge,
+                region.reconverge,
+                &region.interior,
+                region.exit,
+                region.alt_backend,
+            );
         }
         Ok(())
     }
@@ -354,11 +361,20 @@ fn choose_regions(mut candidates: Vec<Region>) -> Vec<Region> {
     chosen
 }
 
-/// Clone the interior on the alternative placement and record the 2-arm branch. A rejected branch is
-/// not an error (as for the one-node fork): the clones are unreachable and the single route is kept.
-fn record_branch(graph: &mut Graph, region: &Region) {
+/// Clone the interior on the alternative placement and record the 2-arm branch, returning the branch
+/// node when it was recorded. A rejected branch is not an error (as for the one-node fork): the clones
+/// are unreachable and the single route is kept. `pub(crate)` so tests can build the exact structure
+/// the pathfinder builds with an alternative backend that can run on the host.
+pub(crate) fn record_branch(
+    graph: &mut Graph,
+    diverge: NodeId,
+    reconverge: NodeId,
+    interior: &[NodeId],
+    exit: NodeId,
+    alt_backend: BackendId,
+) -> Option<NodeId> {
     let mut clone_of: HashMap<NodeId, NodeId> = HashMap::new();
-    for &x in &region.interior {
+    for &x in interior {
         let (op, inputs, shape, dtype) = {
             let n = graph.node(x);
             (n.op.clone(), n.inputs.clone(), n.shape.clone(), n.dtype)
@@ -373,12 +389,12 @@ fn record_branch(graph: &mut Graph, region: &Region) {
             shape,
             dtype,
         });
-        graph.set_target_backend(c, region.alt_backend);
+        graph.set_target_backend(c, alt_backend);
         clone_of.insert(x, c);
     }
-    let arm1 = clone_of[&region.exit];
-    let mut builder = graph.open_branch(region.diverge);
-    builder.add_arm(region.exit); // arm 0 = the DP winner's stretch, in place
+    let arm1 = clone_of[&exit];
+    let mut builder = graph.open_branch(diverge);
+    builder.add_arm(exit); // arm 0 = the DP winner's stretch, in place
     builder.add_arm(arm1);
-    let _ = builder.finalize_branches(graph, region.reconverge);
+    builder.finalize_branches(graph, reconverge).ok().flatten()
 }
