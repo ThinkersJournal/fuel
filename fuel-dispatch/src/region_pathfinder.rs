@@ -34,10 +34,6 @@ use crate::ranker::CostVector;
 /// measured on real models before it is fixed.
 pub const MAX_REGION_NODES: usize = 64;
 
-/// A region is recorded only when the alternative stretch's summed time is at most this multiple of
-/// the winner's. A first-slice bound, to be measured against the per-device frontier.
-pub const REGION_COMPETITIVE_FACTOR: u64 = 2;
-
 /// Records multi-node placement forks as `Op::Branch` regions. See the module docs.
 pub struct PlacementRegionPathfinder;
 
@@ -376,9 +372,11 @@ fn check_region(
             interior.len()
         );
     }
-    if alt_total > win_total.saturating_mul(REGION_COMPETITIVE_FACTOR) {
-        return None;
-    }
+    // No competitiveness gate: `win_total`/`alt_total` are idle-system estimates, and which arm is faster
+    // depends on the device load at run time (a GPU with an hour of queued work makes a short CPU stretch
+    // the faster path). Every feasible alternative stays a branch arm and the executor's picker decides.
+    // The bound is structural: one alternative per region, interiors disjoint, each at most
+    // `MAX_REGION_NODES` (still an unmeasured placeholder), so the arms clone at most the graph's own size.
 
     Some(Region {
         diverge: order[d],
