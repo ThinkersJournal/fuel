@@ -144,6 +144,12 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.49.4 - 2026-11-16 (PM-allocation pending)
+
+### Changed
+
+- CI: the Portfolio job's CodeRipper workflow pin moves from `58e2f7ab` (0.43.77) to `c72a6e03` (0.47.5); `.coderipper.toml` rule names migrated to the numbered ids (`ci-security` -> `SUP-017`, `licence` -> `SUP-016`). No code change; no version files touched (PM allocates).
+
 ## v0.49.3 - 2026-11-15 (PM-allocation pending)
 
 > **RELEASE HOLD (PM 2026-11-15) stands:** no Fuel publish and no repin to a version containing `PlacementRegionPathfinder` until a GPU live-branch-count run shows a non-zero count and a cross-device picked-arm equality run is shown.

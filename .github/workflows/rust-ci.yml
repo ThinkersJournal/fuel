@@ -1210,6 +1210,7 @@ jobs:
   # An earlier note here said the sweep runs out of disk on a ~14 GB runner; that was WRONG for this runner (the
   # "No space left on device" was seen once, on the 0.9.14 sweep, and did not reproduce). Not moved to a self-hosted
   # runner (public repo, board 241). The job is deliberately NOT hidden.
+  # REPIN (2026-11-16, PM [TASK] pin-move): c72a6e03 installs 0.47.5; rule ids migrated to the numbered names (.coderipper.toml).
   # REPIN (2026-11-14, PM [TASK]): 33bd9292 (0.9.37) cannot parse the `[architecture]` table (TOML parse error, .coderipper.toml line 59);
   # 58e2f7ab installs 0.43.77 (`[architecture]` needs >= 0.43.54). The 2026-10-25 note below is the history of the old pin.
   # PIN (2026-10-25): coderipper's workflow commit 33bd9292 sets CODERIPPER_VERSION=0.9.37 (read inside that commit)
@@ -1219,4 +1220,4 @@ jobs:
   portfolio:
     permissions:
       contents: read
-    uses: ciresnave/coderipper/.github/workflows/portfolio.yml@58e2f7abe6e6a74cb519d5039e86d17aff2686a2 # installs 0.43.77
+    uses: ciresnave/coderipper/.github/workflows/portfolio.yml@c72a6e03479d914de8ea8a73609ba73e93a0de92 # installs 0.47.5
