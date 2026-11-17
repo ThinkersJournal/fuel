@@ -1672,17 +1672,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fancy-regex"
-version = "0.20.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a2e16b9a584b602f1e0e5e22c30ca0906786088c27500653e432d086def8b53"
-dependencies = [
- "bit-set",
- "regex-automata",
- "regex-syntax",
-]
-
-[[package]]
 name = "fastrand"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2501,7 +2490,6 @@ dependencies = [
  "accelerate-src",
  "anyhow",
  "byteorder",
- "fancy-regex 0.20.2",
  "fuel-cpu-backend",
  "fuel-dispatch",
  "fuel-formats",
@@ -5689,7 +5677,7 @@ dependencies = [
  "dary_heap",
  "derive_builder",
  "esaxx-rs",
- "fancy-regex 0.17.0",
+ "fancy-regex",
  "getrandom 0.3.4",
  "itertools 0.14.0",
  "log",
