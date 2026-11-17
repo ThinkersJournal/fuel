@@ -2737,7 +2737,21 @@ fn compiler_thread_body(
         }
         m
     };
+    // Diagnostic (`FUEL_PRINT_BRANCH_COUNT`): every node the compiler thread sends, in order, so a failed
+    // realize can be read against the order it was fed.
+    let print_order = std::env::var_os("FUEL_PRINT_BRANCH_COUNT").is_some();
     let compile_and_send = |id: NodeId, layout_cache: &mut HashMap<NodeId, Layout>| -> bool {
+        if print_order {
+            let n = g.node(id);
+            eprintln!(
+                "fuel: send Node#{} {} inputs={:?} backend={:?} placement={:?}",
+                id.0,
+                format!("{:?}", n.op).chars().take(40).collect::<String>(),
+                n.inputs.iter().map(|i| i.0).collect::<Vec<_>>(),
+                g.target_backend(id),
+                g.placement(id),
+            );
+        }
         let item = compile_one(&g, id, layout_cache, &bindings, &sym_env);
         let stop_on_err = item.is_err();
         if tx.send(item).is_err() {
