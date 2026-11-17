@@ -18,16 +18,33 @@ use std::collections::VecDeque;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use fuel_ir::probe::BackendId;
+
 /// How many rejection reasons are kept (the newest).
 pub const MAX_KEPT_REJECTIONS: usize = 16;
 
 /// Number of arm-index slots: arms `0`, `1`, `2`, and slot `3` for arm 3 and above.
 pub const ARM_SLOTS: usize = 4;
 
+/// Backend slots for [`Trace::record_lookup_none`]: `Cpu`, `Cuda`, `Vulkan`, `Metal`, and slot 4 for
+/// any other backend.
+pub const BACKEND_SLOTS: usize = 5;
+
+fn backend_slot(backend: BackendId) -> usize {
+    match backend {
+        BackendId::Cpu => 0,
+        BackendId::Cuda => 1,
+        BackendId::Vulkan => 2,
+        BackendId::Metal => 3,
+        _ => 4,
+    }
+}
+
 /// The counters. The process has one ([`global`]); tests build their own so they cannot race with
 /// the rest of the test binary.
 pub struct Trace {
     arm_chosen: [AtomicU64; ARM_SLOTS],
+    lookup_none: [AtomicU64; BACKEND_SLOTS],
     overlap_dropped: AtomicU64,
     recorded: AtomicU64,
     collapsed: AtomicU64,
@@ -40,6 +57,9 @@ pub struct Trace {
 pub struct TraceSnapshot {
     /// Branches resolved to arm `i` (slot 3 = arm 3 and above).
     pub arm_chosen: [u64; ARM_SLOTS],
+    /// Per backend slot (`Cpu`, `Cuda`, `Vulkan`, `Metal`, other): how often the selector's runtime
+    /// lookup returned NO handle for a candidate, so the picker had no VRAM or load signal for it.
+    pub lookup_none: [u64; BACKEND_SLOTS],
     /// Region candidates dropped because they overlap a larger chosen region.
     pub overlap_dropped: u64,
     /// Branches recorded by the pathfinder.
@@ -60,10 +80,15 @@ impl TraceSnapshot {
         for (i, slot) in arm_chosen.iter_mut().enumerate() {
             *slot = self.arm_chosen[i].saturating_sub(earlier.arm_chosen[i]);
         }
+        let mut lookup_none = [0u64; BACKEND_SLOTS];
+        for (i, slot) in lookup_none.iter_mut().enumerate() {
+            *slot = self.lookup_none[i].saturating_sub(earlier.lookup_none[i]);
+        }
         let rejected = self.rejected.saturating_sub(earlier.rejected);
         let keep = (rejected as usize).min(self.rejections.len());
         TraceSnapshot {
             arm_chosen,
+            lookup_none,
             overlap_dropped: self.overlap_dropped.saturating_sub(earlier.overlap_dropped),
             recorded: self.recorded.saturating_sub(earlier.recorded),
             collapsed: self.collapsed.saturating_sub(earlier.collapsed),
@@ -88,6 +113,13 @@ impl Trace {
                 AtomicU64::new(0),
                 AtomicU64::new(0),
             ],
+            lookup_none: [
+                AtomicU64::new(0),
+                AtomicU64::new(0),
+                AtomicU64::new(0),
+                AtomicU64::new(0),
+                AtomicU64::new(0),
+            ],
             overlap_dropped: AtomicU64::new(0),
             recorded: AtomicU64::new(0),
             collapsed: AtomicU64::new(0),
@@ -99,6 +131,12 @@ impl Trace {
     /// The executor resolved a branch to arm `arm`.
     pub fn record_arm_chosen(&self, arm: usize) {
         self.arm_chosen[arm.min(ARM_SLOTS - 1)].fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// The selector's runtime lookup returned no handle for a candidate on `backend` (it had a lookup
+    /// configured), so the picker had no VRAM or load signal for that candidate.
+    pub fn record_lookup_none(&self, backend: BackendId) {
+        self.lookup_none[backend_slot(backend)].fetch_add(1, Ordering::Relaxed);
     }
 
     /// The pathfinder's outcome for one `propose` pass.
@@ -136,8 +174,13 @@ impl Trace {
         for (i, slot) in arm_chosen.iter_mut().enumerate() {
             *slot = self.arm_chosen[i].load(Ordering::Relaxed);
         }
+        let mut lookup_none = [0u64; BACKEND_SLOTS];
+        for (i, slot) in lookup_none.iter_mut().enumerate() {
+            *slot = self.lookup_none[i].load(Ordering::Relaxed);
+        }
         TraceSnapshot {
             arm_chosen,
+            lookup_none,
             overlap_dropped: self.overlap_dropped.load(Ordering::Relaxed),
             recorded: self.recorded.load(Ordering::Relaxed),
             collapsed: self.collapsed.load(Ordering::Relaxed),
@@ -236,6 +279,18 @@ mod tests {
             vec!["new a".to_string(), "new b".to_string()],
             "the reasons added since, not the old one"
         );
+    }
+
+    #[test]
+    fn lookup_misses_count_per_backend_and_show_in_since() {
+        let t = Trace::new();
+        t.record_lookup_none(BackendId::Vulkan);
+        let before = t.snapshot();
+        t.record_lookup_none(BackendId::Vulkan);
+        t.record_lookup_none(BackendId::Cpu);
+        let delta = t.snapshot().since(&before);
+        assert_eq!(delta.lookup_none, [1, 0, 1, 0, 0], "Cpu 1, Vulkan 1 since");
+        assert_eq!(t.snapshot().lookup_none, [1, 0, 2, 0, 0], "totals");
     }
 
     #[test]

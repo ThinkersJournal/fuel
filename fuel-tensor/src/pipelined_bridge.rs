@@ -1914,19 +1914,52 @@ impl BackendStreams for DeviceRuntimeHandle {
 ///   lands.
 fn backend_runtime_lookup_for(device: &Device) -> BackendRuntimeLookup {
     let realize_loc = device.location();
-    let realize_backend = realize_loc.backend();
     let inner: Arc<dyn DynBackendDevice> = device.inner.clone();
-    Arc::new(move |backend, loc| {
-        if backend == realize_backend && loc == realize_loc {
-            return Some(Box::new(DeviceRuntimeHandle(Arc::clone(&inner))) as BackendRuntimeHandle);
-        }
-        if backend == BackendId::Cpu && loc == DeviceLocation::Cpu {
-            return Some(
-                Box::new(fuel_cpu_backend::dyn_impl::CpuBackendDevice) as BackendRuntimeHandle
-            );
-        }
-        None
-    })
+    Arc::new(
+        move |backend, loc| match lookup_target(realize_loc, backend, loc) {
+            LookupTarget::RealizeDevice => {
+                Some(Box::new(DeviceRuntimeHandle(Arc::clone(&inner))) as BackendRuntimeHandle)
+            }
+            LookupTarget::Cpu => {
+                Some(Box::new(fuel_cpu_backend::dyn_impl::CpuBackendDevice) as BackendRuntimeHandle)
+            }
+            LookupTarget::NoHandle => None,
+        },
+    )
+}
+
+/// What a candidate `(backend, loc)` resolves to for a realize on `realize_loc`.
+#[derive(Debug, PartialEq, Eq)]
+enum LookupTarget {
+    /// The realize device's own handle.
+    RealizeDevice,
+    /// The stateless host-RAM handle.
+    Cpu,
+    /// No handle: the selector gets no VRAM or load signal for this candidate.
+    NoHandle,
+}
+
+/// The decision behind [`backend_runtime_lookup_for`], pure so it can be tested without a device.
+fn lookup_target(
+    realize_loc: DeviceLocation,
+    backend: BackendId,
+    loc: DeviceLocation,
+) -> LookupTarget {
+    // A candidate on the realize backend is the realize device when it names that device exactly, OR when
+    // it carries the backend's DEFAULT location: the route picker builds every arm's device with
+    // `default_device_for(backend)` (it has no device of its own to name), and with today's single-device
+    // realize every arm on that backend runs on the realize device. Matching the default as "unspecified"
+    // keeps the key independent of the ordinal; requiring an exact match made the picker find no handle
+    // (no VRAM and no load signal) whenever the device was not ordinal 0, silently. A candidate explicitly
+    // on ANOTHER ordinal is still not the realize device.
+    if backend == realize_loc.backend() && (loc == realize_loc || loc == backend.default_location())
+    {
+        return LookupTarget::RealizeDevice;
+    }
+    if backend == BackendId::Cpu && loc == DeviceLocation::Cpu {
+        return LookupTarget::Cpu;
+    }
+    LookupTarget::NoHandle
 }
 
 // ---------------------------------------------------------------------------
@@ -2541,6 +2574,60 @@ mod tests {
     /// the live free-memory lookup (the picker's cache fingerprints
     /// telemetry through the same lookup). Defaults ON; the opt-out env
     /// var disables it.
+    #[test]
+    fn lookup_target_resolves_the_realize_device_by_backend_not_by_ordinal() {
+        // The route picker builds every candidate's device from `default_device_for(backend)`, so a
+        // candidate on the realize backend carries the backend's DEFAULT location, which is not the
+        // realize device when that device is not ordinal 0 (measured: the RTX 4070 opens as
+        // `Vulkan { gpu_id: 1 }` on this laptop, ROADMAP row 137 step 4 and the 2026-11-01 note that
+        // the Vulkan ordinal is unstable). It must still resolve to the realize device's handle.
+        let realize = DeviceLocation::Vulkan { gpu_id: 1 };
+        let default_vulkan = BackendId::Vulkan.default_location();
+        assert_ne!(
+            realize, default_vulkan,
+            "the case needs a non-default ordinal"
+        );
+        assert_eq!(
+            lookup_target(realize, BackendId::Vulkan, default_vulkan),
+            LookupTarget::RealizeDevice,
+            "the picker's default-location candidate must find the realize device, whatever its ordinal"
+        );
+    }
+
+    #[test]
+    fn lookup_target_controls() {
+        let realize = DeviceLocation::Vulkan { gpu_id: 1 };
+        // Exact location still resolves (what the old rule did).
+        assert_eq!(
+            lookup_target(realize, BackendId::Vulkan, realize),
+            LookupTarget::RealizeDevice
+        );
+        // The host-RAM arm resolves to the CPU handle.
+        assert_eq!(
+            lookup_target(realize, BackendId::Cpu, DeviceLocation::Cpu),
+            LookupTarget::Cpu
+        );
+        // A different backend than the realize device has no handle.
+        assert_eq!(
+            lookup_target(realize, BackendId::Cuda, BackendId::Cuda.default_location()),
+            LookupTarget::NoHandle
+        );
+        // A candidate explicitly on ANOTHER Vulkan ordinal is not the realize device: no handle.
+        assert_eq!(
+            lookup_target(
+                realize,
+                BackendId::Vulkan,
+                DeviceLocation::Vulkan { gpu_id: 7 }
+            ),
+            LookupTarget::NoHandle
+        );
+        // A CPU realize keeps resolving its own handle.
+        assert_eq!(
+            lookup_target(DeviceLocation::Cpu, BackendId::Cpu, DeviceLocation::Cpu),
+            LookupTarget::RealizeDevice
+        );
+    }
+
     #[test]
     fn production_selector_for_returns_selector_and_lookup() {
         let device = crate::Device::cpu();

@@ -11760,6 +11760,12 @@ mod generate_tests {
         // Feeding 0 ns makes the device report an estimate (`Some(0)`), so phase A takes the same
         // estimated-completion path as phase B; an unfed device reports none and would not.
         backlog_add_ns(loc, 0);
+        eprintln!(
+            "DIAG realize device location = {loc:?}; backlog estimate after feeding 0 = {:?}; \
+             candidate default device for Vulkan = {:?}",
+            fuel_dispatch::dispatch::backlog_estimate_ns(loc),
+            fuel_ir::probe::BackendId::Vulkan.default_location()
+        );
 
         let before_a = optimizer_trace::snapshot();
         let logits_a = forward(&vk_device);

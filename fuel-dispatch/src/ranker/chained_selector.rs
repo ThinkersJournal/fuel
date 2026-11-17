@@ -174,7 +174,12 @@ impl ChainedSelector {
                     .and_then(|s| s.estimated_backlog_ns());
                 (fit, load, backlog)
             }
-            None => (FitStatus::Unknown, super::device_load::LOAD_TIER_IDLE, None),
+            None => {
+                // A lookup exists but has no handle for this candidate: the picker gets no VRAM and no
+                // load signal for it. Counted so that is visible, not silent (ROADMAP row 158).
+                crate::optimizer_trace::global().record_lookup_none(c.backend);
+                (FitStatus::Unknown, super::device_load::LOAD_TIER_IDLE, None)
+            }
         }
     }
 
@@ -891,5 +896,31 @@ mod tests {
         );
         let s = format!("{chained:?}");
         assert!(s.contains("ChainedSelector"));
+    }
+
+    /// A configured lookup that returns NO handle for a candidate is counted per backend in
+    /// `optimizer_trace`, so "the picker had no signal for this arm" is visible (ROADMAP row 158).
+    /// The counters are process-wide and other tests also miss lookups, so only growth is asserted.
+    #[test]
+    fn a_lookup_with_no_handle_is_counted_per_backend() {
+        use crate::optimizer_trace;
+        let none_lookup: BackendRuntimeLookup = Arc::new(|_b, _d| None);
+        let chained = ChainedSelector::with_default_estimator(None, Some(none_lookup));
+        let before = optimizer_trace::snapshot();
+        let set = ranked_set(); // one Cuda candidate and one Cpu candidate
+        let picked = chained.select(&set);
+        assert!(
+            picked.is_some(),
+            "no signal still picks (the static winner)"
+        );
+        let delta = optimizer_trace::snapshot().since(&before);
+        assert!(
+            delta.lookup_none[1] >= 1,
+            "a Cuda candidate had no handle: {delta:?}"
+        );
+        assert!(
+            delta.lookup_none[0] >= 1,
+            "a Cpu candidate had no handle: {delta:?}"
+        );
     }
 }
