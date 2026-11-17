@@ -280,7 +280,21 @@ pub fn resolve_branch(
     if arms.len() < 2 {
         return 0;
     }
-    pick_arm(graph, &arms, bindings, selector)
+    let chosen = pick_arm(graph, &arms, bindings, selector);
+    // Diagnostic (`FUEL_PRINT_BRANCH_COUNT`): the arm the executor's branch resolution chose, read from
+    // this return value (the streaming lowering emits exactly this arm's runs), with every arm's backend.
+    if std::env::var_os("FUEL_PRINT_BRANCH_COUNT").is_some() {
+        let backends: Vec<String> = arms
+            .iter()
+            .map(|&a| format!("{:?}", graph.target_backend(a)))
+            .collect();
+        eprintln!(
+            "fuel: branch Node#{} resolved to arm {chosen} of {} (arm backends {backends:?})",
+            branch.0,
+            arms.len()
+        );
+    }
+    chosen
 }
 
 /// Choose one arm index for a single branch. Builds a per-arm
