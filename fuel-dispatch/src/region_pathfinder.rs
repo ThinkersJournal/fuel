@@ -73,16 +73,38 @@ impl Pathfinder for PlacementRegionPathfinder {
                 found.len()
             );
         }
+        let candidates = found.len();
         let regions = choose_regions(found);
+        let chosen = regions.len();
+        let (mut recorded, mut collapsed) = (0usize, 0usize);
+        let mut rejected: Vec<String> = Vec::new();
         for region in regions {
-            let _ = record_branch(
+            // A rejected or collapsed branch is not an error (the single route is kept); the outcome is
+            // only counted, for the `FUEL_PRINT_BRANCH_COUNT` report below.
+            match try_record_branch(
                 graph,
                 region.diverge,
                 region.reconverge,
                 &region.interior,
                 region.exit,
                 region.alt_backend,
+            ) {
+                Ok(Some(_)) => recorded += 1,
+                Ok(None) => collapsed += 1,
+                Err(e) => rejected.push(format!("{e:?}")),
+            }
+        }
+        if std::env::var_os("FUEL_PRINT_BRANCH_COUNT").is_some() {
+            eprintln!(
+                "fuel: region pathfinder: {candidates} candidate(s) -> {chosen} chosen by choose_regions \
+                 ({} dropped as overlapping an already-chosen larger region) -> {recorded} recorded, \
+                 {collapsed} collapsed, {} rejected by finalize_branches",
+                candidates - chosen,
+                rejected.len()
             );
+            for reason in rejected.iter().take(5) {
+                eprintln!("fuel: region pathfinder: rejected: {reason}");
+            }
         }
         Ok(())
     }
@@ -423,6 +445,7 @@ fn choose_regions(mut candidates: Vec<Region>) -> Vec<Region> {
 /// node when it was recorded. A rejected branch is not an error (as for the one-node fork): the clones
 /// are unreachable and the single route is kept. `pub(crate)` so tests can build the exact structure
 /// the pathfinder builds with an alternative backend that can run on the host.
+#[cfg(test)]
 pub(crate) fn record_branch(
     graph: &mut Graph,
     diverge: NodeId,
@@ -431,6 +454,21 @@ pub(crate) fn record_branch(
     exit: NodeId,
     alt_backend: BackendId,
 ) -> Option<NodeId> {
+    try_record_branch(graph, diverge, reconverge, interior, exit, alt_backend)
+        .ok()
+        .flatten()
+}
+
+/// [`record_branch`] with the outcome kept: `Ok(Some(branch))` recorded, `Ok(None)` collapsed to one arm,
+/// `Err` rejected by `finalize_branches` (the reason names the rule).
+pub(crate) fn try_record_branch(
+    graph: &mut Graph,
+    diverge: NodeId,
+    reconverge: NodeId,
+    interior: &[NodeId],
+    exit: NodeId,
+    alt_backend: BackendId,
+) -> Result<Option<NodeId>> {
     let mut clone_of: HashMap<NodeId, NodeId> = HashMap::new();
     for &x in interior {
         let (op, inputs, shape, dtype) = {
@@ -454,5 +492,5 @@ pub(crate) fn record_branch(
     let mut builder = graph.open_branch(diverge);
     builder.add_arm(exit); // arm 0 = the DP winner's stretch, in place
     builder.add_arm(arm1);
-    builder.finalize_branches(graph, reconverge).ok().flatten()
+    builder.finalize_branches(graph, reconverge)
 }
