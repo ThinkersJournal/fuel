@@ -7585,8 +7585,24 @@ pub fn topology_generation() -> u64 {
 /// `Release` ordering pairs with the `Acquire` load in
 /// `topology_generation`.
 pub fn bump_topology_generation() {
+    // Test builds only: a test that needs the generation to hold still (it
+    // optimizes a graph and then realizes it, and the executor returns
+    // `Error::TopologyChanged` if the generation moved in between) holds
+    // `TOPOLOGY_TEST_GATE` for writing; every bump waits on it for reading.
+    // Without this, any other test in the same binary that registers a
+    // kernel or backend can bump mid-way (ROADMAP row 165).
+    #[cfg(test)]
+    let _gate = TOPOLOGY_TEST_GATE
+        .read()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     TOPOLOGY_GENERATION.fetch_add(1, Ordering::Release);
 }
+
+/// Test-only gate; see [`bump_topology_generation`]. A holder must not call
+/// anything that bumps the generation while it holds the write guard (that
+/// would wait on itself): initialise the lazily built globals first.
+#[cfg(test)]
+pub(crate) static TOPOLOGY_TEST_GATE: RwLock<()> = RwLock::new(());
 
 // =============================================================================
 // Step E Phase C / B1 — per-device in-flight async-op counter (the load signal)

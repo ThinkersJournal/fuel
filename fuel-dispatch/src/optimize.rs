@@ -3325,37 +3325,33 @@ mod tests {
     /// bridge calls) with a `ChainedSelector` over `lookup` and a Judge that
     /// measures the fork op at `cuda_ns` on CUDA and `cpu_ns` on CPU. Returns
     /// the backends the streaming pick chose for the (one) branch.
+    ///
+    /// Also returns the realize result (`"Ok"` or `Err(..)` as text), so a
+    /// run with no pick names its cause instead of reading as "no pick".
+    ///
+    /// Holds `TOPOLOGY_TEST_GATE` for writing from before `optimize_graph`
+    /// until the realize returns: the executor returns the typed
+    /// `Error::TopologyChanged` when another test in this binary bumps the
+    /// process-wide topology generation in between, and then the streaming
+    /// walk never reaches the branch (ROADMAP row 165). The gate stops a
+    /// sibling's bump from landing in that window; there is no retry.
     fn picked_backends_through_realize(
         lookup: crate::ranker::BackendRuntimeLookup,
         cuda_ns: u64,
         cpu_ns: u64,
-    ) -> Vec<BackendId> {
-        // The process-wide topology generation is shared by every test in
-        // this binary; a sibling bump makes `realize` return before the
-        // streaming walk reaches the branch, so the selector never runs and
-        // the recording is empty (seen on hosted CI, never locally). Retry a
-        // bounded number of times on an EMPTY recording only: a picker that
-        // genuinely never picks still returns empty after the last attempt
-        // and the caller's assertion fails.
-        let mut picked = Vec::new();
-        for _attempt in 0..8 {
-            picked = picked_backends_once(lookup.clone(), cuda_ns, cpu_ns);
-            if !picked.is_empty() {
-                break;
-            }
-        }
-        picked
-    }
-
-    fn picked_backends_once(
-        lookup: crate::ranker::BackendRuntimeLookup,
-        cuda_ns: u64,
-        cpu_ns: u64,
-    ) -> Vec<BackendId> {
+    ) -> (Vec<BackendId>, String) {
         use crate::PipelinedExecutor;
         use crate::pipelined::StorageCache;
         use crate::ranker::ChainedSelector;
         use fuel_ir::SymEnv;
+
+        // Build the lazily initialised process-wide tables BEFORE taking the
+        // gate: their initialisation bumps the generation, and a bump under
+        // our own write guard would wait on ourselves.
+        drop(crate::dispatch::global_bindings());
+        let _crate_gate = crate::dispatch::TOPOLOGY_TEST_GATE
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         let mut table = KernelBindingTable::new();
         let (mut g, _prod, _fork, _tail, root) = build_single_fork_graph(&mut table);
@@ -3379,11 +3375,11 @@ mod tests {
                 1.0_f32, 2.0, 3.0, 4.0,
             ]))),
         );
-        // The realize itself may fail (the synthetic CUDA arm has no device
-        // behind it, and the process-wide topology generation can move under
-        // a sibling test); this test reads only the arm the streaming walk
-        // resolved, which happens at the branch's arm-entry before either.
-        let _ = PipelinedExecutor::realize_with_optimized_picking_env(
+        // The CUDA arm has no device behind it in a CPU test, so a realize
+        // that picked CUDA ends in a device error at the reconverge node; a
+        // realize that picked CPU runs end to end. The result is returned, not
+        // ignored, so the caller pins which.
+        let result = PipelinedExecutor::realize_with_optimized_picking_env(
             graph,
             root,
             cache,
@@ -3392,7 +3388,12 @@ mod tests {
             Some(lookup),
             SymEnv::default(),
         );
-        selector.picked.lock().unwrap().clone()
+        let outcome = match result {
+            Ok(_) => "Ok".to_string(),
+            Err(e) => format!("Err({e:?})"),
+        };
+        let picks = selector.picked.lock().unwrap().clone();
+        (picks, outcome)
     }
 
     /// Row 158 slice 2. CUDA measures 100 ns on the fork op, CPU 100 us.
@@ -3413,14 +3414,18 @@ mod tests {
         use crate::ranker::mock_backlog_lookup;
         const HOUR_NS: u64 = 3_600_000_000_000;
 
-        let idle = picked_backends_through_realize(
+        let (idle, idle_r) = picked_backends_through_realize(
             mock_backlog_lookup(vec![(BackendId::Cuda, 0, 0)]),
             100,
             100_000,
         );
-        assert_eq!(idle, vec![BackendId::Cuda], "idle GPU -> GPU arm");
+        assert_eq!(
+            idle,
+            vec![BackendId::Cuda],
+            "idle GPU -> GPU arm; realize={idle_r}"
+        );
 
-        let one_op = picked_backends_through_realize(
+        let (one_op, one_op_r) = picked_backends_through_realize(
             mock_backlog_lookup(vec![(BackendId::Cuda, 1, 1_000)]),
             100,
             100_000,
@@ -3428,14 +3433,19 @@ mod tests {
         assert_eq!(
             one_op,
             vec![BackendId::Cuda],
-            "1 op / 1 us backlog: GPU still finishes first (1.1 us vs 100 us)",
+            "1 op / 1 us backlog: GPU still finishes first (1.1 us vs 100 us); realize={one_op_r}",
         );
 
-        let hour = picked_backends_through_realize(
+        let (hour, hour_r) = picked_backends_through_realize(
             mock_backlog_lookup(vec![(BackendId::Cuda, 1, HOUR_NS)]),
             100,
             100_000,
         );
-        assert_eq!(hour, vec![BackendId::Cpu], "1 h GPU backlog -> CPU arm");
+        assert_eq!(
+            hour,
+            vec![BackendId::Cpu],
+            "1 h GPU backlog -> CPU arm; realize={hour_r}"
+        );
+        assert_eq!(hour_r, "Ok", "the CPU arm realizes end to end");
     }
 }
