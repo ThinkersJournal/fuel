@@ -37,6 +37,7 @@ pub const MAX_REGION_NODES: usize = 64;
 /// Records multi-node placement forks as `Op::Branch` regions. See the module docs.
 pub struct PlacementRegionPathfinder;
 
+#[derive(Clone)]
 struct Region {
     diverge: NodeId,
     reconverge: NodeId,
@@ -74,6 +75,15 @@ impl Pathfinder for PlacementRegionPathfinder {
             );
         }
         let candidates = found.len();
+        if std::env::var_os("FUEL_PRINT_BRANCH_COUNT").is_some() {
+            let c = policy_counts(&found);
+            eprintln!(
+                "fuel: region policy counts over {candidates} candidate(s) (diagnostic only; today's choice is the first): \
+                 today (largest first, disjoint) = {}, laminar family (nested allowed; NOT buildable yet) = {}, \
+                 smallest first, disjoint = {}, one-node regions only, disjoint = {}",
+                c.today, c.laminar, c.smallest_first, c.one_node
+            );
+        }
         let regions = choose_regions(found);
         let chosen = regions.len();
         let (mut recorded, mut collapsed) = (0usize, 0usize);
@@ -420,6 +430,79 @@ fn choose_regions(mut candidates: Vec<Region>) -> Vec<Region> {
             r.reconverge_idx,
         )
     });
+    choose_in_order(candidates)
+}
+
+/// How many regions each selection policy would keep from the same candidates. Diagnostic only
+/// (`FUEL_PRINT_BRANCH_COUNT`): the pathfinder's behaviour is [`choose_regions`] alone.
+struct PolicyCounts {
+    today: usize,
+    laminar: usize,
+    smallest_first: usize,
+    one_node: usize,
+}
+
+fn policy_counts(found: &[Region]) -> PolicyCounts {
+    let today = choose_regions(found.to_vec()).len();
+
+    let mut asc = found.to_vec();
+    asc.sort_by_key(|r| (r.interior.len(), r.diverge_idx, r.reconverge_idx));
+    let smallest_first = choose_in_order(asc).len();
+
+    let mut one: Vec<Region> = found
+        .iter()
+        .filter(|r| r.interior.len() == 1)
+        .cloned()
+        .collect();
+    one.sort_by_key(|r| (r.diverge_idx, r.reconverge_idx));
+    let one_node = choose_in_order(one).len();
+
+    PolicyCounts {
+        today,
+        laminar: laminar_count(found),
+        smallest_first,
+        one_node,
+    }
+}
+
+/// Greedy largest-first selection that keeps a pair when its interiors are disjoint (with the same
+/// endpoint rule as today) or strictly nested with the inner region's endpoints on or inside the outer
+/// one, and drops a pair that overlaps without nesting (`docs/design-notes/2026-11-15-multi-node-
+/// placement-pathfinder.md`, section 5). Counting only: nested branches are not built.
+fn laminar_count(found: &[Region]) -> usize {
+    let mut sorted: Vec<&Region> = found.iter().collect();
+    sorted.sort_by_key(|r| {
+        (
+            std::cmp::Reverse(r.interior.len()),
+            r.diverge_idx,
+            r.reconverge_idx,
+        )
+    });
+    let mut kept: Vec<(&Region, HashSet<NodeId>)> = Vec::new();
+    for r in sorted {
+        let inner: HashSet<NodeId> = r.interior.iter().copied().collect();
+        let ok = kept.iter().all(|(q, outer)| {
+            if inner.is_disjoint(outer) {
+                !outer.contains(&r.diverge)
+                    && !outer.contains(&r.reconverge)
+                    && !inner.contains(&q.diverge)
+                    && !inner.contains(&q.reconverge)
+            } else if inner.is_subset(outer) {
+                (outer.contains(&r.diverge) || r.diverge == q.diverge)
+                    && (outer.contains(&r.reconverge) || r.reconverge == q.reconverge)
+            } else {
+                false
+            }
+        });
+        if ok {
+            kept.push((r, inner));
+        }
+    }
+    kept.len()
+}
+
+/// The disjointness rule of [`choose_regions`], applied in the order given.
+fn choose_in_order(candidates: Vec<Region>) -> Vec<Region> {
     let mut taken: HashSet<NodeId> = HashSet::new();
     let mut ends: HashSet<NodeId> = HashSet::new();
     let mut chosen = Vec::new();
@@ -575,6 +658,38 @@ mod choose_regions_tests {
         let small = region(7, 20, &[8]);
         let large = region(7, 22, &[8, 20, 21]);
         assert_eq!(chosen(vec![large, small]), vec![(7, 22)]);
+    }
+
+    #[test]
+    fn policy_counts_on_a_nested_family_and_on_a_partial_overlap() {
+        // The diagnostic that feeds the policy decision must itself be checked on known shapes.
+        let nested = vec![
+            region(7, 20, &[8]),
+            region(7, 21, &[8, 20]),
+            region(7, 22, &[8, 20, 21]),
+            region(7, 23, &[8, 20, 21, 22]),
+        ];
+        let c = policy_counts(&nested);
+        assert_eq!(
+            (c.today, c.laminar, c.smallest_first, c.one_node),
+            (1, 4, 1, 1),
+            "nested family: today keeps the largest only; a laminar family keeps all four",
+        );
+        // Overlap WITHOUT nesting (shares node 3, neither contains the other): no policy keeps both.
+        let partial = vec![region(0, 10, &[1, 2, 3]), region(5, 15, &[3, 4, 6])];
+        let c = policy_counts(&partial);
+        assert_eq!(
+            (c.today, c.laminar, c.smallest_first, c.one_node),
+            (1, 1, 1, 0),
+            "partial overlap is dropped by every policy; no interior has one node",
+        );
+        // Disjoint regions: every policy keeps both (one-node policy only sees size-1 interiors).
+        let disjoint = vec![region(0, 10, &[1]), region(20, 30, &[21])];
+        let c = policy_counts(&disjoint);
+        assert_eq!(
+            (c.today, c.laminar, c.smallest_first, c.one_node),
+            (2, 2, 2, 2)
+        );
     }
 
     #[test]
