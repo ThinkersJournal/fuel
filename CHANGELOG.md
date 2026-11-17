@@ -144,6 +144,29 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.49.6 - 2026-11-17 (PM-allocation pending, row 158 slice 2)
+
+> **RELEASE HOLD stands** (no Fuel publish / repin to a version containing `PlacementRegionPathfinder` until a GPU run shows a non-zero live branch count AND the picker choosing under injected load).
+
+### Added
+
+- `BackendStreams::estimated_backlog_ns` (`fuel-backend-contract`, defaulted to `None`): estimated ns of submitted-unfinished work on a device. `fuel_dispatch::dispatch::{backlog_add_ns, backlog_sub_ns, backlog_estimate_ns}`: the per-device counter behind it (`None` until a device has been fed; never a made-up idle). `DeviceRuntimeHandle` reports it (CPU `None`). `ranker::mock_backlog_lookup` test seam.
+
+### Changed
+
+- **`ChainedSelector` ranks arms by estimated completion time when any arm reports a backlog:** `backlog + the arm's latency (Judge-measured if the cell exists, else the static estimate) + inbound transfer`, under the unchanged VRAM guard. With no backlog reported on any arm the old queue-depth tier applies unchanged.
+- **`pick_arm` prices each arm at pick time.** Candidates carried a zero `static_cost`, so arms tied and arm 0 won. `price_fork_candidates` now fills `static_cost` (registered `CostFn` / `cost_expr` over the fork's input shapes, caps from `derive_backend_caps`) and `inbound_transfer_ns` (`SystemTopology` per path, for inputs with a known producer placement).
+
+### Tests (what they show)
+
+- `optimize::tests::load_aware_pick_ranks_by_estimated_completion_through_realize`, through `realize_with_optimized_picking_env`: idle GPU -> GPU arm; one queued op with 1 us of backlog -> GPU arm (the old count tier sent this to CPU, which was the red); 1 h backlog -> CPU arm.
+- `route_picker::tests::pick_arm_reads_static_cost_and_adds_backlog` (no Judge: the cheaper arm wins on its static estimate; a 1 h backlog flips it back) and `dispatch::tests::backlog_unfed_device_has_no_estimate_then_balances`.
+
+### Not verified
+
+- **Nothing in the executor feeds the backlog yet** (the tests inject it through a mock), so in production the new ranking is inactive: backlog `None` -> the old count tier. Feeding it (Vulkan per recorded batch; CUDA is `cfg(cuda)`) is the next slice.
+- No GPU run, no kernels executed, the live picker under real load is not shown; `MAX_REGION_NODES` = 64 is still an unmeasured placeholder; transfer pricing is the topology's estimate, not measured.
+
 ## v0.49.5 - 2026-11-16 (allocated by pm-assist, row 158 slice 1, DRAFT)
 
 > **RELEASE HOLD stands** (no Fuel publish / repin to a version containing `PlacementRegionPathfinder` until a GPU run shows a non-zero live branch count AND the picker choosing under injected load).
