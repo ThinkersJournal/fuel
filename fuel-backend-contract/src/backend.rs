@@ -225,8 +225,8 @@ pub trait BackendStreams: BackendRuntime {
     fn slot_capacity(&self) -> u32;
 
     /// Estimated nanoseconds of work already submitted to this device and
-    /// not yet finished (the executor's own submitted-unfinished ops x their
-    /// estimated cost) — what a new op queued here would wait behind. A
+    /// still running or queued (the executor's own unfinished submissions x
+    /// their estimated cost) — what a new op queued here would wait behind. A
     /// route picker adds it to a candidate's own estimated latency to rank
     /// arms by estimated COMPLETION time, not by a bare queue-depth bucket.
     ///
