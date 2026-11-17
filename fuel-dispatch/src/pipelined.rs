@@ -10228,7 +10228,10 @@ mod tests {
         }
     }
 
-    /// ROW 157 / GAP-385: the executor realizes a PICKED multi-node arm to the same numbers as arm 0.
+    /// ROW 157 / GAP-385: with ONE branch in the graph, the executor realizes a PICKED multi-node arm to the
+    /// same numbers as arm 0. This is NOT shown for chained branches: with two or more in a row it failed
+    /// (`input ... not realized`) until the lowering-order fix of 2026-11-17 (ROADMAP row 158); see
+    /// `chained_branches_realize_equal_to_arm_zero_for_every_combination_of_arms_on_cpu`.
     ///
     /// A residual block on the host: `c1 -> relu -> silu -> tanh -> add(c1, .)`. The branch is built by
     /// the pathfinder's own `record_branch` (so the clone logic under test is the shipped code) with
@@ -10239,7 +10242,7 @@ mod tests {
     /// copies at its entry and exit), nor which arm a live selector picks. The same-backend arms mean
     /// the selector cannot map back to arm 1, so the route is given explicitly.
     #[test]
-    fn a_picked_multi_node_arm_realizes_equal_to_arm_zero_on_cpu() {
+    fn a_single_picked_multi_node_arm_realizes_equal_to_arm_zero_on_cpu() {
         let (arm0, arm1) = realize_residual_block_both_arms(false);
         assert_eq!(
             arm1, arm0,
@@ -10249,8 +10252,8 @@ mod tests {
         assert!(arm0.iter().all(|v| v.is_finite()));
     }
 
-    /// POSITIVE CONTROL for the test above: when the cloned stretch computes something else (Gelu in
-    /// place of Silu, built by hand), the picked-arm result DIFFERS from arm 0. Without this the
+    /// POSITIVE CONTROL for the test above (one branch): when the cloned stretch computes something else
+    /// (Gelu in place of Silu, built by hand), the picked-arm result DIFFERS from arm 0. Without this the
     /// equality could pass by the executor ignoring the route and running arm 0 both times.
     #[test]
     fn a_picked_multi_node_arm_that_differs_changes_the_result() {

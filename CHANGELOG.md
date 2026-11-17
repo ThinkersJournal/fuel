@@ -144,6 +144,34 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.49.7 - 2026-11-18 (PM-allocation pending; rows 158, 165, 166)
+
+> **RELEASE HOLD stands.** The picker choosing under load on a GPU, with a real model, is not shown (the criterion test `vulkan_arm_choice_follows_injected_backlog` was last run before the lowering fix and failed; its re-run after the fix is pending).
+
+### Fixed
+
+- **`fuel-graph` lowering order with chained branches (row 158).** `extract_runs_multi` cuts runs from a topological order whose orphaned-Branch seeds pull a non-zero arm's clone run in after the main chain, and the reconverge node reads arm 0's exit directly, so with arm 0 skipped nothing ordered the chosen arm before the reconverge. One branch came out right by luck; two or more chained branches (a region's reconverge is the next region's diverge, the shape of the toy Llama graph) did not: `PipelinedExecutor: input NodeId(6) of NodeId(7) not realized`. The first real run of arm 1 on a GPU hit the same class (`reshape input NodeId(2) of NodeId(3) not realized`). `relocate_chosen_arm_runs` (frozen) and the same logic in `walk_picked_route_streaming` place the chosen arm's runs where arm 0's run was; `device_alternating_order_with_aliases` makes the dependency analysis treat a read of arm 0's exit as a read of the chosen exit. Tests: lowering validity for 1 to 4 chained branches times every combination of arms (frozen and streaming, identical), and CPU executor equality for 1 to 3 blocks times every mask; both red without the fix (blocks=2 mask=0b1 first), green with it.
+- **`fuel-tensor` runtime lookup keyed by ordinal (row 158).** The route picker builds every arm's device from `default_device_for(backend)` (Vulkan ordinal 0) and `backend_runtime_lookup_for` required an exact location, so where the realize device is not ordinal 0 (the RTX 4070 opens as `Vulkan { gpu_id: 1 }` on the development laptop) the Vulkan arm got no handle: no VRAM guard and no load signal, silently. A candidate on the realize backend now resolves to the realize device when it names it or carries the backend's default location; a candidate on another explicit ordinal still gets none. Measured before the fix on the toy Llama (Vulkan, `gpu-run`): 35 of 35 branches resolved to arm 0 under an injected one-hour backlog.
+
+### Added
+
+- `fuel_dispatch::optimizer_trace`: one place for what the optimizer dropped and the executor chose: a counter per arm index (bumped in `resolve_branch`), region-pathfinder outcomes (candidates dropped by overlap, branches recorded, collapsed, rejected by `finalize_branches` with the reason, which was discarded before), and lookups that returned no handle, per backend.
+- `FUEL_PRINT_BRANCH_COUNT=1` also prints candidate -> chosen -> recorded counts, the arm each branch resolved to, and diagnostic counts of what other selection policies would keep.
+- Tests pinning `choose_regions` (one per drop reason, with controls; each of the four clauses removed in turn turns exactly its own test red); the load-aware picker test is gated against sibling topology bumps (a `cfg(test)` lock, retry deleted; 0 of 50 runs red where 32 of 40 were).
+- `BackendStreams::estimated_backlog_ns` consumers: unchanged (still not fed from real submissions).
+
+### Corrected (sentences that claimed more than was shown)
+
+- `pipelined.rs` test `a_picked_multi_node_arm_realizes_equal_to_arm_zero_on_cpu` renamed `a_single_picked_multi_node_arm_realizes_equal_to_arm_zero_on_cpu`, its comment and its control's comment now say one branch.
+- This file, v0.49.2: the release-hold progress sentence, the `Fixed (fuel-dispatch executor)` bullet and the `Not tested` line now say the equality held for a graph with ONE branch only.
+- `docs/gaps.md` GAP-385: the `(2) is partly shown` sentence says the same.
+- ROADMAP rows 157 and 158 carry the finding with the exact error text.
+
+### Not verified
+
+- The GPU criterion test after both fixes. Whether any released version's picker ever chose arm 1 in production: not checked; before 0.49.2 any arm 1 failed outright (the exit value was never carried), and the region pathfinder (0.49.2 onward) is under the release hold, so the chained-branch failure could only have occurred on a build with the hold's version or a one-node-fork graph with two adjacent forks, which was not searched for.
+- Nested regions, cross-device arm equality, anything on a real model.
+
 ## v0.49.6 - 2026-11-17 (allocated by pm-assist, row 158 slice 2)
 
 > **RELEASE HOLD stands** (no Fuel publish / repin to a version containing `PlacementRegionPathfinder` until a GPU run shows a non-zero live branch count AND the picker choosing under injected load).
@@ -201,11 +229,11 @@ This documents the main changes to the `fuel` workspace.
 
 ## v0.49.2 - 2026-11-15 (PM-allocation pending)
 
-> **RELEASE HOLD (PM 2026-11-15): no Fuel publish, and no Lightbulb or other repin, to any version containing `PlacementRegionPathfinder` until (1) a GPU live-branch-count run on a real model AND (2) a numerical-equality run of a picked CROSS-DEVICE multi-node arm have both been shown.** Progress on (2): a picked multi-node arm now runs to the same numbers as arm 0 on the host with both arms on the CPU backend (executor path, see Fixed); the cross-device case (copies at the arm's entry and exit) is not shown. The GPU run is blocked on board 446.
+> **RELEASE HOLD (PM 2026-11-15): no Fuel publish, and no Lightbulb or other repin, to any version containing `PlacementRegionPathfinder` until (1) a GPU live-branch-count run on a real model AND (2) a numerical-equality run of a picked CROSS-DEVICE multi-node arm have both been shown.** Progress on (2): with ONE branch in the graph, a picked multi-node arm runs to the same numbers as arm 0 on the host with both arms on the CPU backend (executor path, see Fixed); with two or more chained branches it did NOT (corrected 2026-11-17: `input NodeId(6) of NodeId(7) not realized`, fixed in v0.49.7 (pending PM allocation)); the cross-device case (copies at the arm's entry and exit) is not shown. The GPU run is blocked on board 446.
 
 ### Changed
 
-- **Fixed (`fuel-dispatch` executor): realizing a picked arm other than arm 0 failed.** The reconverge node reads arm 0's exit, arm 0 is skipped when another arm is chosen, and nothing carried the chosen exit's value to it: `PipelinedExecutor: input NodeId(3) of NodeId(4) not realized` (seen on a host-built residual block with route `{branch: 1}`; this applied to every branch, including the one-node forks). The compiler thread now emits a zero-copy `ViewOf` alias from the chosen exit to arm 0's exit right after compiling it (`arm_exit_alias_item`). Tests `a_picked_multi_node_arm_realizes_equal_to_arm_zero_on_cpu` (equal to arm 0 on the host, arm 1 built by the pathfinder's own `record_branch`) and `a_picked_multi_node_arm_that_differs_changes_the_result` (positive control: a clone with a different middle op gives different numbers, so the route really runs arm 1). The equality test was red before the fix.
+- **Fixed (`fuel-dispatch` executor), for a graph with ONE branch only: realizing a picked arm other than arm 0 failed.** (Corrected 2026-11-17: this fix carried the chosen exit's VALUE to the reconverge, but did not order the chosen arm's run before it; with two or more chained branches the same error returned and was fixed in v0.49.7 (pending PM allocation), see row 158.) The reconverge node reads arm 0's exit, arm 0 is skipped when another arm is chosen, and nothing carried the chosen exit's value to it: `PipelinedExecutor: input NodeId(3) of NodeId(4) not realized` (seen on a host-built residual block with route `{branch: 1}`; this applied to every branch, including the one-node forks). The compiler thread now emits a zero-copy `ViewOf` alias from the chosen exit to arm 0's exit right after compiling it (`arm_exit_alias_item`). Tests `a_single_picked_multi_node_arm_realizes_equal_to_arm_zero_on_cpu` (renamed 2026-11-17 from `a_picked_multi_node_arm_realizes_equal_to_arm_zero_on_cpu`, one branch only; equal to arm 0 on the host, arm 1 built by the pathfinder's own `record_branch`) and `a_picked_multi_node_arm_that_differs_changes_the_result` (positive control: a clone with a different middle op gives different numbers, so the route really runs arm 1). The equality test was red before the fix.
 - `fuel-dispatch`: new `PlacementRegionPathfinder` (`region_pathfinder.rs`, public consts `MAX_REGION_NODES` = 64 and `REGION_COMPETITIVE_FACTOR` = 2, both unmeasured first-slice values) replaces `PlacementForkPathfinder` in `PassRegistry::default_passes` and `default_passes_with_runtime_fusion`. It records one `Op::Branch` per single-entry single-exit region (chain, residual block, fan-out that rejoins) with arm 1 a clone of the whole stretch on one alternative placement; a one-node region is the old fork, so isolated forks are unchanged. Born-red tests `transformer_shaped_graph_forks_residual_blocks_as_multi_node_regions` and `fan_out_that_rejoins_is_one_multi_node_region` fail under the old pathfinder (checked by swapping it back: 8 forks, then 3) and pass now; sabotage siblings cover a node read from outside, a node without the alternative kernel, and a single-placement graph. `PlacementForkPathfinder` stays exported.
 - `fuel-tensor`: live `Op::Branch` counter on the production optimize (`optimize_branches()`, `optimize_branches_thread_local()`, and `FUEL_PRINT_BRANCH_COUNT=1` to print it), counted after bake so it is what the runtime picker can see (row 157 first slice). `fuel-dispatch` test `transformer_shaped_graph_forks_only_single_consumer_nodes_today` pins today's behaviour: on a transformer-block-shaped graph with every op on two placements, 8 one-node forks, none at the fan-out or the residual join.
 - `ROADMAP.md` rows 158 to 164 and `docs/gaps.md` GAP-386 to GAP-392: plan items 1 to 7 of the planned-vs-built audit, each with the audit as evidence (item 7 folds into the FireLine-seam rows).
@@ -214,7 +242,7 @@ This documents the main changes to the `fuel` workspace.
 
 ### Not verified
 
-- Not tested: a picked CROSS-DEVICE multi-node arm run to equal results (only the same-backend host case is), a picker choosing arm 1 through the streaming entry (the test passes the route explicitly because same-backend arms cannot be told apart by placement), nested regions (a block region and a region inside it are not both built), the effect on a real model (live branch count, node growth from cloned arms).
+- Not tested: chained branches with a non-zero arm (found failing on 2026-11-17 and fixed in v0.49.7 (pending PM allocation)), a picked CROSS-DEVICE multi-node arm run to equal results (only the same-backend, single-branch host case is), a picker choosing arm 1 through the streaming entry (the test passes the route explicitly because same-backend arms cannot be told apart by placement), nested regions (a block region and a region inside it are not both built), the effect on a real model (live branch count, node growth from cloned arms).
 
 - The note's hypotheses (nested-branch coupling, alternatives kept per node) are marked in the note and not measured.
 
