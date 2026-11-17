@@ -11595,6 +11595,8 @@ mod generate_tests {
                 .map_err(|e| format!("{e:?}")),
         );
         let vk_device: Device = vk_backend.into();
+        // The row-158 arm-choice criterion runs on this same device at the end of this test.
+        let vk_device_for_backlog = vk_device.clone();
 
         let cfg = LlamaConfig {
             vocab_size: 16,
@@ -11669,6 +11671,8 @@ mod generate_tests {
                 "logit[{i}]: vulkan={a}, cpu={b}, diff={diff}, rel={rel}",
             );
         }
+
+        assert_vulkan_arm_choice_follows_injected_backlog(vk_device_for_backlog);
     }
 
     /// ROW 158 / PM criterion, written BEFORE the run (2026-11-17): the executor's arm choice follows the
@@ -11685,22 +11689,17 @@ mod generate_tests {
     /// SHOWS: the arm the executor chose flips with the injected backlog and back, and the CPU arm's
     /// result equals the CPU reference. DOES NOT SHOW: a backlog the executor measured itself (it is
     /// injected: nothing feeds `backlog_add_ns` from real submissions yet), a real model, or timing.
-    #[test]
-    #[ignore = "requires a live Vulkan device"]
+    ///
+    /// RUN AS PART OF `forward_with_kv_context_vulkan_matches_cpu` (called at the end of it): the repo's
+    /// `#[ignore]` total is a ratchet that is only ever lowered, so this criterion adds no attribute of its
+    /// own. The criterion text above is unchanged from the version committed before the first run.
     #[cfg(feature = "vulkan")]
-    fn vulkan_arm_choice_follows_injected_backlog() {
+    fn assert_vulkan_arm_choice_follows_injected_backlog(vk_device: Device) {
         use fuel_dispatch::dispatch::{backlog_add_ns, backlog_sub_ns};
         use fuel_dispatch::optimizer_trace;
-        use fuel_vulkan_backend::{DeviceSelection, VulkanBackend};
 
         const HOUR_NS: u64 = 3_600_000_000_000;
 
-        let vk_backend = fuel_test_support::required_ok(
-            "a live Vulkan device",
-            VulkanBackend::with_selection(DeviceSelection::PreferDiscrete)
-                .map_err(|e| format!("{e:?}")),
-        );
-        let vk_device: Device = vk_backend.into();
         let loc = vk_device.location();
 
         let cfg = LlamaConfig {
