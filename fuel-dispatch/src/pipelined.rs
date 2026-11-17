@@ -10706,6 +10706,127 @@ mod tests {
         assert_eq!(shapes, 140, "the family size changed: re-pin it");
     }
 
+    /// A chain of cross-device region branches whose stretch reads EXTERNAL values besides its diverge.
+    /// `ext[i]` is what block `i`'s stretch reads: 0 = the shared early value `h`, 1 = the value two blocks
+    /// back (a skip connection), 2 = both. `entry` is the stretch node that reads them (0 = the first, 1 =
+    /// the second); `fillers` nodes sit between the previous block and the diverge. The residency pass
+    /// inserts one inbound copy per (value, device) and CSEs it between regions, so a copy can sit in
+    /// several branches' arm 1 at once and its natural position in the base order is set by whichever
+    /// branch reaches it first. Lowering only: the ops are structural (an `Add` may have three inputs).
+    #[cfg(test)]
+    fn pattern_chain(ext: &[u8], entry: usize, fillers: usize) -> (Graph, NodeId, Vec<NodeId>) {
+        let cuda0 = DeviceLocation::Cuda { gpu_id: 0 };
+        let mut g = Graph::new();
+        let node = |g: &mut Graph, op: Op, inputs: Vec<NodeId>| {
+            let id = g.push(Node {
+                op,
+                inputs,
+                shape: Shape::from_dims(&[4]),
+                dtype: DType::F32,
+            });
+            g.set_placement(id, DeviceLocation::Cpu);
+            g.set_target_backend(id, BackendId::Cpu);
+            id
+        };
+        let c1 = node(&mut g, Op::Const, vec![]);
+        let h = node(&mut g, Op::Relu, vec![c1]);
+        let mut two_back = node(&mut g, Op::Const, vec![]);
+        let mut x = node(&mut g, Op::Const, vec![]);
+        let mut one_back = x;
+        let mut branches = Vec::new();
+        for &kind in ext {
+            let mut d = x;
+            for _ in 0..fillers {
+                d = node(&mut g, Op::Silu, vec![d]);
+            }
+            let externals: Vec<NodeId> = match kind {
+                0 => vec![h],
+                1 => vec![two_back],
+                _ => vec![h, two_back],
+            };
+            let (first, last) = if entry == 0 {
+                let mut inputs = vec![d];
+                inputs.extend(externals);
+                let a = node(&mut g, Op::Add, inputs);
+                let t = node(&mut g, Op::Tanh, vec![a]);
+                (a, t)
+            } else {
+                let a = node(&mut g, Op::Tanh, vec![d]);
+                let mut inputs = vec![a];
+                inputs.extend(externals);
+                let t = node(&mut g, Op::Add, inputs);
+                (a, t)
+            };
+            let res = node(&mut g, Op::Add, vec![d, last]);
+            let branch = crate::region_pathfinder::try_record_branch(
+                &mut g,
+                d,
+                res,
+                &[first, last],
+                last,
+                BackendId::Cuda,
+                cuda0,
+                DeviceLocation::Cpu,
+            )
+            .expect("well-formed branch")
+            .expect("two arms");
+            branches.push(branch);
+            two_back = one_back;
+            one_back = x;
+            x = res;
+        }
+        crate::optimize::insert_residency_copies(
+            &mut g,
+            &[x],
+            &crate::plan::ExecutionPlan::empty(),
+            DeviceLocation::Cpu,
+            None,
+        );
+        (g, x, branches)
+    }
+
+    /// LOWERING level, 1548 (shape, arm combination) cases: 1 to 3 chained cross-device branches, every
+    /// per-block external-input pattern (`h`, a skip connection, both), both entry positions, 0 to 2
+    /// fillers, EVERY combination of arms; frozen and streaming lowering each valid. With the chosen arm's
+    /// late runs moved to the FIRST arm slot, 644 checks failed with `Copy (onto Cuda) is emitted before
+    /// its input`, the CPU form of the GPU failure `Copy input NodeId(130) of NodeId(255) not realized`:
+    /// the first run opening an arm of the branch was an arm-1 inbound copy shared with another region and
+    /// positioned early, and the other arm-1 runs were moved there, before the node they read.
+    #[test]
+    fn cross_device_chains_with_shared_and_skip_inputs_lower_to_a_valid_order_for_every_combination_of_arms()
+     {
+        let mut cases = 0;
+        for blocks in 1..=3usize {
+            for code in 0..3usize.pow(blocks as u32) {
+                let ext: Vec<u8> = (0..blocks)
+                    .map(|i| ((code / 3usize.pow(i as u32)) % 3) as u8)
+                    .collect();
+                for entry in 0..2usize {
+                    for fillers in 0..=2usize {
+                        let (g, root, branches) = pattern_chain(&ext, entry, fillers);
+                        for mask in 0..(1usize << blocks) {
+                            cases += 1;
+                            let route = route_from_mask(&branches, mask);
+                            let frozen = fuel_graph::lower_picked_route(&g, &[root], &route);
+                            let streaming =
+                                fuel_graph::lower_picked_route_streaming(&g, &[root], |b| {
+                                    route.get(&b).copied().unwrap_or(0)
+                                });
+                            for (name, order) in [("frozen", &frozen), ("streaming", &streaming)] {
+                                assert_eq!(
+                                    why_invalid_order(&g, &branches, mask, order),
+                                    None,
+                                    "{name} lowering, ext={ext:?} entry={entry} fillers={fillers} mask={mask:#b}: order={order:?}"
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assert_eq!(cases, 1548, "the family size changed: re-pin it");
+    }
+
     /// EXECUTOR level on CPU: the chain realized for every combination of arms (2 and 3 blocks, every
     /// mask, arm 1 = the clone on the same backend) equals arm 0. Before the fix any chain of two or more
     /// with an arm 1 failed with "input ... not realized".

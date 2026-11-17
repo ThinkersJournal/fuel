@@ -434,15 +434,19 @@ pub fn lower_picked_route(graph: &Graph, roots: &[NodeId], picked: &PickedRoute)
     order
 }
 
-/// The kept runs of a route in dispatch order, with every chosen arm `k >= 1` placed at the slot of the
-/// first run that opens an arm of its branch, plus the arm-exit aliases (`arm0 exit -> chosen exit`).
+/// The kept runs of a route in dispatch order, with every chosen arm `k >= 1` whose runs sit AFTER the
+/// reconverge in the base order moved to just before the reconverge's run, plus the arm-exit aliases
+/// (`arm 0 exit -> chosen exit`).
 ///
 /// [`extract_runs_multi`] cuts runs from a topological order whose orphaned-Branch seeds pull a non-zero
 /// arm's clone run in AFTER the main chain, while the reconverge node reads ARM 0's exit directly. With
 /// arm 0 skipped nothing orders the chosen arm's run before that reconverge, so a single branch came out
 /// right by luck and chained branches (a region's reconverge is the next region's diverge) came out
-/// invalid. A chosen arm's run depends only on the shared diverge prefix and its own cone, all of which
-/// precede the first arm slot, so emitting it there is always valid.
+/// invalid. The place for a late chosen-arm run is just before the reconverge's run, NOT the first arm slot:
+/// a chosen-arm run reads values (the diverge, and inbound copies of other nodes) that arm 0's own runs read
+/// first, so by the time the reconverge's run is reached every input is emitted; an earlier slot can precede
+/// a node the run reads (an inbound `Copy` of a later main-chain node, found on a GPU run: ROADMAP row 158).
+/// A chosen-arm run already before the reconverge in the base order stays where it is.
 fn relocate_chosen_arm_runs<F>(
     runs: &[Run],
     metas: &[BranchArmMeta],
@@ -458,13 +462,22 @@ where
             entry_to_branches.entry(entry).or_default().push(mi);
         }
     }
+    let run_of_entry: HashMap<NodeId, usize> =
+        runs.iter().enumerate().map(|(i, r)| (r.entry, i)).collect();
     let mut resolved: HashSet<usize> = HashSet::new();
     let mut relocated: HashSet<usize> = HashSet::new();
+    // Run index of a reconverge run -> the chosen arm's runs to emit just before it.
+    let mut before: HashMap<usize, Vec<usize>> = HashMap::new();
     let mut aliases: HashMap<NodeId, NodeId> = HashMap::new();
     let mut kept: Vec<Run> = Vec::new();
     for (ri, run) in runs.iter().enumerate() {
         if relocated.contains(&ri) {
             continue;
+        }
+        if let Some(pending) = before.remove(&ri) {
+            for rj in pending {
+                kept.push(runs[rj].clone());
+            }
         }
         if let Some(branches) = entry_to_branches.get(&run.entry) {
             for &mi in branches {
@@ -475,9 +488,11 @@ where
                 let chosen = clamp_arm(meta, chosen_of(meta.branch));
                 if chosen != 0 {
                     note_alias(meta, chosen, &mut aliases);
-                    for rj in arm_run_indices(runs, meta, chosen) {
-                        if rj > ri && relocated.insert(rj) {
-                            kept.push(runs[rj].clone());
+                    if let Some(&rr) = run_of_entry.get(&meta.reconverge) {
+                        for rj in arm_run_indices(runs, meta, chosen) {
+                            if rj > rr && relocated.insert(rj) {
+                                before.entry(rr).or_default().push(rj);
+                            }
                         }
                     }
                 }
@@ -908,9 +923,13 @@ pub fn walk_picked_route_streaming<R, E>(
     let mut segment: Vec<&Run> = Vec::new();
     // `arm 0 exit -> chosen exit` for every resolved branch whose chosen arm is not arm 0.
     let mut aliases: HashMap<NodeId, NodeId> = HashMap::new();
-    // Runs of a chosen non-zero arm that were emitted early, at the slot of the branch's first arm run,
-    // instead of at their natural (late) position in `runs` (see `relocate_chosen_arm_runs`).
+    // Runs of a chosen non-zero arm that sit after the reconverge in `runs` and are emitted just before the
+    // reconverge's run instead (see `relocate_chosen_arm_runs`).
     let mut relocated: HashSet<usize> = HashSet::new();
+    // Run index of a reconverge run -> the chosen arm's runs to emit just before it.
+    let mut before: HashMap<usize, Vec<usize>> = HashMap::new();
+    let run_of_entry: HashMap<NodeId, usize> =
+        runs.iter().enumerate().map(|(i, r)| (r.entry, i)).collect();
     let flush = |segment: &mut Vec<&Run>, aliases: &HashMap<NodeId, NodeId>, emit: &mut E| {
         if segment.is_empty() {
             return;
@@ -927,7 +946,12 @@ pub fn walk_picked_route_streaming<R, E>(
 
     for (ri, run) in runs.iter().enumerate() {
         if relocated.contains(&ri) {
-            continue; // already emitted at its branch's first arm slot
+            continue; // emitted just before its branch's reconverge run
+        }
+        if let Some(pending) = before.remove(&ri) {
+            for rj in pending {
+                segment.push(&runs[rj]);
+            }
         }
         // Frontier reached this run's entry. If it opens an arm of one or
         // more not-yet-resolved branches, the route past this point is about
@@ -944,18 +968,19 @@ pub fn walk_picked_route_streaming<R, E>(
                     continue;
                 }
                 let meta = meta_of[&branch];
-                // Resolve NOW (reading live load via `resolve` once C2 lands)
-                // and fold this branch's non-chosen arms into the skip set —
-                // before we decide whether to keep this run.
+                // Resolve NOW (reading live load via `resolve` once C2 lands); the skip set is
+                // recomputed from liveness below, before we decide whether to keep this run.
                 let chosen = clamp_arm(meta, resolve(branch));
                 note_alias(meta, chosen, &mut aliases);
                 newly_resolved = true;
-                // A chosen arm k >= 1 runs HERE, where arm 0's run would have been: its run sits late in
-                // `runs` (after the reconverge that reads it), so emit it now and skip it later.
-                if chosen != 0 {
+                // A chosen arm k >= 1 has runs late in `runs` (after the reconverge that reads them):
+                // emit those just before the reconverge's run, and skip them at their natural place.
+                if chosen != 0
+                    && let Some(&rr) = run_of_entry.get(&meta.reconverge)
+                {
                     for rj in arm_run_indices(&runs, meta, chosen) {
-                        if rj > ri && relocated.insert(rj) {
-                            segment.push(&runs[rj]);
+                        if rj > rr && relocated.insert(rj) {
+                            before.entry(rr).or_default().push(rj);
                         }
                     }
                 }
@@ -988,6 +1013,8 @@ struct BranchArmMeta {
     branch: NodeId,
     /// The arm exits (`inputs` of the Branch node), arm 0 first.
     exits: Vec<NodeId>,
+    /// The merge node (`Op::Branch { reconverge_at }`): the first run after the arms opens here.
+    reconverge: NodeId,
     /// `(arm-entry node, arm index)` for each arm — the run entry that
     /// opens that arm. Used to detect, while walking runs, which branch a
     /// run opens an arm of.
@@ -1011,7 +1038,7 @@ fn branch_arm_meta(graph: &Graph, roots: &[NodeId]) -> Vec<BranchArmMeta> {
 
     let mut metas = Vec::new();
     for &id in &order {
-        let Op::Branch { .. } = graph.node(id).op else {
+        let Op::Branch { reconverge_at } = graph.node(id).op else {
             continue;
         };
         let arm_exits = graph.node(id).inputs.clone();
@@ -1044,6 +1071,7 @@ fn branch_arm_meta(graph: &Graph, roots: &[NodeId]) -> Vec<BranchArmMeta> {
         metas.push(BranchArmMeta {
             branch: id,
             exits: arm_exits.clone(),
+            reconverge: reconverge_at,
             arm_entries,
             cones,
             shared,
