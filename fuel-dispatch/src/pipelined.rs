@@ -10514,6 +10514,198 @@ mod tests {
         }
     }
 
+    /// ROW 158: a chain of CROSS-DEVICE region branches. Block `i` is `e = relu(x); d = silu(e);
+    /// a = add(d, e); t = tanh(a); res = add(d, t)`, the stretch `a, t` is recorded with its alternative on
+    /// `Cuda { gpu_id: 0 }` (arm 1) and its exit brought back to the host, and the residency pass inserts
+    /// the inbound copies of BOTH external inputs (`d` and `e`) of the clone. `res` is the next block's `x`.
+    /// Returns `(graph, root, branches)`.
+    #[cfg(test)]
+    fn cross_device_chain(blocks: usize) -> (Graph, NodeId, Vec<NodeId>) {
+        use crate::region_pathfinder::try_record_branch;
+        let cuda0 = DeviceLocation::Cuda { gpu_id: 0 };
+        let mut g = Graph::new();
+        let node = |g: &mut Graph, op: Op, inputs: Vec<NodeId>| {
+            let id = g.push(Node {
+                op,
+                inputs,
+                shape: Shape::from_dims(&[4]),
+                dtype: DType::F32,
+            });
+            g.set_placement(id, DeviceLocation::Cpu);
+            g.set_target_backend(id, BackendId::Cpu);
+            id
+        };
+        let mut x = node(&mut g, Op::Const, vec![]);
+        let mut branches = Vec::new();
+        for _ in 0..blocks {
+            let e = node(&mut g, Op::Relu, vec![x]);
+            let d = node(&mut g, Op::Silu, vec![e]);
+            let a = node(&mut g, Op::Add, vec![d, e]);
+            let t = node(&mut g, Op::Tanh, vec![a]);
+            let res = node(&mut g, Op::Add, vec![d, t]);
+            let branch = try_record_branch(
+                &mut g,
+                d,
+                res,
+                &[a, t],
+                t,
+                BackendId::Cuda,
+                cuda0,
+                DeviceLocation::Cpu,
+            )
+            .expect("well-formed branch")
+            .expect("two arms");
+            branches.push(branch);
+            x = res;
+        }
+        crate::optimize::insert_residency_copies(
+            &mut g,
+            &[x],
+            &crate::plan::ExecutionPlan::empty(),
+            DeviceLocation::Cpu,
+            None,
+        );
+        (g, x, branches)
+    }
+
+    /// LOWERING level: the cross-device chain (inbound copies, exit copies, two external inputs per arm)
+    /// lowers to a valid order for 1 to 4 blocks and EVERY combination of arms, frozen and streaming
+    /// identical. Found on a GPU run: with the chosen arm's runs moved to the slot of the first run that
+    /// opens an arm, an inbound `Copy` ran before the main-chain node it reads (`Copy input NodeId(130) of
+    /// NodeId(255) not realized`).
+    #[test]
+    fn cross_device_chains_lower_to_a_valid_order_for_every_combination_of_arms() {
+        for blocks in 1..=4usize {
+            let (g, root, branches) = cross_device_chain(blocks);
+            for mask in 0..(1usize << blocks) {
+                let route = route_from_mask(&branches, mask);
+                let frozen = fuel_graph::lower_picked_route(&g, &[root], &route);
+                let streaming = fuel_graph::lower_picked_route_streaming(&g, &[root], |b| {
+                    route.get(&b).copied().unwrap_or(0)
+                });
+                for (name, order) in [("frozen", &frozen), ("streaming", &streaming)] {
+                    assert_eq!(
+                        why_invalid_order(&g, &branches, mask, order),
+                        None,
+                        "{name} lowering, blocks={blocks} mask={mask:#b}: order={order:?}"
+                    );
+                }
+                assert_eq!(
+                    frozen, streaming,
+                    "blocks={blocks} mask={mask:#b}: frozen and streaming differ"
+                );
+            }
+        }
+    }
+
+    /// A chain of cross-device region branches whose stretch reads a SHARED EARLY value `h` (computed once,
+    /// before any diverge) as well as its diverge `d`: `fillers` nodes sit between the previous block and
+    /// `d`, and `h` enters the stretch at its first node (`second_in_middle == false`) or its second.
+    /// The residency pass inserts ONE inbound copy of `h` onto the alternative device and CSEs it between
+    /// every block's arm 1, so that copy is in branch 1's arm 1 and in branch 2's arm 1 at once.
+    #[cfg(test)]
+    fn shared_early_input_chain(
+        blocks: usize,
+        fillers: usize,
+        second_in_middle: bool,
+    ) -> (Graph, NodeId, Vec<NodeId>) {
+        let cuda0 = DeviceLocation::Cuda { gpu_id: 0 };
+        let mut g = Graph::new();
+        let node = |g: &mut Graph, op: Op, inputs: Vec<NodeId>| {
+            let id = g.push(Node {
+                op,
+                inputs,
+                shape: Shape::from_dims(&[4]),
+                dtype: DType::F32,
+            });
+            g.set_placement(id, DeviceLocation::Cpu);
+            g.set_target_backend(id, BackendId::Cpu);
+            id
+        };
+        let c1 = node(&mut g, Op::Const, vec![]);
+        // The early value: NOT downstream of any diverge, so it is outside every stretch.
+        let h = node(&mut g, Op::Relu, vec![c1]);
+        let mut x = node(&mut g, Op::Const, vec![]);
+        let mut branches = Vec::new();
+        for _ in 0..blocks {
+            let mut d = x;
+            for _ in 0..fillers {
+                d = node(&mut g, Op::Silu, vec![d]);
+            }
+            let (a, t) = if second_in_middle {
+                let s1 = node(&mut g, Op::Tanh, vec![d]);
+                let s2 = node(&mut g, Op::Add, vec![s1, h]);
+                (s1, s2)
+            } else {
+                let s1 = node(&mut g, Op::Add, vec![d, h]);
+                let s2 = node(&mut g, Op::Tanh, vec![s1]);
+                (s1, s2)
+            };
+            let res = node(&mut g, Op::Add, vec![d, t]);
+            let branch = crate::region_pathfinder::try_record_branch(
+                &mut g,
+                d,
+                res,
+                &[a, t],
+                t,
+                BackendId::Cuda,
+                cuda0,
+                DeviceLocation::Cpu,
+            )
+            .expect("well-formed branch")
+            .expect("two arms");
+            branches.push(branch);
+            x = res;
+        }
+
+        crate::optimize::insert_residency_copies(
+            &mut g,
+            &[x],
+            &crate::plan::ExecutionPlan::empty(),
+            DeviceLocation::Cpu,
+            None,
+        );
+        (g, x, branches)
+    }
+
+    /// LOWERING level, 140 shapes (1 to 3 blocks x 0 to 4 fillers x both entry positions x EVERY
+    /// combination of arms; the frozen and the streaming order may differ here, as they may on any multi-device
+    /// graph, but BOTH must be valid): a shared inbound copy must run when ANY branch's chosen arm reads it, and the
+    /// chosen arm's runs must come before the reconverge. Under the first-slot relocation with per-branch
+    /// skip sets, 80 of the 140 (a node emitted before its input) were invalid; this is the CPU form of the
+    /// GPU failures `Copy input NodeId(130) of NodeId(255) not realized` and `cpu kernel wrapper called
+    /// with non-CPU input` (ROADMAP row 158).
+    #[test]
+    fn cross_device_chains_with_a_shared_early_input_lower_to_a_valid_order_for_every_combination_of_arms()
+     {
+        let mut shapes = 0;
+        for blocks in 1..=3usize {
+            for fillers in 0..=4usize {
+                for second_in_middle in [false, true] {
+                    let (g, root, branches) =
+                        shared_early_input_chain(blocks, fillers, second_in_middle);
+                    for mask in 0..(1usize << blocks) {
+                        shapes += 1;
+                        let route = route_from_mask(&branches, mask);
+                        let frozen = fuel_graph::lower_picked_route(&g, &[root], &route);
+                        let streaming =
+                            fuel_graph::lower_picked_route_streaming(&g, &[root], |b| {
+                                route.get(&b).copied().unwrap_or(0)
+                            });
+                        for (name, order) in [("frozen", &frozen), ("streaming", &streaming)] {
+                            assert_eq!(
+                                why_invalid_order(&g, &branches, mask, order),
+                                None,
+                                "{name} lowering, blocks={blocks} fillers={fillers} second_in_middle={second_in_middle} mask={mask:#b}: order={order:?}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        assert_eq!(shapes, 140, "the family size changed: re-pin it");
+    }
+
     /// EXECUTOR level on CPU: the chain realized for every combination of arms (2 and 3 blocks, every
     /// mask, arm 1 = the clone on the same backend) equals arm 0. Before the fix any chain of two or more
     /// with an arm 1 failed with "input ... not realized".

@@ -718,7 +718,7 @@ fn stamp_plan_backends(
 /// comment below), which is the right vantage for "where did this node land":
 /// it reports the placement of the original nodes, with the inserted copies
 /// being the consequence rather than part of the answer.
-fn insert_residency_copies(
+pub(crate) fn insert_residency_copies(
     graph: &mut Graph,
     roots: &[NodeId],
     plan: &ExecutionPlan,

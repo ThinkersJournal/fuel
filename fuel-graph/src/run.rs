@@ -938,6 +938,7 @@ pub fn walk_picked_route_streaming<R, E>(
             if opens_new {
                 flush(&mut segment, &aliases, &mut emit);
             }
+            let mut newly_resolved = false;
             for &branch in branches {
                 if !resolved.insert(branch) {
                     continue;
@@ -946,19 +947,22 @@ pub fn walk_picked_route_streaming<R, E>(
                 // Resolve NOW (reading live load via `resolve` once C2 lands)
                 // and fold this branch's non-chosen arms into the skip set —
                 // before we decide whether to keep this run.
-                let chosen = resolve(branch);
-                add_non_chosen_skip(meta, chosen, &mut skip);
+                let chosen = clamp_arm(meta, resolve(branch));
+                note_alias(meta, chosen, &mut aliases);
+                newly_resolved = true;
                 // A chosen arm k >= 1 runs HERE, where arm 0's run would have been: its run sits late in
                 // `runs` (after the reconverge that reads it), so emit it now and skip it later.
-                let chosen = clamp_arm(meta, chosen);
                 if chosen != 0 {
-                    note_alias(meta, chosen, &mut aliases);
                     for rj in arm_run_indices(&runs, meta, chosen) {
                         if rj > ri && relocated.insert(rj) {
                             segment.push(&runs[rj]);
                         }
                     }
                 }
+            }
+            if newly_resolved {
+                // Branches resolved so far choose the route; unresolved ones default to arm 0.
+                skip = skipped_arm_nodes(graph, roots, &branch_meta, &aliases);
             }
         }
         // A run is a single contiguous arm/region (extract never spans a
@@ -1048,26 +1052,6 @@ fn branch_arm_meta(graph: &Graph, roots: &[NodeId]) -> Vec<BranchArmMeta> {
     metas
 }
 
-/// Fold one branch's non-chosen arms into `skip`, given the chosen arm
-/// index. Identical to the per-branch body of [`non_chosen_arm_nodes`]: a
-/// node is skipped when it lies in a non-chosen arm's cone but is neither
-/// shared nor part of the chosen arm's cone. A stale / out-of-range
-/// `chosen` clamps to arm 0 (never panic).
-fn add_non_chosen_skip(meta: &BranchArmMeta, chosen: usize, skip: &mut HashSet<NodeId>) {
-    let chosen = if chosen < meta.cones.len() { chosen } else { 0 };
-    let chosen_cone = &meta.cones[chosen];
-    for (i, cone) in meta.cones.iter().enumerate() {
-        if i == chosen {
-            continue;
-        }
-        for &n in cone {
-            if !meta.shared.contains(&n) && !chosen_cone.contains(&n) {
-                skip.insert(n);
-            }
-        }
-    }
-}
-
 /// The set of nodes that belong to a **non-chosen arm** of some reachable
 /// [`Op::Branch`] — the nodes the route-aware lowering skips. The arm-0
 /// generalization: when `picked` is empty (or a branch is absent from
@@ -1085,54 +1069,66 @@ fn add_non_chosen_skip(meta: &BranchArmMeta, chosen: usize, skip: &mut HashSet<N
 /// take. Arms are internally disjoint by the PR-A1 build-time
 /// validation, so these sets don't overlap the chosen arm.
 fn non_chosen_arm_nodes(graph: &Graph, roots: &[NodeId], picked: &PickedRoute) -> HashSet<NodeId> {
-    let eff_roots = effective_roots(graph, roots);
-    let order = topo_order_multi(graph, &eff_roots);
-    let reachable: HashSet<NodeId> = order.iter().copied().collect();
+    let metas = branch_arm_meta(graph, roots);
+    // The chosen arm per branch defaults to arm 0 (the winner) for any branch the picker did not
+    // resolve, and a stale or out-of-range pick clamps to arm 0 (never panic on a production path).
+    let mut aliases: HashMap<NodeId, NodeId> = HashMap::new();
+    for meta in &metas {
+        let chosen = clamp_arm(meta, picked.get(&meta.branch).copied().unwrap_or(0));
+        note_alias(meta, chosen, &mut aliases);
+    }
+    skipped_arm_nodes(graph, roots, &metas, &aliases)
+}
 
+/// Nodes inside some branch's arm (an arm's backward cone minus the prefix every arm of that branch
+/// shares) that are NOT live under the route `aliases` describes (`arm 0 exit -> chosen exit` for every
+/// branch whose chosen arm is not arm 0): the nodes the route-aware lowering skips.
+///
+/// Liveness, not per-branch cones: the residency pass shares one inbound `Copy` between regions (CSE), so
+/// a node can sit in one branch's non-chosen arm and another branch's chosen arm, and it must run; and a
+/// chosen arm-0 cone reaches back through the runnability edge (a reconverge reads arm 0's exit) into an
+/// earlier branch's arm 0, which a route that chose that branch's arm 1 never runs (ROADMAP row 158).
+fn skipped_arm_nodes(
+    graph: &Graph,
+    roots: &[NodeId],
+    metas: &[BranchArmMeta],
+    aliases: &HashMap<NodeId, NodeId>,
+) -> HashSet<NodeId> {
+    let live = live_nodes(graph, roots, aliases);
     let mut skip: HashSet<NodeId> = HashSet::new();
-    for &id in &order {
-        let Op::Branch { .. } = graph.node(id).op else {
-            continue;
-        };
-        let arm_exits = &graph.node(id).inputs;
-        if arm_exits.len() < 2 {
-            continue;
-        }
-        // The chosen arm index — default arm 0 (the winner) for any
-        // branch the picker did not resolve. Clamp to a valid arm so a
-        // stale/out-of-range pick degrades to arm 0 rather than panicking
-        // (never panic on a production path).
-        let chosen = picked
-            .get(&id)
-            .copied()
-            .filter(|&c| c < arm_exits.len())
-            .unwrap_or(0);
-
-        let cones: Vec<HashSet<NodeId>> = arm_exits
-            .iter()
-            .map(|&e| backward_cone(graph, e, &reachable))
-            .collect();
-        // Shared prefix = intersection of every arm's cone (the diverge
-        // region the arms depart from).
-        let mut shared: HashSet<NodeId> = cones[0].clone();
-        for c in &cones[1..] {
-            shared = shared.intersection(c).copied().collect();
-        }
-        // Skip every non-chosen arm's interior: its cone minus the shared
-        // prefix minus the chosen arm's cone.
-        let chosen_cone = &cones[chosen];
-        for (i, cone) in cones.iter().enumerate() {
-            if i == chosen {
-                continue;
-            }
+    for meta in metas {
+        for cone in &meta.cones {
             for &n in cone {
-                if !shared.contains(&n) && !chosen_cone.contains(&n) {
+                if !meta.shared.contains(&n) && !live.contains(&n) {
                     skip.insert(n);
                 }
             }
         }
     }
     skip
+}
+
+/// Nodes reachable backward from `roots` when a read of an arm-0 exit that `aliases` maps reads the chosen
+/// arm's exit instead (the executor's alias of the chosen exit onto arm 0's exit).
+fn live_nodes(
+    graph: &Graph,
+    roots: &[NodeId],
+    aliases: &HashMap<NodeId, NodeId>,
+) -> HashSet<NodeId> {
+    let mut live: HashSet<NodeId> = HashSet::new();
+    let mut stack: Vec<NodeId> = roots.to_vec();
+    while let Some(n) = stack.pop() {
+        if !live.insert(n) {
+            continue;
+        }
+        for &input in &graph.node(n).inputs {
+            let input = aliases.get(&input).copied().unwrap_or(input);
+            if !live.contains(&input) {
+                stack.push(input);
+            }
+        }
+    }
+    live
 }
 
 /// Branch density: the share of reachable nodes that are decision
