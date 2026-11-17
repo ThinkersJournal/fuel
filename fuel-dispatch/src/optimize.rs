@@ -3268,4 +3268,174 @@ mod tests {
         assert_eq!(optimized.branch_count(&g), 0);
         assert_eq!(g.len(), before, "no clones are left behind");
     }
+
+    // ===== Load-aware arm pick through the PRODUCTION realize entry
+    //        (row 158 slice 2: estimated-completion, not queue-depth) =====
+
+    /// Records the backend of every candidate the wrapped selector picks, so
+    /// a test can read WHICH arm the production picking entry chose.
+    #[derive(Debug)]
+    struct RecordingSelector {
+        inner: crate::ranker::ChainedSelector,
+        picked: std::sync::Mutex<Vec<BackendId>>,
+    }
+
+    impl crate::ranker::RuntimeSelector for RecordingSelector {
+        fn select<'a>(
+            &self,
+            set: &'a crate::ranker::AlternativeSet,
+        ) -> Option<&'a crate::ranker::Candidate> {
+            let picked = self.inner.select(set);
+            if let Some(c) = picked {
+                self.picked.lock().unwrap().push(c.backend);
+            }
+            picked
+        }
+    }
+
+    /// Judge answering per BACKEND only. The pick enumerates candidates from
+    /// the process-wide binding table (real `portable-cpu` kernel with a
+    /// revision hash; a synthetic CUDA stand-in), so a cell-keyed judge would
+    /// couple the test to those tags.
+    struct BackendJudge {
+        cuda_ns: u64,
+        cpu_ns: u64,
+    }
+
+    impl crate::ranker::JudgeOracle for BackendJudge {
+        fn measured_latency_ns(
+            &self,
+            _op: OpKind,
+            _dtype: DType,
+            _size_class: fuel_ir::dispatch::SizeClass,
+            backend: BackendId,
+            _kernel_source: &str,
+            _kernel_revision_hash: u64,
+        ) -> Option<u64> {
+            match backend {
+                BackendId::Cuda => Some(self.cuda_ns),
+                BackendId::Cpu => Some(self.cpu_ns),
+                _ => None,
+            }
+        }
+    }
+
+    /// Realize the single-fork graph through
+    /// `PipelinedExecutor::realize_with_optimized_picking_env` (the entry the
+    /// bridge calls) with a `ChainedSelector` over `lookup` and a Judge that
+    /// measures the fork op at `cuda_ns` on CUDA and `cpu_ns` on CPU. Returns
+    /// the backends the streaming pick chose for the (one) branch.
+    fn picked_backends_through_realize(
+        lookup: crate::ranker::BackendRuntimeLookup,
+        cuda_ns: u64,
+        cpu_ns: u64,
+    ) -> Vec<BackendId> {
+        // The process-wide topology generation is shared by every test in
+        // this binary; a sibling bump makes `realize` return before the
+        // streaming walk reaches the branch, so the selector never runs and
+        // the recording is empty (seen on hosted CI, never locally). Retry a
+        // bounded number of times on an EMPTY recording only: a picker that
+        // genuinely never picks still returns empty after the last attempt
+        // and the caller's assertion fails.
+        let mut picked = Vec::new();
+        for _attempt in 0..8 {
+            picked = picked_backends_once(lookup.clone(), cuda_ns, cpu_ns);
+            if !picked.is_empty() {
+                break;
+            }
+        }
+        picked
+    }
+
+    fn picked_backends_once(
+        lookup: crate::ranker::BackendRuntimeLookup,
+        cuda_ns: u64,
+        cpu_ns: u64,
+    ) -> Vec<BackendId> {
+        use crate::PipelinedExecutor;
+        use crate::pipelined::StorageCache;
+        use crate::ranker::ChainedSelector;
+        use fuel_ir::SymEnv;
+
+        let mut table = KernelBindingTable::new();
+        let (mut g, _prod, _fork, _tail, root) = build_single_fork_graph(&mut table);
+        let optimized = optimize_graph(&mut g, &[root], &table, &two_backend_opts())
+            .expect("optimize_graph succeeds");
+        assert_eq!(optimized.branch_count(&g), 1, "exactly one branch");
+
+        let selector = Arc::new(RecordingSelector {
+            inner: ChainedSelector::with_default_estimator(
+                Some(Arc::new(BackendJudge { cuda_ns, cpu_ns })),
+                Some(lookup.clone()),
+            ),
+            picked: std::sync::Mutex::new(Vec::new()),
+        });
+
+        let graph = Arc::new(RwLock::new(g));
+        let mut cache = StorageCache::new();
+        cache.insert(
+            NodeId(0),
+            Arc::new(RwLock::new(fuel_memory::from_slice_cpu(&[
+                1.0_f32, 2.0, 3.0, 4.0,
+            ]))),
+        );
+        // The realize itself may fail (the synthetic CUDA arm has no device
+        // behind it, and the process-wide topology generation can move under
+        // a sibling test); this test reads only the arm the streaming walk
+        // resolved, which happens at the branch's arm-entry before either.
+        let _ = PipelinedExecutor::realize_with_optimized_picking_env(
+            graph,
+            root,
+            cache,
+            &optimized,
+            Some(selector.clone() as Arc<dyn crate::ranker::RuntimeSelector>),
+            Some(lookup),
+            SymEnv::default(),
+        );
+        selector.picked.lock().unwrap().clone()
+    }
+
+    /// Row 158 slice 2. CUDA measures 100 ns on the fork op, CPU 100 us.
+    /// The device load must be read as estimated BACKLOG TIME, not as a
+    /// queue-depth bucket:
+    ///  - idle CUDA                      -> CUDA arm;
+    ///  - CUDA with ONE op queued (the count bucket says "saturated") but
+    ///    only 1 us of estimated backlog -> STILL the CUDA arm (1.1 us beats
+    ///    CPU's 100 us); the count tier wrongly sends this to CPU;
+    ///  - CUDA with a 1 hour backlog     -> the CPU arm.
+    ///
+    /// SHOWS: the streaming pick, reached through the production picking
+    /// realize entry, ranks arms by backlog + measured latency.
+    /// DOES NOT SHOW: that the executor's submit sites feed the backlog
+    /// (the lookup here injects it), nor that kernels ran on either arm.
+    #[test]
+    fn load_aware_pick_ranks_by_estimated_completion_through_realize() {
+        use crate::ranker::mock_backlog_lookup;
+        const HOUR_NS: u64 = 3_600_000_000_000;
+
+        let idle = picked_backends_through_realize(
+            mock_backlog_lookup(vec![(BackendId::Cuda, 0, 0)]),
+            100,
+            100_000,
+        );
+        assert_eq!(idle, vec![BackendId::Cuda], "idle GPU -> GPU arm");
+
+        let one_op = picked_backends_through_realize(
+            mock_backlog_lookup(vec![(BackendId::Cuda, 1, 1_000)]),
+            100,
+            100_000,
+        );
+        assert_eq!(
+            one_op,
+            vec![BackendId::Cuda],
+            "1 op / 1 us backlog: GPU still finishes first (1.1 us vs 100 us)",
+        );
+
+        let hour = picked_backends_through_realize(
+            mock_backlog_lookup(vec![(BackendId::Cuda, 1, HOUR_NS)]),
+            100,
+            100_000,
+        );
+        assert_eq!(hour, vec![BackendId::Cpu], "1 h GPU backlog -> CPU arm");
+    }
 }

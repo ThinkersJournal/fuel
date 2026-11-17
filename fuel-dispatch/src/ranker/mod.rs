@@ -64,8 +64,8 @@ pub use cost::{
 pub use cost_vector::{AccuracyClass, CostVector, MemoryTiers, PrecisionDigits};
 pub use device_load::{
     DeviceLoadSelector, LOAD_TIER_IDLE, LOAD_TIER_MODERATE, LOAD_TIER_SATURATED, LoadLookup,
-    MockBackendStreams, MockCombinedRuntime, load_tier, load_tier_for, mock_combined_lookup,
-    mock_load_lookup,
+    MockBackendStreams, MockCombinedRuntime, load_tier, load_tier_for, mock_backlog_lookup,
+    mock_combined_lookup, mock_load_lookup,
 };
 pub use enumerate::enumerate_candidates;
 pub use filter::{AlternativeFilter, FilterClass, FilterContext};

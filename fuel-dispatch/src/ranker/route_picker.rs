@@ -364,7 +364,78 @@ fn enumerate_fork_set(
     if let Some(ctx) = fork_decision_context(graph, node, op_kind, &dtypes) {
         set.set_context(ctx);
     }
+    price_fork_candidates(
+        &mut set,
+        graph,
+        node,
+        op_kind,
+        &dtypes,
+        &placements,
+        bindings,
+    );
     set
+}
+
+/// Row 158 slice 2: give every per-placement candidate its OWN cost
+/// estimate at pick time, so the selector's estimated completion
+/// (`backlog + inbound transfer + this arm's estimate`) is not a tie at zero.
+///
+/// - **Static estimate** (`static_cost`): the registered `CostFn` /
+///   FKC `cost_expr` evaluated over the fork's input shapes, against caps
+///   derived per backend ([`crate::dispatch::derive_backend_caps`]).
+/// - **Inbound transfer** (`inbound_transfer_ns`): `SystemTopology`'s
+///   per-path estimate for each fork input whose producer's placement is
+///   known (an unknown residency adds nothing, never a fabricated move).
+///
+/// Which figure wins is decided in `ChainedSelector::latency_ns`: a
+/// Judge-measured latency for the arm's cell REPLACES the static estimate;
+/// the static composite is the fallback; the inbound transfer is always
+/// added; the device backlog is added on top.
+fn price_fork_candidates(
+    arms: &mut AlternativeSet,
+    graph: &Graph,
+    node: &fuel_graph::Node,
+    op_kind: OpKind,
+    dtypes: &[DType],
+    placements: &[(BackendId, DeviceLocation)],
+    bindings: &KernelBindingTable,
+) {
+    let shapes: Vec<Shape> = node
+        .inputs
+        .iter()
+        .map(|&i| graph.node(i).shape.clone())
+        .collect();
+    let caps: std::collections::HashMap<BackendId, fuel_ir::backend::BackendCapabilities> =
+        placements
+            .iter()
+            .map(|&(b, d)| (b, crate::dispatch::derive_backend_caps(b, d, bindings)))
+            .collect();
+    crate::ranker::compute_static_costs(
+        arms,
+        op_kind,
+        dtypes,
+        &shapes,
+        bindings,
+        &|b: BackendId| caps.get(&b),
+        None,
+    );
+    let residency: Vec<(DeviceLocation, u64)> = node
+        .inputs
+        .iter()
+        .filter_map(|&i| {
+            let producer = graph.node(i);
+            let backend = graph.target_backend(i)?;
+            let bytes = (producer.shape.elem_count() * producer.dtype.size_in_bytes()) as u64;
+            Some((default_device_for(backend), bytes))
+        })
+        .collect();
+    if !residency.is_empty() {
+        crate::ranker::apply_inbound_transfer_costs(
+            arms,
+            &residency,
+            &*crate::topology::SystemTopology::current(),
+        );
+    }
 }
 
 /// The fork's [`DecisionContext`] — `(op, principal dtype, size class)`,
@@ -867,6 +938,87 @@ mod tests {
         assert!(
             route.is_empty(),
             "no load anywhere ⇒ arm-0 everywhere ⇒ empty route; got {route:?}",
+        );
+    }
+
+    // ===== row 158 slice 2: the picker reads each arm's own cost =====
+
+    fn dear_cost(
+        _s: &[Shape],
+        _d: &[DType],
+        _p: &crate::kernel::OpParams,
+        _c: &fuel_ir::backend::BackendCapabilities,
+    ) -> crate::fused::CostEstimate {
+        crate::fused::CostEstimate {
+            flops: 1_000_000,
+            bytes_moved: 0,
+            kernel_overhead_ns: 0,
+        }
+    }
+
+    fn cheap_cost(
+        _s: &[Shape],
+        _d: &[DType],
+        _p: &crate::kernel::OpParams,
+        _c: &fuel_ir::backend::BackendCapabilities,
+    ) -> crate::fused::CostEstimate {
+        crate::fused::CostEstimate {
+            flops: 3_000,
+            bytes_moved: 0,
+            kernel_overhead_ns: 0,
+        }
+    }
+
+    /// Cuda (arm 0) registered dear, Vulkan (arm 1) cheap, both GPU-rate.
+    fn costed_bindings() -> KernelBindingTable {
+        let mut t = KernelBindingTable::new();
+        for (backend, cost) in [
+            (BackendId::Cuda, dear_cost as crate::kernel::CostFn),
+            (BackendId::Vulkan, cheap_cost as crate::kernel::CostFn),
+        ] {
+            t.register_full(
+                OpKind::SiluElementwise,
+                &[DType::F32, DType::F32],
+                backend,
+                noop_kernel,
+                crate::kernel::KernelCaps::empty(),
+                crate::fused::PrecisionGuarantee::PRIMITIVE_DETERMINISTIC_CPU,
+                cost,
+            );
+        }
+        t
+    }
+
+    /// With NO Judge and NO backlog, the pick must still read each arm's own
+    /// registered cost estimate (static `CostFn`), not tie at zero and fall
+    /// back to arm 0: the cheap Vulkan arm wins over the dear Cuda arm 0.
+    /// A 1 h Vulkan backlog then flips it back to arm 0 (backlog + estimate).
+    #[test]
+    fn pick_arm_reads_static_cost_and_adds_backlog() {
+        let (g, branch, _a0, _a1, post) = diamond(BackendId::Cuda, BackendId::Vulkan);
+        let bindings = costed_bindings();
+
+        let idle = crate::ranker::mock_backlog_lookup(vec![
+            (BackendId::Cuda, 0, 0),
+            (BackendId::Vulkan, 0, 0),
+        ]);
+        let sel = ChainedSelector::with_default_estimator(None, Some(idle.clone()));
+        let route = pick_route(&g, &[post], &bindings, &sel, Some(&idle));
+        assert_eq!(
+            route.get(&branch).copied(),
+            Some(1),
+            "static estimate: cheap Vulkan arm beats dear Cuda arm 0; route={route:?}",
+        );
+
+        let busy = crate::ranker::mock_backlog_lookup(vec![
+            (BackendId::Cuda, 0, 0),
+            (BackendId::Vulkan, 1, 3_600_000_000_000),
+        ]);
+        let sel = ChainedSelector::with_default_estimator(None, Some(busy.clone()));
+        let route = pick_route(&g, &[post], &bindings, &sel, Some(&busy));
+        assert!(
+            route.is_empty(),
+            "1 h Vulkan backlog: arm 0 finishes first; route={route:?}",
         );
     }
 }

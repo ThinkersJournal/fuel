@@ -311,6 +311,9 @@ pub struct MockCombinedRuntime {
     pub pending: Option<u32>,
     /// Advertised slot capacity (`slot_capacity`).
     pub capacity: u32,
+    /// Injected estimated backlog in ns (`estimated_backlog_ns`); `None` =
+    /// no estimate (the trait default).
+    pub backlog_ns: Option<u64>,
 }
 
 impl BackendRuntime for MockCombinedRuntime {
@@ -332,9 +335,34 @@ impl fuel_backend_contract::backend::BackendStreams for MockCombinedRuntime {
     fn slot_capacity(&self) -> u32 {
         self.capacity
     }
+    fn estimated_backlog_ns(&self) -> Option<u64> {
+        self.backlog_ns
+    }
     fn flush(&self) -> fuel_ir::Result<()> {
         Ok(())
     }
+}
+
+/// Like [`mock_combined_lookup`] but every listed backend also reports an
+/// injected `(pending, backlog_ns)`: entries are `(backend, pending count,
+/// backlog ns)`, VRAM ample, slot capacity 1. Backends not listed resolve to
+/// `None` (no handle at all). Test seam for the cost-aware load leg.
+pub fn mock_backlog_lookup(entries: Vec<(BackendId, u32, u64)>) -> LoadLookup {
+    use std::sync::Arc;
+    Arc::new(move |b: BackendId, _d: DeviceLocation| {
+        entries
+            .iter()
+            .find(|(eb, _, _)| *eb == b)
+            .map(|&(_, pending, backlog_ns)| {
+                Box::new(MockCombinedRuntime {
+                    available: Some(u64::MAX / 2),
+                    total: Some(u64::MAX / 2),
+                    pending: Some(pending),
+                    capacity: 1,
+                    backlog_ns: Some(backlog_ns),
+                }) as super::BackendRuntimeHandle
+            })
+    })
 }
 
 /// Build a combined VRAM+load lookup from
@@ -361,6 +389,7 @@ pub fn mock_combined_lookup(entries: Vec<MockCombinedEntry>) -> LoadLookup {
                     total,
                     pending,
                     capacity,
+                    backlog_ns: None,
                 }) as super::BackendRuntimeHandle
             },
         )

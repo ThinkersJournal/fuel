@@ -1874,6 +1874,18 @@ impl BackendStreams for DeviceRuntimeHandle {
         1
     }
 
+    /// Estimated backlog in ns: the executor's per-device
+    /// submitted-unfinished estimated cost
+    /// ([`fuel_dispatch::dispatch::backlog_estimate_ns`]). `None` for CPU
+    /// (no queue) and for a device the executor has never fed an estimate for
+    /// (no estimate is not "idle": the selector then uses the count tier).
+    fn estimated_backlog_ns(&self) -> Option<u64> {
+        match self.0.location_dyn() {
+            DeviceLocation::Cpu => None,
+            loc => fuel_dispatch::dispatch::backlog_estimate_ns(loc),
+        }
+    }
+
     /// Barrier: block until all submitted work on this device's slots has
     /// retired. Delegates to the device's `synchronize` (CUDA
     /// `cuCtxSynchronize` / Vulkan device-wait) — the same realize-boundary
