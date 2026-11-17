@@ -2955,6 +2955,85 @@ mod tests {
         );
     }
 
+    /// ROW 158: a region's arm 1 on ANOTHER device must read every value from outside its arm through an
+    /// `Op::Copy`, and hand its result back to arm 0's device through one. The first run of arm 1 on a GPU
+    /// (a CPU arm in a Vulkan realize) failed with `cpu kernel wrapper called with non-CPU input` on a clone
+    /// `Add` reading two Vulkan `Mul` nodes directly: the pathfinder's clones carried a `target_backend`
+    /// but no placement, so the residency pass placed them on the pinned device and saw no crossing.
+    ///
+    /// The stretch `a, t` has TWO external inputs (the diverge `d` and the earlier `e`) and its exit feeds
+    /// a reconverge on the host. The alternative runs on `Cuda { gpu_id: 0 }`. Built through
+    /// `try_record_branch` with explicit devices because the synthetic two-backend fixture of
+    /// `optimize_graph` puts its "Cuda" placement at the CPU location and so cannot show a crossing.
+    #[test]
+    fn a_cross_device_arm_one_gets_inbound_copies_for_every_external_input_and_an_exit_copy() {
+        use crate::region_pathfinder::try_record_branch;
+        let cuda0 = DeviceLocation::Cuda { gpu_id: 0 };
+        let mut g = Graph::new();
+        let x = f32_node(&mut g, Op::Const, vec![]);
+        let e = f32_node(&mut g, Op::Relu, vec![x]);
+        let d = f32_node(&mut g, Op::Silu, vec![e]); // the diverge
+        let a = f32_node(&mut g, Op::Add, vec![d, e]); // entry: reads d AND e, both outside the stretch
+        let t = f32_node(&mut g, Op::Tanh, vec![a]);
+        let res = f32_node(&mut g, Op::Add, vec![d, t]); // reconverge: reads the exit t (and d)
+        for n in [x, e, d, a, t, res] {
+            g.set_placement(n, DeviceLocation::Cpu);
+            if n != x {
+                g.set_target_backend(n, BackendId::Cpu);
+            }
+        }
+        let branch = try_record_branch(
+            &mut g,
+            d,
+            res,
+            &[a, t],
+            t,
+            BackendId::Cuda,
+            cuda0,
+            DeviceLocation::Cpu,
+        )
+        .expect("well-formed branch")
+        .expect("two arms");
+        insert_residency_copies(
+            &mut g,
+            &[res],
+            &ExecutionPlan::empty(),
+            DeviceLocation::Cpu,
+            None,
+        );
+
+        let arm1_exit = g.node(branch).inputs[1];
+        // The arm's result comes back to the host through a copy, so both exits live on one device.
+        assert!(
+            matches!(g.node(arm1_exit).op, Op::Copy { target } if target == DeviceLocation::Cpu),
+            "arm 1's exit must be a copy back to the host; got {:?}",
+            g.node(arm1_exit).op
+        );
+        let clone_t = g.node(arm1_exit).inputs[0];
+        let clone_a = g.node(clone_t).inputs[0];
+        assert_eq!(g.node(clone_a).op, Op::Add, "the clone of the entry node");
+        // Both external inputs of the clone entry node go through a copy onto the alternative device.
+        assert_eq!(g.node(clone_a).inputs.len(), 2);
+        for &input in &g.node(clone_a).inputs {
+            assert!(
+                matches!(g.node(input).op, Op::Copy { target } if target == cuda0),
+                "clone entry node reads {:?} ({:?}) from outside its arm with no copy onto {cuda0:?}",
+                input,
+                g.node(input).op,
+            );
+        }
+        // The copies read the original host values (the shared diverge and the earlier node).
+        let sources: Vec<NodeId> = g
+            .node(clone_a)
+            .inputs
+            .iter()
+            .map(|&c| g.node(c).inputs[0])
+            .collect();
+        assert_eq!(sources, vec![d, e]);
+        // Arm 0 is untouched: still host to host, no copies.
+        assert_eq!(g.node(a).inputs, vec![d, e]);
+    }
+
     /// ROW 157 / GAP-385, PURE FAN-OUT (no residual edge): `x -> n1 -> {q, k} -> a -> t`. The region is
     /// the fan-out and everything up to its join: diverge `x`, a four-node arm (`n1 q k a`), reconverge
     /// `t`. Born red: the one-node fork never forked `n1` (two consumers) and made one-node forks of

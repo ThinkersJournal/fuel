@@ -45,6 +45,10 @@ struct Region {
     interior: Vec<NodeId>,
     exit: NodeId,
     alt_backend: BackendId,
+    /// The device the alternative placement runs on (the plan's own device for it).
+    alt_device: fuel_ir::DeviceLocation,
+    /// The device arm 0's exit lives on (its DP winner's), which the reconverge node reads.
+    exit_device: fuel_ir::DeviceLocation,
     diverge_idx: usize,
     reconverge_idx: usize,
 }
@@ -98,6 +102,8 @@ impl Pathfinder for PlacementRegionPathfinder {
                 &region.interior,
                 region.exit,
                 region.alt_backend,
+                region.alt_device,
+                region.exit_device,
             ) {
                 Ok(Some(_)) => recorded += 1,
                 Ok(None) => collapsed += 1,
@@ -422,6 +428,12 @@ fn check_region(
         interior: interior.iter().map(|&x| order[x]).collect(),
         exit: order[exit],
         alt_backend: alt.0,
+        alt_device: alt.1,
+        exit_device: interior
+            .iter()
+            .position(|&x| x == exit)
+            .and_then(|p| winners.get(p))
+            .map(|w| w.1)?,
         diverge_idx: d,
         reconverge_idx: r,
     })
@@ -543,13 +555,26 @@ pub(crate) fn record_branch(
     exit: NodeId,
     alt_backend: BackendId,
 ) -> Option<NodeId> {
-    try_record_branch(graph, diverge, reconverge, interior, exit, alt_backend)
-        .ok()
-        .flatten()
+    // A host test double: the alternative runs on the backend's default device and arm 0's exit lives
+    // there too, so no exit bridge is added (a test that wants one calls `try_record_branch`).
+    let device = alt_backend.default_location();
+    try_record_branch(
+        graph,
+        diverge,
+        reconverge,
+        interior,
+        exit,
+        alt_backend,
+        device,
+        device,
+    )
+    .ok()
+    .flatten()
 }
 
 /// [`record_branch`] with the outcome kept: `Ok(Some(branch))` recorded, `Ok(None)` collapsed to one arm,
 /// `Err` rejected by `finalize_branches` (the reason names the rule).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn try_record_branch(
     graph: &mut Graph,
     diverge: NodeId,
@@ -557,6 +582,8 @@ pub(crate) fn try_record_branch(
     interior: &[NodeId],
     exit: NodeId,
     alt_backend: BackendId,
+    alt_device: fuel_ir::DeviceLocation,
+    exit_device: fuel_ir::DeviceLocation,
 ) -> Result<Option<NodeId>> {
     let mut clone_of: HashMap<NodeId, NodeId> = HashMap::new();
     for &x in interior {
@@ -575,9 +602,35 @@ pub(crate) fn try_record_branch(
             dtype,
         });
         graph.set_target_backend(c, alt_backend);
+        // The clone's PLACEMENT, not only its backend stamp: the residency pass places a node with no
+        // placement and no plan entry on the pinned realize device, so without this it never sees the
+        // arm's inputs cross a device and inserts no inbound copy (ROADMAP row 158: a CPU arm in a Vulkan
+        // realize read Vulkan storage directly, "cpu kernel wrapper called with non-CPU input").
+        graph.set_placement(c, alt_device);
         clone_of.insert(x, c);
     }
-    let arm1 = clone_of[&exit];
+    let mut arm1 = clone_of[&exit];
+    // The reconverge node reads ARM 0's exit, which lives on `exit_device`, and the executor aliases the
+    // chosen arm's exit onto it with a zero-copy view. When the alternative runs elsewhere, bring the
+    // arm's result back with an explicit copy so both exits live on the same device.
+    if alt_device != exit_device {
+        let (shape, dtype) = {
+            let n = graph.node(arm1);
+            (n.shape.clone(), n.dtype)
+        };
+        let back = graph.push(Node {
+            op: Op::Copy {
+                target: exit_device,
+            },
+            inputs: vec![arm1],
+            shape,
+            dtype,
+        });
+        // A copy runs where its bytes come from (the residency pass re-stamps it the same way).
+        graph.set_target_backend(back, alt_backend);
+        graph.set_placement(back, exit_device);
+        arm1 = back;
+    }
     let mut builder = graph.open_branch(diverge);
     builder.add_arm(exit); // arm 0 = the DP winner's stretch, in place
     builder.add_arm(arm1);
@@ -600,6 +653,8 @@ mod choose_regions_tests {
             exit: *ids.last().expect("non-empty interior"),
             interior: ids,
             alt_backend: BackendId::Cuda,
+            alt_device: fuel_ir::DeviceLocation::Cuda { gpu_id: 0 },
+            exit_device: fuel_ir::DeviceLocation::Cpu,
             diverge_idx: d,
             reconverge_idx: r,
         }
