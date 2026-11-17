@@ -144,6 +144,19 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.49.5 - 2026-11-16 (allocated by pm-assist, row 158 slice 1, DRAFT)
+
+> **RELEASE HOLD stands** (no Fuel publish / repin to a version containing `PlacementRegionPathfinder` until a GPU run shows a non-zero live branch count AND the picker choosing under injected load).
+
+### Changed
+
+- **`fuel-dispatch` region pathfinder: every feasible alternative stays a branch arm.** `REGION_COMPETITIVE_FACTOR` (the factor-2 gate on an idle-system estimate) is removed: which device is faster depends on load at run time, which only the executor sees. Arm 0 stays the idle-system winner. The old sibling test (`..._is_not_competitive`, expected 0 branches) is inverted to `cross_device_cpu_arm_far_slower_than_the_gpu_is_still_kept_as_an_arm` (red before the change, green after).
+- Bound on arms: one alternative per region, interiors disjoint, each at most `MAX_REGION_NODES` (64, **still an unmeasured placeholder**; measurement is a separate slice).
+
+### Not verified
+
+- No GPU run; the live branch count is not re-measured here. The executor's load-aware pick (estimated outstanding cost + transfer) is the next slice; today's pick uses the existing count-bucket load tier only.
+
 ## v0.49.4 - 2026-11-16 (allocated by pm-assist)
 
 ### Changed
