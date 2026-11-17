@@ -10351,6 +10351,226 @@ mod tests {
         (run(false), run(true))
     }
 
+    // ===== Row 158: chained region branches with a NON-ZERO arm chosen. The first real run of arm 1 on a
+    //        GPU failed with "reshape input NodeId(2) of NodeId(3) not realized"; it reproduces on CPU
+    //        and was a lowering-order bug (`fuel-graph/src/run.rs`): the chosen arm's run was emitted
+    //        after the reconverge that reads it whenever two or more branches were chained. =====
+
+    /// `ids, table -> IndexSelect -> Reshape -> block*` where each block is the residual stretch
+    /// `relu -> silu -> tanh -> add(x, .)` recorded as a 2-arm branch (arm 1 = the clone), so block `i`'s
+    /// reconverge is block `i + 1`'s diverge (the shape of the toy Llama graph). Returns
+    /// `(graph, root, branches, ids_const, table_const, head nodes)`.
+    #[cfg(test)]
+    fn head_then_region_chain(
+        blocks: usize,
+    ) -> (Graph, NodeId, Vec<NodeId>, NodeId, NodeId, Vec<NodeId>) {
+        let node = |g: &mut Graph, op: Op, inputs: Vec<NodeId>, dims: &[usize], dt: DType| {
+            let id = g.push(Node {
+                op,
+                inputs,
+                shape: Shape::from_dims(dims),
+                dtype: dt,
+            });
+            g.set_target_backend(id, BackendId::Cpu);
+            id
+        };
+        let mut g = Graph::new();
+        let ids = node(&mut g, Op::Const, vec![], &[3], DType::U32);
+        let table = node(&mut g, Op::Const, vec![], &[8, 4], DType::F32);
+        let gathered = node(
+            &mut g,
+            Op::IndexSelect { dim: 0 },
+            vec![table, ids],
+            &[3, 4],
+            DType::F32,
+        );
+        let mut x = node(
+            &mut g,
+            Op::Reshape(Shape::from_dims(&[1, 3, 4])),
+            vec![gathered],
+            &[1, 3, 4],
+            DType::F32,
+        );
+        let head = vec![gathered, x];
+        let mut branches = Vec::new();
+        for _ in 0..blocks {
+            let r = node(&mut g, Op::Relu, vec![x], &[1, 3, 4], DType::F32);
+            let s = node(&mut g, Op::Silu, vec![r], &[1, 3, 4], DType::F32);
+            let t = node(&mut g, Op::Tanh, vec![s], &[1, 3, 4], DType::F32);
+            let res = node(&mut g, Op::Add, vec![x, t], &[1, 3, 4], DType::F32);
+            let branch = crate::region_pathfinder::record_branch(
+                &mut g,
+                x,
+                res,
+                &[r, s, t],
+                t,
+                BackendId::Cpu,
+            )
+            .expect("the block records a 2-arm branch");
+            branches.push(branch);
+            x = res;
+        }
+        (g, x, branches, ids, table, head)
+    }
+
+    /// The route that sends branch `i` to arm 1 iff bit `i` of `mask` is set.
+    #[cfg(test)]
+    fn route_from_mask(branches: &[NodeId], mask: usize) -> PickedRoute {
+        let mut route = PickedRoute::new();
+        for (i, &b) in branches.iter().enumerate() {
+            if mask >> i & 1 == 1 {
+                route.insert(b, 1);
+            }
+        }
+        route
+    }
+
+    /// Why `order` is not a valid dispatch order for the route `mask`, or `None` when it is. Valid: every
+    /// emitted node's inputs are emitted earlier, are leaves, or are an arm-0 exit whose branch chose
+    /// arm 1 and whose arm-1 exit was emitted earlier (the alias the compiler thread inserts); the chosen
+    /// arm's exit is emitted and the other arm's is not.
+    #[cfg(test)]
+    fn why_invalid_order(
+        g: &Graph,
+        branches: &[NodeId],
+        mask: usize,
+        order: &[NodeId],
+    ) -> Option<String> {
+        let mut alias: HashMap<NodeId, NodeId> = HashMap::new();
+        for (i, &b) in branches.iter().enumerate() {
+            if mask >> i & 1 == 1 {
+                alias.insert(g.node(b).inputs[0], g.node(b).inputs[1]);
+            }
+        }
+        let mut emitted: HashSet<NodeId> = HashSet::new();
+        for &n in order {
+            for &inp in &g.node(n).inputs {
+                let ok = emitted.contains(&inp)
+                    || matches!(g.node(inp).op, Op::Const)
+                    || alias.get(&inp).is_some_and(|a| emitted.contains(a));
+                if !ok {
+                    return Some(format!(
+                        "node {n:?} ({:?}) is emitted before its input {inp:?} ({:?})",
+                        g.node(n).op,
+                        g.node(inp).op
+                    ));
+                }
+            }
+            emitted.insert(n);
+        }
+        for (i, &b) in branches.iter().enumerate() {
+            let arms = &g.node(b).inputs;
+            let (chosen, other) = if mask >> i & 1 == 1 {
+                (arms[1], arms[0])
+            } else {
+                (arms[0], arms[1])
+            };
+            if !emitted.contains(&chosen) {
+                return Some(format!(
+                    "branch {i}: the chosen arm exit {chosen:?} is not emitted"
+                ));
+            }
+            if emitted.contains(&other) {
+                return Some(format!(
+                    "branch {i}: the other arm exit {other:?} is emitted"
+                ));
+            }
+        }
+        None
+    }
+
+    /// LOWERING level (no executor): for 1 to 4 chained branches and EVERY combination of arms (not only
+    /// all arm 1), the frozen and the streaming lowering each emit a valid order, and the two orders are
+    /// identical for the same picks. Before the fix N=1 passed and every N >= 2 with an arm 1 failed.
+    #[test]
+    fn chained_branches_lower_to_a_valid_order_for_every_combination_of_arms() {
+        for blocks in 1..=4usize {
+            let (g, root, branches, _ids, _table, head) = head_then_region_chain(blocks);
+            for mask in 0..(1usize << blocks) {
+                let route = route_from_mask(&branches, mask);
+                let frozen = fuel_graph::lower_picked_route(&g, &[root], &route);
+                let streaming = fuel_graph::lower_picked_route_streaming(&g, &[root], |b| {
+                    route.get(&b).copied().unwrap_or(0)
+                });
+                for (name, order) in [("frozen", &frozen), ("streaming", &streaming)] {
+                    assert_eq!(
+                        why_invalid_order(&g, &branches, mask, order),
+                        None,
+                        "{name} lowering, blocks={blocks} mask={mask:#b}: order={order:?}"
+                    );
+                    assert!(
+                        head.iter().all(|h| order.contains(h)),
+                        "{name}, blocks={blocks} mask={mask:#b}: the head must be emitted"
+                    );
+                }
+                assert_eq!(
+                    frozen, streaming,
+                    "blocks={blocks} mask={mask:#b}: frozen and streaming differ"
+                );
+            }
+        }
+    }
+
+    /// EXECUTOR level on CPU: the chain realized for every combination of arms (2 and 3 blocks, every
+    /// mask, arm 1 = the clone on the same backend) equals arm 0. Before the fix any chain of two or more
+    /// with an arm 1 failed with "input ... not realized".
+    #[test]
+    fn chained_branches_realize_equal_to_arm_zero_for_every_combination_of_arms_on_cpu() {
+        use crate::optimize::OptimizedGraph;
+        let read = |arc: &Arc<RwLock<Storage>>| -> Vec<f32> {
+            match &arc.read().unwrap().inner {
+                fuel_memory::BackendStorage::Cpu(c) => c.as_slice::<f32>().expect("f32").to_vec(),
+                _ => panic!("expected CPU output"),
+            }
+        };
+        drop(global_bindings());
+        // Hold the generation still between building the stamp and realizing (ROADMAP row 165).
+        let _gate = crate::dispatch::TOPOLOGY_TEST_GATE
+            .write()
+            .unwrap_or_else(|p| p.into_inner());
+        let run = |blocks: usize, mask: usize| -> Vec<f32> {
+            let (g, root, branches, ids, table, _head) = head_then_region_chain(blocks);
+            let mut inputs = StorageCache::new();
+            inputs.insert(
+                ids,
+                Arc::new(RwLock::new(fuel_memory::from_slice_cpu(&[1_u32, 4, 6]))),
+            );
+            let table_vals: Vec<f32> = (0..32).map(|i| (i as f32 - 16.0) / 8.0).collect();
+            inputs.insert(
+                table,
+                Arc::new(RwLock::new(fuel_memory::from_slice_cpu(&table_vals))),
+            );
+            let opt = OptimizedGraph {
+                roots: vec![root],
+                generation: crate::dispatch::topology_generation(),
+                placements: None,
+                eviction: None,
+            };
+            let route = route_from_mask(&branches, mask);
+            let (arc, _) = PipelinedExecutor::realize_with_optimized_route(
+                Arc::new(RwLock::new(g)),
+                root,
+                inputs,
+                &opt,
+                &route,
+            )
+            .unwrap_or_else(|e| panic!("realize (blocks={blocks}, mask={mask:#b}): {e}"));
+            read(&arc)
+        };
+        for blocks in 1..=3usize {
+            let arm0 = run(blocks, 0);
+            assert_eq!(arm0.len(), 12);
+            assert!(arm0.iter().all(|v| v.is_finite()));
+            for mask in 1..(1usize << blocks) {
+                assert_eq!(
+                    run(blocks, mask),
+                    arm0,
+                    "blocks={blocks} mask={mask:#b}: a cloned stretch computes what arm 0 computes"
+                );
+            }
+        }
+    }
+
     /// Realizing a node whose target_backend isn't set surfaces a
     /// typed error (no panic).
     #[test]

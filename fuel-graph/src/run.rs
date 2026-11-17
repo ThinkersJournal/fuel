@@ -411,14 +411,14 @@ pub fn lower_picked_route(graph: &Graph, roots: &[NodeId], picked: &PickedRoute)
     let runs = extract_runs_multi(graph, roots);
     let skip = non_chosen_arm_nodes(graph, roots, picked);
     // The KEPT runs (chosen arms + pre/post/independent regions), in topo
-    // order — the runs the un-reordered lowering would concatenate.
-    let kept: Vec<Run> = runs
-        .into_iter()
-        // A run is a single contiguous arm/region (extract never spans a
-        // branch boundary), so it is either wholly inside a non-chosen
-        // arm or wholly outside. Keep iff its entry is not a skipped node.
-        .filter(|run| !skip.contains(&run.entry))
-        .collect();
+    // order — the runs the un-reordered lowering would concatenate — with
+    // each chosen arm `k >= 1` placed where arm 0's run would have been
+    // (see `relocate_chosen_arm_runs`: the base order puts a non-zero arm's
+    // run AFTER the main chain, which is after the reconverge that reads it).
+    let metas = branch_arm_meta(graph, roots);
+    let (kept, aliases) = relocate_chosen_arm_runs(&runs, &metas, &skip, |b| {
+        picked.get(&b).copied().unwrap_or(0)
+    });
     // PR-C3: device-alternating reorder of the kept runs (auto-overlap).
     // Single-device ⇒ identity ⇒ byte-identical to the prior concatenation.
     // Multi-device ⇒ a valid topological reordering that interleaves
@@ -426,12 +426,94 @@ pub fn lower_picked_route(graph: &Graph, roots: &[NodeId], picked: &PickedRoute)
     // overlap topology, for an arbitrary graph). The reorder is a hint: the
     // emitted NodeIds are identical, only their order across independent
     // runs changes.
-    let perm = device_alternating_order(graph, &kept);
+    let perm = device_alternating_order_with_aliases(graph, &kept, &aliases);
     let mut order = Vec::new();
     for &ri in &perm {
         order.extend_from_slice(lower_run(&kept[ri]));
     }
     order
+}
+
+/// The kept runs of a route in dispatch order, with every chosen arm `k >= 1` placed at the slot of the
+/// first run that opens an arm of its branch, plus the arm-exit aliases (`arm0 exit -> chosen exit`).
+///
+/// [`extract_runs_multi`] cuts runs from a topological order whose orphaned-Branch seeds pull a non-zero
+/// arm's clone run in AFTER the main chain, while the reconverge node reads ARM 0's exit directly. With
+/// arm 0 skipped nothing orders the chosen arm's run before that reconverge, so a single branch came out
+/// right by luck and chained branches (a region's reconverge is the next region's diverge) came out
+/// invalid. A chosen arm's run depends only on the shared diverge prefix and its own cone, all of which
+/// precede the first arm slot, so emitting it there is always valid.
+fn relocate_chosen_arm_runs<F>(
+    runs: &[Run],
+    metas: &[BranchArmMeta],
+    skip: &HashSet<NodeId>,
+    mut chosen_of: F,
+) -> (Vec<Run>, HashMap<NodeId, NodeId>)
+where
+    F: FnMut(NodeId) -> usize,
+{
+    let mut entry_to_branches: HashMap<NodeId, Vec<usize>> = HashMap::new();
+    for (mi, meta) in metas.iter().enumerate() {
+        for &(entry, _arm) in &meta.arm_entries {
+            entry_to_branches.entry(entry).or_default().push(mi);
+        }
+    }
+    let mut resolved: HashSet<usize> = HashSet::new();
+    let mut relocated: HashSet<usize> = HashSet::new();
+    let mut aliases: HashMap<NodeId, NodeId> = HashMap::new();
+    let mut kept: Vec<Run> = Vec::new();
+    for (ri, run) in runs.iter().enumerate() {
+        if relocated.contains(&ri) {
+            continue;
+        }
+        if let Some(branches) = entry_to_branches.get(&run.entry) {
+            for &mi in branches {
+                if !resolved.insert(mi) {
+                    continue;
+                }
+                let meta = &metas[mi];
+                let chosen = clamp_arm(meta, chosen_of(meta.branch));
+                if chosen != 0 {
+                    note_alias(meta, chosen, &mut aliases);
+                    for rj in arm_run_indices(runs, meta, chosen) {
+                        if rj > ri && relocated.insert(rj) {
+                            kept.push(runs[rj].clone());
+                        }
+                    }
+                }
+            }
+        }
+        if skip.contains(&run.entry) {
+            continue;
+        }
+        kept.push(run.clone());
+    }
+    (kept, aliases)
+}
+
+/// A stale or out-of-range arm index clamps to arm 0 (never panic), as `add_non_chosen_skip` does.
+fn clamp_arm(meta: &BranchArmMeta, chosen: usize) -> usize {
+    if chosen < meta.cones.len() { chosen } else { 0 }
+}
+
+/// Record `arm 0 exit -> chosen arm exit` for a branch whose chosen arm is not arm 0.
+fn note_alias(meta: &BranchArmMeta, chosen: usize, aliases: &mut HashMap<NodeId, NodeId>) {
+    if chosen != 0
+        && let (Some(&arm0), Some(&armk)) = (meta.exits.first(), meta.exits.get(chosen))
+    {
+        aliases.insert(arm0, armk);
+    }
+}
+
+/// Indices (ascending) of the runs wholly inside arm `arm` of `meta`: those whose entry lies in the arm's
+/// cone but not in the shared diverge prefix.
+fn arm_run_indices(runs: &[Run], meta: &BranchArmMeta, arm: usize) -> Vec<usize> {
+    let cone = &meta.cones[arm];
+    runs.iter()
+        .enumerate()
+        .filter(|(_, r)| cone.contains(&r.entry) && !meta.shared.contains(&r.entry))
+        .map(|(i, _)| i)
+        .collect()
 }
 
 /// **Device-overlap topological reorder** of a run list (Step E Phase C,
@@ -513,6 +595,21 @@ pub fn lower_picked_route(graph: &Graph, roots: &[NodeId], picked: &PickedRoute)
 /// same `graph` (the node→run mapping is rebuilt from `runs`), and the
 /// dependency edges are derived from each member's graph inputs.
 pub fn device_alternating_order(graph: &Graph, runs: &[Run]) -> Vec<usize> {
+    device_alternating_order_with_aliases(graph, runs, &HashMap::new())
+}
+
+/// [`device_alternating_order`] with ARM-EXIT ALIASES: `aliases[arm0_exit] = chosen_arm_exit` for every
+/// branch whose chosen arm is not arm 0. A reconverge node reads ARM 0's exit directly (the runnability
+/// invariant) and the executor aliases the chosen exit onto it, so when arm `k >= 1` is chosen and arm 0's
+/// run is skipped, the reconverge's run depends on the run holding arm `k`'s exit. Without the alias the
+/// dependency analysis sees no producer for that input and may emit the reconverge BEFORE the chosen arm
+/// (ROADMAP row 158: `input NodeId(6) of NodeId(7) not realized`). With an empty map this is exactly
+/// [`device_alternating_order`].
+pub fn device_alternating_order_with_aliases(
+    graph: &Graph,
+    runs: &[Run],
+    aliases: &HashMap<NodeId, NodeId>,
+) -> Vec<usize> {
     let n = runs.len();
     if n <= 1 {
         return (0..n).collect();
@@ -554,6 +651,8 @@ pub fn device_alternating_order(graph: &Graph, runs: &[Run]) -> Vec<usize> {
     for (ri, r) in runs.iter().enumerate() {
         for &m in &r.members {
             for &inp in &graph.node(m).inputs {
+                // A read of an arm-0 exit whose branch chose another arm is a read of the chosen exit.
+                let inp = aliases.get(&inp).copied().unwrap_or(inp);
                 if let Some(&pi) = run_of.get(&inp)
                     && pi != ri
                     && preds[ri].insert(pi)
@@ -807,21 +906,29 @@ pub fn walk_picked_route_streaming<R, E>(
     // exactly one segment = the whole run list, so this is identical to the
     // one-shot `lower_picked_route` reorder.
     let mut segment: Vec<&Run> = Vec::new();
-    let flush = |segment: &mut Vec<&Run>, emit: &mut E| {
+    // `arm 0 exit -> chosen exit` for every resolved branch whose chosen arm is not arm 0.
+    let mut aliases: HashMap<NodeId, NodeId> = HashMap::new();
+    // Runs of a chosen non-zero arm that were emitted early, at the slot of the branch's first arm run,
+    // instead of at their natural (late) position in `runs` (see `relocate_chosen_arm_runs`).
+    let mut relocated: HashSet<usize> = HashSet::new();
+    let flush = |segment: &mut Vec<&Run>, aliases: &HashMap<NodeId, NodeId>, emit: &mut E| {
         if segment.is_empty() {
             return;
         }
         // `device_alternating_order` wants `&[Run]`; collect the segment's
         // runs (cheap — members are NodeId Vecs, but a segment is small).
         let owned: Vec<Run> = segment.iter().map(|r| (*r).clone()).collect();
-        let perm = device_alternating_order(graph, &owned);
+        let perm = device_alternating_order_with_aliases(graph, &owned, aliases);
         for &ri in &perm {
             emit(lower_run(&owned[ri]));
         }
         segment.clear();
     };
 
-    for run in &runs {
+    for (ri, run) in runs.iter().enumerate() {
+        if relocated.contains(&ri) {
+            continue; // already emitted at its branch's first arm slot
+        }
         // Frontier reached this run's entry. If it opens an arm of one or
         // more not-yet-resolved branches, the route past this point is about
         // to be decided — flush the branch-free segment accumulated so far
@@ -829,7 +936,7 @@ pub fn walk_picked_route_streaming<R, E>(
         if let Some(branches) = entry_to_branches.get(&run.entry) {
             let opens_new = branches.iter().any(|b| !resolved.contains(b));
             if opens_new {
-                flush(&mut segment, &mut emit);
+                flush(&mut segment, &aliases, &mut emit);
             }
             for &branch in branches {
                 if !resolved.insert(branch) {
@@ -841,6 +948,17 @@ pub fn walk_picked_route_streaming<R, E>(
                 // before we decide whether to keep this run.
                 let chosen = resolve(branch);
                 add_non_chosen_skip(meta, chosen, &mut skip);
+                // A chosen arm k >= 1 runs HERE, where arm 0's run would have been: its run sits late in
+                // `runs` (after the reconverge that reads it), so emit it now and skip it later.
+                let chosen = clamp_arm(meta, chosen);
+                if chosen != 0 {
+                    note_alias(meta, chosen, &mut aliases);
+                    for rj in arm_run_indices(&runs, meta, chosen) {
+                        if rj > ri && relocated.insert(rj) {
+                            segment.push(&runs[rj]);
+                        }
+                    }
+                }
             }
         }
         // A run is a single contiguous arm/region (extract never spans a
@@ -854,7 +972,7 @@ pub fn walk_picked_route_streaming<R, E>(
         segment.push(run);
     }
     // Flush the final branch-free segment (the post-region + any tail).
-    flush(&mut segment, &mut emit);
+    flush(&mut segment, &aliases, &mut emit);
 }
 
 /// Per-branch structural metadata for the streaming lowering: the branch
@@ -864,6 +982,8 @@ pub fn walk_picked_route_streaming<R, E>(
 /// arm is chosen.
 struct BranchArmMeta {
     branch: NodeId,
+    /// The arm exits (`inputs` of the Branch node), arm 0 first.
+    exits: Vec<NodeId>,
     /// `(arm-entry node, arm index)` for each arm — the run entry that
     /// opens that arm. Used to detect, while walking runs, which branch a
     /// run opens an arm of.
@@ -919,6 +1039,7 @@ fn branch_arm_meta(graph: &Graph, roots: &[NodeId]) -> Vec<BranchArmMeta> {
         }
         metas.push(BranchArmMeta {
             branch: id,
+            exits: arm_exits.clone(),
             arm_entries,
             cones,
             shared,
