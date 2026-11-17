@@ -3330,6 +3330,28 @@ mod tests {
         cuda_ns: u64,
         cpu_ns: u64,
     ) -> Vec<BackendId> {
+        // The process-wide topology generation is shared by every test in
+        // this binary; a sibling bump makes `realize` return before the
+        // streaming walk reaches the branch, so the selector never runs and
+        // the recording is empty (seen on hosted CI, never locally). Retry a
+        // bounded number of times on an EMPTY recording only: a picker that
+        // genuinely never picks still returns empty after the last attempt
+        // and the caller's assertion fails.
+        let mut picked = Vec::new();
+        for _attempt in 0..8 {
+            picked = picked_backends_once(lookup.clone(), cuda_ns, cpu_ns);
+            if !picked.is_empty() {
+                break;
+            }
+        }
+        picked
+    }
+
+    fn picked_backends_once(
+        lookup: crate::ranker::BackendRuntimeLookup,
+        cuda_ns: u64,
+        cpu_ns: u64,
+    ) -> Vec<BackendId> {
         use crate::PipelinedExecutor;
         use crate::pipelined::StorageCache;
         use crate::ranker::ChainedSelector;
