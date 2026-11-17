@@ -494,3 +494,98 @@ pub(crate) fn try_record_branch(
     builder.add_arm(arm1);
     builder.finalize_branches(graph, reconverge)
 }
+
+#[cfg(test)]
+mod choose_regions_tests {
+    //! Pins TODAY's `choose_regions` policy (ROADMAP row 157): largest interior first, interiors
+    //! disjoint, no chosen region's endpoint inside another chosen interior, one survivor per
+    //! overlapping family. One test per drop reason, plus controls. They pin behaviour; they do not
+    //! argue it is the right policy (a laminar family would keep nested regions, a separate row).
+    use super::*;
+
+    fn region(d: usize, r: usize, interior: &[usize]) -> Region {
+        let ids: Vec<NodeId> = interior.iter().map(|&x| NodeId(x)).collect();
+        Region {
+            diverge: NodeId(d),
+            reconverge: NodeId(r),
+            exit: *ids.last().expect("non-empty interior"),
+            interior: ids,
+            alt_backend: BackendId::Cuda,
+            diverge_idx: d,
+            reconverge_idx: r,
+        }
+    }
+
+    /// `(diverge, reconverge)` of every chosen region, in choice order.
+    fn chosen(candidates: Vec<Region>) -> Vec<(usize, usize)> {
+        choose_regions(candidates)
+            .iter()
+            .map(|r| (r.diverge.0, r.reconverge.0))
+            .collect()
+    }
+
+    /// Region A: 0 -> 10 over interior {1,2,3}. The larger region in every test below.
+    fn a() -> Region {
+        region(0, 10, &[1, 2, 3])
+    }
+
+    #[test]
+    fn control_disjoint_regions_are_all_kept() {
+        let b = region(20, 30, &[21, 22]);
+        assert_eq!(chosen(vec![b, a()]), vec![(0, 10), (20, 30)]);
+    }
+
+    #[test]
+    fn control_regions_chained_at_an_endpoint_are_both_kept() {
+        // B starts at A's reconverge node (10): sharing an endpoint is allowed, no interior node is shared.
+        let b = region(10, 20, &[11, 12]);
+        assert_eq!(chosen(vec![b, a()]), vec![(0, 10), (10, 20)]);
+    }
+
+    #[test]
+    fn drop_reason_1_interior_overlaps_a_chosen_interior() {
+        let b = region(20, 30, &[3, 4]); // shares node 3 with A's interior
+        assert_eq!(chosen(vec![b, a()]), vec![(0, 10)]);
+    }
+
+    #[test]
+    fn drop_reason_2_interior_contains_a_chosen_endpoint() {
+        let b = region(8, 12, &[10, 11]); // node 10 is A's reconverge
+        assert_eq!(chosen(vec![b, a()]), vec![(0, 10)]);
+    }
+
+    #[test]
+    fn drop_reason_3_diverge_lies_in_a_chosen_interior() {
+        let b = region(2, 20, &[40, 41]); // diverge 2 is inside A's interior
+        assert_eq!(chosen(vec![b, a()]), vec![(0, 10)]);
+    }
+
+    #[test]
+    fn drop_reason_4_reconverge_lies_in_a_chosen_interior() {
+        let b = region(30, 3, &[50, 51]); // reconverge 3 is inside A's interior
+        assert_eq!(chosen(vec![b, a()]), vec![(0, 10)]);
+    }
+
+    #[test]
+    fn the_larger_of_two_overlapping_regions_wins_regardless_of_input_order() {
+        // Nested family: same diverge, growing reconverge (what the toy Llama log shows: d=7, r=156..159).
+        let small = region(7, 20, &[8]);
+        let large = region(7, 22, &[8, 20, 21]);
+        assert_eq!(chosen(vec![small, large]), vec![(7, 22)]);
+        let small = region(7, 20, &[8]);
+        let large = region(7, 22, &[8, 20, 21]);
+        assert_eq!(chosen(vec![large, small]), vec![(7, 22)]);
+    }
+
+    #[test]
+    fn a_family_of_four_nested_candidates_leaves_one_survivor() {
+        // Interiors of size 1..=4, same diverge: the shape behind "100 candidates -> 18 chosen".
+        let family = vec![
+            region(7, 20, &[8]),
+            region(7, 21, &[8, 20]),
+            region(7, 22, &[8, 20, 21]),
+            region(7, 23, &[8, 20, 21, 22]),
+        ];
+        assert_eq!(chosen(family), vec![(7, 23)]);
+    }
+}
