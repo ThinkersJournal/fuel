@@ -104,6 +104,12 @@ impl Pathfinder for PlacementRegionPathfinder {
                 Err(e) => rejected.push(format!("{e:?}")),
             }
         }
+        crate::optimizer_trace::global().record_regions(
+            candidates - chosen,
+            recorded,
+            collapsed,
+            &rejected,
+        );
         if std::env::var_os("FUEL_PRINT_BRANCH_COUNT").is_some() {
             eprintln!(
                 "fuel: region pathfinder: {candidates} candidate(s) -> {chosen} chosen by choose_regions \

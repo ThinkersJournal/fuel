@@ -281,6 +281,7 @@ pub fn resolve_branch(
         return 0;
     }
     let chosen = pick_arm(graph, &arms, bindings, selector);
+    crate::optimizer_trace::global().record_arm_chosen(chosen);
     // Diagnostic (`FUEL_PRINT_BRANCH_COUNT`): the arm the executor's branch resolution chose, read from
     // this return value (the streaming lowering emits exactly this arm's runs), with every arm's backend.
     if std::env::var_os("FUEL_PRINT_BRANCH_COUNT").is_some() {
