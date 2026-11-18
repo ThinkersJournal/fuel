@@ -144,6 +144,21 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.49.8 - 2026-11-19 (lane-carried; row 167)
+
+### Fixed
+
+- **Four dependency vulnerabilities (row 167).** `cargo update -p zstd -p zstd-safe -p zstd-sys` (lock only, reached through `parquet` from `fuel-datasets`): `zstd` 0.14.2 -> 0.14.4 (RUSTSEC-2026-0391; fixed in ^0.13.4 or >=0.14.3), `zstd-safe` 8.1.0 -> 8.3.0 (RUSTSEC-2026-0398 and -0403; fixed in ^7.4.0 or >=8.2.0), `zstd-sys` 2.1.1 -> 2.1.3 (RUSTSEC-2026-0410; fixed in >=2.1.2). Fixing versions read from `cargo deny`'s advisory output.
+
+### Added
+
+- `deny.toml` (licence allow-list read from `cargo deny list`; advisory ignores only for notices with no fixed version, each with a reason and a 2026-12-18 expiry: `paste` RUSTSEC-2024-0436, `unsafe-libyaml` -2024-0449, `ttf-parser` -2026-0192, `chrono` -2026-0543) and `.github/workflows/cargo-deny.yml`: the gate over the default-feature graph (push, pull request, daily), plus a scheduled, NOT required `--all-features` job that keeps the optional `mkl` tree visible. `cargo deny check`: advisories, bans, licenses and sources ok on the default graph.
+
+### Not fixed, stated
+
+- The optional `mkl` feature's tree (seen only with `--all-features`): `intel-mkl-src` 0.8.1 (licence-file, no SPDX expression) and `ocipkg` 0.2.9 (RUSTSEC-2026-0449 unmaintained, RUSTSEC-2026-0450 path traversal, no fixed version). Reach: only a user who enables `mkl` and triggers the build-time OCI unpack. Decision dated 2026-11-24 in ROADMAP row 167 (replace `intel-mkl-src` with the portfolio's oneMKL route through FireLine).
+- Branch protection for the new job is set by the PM after its first green run. The four portfolio rules that do not run (ARC-003, ARC-006, ARC-007, EFX-001) are missing declarations in `.coderipper.toml`, not code findings; ROADMAP row 156, dated 2026-11-20.
+
 ## v0.49.7 - 2026-11-18 (allocated at gate; rows 158, 165, 166, 167)
 
 > **RELEASE HOLD stands.** What is shown: on a TOY model (a 2-layer Llama, `fuel-model-llama`'s `forward_with_kv_context_vulkan_matches_cpu`, `--features vulkan`) with a backlog INJECTED on the real Vulkan device, the executor's arm choice follows the backlog and the chosen CPU arm computes the same logits as the CPU reference (run 2026-11-17T11:06Z: backlog 0 -> 35 of 35 branches arm 0; 1 h -> 35 of 35 arm 1; back to 0 -> 35 of 35 arm 0). What is NOT shown: a backlog the executor measured itself (nothing feeds `backlog_add_ns` from real submissions, so the picker is inactive on measured load), a real model, CPU-versus-GPU arm timing, CUDA, more than two arms, nested regions, two real GPUs.
