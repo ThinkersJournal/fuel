@@ -37,6 +37,7 @@ pub const MAX_REGION_NODES: usize = 64;
 /// Records multi-node placement forks as `Op::Branch` regions. See the module docs.
 pub struct PlacementRegionPathfinder;
 
+#[derive(Clone)]
 struct Region {
     diverge: NodeId,
     reconverge: NodeId,
@@ -44,6 +45,10 @@ struct Region {
     interior: Vec<NodeId>,
     exit: NodeId,
     alt_backend: BackendId,
+    /// The device the alternative placement runs on (the plan's own device for it).
+    alt_device: fuel_ir::DeviceLocation,
+    /// The device arm 0's exit lives on (its DP winner's), which the reconverge node reads.
+    exit_device: fuel_ir::DeviceLocation,
     diverge_idx: usize,
     reconverge_idx: usize,
 }
@@ -73,16 +78,55 @@ impl Pathfinder for PlacementRegionPathfinder {
                 found.len()
             );
         }
+        let candidates = found.len();
+        if std::env::var_os("FUEL_PRINT_BRANCH_COUNT").is_some() {
+            let c = policy_counts(&found);
+            eprintln!(
+                "fuel: region policy counts over {candidates} candidate(s) (diagnostic only; today's choice is the first): \
+                 today (largest first, disjoint) = {}, laminar family (nested allowed; NOT buildable yet) = {}, \
+                 smallest first, disjoint = {}, one-node regions only, disjoint = {}",
+                c.today, c.laminar, c.smallest_first, c.one_node
+            );
+        }
         let regions = choose_regions(found);
+        let chosen = regions.len();
+        let (mut recorded, mut collapsed) = (0usize, 0usize);
+        let mut rejected: Vec<String> = Vec::new();
         for region in regions {
-            let _ = record_branch(
+            // A rejected or collapsed branch is not an error (the single route is kept); the outcome is
+            // only counted, for the `FUEL_PRINT_BRANCH_COUNT` report below.
+            match try_record_branch(
                 graph,
                 region.diverge,
                 region.reconverge,
                 &region.interior,
                 region.exit,
                 region.alt_backend,
+                region.alt_device,
+                region.exit_device,
+            ) {
+                Ok(Some(_)) => recorded += 1,
+                Ok(None) => collapsed += 1,
+                Err(e) => rejected.push(format!("{e:?}")),
+            }
+        }
+        crate::optimizer_trace::global().record_regions(
+            candidates - chosen,
+            recorded,
+            collapsed,
+            &rejected,
+        );
+        if std::env::var_os("FUEL_PRINT_BRANCH_COUNT").is_some() {
+            eprintln!(
+                "fuel: region pathfinder: {candidates} candidate(s) -> {chosen} chosen by choose_regions \
+                 ({} dropped as overlapping an already-chosen larger region) -> {recorded} recorded, \
+                 {collapsed} collapsed, {} rejected by finalize_branches",
+                candidates - chosen,
+                rejected.len()
             );
+            for reason in rejected.iter().take(5) {
+                eprintln!("fuel: region pathfinder: rejected: {reason}");
+            }
         }
         Ok(())
     }
@@ -384,6 +428,12 @@ fn check_region(
         interior: interior.iter().map(|&x| order[x]).collect(),
         exit: order[exit],
         alt_backend: alt.0,
+        alt_device: alt.1,
+        exit_device: interior
+            .iter()
+            .position(|&x| x == exit)
+            .and_then(|p| winners.get(p))
+            .map(|w| w.1)?,
         diverge_idx: d,
         reconverge_idx: r,
     })
@@ -398,6 +448,79 @@ fn choose_regions(mut candidates: Vec<Region>) -> Vec<Region> {
             r.reconverge_idx,
         )
     });
+    choose_in_order(candidates)
+}
+
+/// How many regions each selection policy would keep from the same candidates. Diagnostic only
+/// (`FUEL_PRINT_BRANCH_COUNT`): the pathfinder's behaviour is [`choose_regions`] alone.
+struct PolicyCounts {
+    today: usize,
+    laminar: usize,
+    smallest_first: usize,
+    one_node: usize,
+}
+
+fn policy_counts(found: &[Region]) -> PolicyCounts {
+    let today = choose_regions(found.to_vec()).len();
+
+    let mut asc = found.to_vec();
+    asc.sort_by_key(|r| (r.interior.len(), r.diverge_idx, r.reconverge_idx));
+    let smallest_first = choose_in_order(asc).len();
+
+    let mut one: Vec<Region> = found
+        .iter()
+        .filter(|r| r.interior.len() == 1)
+        .cloned()
+        .collect();
+    one.sort_by_key(|r| (r.diverge_idx, r.reconverge_idx));
+    let one_node = choose_in_order(one).len();
+
+    PolicyCounts {
+        today,
+        laminar: laminar_count(found),
+        smallest_first,
+        one_node,
+    }
+}
+
+/// Greedy largest-first selection that keeps a pair when its interiors are disjoint (with the same
+/// endpoint rule as today) or strictly nested with the inner region's endpoints on or inside the outer
+/// one, and drops a pair that overlaps without nesting (`docs/design-notes/2026-11-15-multi-node-
+/// placement-pathfinder.md`, section 5). Counting only: nested branches are not built.
+fn laminar_count(found: &[Region]) -> usize {
+    let mut sorted: Vec<&Region> = found.iter().collect();
+    sorted.sort_by_key(|r| {
+        (
+            std::cmp::Reverse(r.interior.len()),
+            r.diverge_idx,
+            r.reconverge_idx,
+        )
+    });
+    let mut kept: Vec<(&Region, HashSet<NodeId>)> = Vec::new();
+    for r in sorted {
+        let inner: HashSet<NodeId> = r.interior.iter().copied().collect();
+        let ok = kept.iter().all(|(q, outer)| {
+            if inner.is_disjoint(outer) {
+                !outer.contains(&r.diverge)
+                    && !outer.contains(&r.reconverge)
+                    && !inner.contains(&q.diverge)
+                    && !inner.contains(&q.reconverge)
+            } else if inner.is_subset(outer) {
+                (outer.contains(&r.diverge) || r.diverge == q.diverge)
+                    && (outer.contains(&r.reconverge) || r.reconverge == q.reconverge)
+            } else {
+                false
+            }
+        });
+        if ok {
+            kept.push((r, inner));
+        }
+    }
+    kept.len()
+}
+
+/// The disjointness rule of [`choose_regions`], applied in the order given.
+fn choose_in_order(candidates: Vec<Region>) -> Vec<Region> {
     let mut taken: HashSet<NodeId> = HashSet::new();
     let mut ends: HashSet<NodeId> = HashSet::new();
     let mut chosen = Vec::new();
@@ -423,6 +546,7 @@ fn choose_regions(mut candidates: Vec<Region>) -> Vec<Region> {
 /// node when it was recorded. A rejected branch is not an error (as for the one-node fork): the clones
 /// are unreachable and the single route is kept. `pub(crate)` so tests can build the exact structure
 /// the pathfinder builds with an alternative backend that can run on the host.
+#[cfg(test)]
 pub(crate) fn record_branch(
     graph: &mut Graph,
     diverge: NodeId,
@@ -431,6 +555,36 @@ pub(crate) fn record_branch(
     exit: NodeId,
     alt_backend: BackendId,
 ) -> Option<NodeId> {
+    // A host test double: the alternative runs on the backend's default device and arm 0's exit lives
+    // there too, so no exit bridge is added (a test that wants one calls `try_record_branch`).
+    let device = alt_backend.default_location();
+    try_record_branch(
+        graph,
+        diverge,
+        reconverge,
+        interior,
+        exit,
+        alt_backend,
+        device,
+        device,
+    )
+    .ok()
+    .flatten()
+}
+
+/// [`record_branch`] with the outcome kept: `Ok(Some(branch))` recorded, `Ok(None)` collapsed to one arm,
+/// `Err` rejected by `finalize_branches` (the reason names the rule).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn try_record_branch(
+    graph: &mut Graph,
+    diverge: NodeId,
+    reconverge: NodeId,
+    interior: &[NodeId],
+    exit: NodeId,
+    alt_backend: BackendId,
+    alt_device: fuel_ir::DeviceLocation,
+    exit_device: fuel_ir::DeviceLocation,
+) -> Result<Option<NodeId>> {
     let mut clone_of: HashMap<NodeId, NodeId> = HashMap::new();
     for &x in interior {
         let (op, inputs, shape, dtype) = {
@@ -448,11 +602,166 @@ pub(crate) fn record_branch(
             dtype,
         });
         graph.set_target_backend(c, alt_backend);
+        // The clone's PLACEMENT, not only its backend stamp: the residency pass places a node with no
+        // placement and no plan entry on the pinned realize device, so without this it never sees the
+        // arm's inputs cross a device and inserts no inbound copy (ROADMAP row 158: a CPU arm in a Vulkan
+        // realize read Vulkan storage directly, "cpu kernel wrapper called with non-CPU input").
+        graph.set_placement(c, alt_device);
         clone_of.insert(x, c);
     }
-    let arm1 = clone_of[&exit];
+    let mut arm1 = clone_of[&exit];
+    // The reconverge node reads ARM 0's exit, which lives on `exit_device`, and the executor aliases the
+    // chosen arm's exit onto it with a zero-copy view. When the alternative runs elsewhere, bring the
+    // arm's result back with an explicit copy so both exits live on the same device.
+    if alt_device != exit_device {
+        let (shape, dtype) = {
+            let n = graph.node(arm1);
+            (n.shape.clone(), n.dtype)
+        };
+        let back = graph.push(Node {
+            op: Op::Copy {
+                target: exit_device,
+            },
+            inputs: vec![arm1],
+            shape,
+            dtype,
+        });
+        // A copy runs where its bytes come from (the residency pass re-stamps it the same way).
+        graph.set_target_backend(back, alt_backend);
+        graph.set_placement(back, exit_device);
+        arm1 = back;
+    }
     let mut builder = graph.open_branch(diverge);
     builder.add_arm(exit); // arm 0 = the DP winner's stretch, in place
     builder.add_arm(arm1);
-    builder.finalize_branches(graph, reconverge).ok().flatten()
+    builder.finalize_branches(graph, reconverge)
+}
+
+#[cfg(test)]
+mod choose_regions_tests {
+    //! Pins TODAY's `choose_regions` policy (ROADMAP row 157): largest interior first, interiors
+    //! disjoint, no chosen region's endpoint inside another chosen interior, one survivor per
+    //! overlapping family. One test per drop reason, plus controls. They pin behaviour; they do not
+    //! argue it is the right policy (a laminar family would keep nested regions, a separate row).
+    use super::*;
+
+    fn region(d: usize, r: usize, interior: &[usize]) -> Region {
+        let ids: Vec<NodeId> = interior.iter().map(|&x| NodeId(x)).collect();
+        Region {
+            diverge: NodeId(d),
+            reconverge: NodeId(r),
+            exit: *ids.last().expect("non-empty interior"),
+            interior: ids,
+            alt_backend: BackendId::Cuda,
+            alt_device: fuel_ir::DeviceLocation::Cuda { gpu_id: 0 },
+            exit_device: fuel_ir::DeviceLocation::Cpu,
+            diverge_idx: d,
+            reconverge_idx: r,
+        }
+    }
+
+    /// `(diverge, reconverge)` of every chosen region, in choice order.
+    fn chosen(candidates: Vec<Region>) -> Vec<(usize, usize)> {
+        choose_regions(candidates)
+            .iter()
+            .map(|r| (r.diverge.0, r.reconverge.0))
+            .collect()
+    }
+
+    /// Region A: 0 -> 10 over interior {1,2,3}. The larger region in every test below.
+    fn a() -> Region {
+        region(0, 10, &[1, 2, 3])
+    }
+
+    #[test]
+    fn control_disjoint_regions_are_all_kept() {
+        let b = region(20, 30, &[21, 22]);
+        assert_eq!(chosen(vec![b, a()]), vec![(0, 10), (20, 30)]);
+    }
+
+    #[test]
+    fn control_regions_chained_at_an_endpoint_are_both_kept() {
+        // B starts at A's reconverge node (10): sharing an endpoint is allowed, no interior node is shared.
+        let b = region(10, 20, &[11, 12]);
+        assert_eq!(chosen(vec![b, a()]), vec![(0, 10), (10, 20)]);
+    }
+
+    #[test]
+    fn drop_reason_1_interior_overlaps_a_chosen_interior() {
+        let b = region(20, 30, &[3, 4]); // shares node 3 with A's interior
+        assert_eq!(chosen(vec![b, a()]), vec![(0, 10)]);
+    }
+
+    #[test]
+    fn drop_reason_2_interior_contains_a_chosen_endpoint() {
+        let b = region(8, 12, &[10, 11]); // node 10 is A's reconverge
+        assert_eq!(chosen(vec![b, a()]), vec![(0, 10)]);
+    }
+
+    #[test]
+    fn drop_reason_3_diverge_lies_in_a_chosen_interior() {
+        let b = region(2, 20, &[40, 41]); // diverge 2 is inside A's interior
+        assert_eq!(chosen(vec![b, a()]), vec![(0, 10)]);
+    }
+
+    #[test]
+    fn drop_reason_4_reconverge_lies_in_a_chosen_interior() {
+        let b = region(30, 3, &[50, 51]); // reconverge 3 is inside A's interior
+        assert_eq!(chosen(vec![b, a()]), vec![(0, 10)]);
+    }
+
+    #[test]
+    fn the_larger_of_two_overlapping_regions_wins_regardless_of_input_order() {
+        // Nested family: same diverge, growing reconverge (what the toy Llama log shows: d=7, r=156..159).
+        let small = region(7, 20, &[8]);
+        let large = region(7, 22, &[8, 20, 21]);
+        assert_eq!(chosen(vec![small, large]), vec![(7, 22)]);
+        let small = region(7, 20, &[8]);
+        let large = region(7, 22, &[8, 20, 21]);
+        assert_eq!(chosen(vec![large, small]), vec![(7, 22)]);
+    }
+
+    #[test]
+    fn policy_counts_on_a_nested_family_and_on_a_partial_overlap() {
+        // The diagnostic that feeds the policy decision must itself be checked on known shapes.
+        let nested = vec![
+            region(7, 20, &[8]),
+            region(7, 21, &[8, 20]),
+            region(7, 22, &[8, 20, 21]),
+            region(7, 23, &[8, 20, 21, 22]),
+        ];
+        let c = policy_counts(&nested);
+        assert_eq!(
+            (c.today, c.laminar, c.smallest_first, c.one_node),
+            (1, 4, 1, 1),
+            "nested family: today keeps the largest only; a laminar family keeps all four",
+        );
+        // Overlap WITHOUT nesting (shares node 3, neither contains the other): no policy keeps both.
+        let partial = vec![region(0, 10, &[1, 2, 3]), region(5, 15, &[3, 4, 6])];
+        let c = policy_counts(&partial);
+        assert_eq!(
+            (c.today, c.laminar, c.smallest_first, c.one_node),
+            (1, 1, 1, 0),
+            "partial overlap is dropped by every policy; no interior has one node",
+        );
+        // Disjoint regions: every policy keeps both (one-node policy only sees size-1 interiors).
+        let disjoint = vec![region(0, 10, &[1]), region(20, 30, &[21])];
+        let c = policy_counts(&disjoint);
+        assert_eq!(
+            (c.today, c.laminar, c.smallest_first, c.one_node),
+            (2, 2, 2, 2)
+        );
+    }
+
+    #[test]
+    fn a_family_of_four_nested_candidates_leaves_one_survivor() {
+        // Interiors of size 1..=4, same diverge: the shape behind "100 candidates -> 18 chosen".
+        let family = vec![
+            region(7, 20, &[8]),
+            region(7, 21, &[8, 20]),
+            region(7, 22, &[8, 20, 21]),
+            region(7, 23, &[8, 20, 21, 22]),
+        ];
+        assert_eq!(chosen(family), vec![(7, 23)]);
+    }
 }

@@ -137,6 +137,7 @@ pub mod kernel;
 #[cfg(test)]
 mod kiss_corpus;
 pub mod optimize;
+pub mod optimizer_trace;
 pub mod pipelined;
 pub mod plan;
 #[cfg(feature = "jit")]

@@ -1114,6 +1114,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "constant_time_eq"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9eb6feb175df65d0a3ccd3e73484e940d0ac664e8034f0519fd49a93db3071d9"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "cookie"
 version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1663,17 +1672,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fancy-regex"
-version = "0.19.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d301f5bf187b3c295fce6468d3875037a0bccc5f6b151c63cac2f85babf21912"
-dependencies = [
- "bit-set",
- "regex-automata",
- "regex-syntax",
-]
-
-[[package]]
 name = "fastrand"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1813,7 +1811,7 @@ dependencies = [
 
 [[package]]
 name = "fuel"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel-backend-contract",
  "fuel-cpu-backend",
@@ -1828,7 +1826,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-aocl-cpu-backend"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "aocl-blas",
  "aocl-types",
@@ -1842,21 +1840,21 @@ dependencies = [
 
 [[package]]
 name = "fuel-backend-contract"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel-ir",
 ]
 
 [[package]]
 name = "fuel-conv"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "num-traits",
 ]
 
 [[package]]
 name = "fuel-correctness-fixtures"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "bytemuck",
  "fuel-ir",
@@ -1866,7 +1864,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-cpu-backend"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "accelerate-src",
  "bytemuck",
@@ -1893,7 +1891,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-cpu-kernels"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "float8",
  "half",
@@ -1903,7 +1901,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-cuda-backend"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "baracuda-core",
  "baracuda-cublas",
@@ -1937,7 +1935,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-cuda-dispatch"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "baracuda-cuda-seam",
  "baracuda-nvrtc",
@@ -1957,7 +1955,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-datasets"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "byteorder",
  "fuel-ir",
@@ -1974,7 +1972,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-dispatch"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "baracuda-kernels-types",
  "bytemuck",
@@ -2008,7 +2006,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-examples"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "ab_glyph",
  "accelerate-src",
@@ -2056,7 +2054,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-formats"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "bytemuck",
  "byteorder",
@@ -2076,7 +2074,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-graph"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fireline-grammar",
  "float8",
@@ -2088,7 +2086,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-hardware"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel-cpu-backend",
  "fuel-cuda-backend",
@@ -2101,7 +2099,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-inference"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel",
  "fuel-backend-contract",
@@ -2120,7 +2118,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-ir"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "float8",
  "half",
@@ -2136,11 +2134,11 @@ dependencies = [
 
 [[package]]
 name = "fuel-kernels-source"
-version = "0.49.6"
+version = "0.49.7"
 
 [[package]]
 name = "fuel-kiss-ref-backend"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fireline-grammar",
  "fuel-ir",
@@ -2152,11 +2150,11 @@ dependencies = [
 
 [[package]]
 name = "fuel-kv-pool"
-version = "0.49.6"
+version = "0.49.7"
 
 [[package]]
 name = "fuel-lazy-examples"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel",
  "fuel-backend-contract",
@@ -2176,7 +2174,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-loaders"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "byteorder",
  "fuel-backend-contract",
@@ -2198,7 +2196,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-memory"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "bytemuck",
  "fuel-cpu-backend",
@@ -2214,7 +2212,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-metal-backend"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel-backend-contract",
  "fuel-cpu-backend",
@@ -2231,7 +2229,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-metal-kernels"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "anyhow",
  "clap",
@@ -2249,7 +2247,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-mkl-cpu-backend"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel-conv",
  "fuel-cpu-backend",
@@ -2262,7 +2260,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-core"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel-model-fixture",
  "fuel-model-umbrella-fixture",
@@ -2274,7 +2272,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-fixture"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel-model-core",
  "inventory",
@@ -2282,7 +2280,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-llama"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel-cuda-backend",
  "fuel-dispatch",
@@ -2303,7 +2301,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-phi"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel-dispatch",
  "fuel-formats",
@@ -2320,7 +2318,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-umbrella-fixture"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel-model-core",
  "fuel-model-fixture",
@@ -2329,7 +2327,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-nn"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel-formats",
  "fuel-graph",
@@ -2345,7 +2343,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-onnx"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "anyhow",
  "clap",
@@ -2357,7 +2355,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-parallel"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel",
  "fuel-cuda-backend",
@@ -2368,7 +2366,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-posttrain"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel-ir",
  "fuel-tensor",
@@ -2376,7 +2374,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-quantized"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "bytemuck",
  "byteorder",
@@ -2389,7 +2387,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-tensor"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "accelerate-src",
  "anyhow",
@@ -2454,7 +2452,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-tensor-tools"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -2468,11 +2466,11 @@ dependencies = [
 
 [[package]]
 name = "fuel-test-support"
-version = "0.49.6"
+version = "0.49.7"
 
 [[package]]
 name = "fuel-training"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "fuel",
  "fuel-dispatch",
@@ -2487,12 +2485,11 @@ dependencies = [
 
 [[package]]
 name = "fuel-transformers"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "accelerate-src",
  "anyhow",
  "byteorder",
- "fancy-regex 0.19.2",
  "fuel-cpu-backend",
  "fuel-dispatch",
  "fuel-formats",
@@ -2527,7 +2524,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-vulkan-backend"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "bytemuck",
  "fuel-backend-contract",
@@ -2546,7 +2543,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-vulkan-dispatch"
-version = "0.49.6"
+version = "0.49.7"
 dependencies = [
  "bytemuck",
  "fuel-conv",
@@ -2563,7 +2560,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-vulkan-kernels"
-version = "0.49.6"
+version = "0.49.7"
 
 [[package]]
 name = "futures"
@@ -3518,9 +3515,9 @@ checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
 
 [[package]]
 name = "log"
-version = "0.4.34"
+version = "0.4.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
+checksum = "5d15f86d12da44cd8d4ec3c73984537eb7f4cadcb9776a575a0a8a05ca11005c"
 
 [[package]]
 name = "loop9"
@@ -3799,9 +3796,9 @@ checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 
 [[package]]
 name = "nix"
-version = "0.31.3"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf20d2fde8ff38632c426f1165ed7436270b44f199fc55284c38276f9db47c3d"
+checksum = "77730ed34f01f4990cb2ea67fec715ecebc6fab9a6396cf83c5529b13f581bdc"
 dependencies = [
  "bitflags",
  "cfg-if",
@@ -5680,7 +5677,7 @@ dependencies = [
  "dary_heap",
  "derive_builder",
  "esaxx-rs",
- "fancy-regex 0.17.0",
+ "fancy-regex",
  "getrandom 0.3.4",
  "itertools 0.14.0",
  "log",
@@ -6740,6 +6737,20 @@ name = "zeroize"
 version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13084392c5e4bc371903e2935a5eaeed24905a7511356b883835e18a78f6879"
+dependencies = [
+ "zeroize_derive",
+]
+
+[[package]]
+name = "zeroize_derive"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c50655cbb0fe3fc43170059e702f1ce5e19b84cec58dc87b037a09935c2f328"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
 
 [[package]]
 name = "zerotrie"
@@ -6776,17 +6787,20 @@ dependencies = [
 
 [[package]]
 name = "zip"
-version = "9.1.3"
+version = "9.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1156b39d142a34b999c2310a50455e0cb3760bf7efad0122f796d813bee26ccb"
+checksum = "953a376f4930ed5af88e1e65948385f76866b45e7f75b21ac275327d0eeb9b46"
 dependencies = [
+ "constant_time_eq",
  "crc32fast",
  "getrandom 0.4.3",
  "indexmap",
+ "libc",
  "memchr",
  "nix",
  "typed-path",
  "windows-sys 0.61.2",
+ "zeroize",
 ]
 
 [[package]]

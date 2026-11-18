@@ -11595,6 +11595,8 @@ mod generate_tests {
                 .map_err(|e| format!("{e:?}")),
         );
         let vk_device: Device = vk_backend.into();
+        // The row-158 arm-choice criterion runs on this same device at the end of this test.
+        let vk_device_for_backlog = vk_device.clone();
 
         let cfg = LlamaConfig {
             vocab_size: 16,
@@ -11669,6 +11671,143 @@ mod generate_tests {
                 "logit[{i}]: vulkan={a}, cpu={b}, diff={diff}, rel={rel}",
             );
         }
+
+        assert_vulkan_arm_choice_follows_injected_backlog(vk_device_for_backlog);
+    }
+
+    /// ROW 158 / PM criterion, written BEFORE the run (2026-11-17): the executor's arm choice follows the
+    /// device's estimated backlog, on a real Vulkan device, through the production selector and lookup.
+    ///
+    /// Three phases on the same model, device and process (so the counts are comparable), each a prefill
+    /// plus one decode step, each compared with the CPU reference logits:
+    ///   A. backlog fed as 0 ns  -> NO branch resolves to arm 1 (every one resolves to arm 0, at least one resolved);
+    ///   B. backlog 1 hour       -> EVERY branch resolves to arm 1 and none to arm 0 (an hour exceeds any
+    ///      arm-0 estimated completion), at least one resolved;
+    ///   C. backlog back to 0 ns -> NO branch resolves to arm 1 again.
+    /// The arm counts are the executor's own `optimizer_trace` counters (bumped in `resolve_branch`).
+    ///
+    /// SHOWS: the arm the executor chose flips with the injected backlog and back, and the CPU arm's
+    /// result equals the CPU reference. DOES NOT SHOW: a backlog the executor measured itself (it is
+    /// injected: nothing feeds `backlog_add_ns` from real submissions yet), a real model, or timing.
+    ///
+    /// RUN AS PART OF `forward_with_kv_context_vulkan_matches_cpu` (called at the end of it): the repo's
+    /// `#[ignore]` total is a ratchet that is only ever lowered, so this criterion adds no attribute of its
+    /// own. The criterion text above is unchanged from the version committed before the first run.
+    #[cfg(feature = "vulkan")]
+    fn assert_vulkan_arm_choice_follows_injected_backlog(vk_device: Device) {
+        use fuel_dispatch::dispatch::{backlog_add_ns, backlog_sub_ns};
+        use fuel_dispatch::optimizer_trace;
+
+        const HOUR_NS: u64 = 3_600_000_000_000;
+
+        let loc = vk_device.location();
+
+        let cfg = LlamaConfig {
+            vocab_size: 16,
+            dim: 8,
+            n_layers: 2,
+            n_heads: 4,
+            n_kv_heads: 2,
+            head_dim: 4,
+            ffn_dim: 16,
+            norm_eps: 1e-5,
+            rope_base: 10000.0,
+        };
+        let cfg = LlamaConfig {
+            dim: cfg.n_heads * cfg.head_dim,
+            ..cfg
+        };
+        let model = LlamaModel {
+            config: cfg.clone(),
+            weights: make_tiny_weights(&cfg),
+        };
+        let prompt = [1_u32, 2, 3];
+        let next_token = 4_u32;
+        let max_seq_len = prompt.len() + 1;
+
+        let forward = |device: &Device| -> Vec<f32> {
+            let mut cache = KvCache::with_capacity(
+                cfg.n_layers,
+                cfg.n_kv_heads,
+                cfg.head_dim,
+                max_seq_len,
+                DType::F32,
+                device,
+            )
+            .expect("with_capacity");
+            let mut ctx = InferenceContext::new(device.clone());
+            model
+                .forward_with_kv_context(&prompt, &mut cache, &mut ctx)
+                .expect("prefill");
+            model
+                .forward_with_kv_context(&[next_token], &mut cache, &mut ctx)
+                .expect("decode")
+        };
+        let expected = forward(&Device::cpu());
+        let check_logits = |phase: &str, actual: &[f32]| {
+            assert_eq!(actual.len(), expected.len(), "{phase}: logits length");
+            for (i, (a, b)) in actual.iter().zip(expected.iter()).enumerate() {
+                let diff = (a - b).abs();
+                let rel = diff / a.abs().max(b.abs()).max(1e-6);
+                assert!(
+                    diff < 5e-3 || rel < 1e-2,
+                    "{phase}: logit[{i}]: vulkan={a}, cpu={b}, diff={diff}, rel={rel}",
+                );
+            }
+        };
+
+        // Feeding 0 ns makes the device report an estimate (`Some(0)`), so phase A takes the same
+        // estimated-completion path as phase B; an unfed device reports none and would not.
+        backlog_add_ns(loc, 0);
+        eprintln!(
+            "DIAG realize device location = {loc:?}; backlog estimate after feeding 0 = {:?}; \
+             candidate default device for Vulkan = {:?}",
+            fuel_dispatch::dispatch::backlog_estimate_ns(loc),
+            fuel_ir::probe::BackendId::Vulkan.default_location()
+        );
+
+        let before_a = optimizer_trace::snapshot();
+        let logits_a = forward(&vk_device);
+        let a = optimizer_trace::snapshot().since(&before_a);
+        check_logits("A (backlog 0)", &logits_a);
+        assert!(a.branches_resolved() > 0, "A: no branch resolved: {a:?}");
+        assert_eq!(
+            a.arm_chosen[0],
+            a.branches_resolved(),
+            "A (backlog 0): every branch must resolve to arm 0; {a:?}"
+        );
+
+        backlog_add_ns(loc, HOUR_NS);
+        let before_b = optimizer_trace::snapshot();
+        let logits_b = forward(&vk_device);
+        let b = optimizer_trace::snapshot().since(&before_b);
+        backlog_sub_ns(loc, HOUR_NS);
+        check_logits("B (backlog 1 h)", &logits_b);
+        assert!(b.branches_resolved() > 0, "B: no branch resolved: {b:?}");
+        assert_eq!(
+            b.arm_chosen[0], 0,
+            "B (backlog 1 h): no branch may resolve to arm 0; {b:?}"
+        );
+        assert_eq!(
+            b.arm_chosen[1],
+            b.branches_resolved(),
+            "B (backlog 1 h): every branch must resolve to arm 1; {b:?}"
+        );
+
+        let before_c = optimizer_trace::snapshot();
+        let logits_c = forward(&vk_device);
+        let c = optimizer_trace::snapshot().since(&before_c);
+        check_logits("C (backlog back to 0)", &logits_c);
+        assert!(c.branches_resolved() > 0, "C: no branch resolved: {c:?}");
+        assert_eq!(
+            c.arm_chosen[0],
+            c.branches_resolved(),
+            "C (backlog back to 0): every branch must resolve to arm 0; {c:?}"
+        );
+        eprintln!(
+            "backlog phases: A arms {:?} / B arms {:?} / C arms {:?}",
+            a.arm_chosen, b.arm_chosen, c.arm_chosen
+        );
     }
 
     // ---- kv-context all-positions + spec decode (E.3.4 port) ----------

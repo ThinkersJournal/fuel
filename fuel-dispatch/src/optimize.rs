@@ -718,7 +718,7 @@ fn stamp_plan_backends(
 /// comment below), which is the right vantage for "where did this node land":
 /// it reports the placement of the original nodes, with the inserted copies
 /// being the consequence rather than part of the answer.
-fn insert_residency_copies(
+pub(crate) fn insert_residency_copies(
     graph: &mut Graph,
     roots: &[NodeId],
     plan: &ExecutionPlan,
@@ -2955,6 +2955,85 @@ mod tests {
         );
     }
 
+    /// ROW 158: a region's arm 1 on ANOTHER device must read every value from outside its arm through an
+    /// `Op::Copy`, and hand its result back to arm 0's device through one. The first run of arm 1 on a GPU
+    /// (a CPU arm in a Vulkan realize) failed with `cpu kernel wrapper called with non-CPU input` on a clone
+    /// `Add` reading two Vulkan `Mul` nodes directly: the pathfinder's clones carried a `target_backend`
+    /// but no placement, so the residency pass placed them on the pinned device and saw no crossing.
+    ///
+    /// The stretch `a, t` has TWO external inputs (the diverge `d` and the earlier `e`) and its exit feeds
+    /// a reconverge on the host. The alternative runs on `Cuda { gpu_id: 0 }`. Built through
+    /// `try_record_branch` with explicit devices because the synthetic two-backend fixture of
+    /// `optimize_graph` puts its "Cuda" placement at the CPU location and so cannot show a crossing.
+    #[test]
+    fn a_cross_device_arm_one_gets_inbound_copies_for_every_external_input_and_an_exit_copy() {
+        use crate::region_pathfinder::try_record_branch;
+        let cuda0 = DeviceLocation::Cuda { gpu_id: 0 };
+        let mut g = Graph::new();
+        let x = f32_node(&mut g, Op::Const, vec![]);
+        let e = f32_node(&mut g, Op::Relu, vec![x]);
+        let d = f32_node(&mut g, Op::Silu, vec![e]); // the diverge
+        let a = f32_node(&mut g, Op::Add, vec![d, e]); // entry: reads d AND e, both outside the stretch
+        let t = f32_node(&mut g, Op::Tanh, vec![a]);
+        let res = f32_node(&mut g, Op::Add, vec![d, t]); // reconverge: reads the exit t (and d)
+        for n in [x, e, d, a, t, res] {
+            g.set_placement(n, DeviceLocation::Cpu);
+            if n != x {
+                g.set_target_backend(n, BackendId::Cpu);
+            }
+        }
+        let branch = try_record_branch(
+            &mut g,
+            d,
+            res,
+            &[a, t],
+            t,
+            BackendId::Cuda,
+            cuda0,
+            DeviceLocation::Cpu,
+        )
+        .expect("well-formed branch")
+        .expect("two arms");
+        insert_residency_copies(
+            &mut g,
+            &[res],
+            &ExecutionPlan::empty(),
+            DeviceLocation::Cpu,
+            None,
+        );
+
+        let arm1_exit = g.node(branch).inputs[1];
+        // The arm's result comes back to the host through a copy, so both exits live on one device.
+        assert!(
+            matches!(g.node(arm1_exit).op, Op::Copy { target } if target == DeviceLocation::Cpu),
+            "arm 1's exit must be a copy back to the host; got {:?}",
+            g.node(arm1_exit).op
+        );
+        let clone_t = g.node(arm1_exit).inputs[0];
+        let clone_a = g.node(clone_t).inputs[0];
+        assert_eq!(g.node(clone_a).op, Op::Add, "the clone of the entry node");
+        // Both external inputs of the clone entry node go through a copy onto the alternative device.
+        assert_eq!(g.node(clone_a).inputs.len(), 2);
+        for &input in &g.node(clone_a).inputs {
+            assert!(
+                matches!(g.node(input).op, Op::Copy { target } if target == cuda0),
+                "clone entry node reads {:?} ({:?}) from outside its arm with no copy onto {cuda0:?}",
+                input,
+                g.node(input).op,
+            );
+        }
+        // The copies read the original host values (the shared diverge and the earlier node).
+        let sources: Vec<NodeId> = g
+            .node(clone_a)
+            .inputs
+            .iter()
+            .map(|&c| g.node(c).inputs[0])
+            .collect();
+        assert_eq!(sources, vec![d, e]);
+        // Arm 0 is untouched: still host to host, no copies.
+        assert_eq!(g.node(a).inputs, vec![d, e]);
+    }
+
     /// ROW 157 / GAP-385, PURE FAN-OUT (no residual edge): `x -> n1 -> {q, k} -> a -> t`. The region is
     /// the fan-out and everything up to its join: diverge `x`, a four-node arm (`n1 q k a`), reconverge
     /// `t`. Born red: the one-node fork never forked `n1` (two consumers) and made one-node forks of
@@ -3325,37 +3404,33 @@ mod tests {
     /// bridge calls) with a `ChainedSelector` over `lookup` and a Judge that
     /// measures the fork op at `cuda_ns` on CUDA and `cpu_ns` on CPU. Returns
     /// the backends the streaming pick chose for the (one) branch.
+    ///
+    /// Also returns the realize result (`"Ok"` or `Err(..)` as text), so a
+    /// run with no pick names its cause instead of reading as "no pick".
+    ///
+    /// Holds `TOPOLOGY_TEST_GATE` for writing from before `optimize_graph`
+    /// until the realize returns: the executor returns the typed
+    /// `Error::TopologyChanged` when another test in this binary bumps the
+    /// process-wide topology generation in between, and then the streaming
+    /// walk never reaches the branch (ROADMAP row 165). The gate stops a
+    /// sibling's bump from landing in that window; there is no retry.
     fn picked_backends_through_realize(
         lookup: crate::ranker::BackendRuntimeLookup,
         cuda_ns: u64,
         cpu_ns: u64,
-    ) -> Vec<BackendId> {
-        // The process-wide topology generation is shared by every test in
-        // this binary; a sibling bump makes `realize` return before the
-        // streaming walk reaches the branch, so the selector never runs and
-        // the recording is empty (seen on hosted CI, never locally). Retry a
-        // bounded number of times on an EMPTY recording only: a picker that
-        // genuinely never picks still returns empty after the last attempt
-        // and the caller's assertion fails.
-        let mut picked = Vec::new();
-        for _attempt in 0..8 {
-            picked = picked_backends_once(lookup.clone(), cuda_ns, cpu_ns);
-            if !picked.is_empty() {
-                break;
-            }
-        }
-        picked
-    }
-
-    fn picked_backends_once(
-        lookup: crate::ranker::BackendRuntimeLookup,
-        cuda_ns: u64,
-        cpu_ns: u64,
-    ) -> Vec<BackendId> {
+    ) -> (Vec<BackendId>, String) {
         use crate::PipelinedExecutor;
         use crate::pipelined::StorageCache;
         use crate::ranker::ChainedSelector;
         use fuel_ir::SymEnv;
+
+        // Build the lazily initialised process-wide tables BEFORE taking the
+        // gate: their initialisation bumps the generation, and a bump under
+        // our own write guard would wait on ourselves.
+        drop(crate::dispatch::global_bindings());
+        let _crate_gate = crate::dispatch::TOPOLOGY_TEST_GATE
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         let mut table = KernelBindingTable::new();
         let (mut g, _prod, _fork, _tail, root) = build_single_fork_graph(&mut table);
@@ -3379,11 +3454,11 @@ mod tests {
                 1.0_f32, 2.0, 3.0, 4.0,
             ]))),
         );
-        // The realize itself may fail (the synthetic CUDA arm has no device
-        // behind it, and the process-wide topology generation can move under
-        // a sibling test); this test reads only the arm the streaming walk
-        // resolved, which happens at the branch's arm-entry before either.
-        let _ = PipelinedExecutor::realize_with_optimized_picking_env(
+        // The CUDA arm has no device behind it in a CPU test, so a realize
+        // that picked CUDA ends in a device error at the reconverge node; a
+        // realize that picked CPU runs end to end. The result is returned, not
+        // ignored, so the caller pins which.
+        let result = PipelinedExecutor::realize_with_optimized_picking_env(
             graph,
             root,
             cache,
@@ -3392,7 +3467,12 @@ mod tests {
             Some(lookup),
             SymEnv::default(),
         );
-        selector.picked.lock().unwrap().clone()
+        let outcome = match result {
+            Ok(_) => "Ok".to_string(),
+            Err(e) => format!("Err({e:?})"),
+        };
+        let picks = selector.picked.lock().unwrap().clone();
+        (picks, outcome)
     }
 
     /// Row 158 slice 2. CUDA measures 100 ns on the fork op, CPU 100 us.
@@ -3413,14 +3493,18 @@ mod tests {
         use crate::ranker::mock_backlog_lookup;
         const HOUR_NS: u64 = 3_600_000_000_000;
 
-        let idle = picked_backends_through_realize(
+        let (idle, idle_r) = picked_backends_through_realize(
             mock_backlog_lookup(vec![(BackendId::Cuda, 0, 0)]),
             100,
             100_000,
         );
-        assert_eq!(idle, vec![BackendId::Cuda], "idle GPU -> GPU arm");
+        assert_eq!(
+            idle,
+            vec![BackendId::Cuda],
+            "idle GPU -> GPU arm; realize={idle_r}"
+        );
 
-        let one_op = picked_backends_through_realize(
+        let (one_op, one_op_r) = picked_backends_through_realize(
             mock_backlog_lookup(vec![(BackendId::Cuda, 1, 1_000)]),
             100,
             100_000,
@@ -3428,14 +3512,19 @@ mod tests {
         assert_eq!(
             one_op,
             vec![BackendId::Cuda],
-            "1 op / 1 us backlog: GPU still finishes first (1.1 us vs 100 us)",
+            "1 op / 1 us backlog: GPU still finishes first (1.1 us vs 100 us); realize={one_op_r}",
         );
 
-        let hour = picked_backends_through_realize(
+        let (hour, hour_r) = picked_backends_through_realize(
             mock_backlog_lookup(vec![(BackendId::Cuda, 1, HOUR_NS)]),
             100,
             100_000,
         );
-        assert_eq!(hour, vec![BackendId::Cpu], "1 h GPU backlog -> CPU arm");
+        assert_eq!(
+            hour,
+            vec![BackendId::Cpu],
+            "1 h GPU backlog -> CPU arm; realize={hour_r}"
+        );
+        assert_eq!(hour_r, "Ok", "the CPU arm realizes end to end");
     }
 }
