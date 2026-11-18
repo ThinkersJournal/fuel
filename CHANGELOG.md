@@ -144,7 +144,7 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
-## v0.49.7 - 2026-11-18 (PM-allocation pending; rows 158, 165, 166)
+## v0.49.7 - 2026-11-18 (allocated at gate; rows 158, 165, 166, 167)
 
 > **RELEASE HOLD stands.** What is shown: on a TOY model (a 2-layer Llama, `fuel-model-llama`'s `forward_with_kv_context_vulkan_matches_cpu`, `--features vulkan`) with a backlog INJECTED on the real Vulkan device, the executor's arm choice follows the backlog and the chosen CPU arm computes the same logits as the CPU reference (run 2026-11-17T11:06Z: backlog 0 -> 35 of 35 branches arm 0; 1 h -> 35 of 35 arm 1; back to 0 -> 35 of 35 arm 0). What is NOT shown: a backlog the executor measured itself (nothing feeds `backlog_add_ns` from real submissions, so the picker is inactive on measured load), a real model, CPU-versus-GPU arm timing, CUDA, more than two arms, nested regions, two real GPUs.
 
