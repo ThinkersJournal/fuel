@@ -6,6 +6,7 @@ path	class	candle_source	basis
 .gitattributes	own		no lineage; 0 of 25 lines verbatim in candle (0%)
 .github/CODEOWNERS	own		no lineage; 0 of 1 lines verbatim in candle (0%)
 .github/dependabot.yml	candle	.github/dependabot.yml	identical path; 100% of 2 lines verbatim
+.github/workflows/cargo-deny.yml	own		no lineage; 0 of 11 lines verbatim in candle (0%)
 .github/workflows/checkpoint-tests.yml	own		no lineage; 0 of 29 lines verbatim in candle (0%)
 .github/workflows/cuda-metal-compile-check.yml	own		no lineage; 0 of 84 lines verbatim in candle (0%)
 .github/workflows/device-tests.yml	own		no lineage; 0 of 49 lines verbatim in candle (0%)
@@ -14,9 +15,9 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 776 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 782 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
-Cargo.lock	own		no lineage; 2 of 1382 lines verbatim in candle (0%)
+Cargo.lock	own		no lineage; 2 of 1384 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 295 lines verbatim
 GLOSSARY.md	own		no lineage; 0 of 56 lines verbatim in candle (0%)
 GUIDE.md	own		no lineage; 2 of 168 lines verbatim in candle (1%)
@@ -25,10 +26,11 @@ LICENSE-MIT	candle	LICENSE-MIT	identical path; 100% of 18 lines verbatim
 Makefile	candle	Makefile	identical path; 33% of 6 lines verbatim
 PATTERNS.md	own		no lineage; 4 of 179 lines verbatim in candle (2%)
 README.md	candle-modified	README.md	same path; 53% of 383 lines verbatim
-ROADMAP.md	own		no lineage; 0 of 2626 lines verbatim in candle (0%)
+ROADMAP.md	own		no lineage; 0 of 2627 lines verbatim in candle (0%)
 SECURITY.md	own		no lineage; 0 of 3 lines verbatim in candle (0%)
 THIRD-PARTY-NOTICES.md	own		judged: the ledger; it reproduces upstream licence texts, which is why git sees a copy of LICENSE-APACHE
 clippy.toml	own		no lineage; 0 of 30 lines verbatim in candle (0%)
+deny.toml	own		no lineage; 0 of 32 lines verbatim in candle (0%)
 docs/PATENT-SWEEP-CHARTS.md	own		no lineage; 0 of 78 lines verbatim in candle (0%)
 docs/PATENT-SWEEP.md	own		no lineage; 0 of 170 lines verbatim in candle (0%)
 docs/SLANG-SEAM-REQUIREMENTS.md	own		no lineage; 0 of 167 lines verbatim in candle (0%)
@@ -1453,7 +1455,7 @@ fuel-training/src/checkpoint.rs	own		no lineage; 5 of 110 lines verbatim in cand
 fuel-training/src/lib.rs	own		no lineage; 1 of 57 lines verbatim in candle (2%)
 fuel-training/src/train.rs	own		no lineage; 6 of 945 lines verbatim in candle (1%)
 fuel-training/src/training_loop.rs	own		no lineage; 2 of 92 lines verbatim in candle (2%)
-fuel-transformers/Cargo.toml	own		no lineage; 20 of 77 lines verbatim in candle (26%)
+fuel-transformers/Cargo.toml	own		no lineage; 19 of 76 lines verbatim in candle (25%)
 fuel-transformers/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-transformers/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-transformers/README.md	own		no lineage; 0 of 0 lines verbatim in candle (0%)
