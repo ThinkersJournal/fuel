@@ -1,0 +1,29 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  # Advisories appear without a commit: re-check the committed lockfile daily so a new RUSTSEC entry turns
+  # this red on main instead of waiting for the next pull request.
+  schedule:
+    - cron: "17 4 * * *"
+
+name: cargo deny
+
+# Least privilege (SUP-008): the check only reads the repository.
+permissions:
+  contents: read
+
+# ROADMAP row 167. Configuration: deny.toml (licence allow-list read from `cargo deny list`; ignores only for
+# notices with no fixed version, each with a reason and a 30-day expiry). The graph is the default-feature
+# graph; the optional `mkl` tree is listed in row 167 and not checked here.
+jobs:
+  deny:
+    name: cargo deny (advisories, licences, bans, sources)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Pinned to a full commit SHA, the same one the other repositories pin (tag v2.1.1).
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          command: check advisories licenses bans sources

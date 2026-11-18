@@ -1,0 +1,65 @@
+# cargo-deny configuration (ROADMAP row 167). Run: `cargo deny check`.
+#
+# Written 2026-11-18. The licence allow-list below was READ from `cargo deny list` over the committed
+# Cargo.lock (0.49.7), not guessed: every licence that list printed is here except LGPL-2.1-or-later,
+# which only `r-efi` carries as one option of "MIT OR Apache-2.0 OR LGPL-2.1-or-later" (an OR expression
+# passes on any allowed option).
+
+[graph]
+# The graph a default build sees, which is what the CI builds. Checking `all-features = true` ALSO reports
+# the optional `mkl` feature's tree: `intel-mkl-src` 0.8.1 (licence-file License.txt, no SPDX expression)
+# and its build dependency `ocipkg` 0.2.9 (RUSTSEC-2026-0449 unmaintained, RUSTSEC-2026-0450 path-traversal
+# vulnerability, no fixed version). Those need a policy decision (ROADMAP row 167, part 4), so they are
+# neither hidden nor ignored here: they are listed in the row.
+all-features = false
+
+[advisories]
+# Vulnerabilities are never ignored: they are fixed by upgrading (the latest-versions rule). The four
+# zstd vulnerabilities of 2026-11 (RUSTSEC-2026-0391, -0398, -0403, -0410) were fixed that way.
+# Only notices with NO fixed version are ignored, each with a reason and a 30-day expiry: on the expiry
+# date re-run `cargo deny check` and either remove the ignore (a fix or a replacement exists) or renew it
+# with a new reason and a new date.
+ignore = [
+    # EXPIRES 2026-12-18. `paste` 1.0.15 is unmaintained, no fixed version. Reached through the model and
+    # tokenizer stack; a macro crate with no runtime surface. Replacement: `pastey` is already in the tree.
+    { id = "RUSTSEC-2024-0436", reason = "paste is unmaintained; no fix; proc-macro only; pastey (maintained fork) already in the tree" },
+    # EXPIRES 2026-12-18. `unsafe-libyaml` 0.2.11 is unmaintained, no fixed version. Reached through
+    # serde_yaml_ng (YAML contracts). Replacement to evaluate: a maintained YAML backend.
+    { id = "RUSTSEC-2024-0449", reason = "unsafe-libyaml is unmaintained; no fix; used by serde_yaml_ng for FKC contract files read from the repository" },
+    # EXPIRES 2026-12-18. `ttf-parser` 0.25.1 is unmaintained, no fixed version. Reached through the image
+    # stack used by examples and datasets, not by the runtime path. Replacement to evaluate: skrifa/fontations.
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser is unmaintained; no fix; font parsing only on the examples and datasets path" },
+    # EXPIRES 2026-12-18. `chrono` 0.4.45 is flagged unmaintained, no fixed version. Reached transitively
+    # (arrow/parquet, tracing). Replacement to evaluate: `jiff` or `time` where fuel itself uses it.
+    { id = "RUSTSEC-2026-0543", reason = "chrono is flagged unmaintained; no fix; transitive through parquet/arrow" },
+]
+
+[licenses]
+confidence-threshold = 0.9
+allow = [
+    "0BSD",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    # File-level weak copyleft: `option-ext` 0.2.0 (via dirs-sys), used unmodified as a dependency.
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
