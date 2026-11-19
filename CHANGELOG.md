@@ -144,6 +144,16 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.49.9 - 2026-11-20 (lane-carried; row 156)
+
+### Added
+
+- `.coderipper.toml` declarations so the four portfolio rules that did not run now run (ROADMAP row 156): ARC-003 `[architecture.volatile]` (backend crates, vendor kernel libraries, BLAS routes, feature `cfg`), ARC-006 `[architecture.api_budget]` (each policy component's measured public-item count as a ceiling), ARC-007 `none = ["owns_data"]` (Fuel has no store), EFX-001 `pure = true` on `graph`, `quantized` and `facade` (0 effect references; the other five policy components name effects and are not tagged). Each value measured with `coderipper check <id>` at 81a370eda; no code change.
+
+### Not fixed, stated
+
+- ARC-004 (204 sites, policy components naming infrastructure types) is unchanged and stays row 156's open work. The rules now report real advisory findings (24 feature `cfg` attributes in `foundation`; 5 third-party re-exports), which are not suppressed.
+
 ## v0.49.8 - 2026-11-19 (lane-carried; row 167)
 
 ### Fixed
