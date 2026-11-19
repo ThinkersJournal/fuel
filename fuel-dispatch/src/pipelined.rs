@@ -1793,6 +1793,9 @@ impl PipelinedExecutor {
         // eviction / realize-end). `multi_backend` gates ALL eager submits so a
         // single-device realize never touches this path (byte-identical to A4b-2).
         let mut inflight_vulkan: Vec<InflightVulkan> = Vec::new();
+        // ROADMAP row 158: the backlog this realize adds to the device queues; its `Drop` takes it back out on
+        // the Ok path and when an error unwinds the walk.
+        let mut backlog = crate::dispatch::BacklogLedger::new();
         // Step E A4b-4: set true the first time the dispatch order transitions
         // between two DIFFERENT non-CPU... actually any two distinct backends — a
         // genuine backend switch. On a pure-CUDA or pure-Vulkan graph there is no
@@ -1923,6 +1926,7 @@ impl PipelinedExecutor {
             .map_err(|e| with_node_location(&graph, item.node_id, e))?;
             drop(t_exec);
             store_handle(&mut handles, item.node_id, handle);
+            feed_backlog(&mut backlog, &cache, &item);
             if let Some(d_idx) = item.destructive_input
                 && let Some(&destroyed) = item.inputs.get(d_idx)
                 && destroyed != target
@@ -2338,6 +2342,9 @@ impl PipelinedExecutor {
         // gates every eager submit, so a single-device realize_many is
         // byte-identical to A4b-2.
         let mut inflight_vulkan: Vec<InflightVulkan> = Vec::new();
+        // ROADMAP row 158: the backlog this realize adds to the device queues; its `Drop` takes it back out on
+        // the Ok path and when an error unwinds the walk.
+        let mut backlog = crate::dispatch::BacklogLedger::new();
         let mut multi_backend = false;
         for item in rx {
             let item = item?;
@@ -2410,6 +2417,7 @@ impl PipelinedExecutor {
             )
             .map_err(|e| with_node_location(&graph, item.node_id, e))?;
             store_handle(&mut handles, item.node_id, handle);
+            feed_backlog(&mut backlog, &cache, &item);
             if let Some(d_idx) = item.destructive_input
                 && let Some(&destroyed) = item.inputs.get(d_idx)
                 && !target_set.contains(&destroyed)
@@ -2853,13 +2861,33 @@ fn arm_exit_alias_item(
 /// `SymEnv`-resolved `WriteSlice` offset, etc.) derives from the graph
 /// node + its resolved input layouts at execute time.
 fn resolve_compiled(
+    graph: &Graph,
+    node: &fuel_graph::Node,
     op_kind: OpKind,
     dtypes: &[DType],
     target_backend: BackendId,
     op_params: OpParams,
     bindings: &KernelBindingTable,
 ) -> Result<CompiledNode> {
-    compile_node(op_kind, dtypes, target_backend, op_params, bindings)
+    let mut compiled = compile_node(op_kind, dtypes, target_backend, op_params, bindings)?;
+    // ROADMAP row 158: price the launch ONCE here so the executor's per-op feed of the device backlog is a
+    // field read, not a cost-model query (see `compiled::estimate_static_ns`).
+    if target_backend != BackendId::Cpu {
+        let shapes: Vec<fuel_ir::Shape> = node
+            .inputs
+            .iter()
+            .map(|&i| graph.node(i).shape.clone())
+            .collect();
+        compiled.est_ns = crate::compiled::estimate_static_ns(
+            op_kind,
+            dtypes,
+            &shapes,
+            target_backend,
+            &compiled.op_params,
+            bindings,
+        );
+    }
+    Ok(compiled)
 }
 
 /// Resolve one node into a `WorkItem` and update `layout_cache`
@@ -3095,7 +3123,15 @@ fn compile_one(
         })?;
         let op_params = op_to_op_params(graph, node, id, layout_cache, sym_env)?;
         let dtypes = build_lookup_dtypes(graph, node);
-        let compiled = resolve_compiled(op_kind, &dtypes, target_backend, op_params, bindings)?;
+        let compiled = resolve_compiled(
+            graph,
+            node,
+            op_kind,
+            &dtypes,
+            target_backend,
+            op_params,
+            bindings,
+        )?;
         // Output adopts target's Layout (same Storage Arc, same shape).
         let output_layout = graph.layout(inputs[target_idx]);
         layout_cache.insert(id, output_layout.clone());
@@ -3136,6 +3172,8 @@ fn compile_one(
         let op_params = op_to_op_params(graph, node, id, layout_cache, sym_env)?;
         let dtypes = build_lookup_dtypes(graph, node);
         let compiled = resolve_compiled(
+            graph,
+            node,
             OpKind::WriteSlice,
             &dtypes,
             target_backend,
@@ -3188,6 +3226,8 @@ fn compile_one(
         let op_params = op_to_op_params(graph, node, id, layout_cache, sym_env)?;
         let dtypes = build_lookup_dtypes(graph, node);
         let compiled = resolve_compiled(
+            graph,
+            node,
             OpKind::WriteSliceRotating,
             &dtypes,
             target_backend,
@@ -3237,6 +3277,8 @@ fn compile_one(
         let op_params = op_to_op_params(graph, node, id, layout_cache, sym_env)?;
         let dtypes = build_lookup_dtypes(graph, node);
         let compiled = resolve_compiled(
+            graph,
+            node,
             OpKind::WriteSliceDoff,
             &dtypes,
             target_backend,
@@ -3391,8 +3433,15 @@ fn compile_one(
         })?;
         let op_params = OpParams::None;
         let dtypes = build_lookup_dtypes(graph, node);
-        let compiled =
-            resolve_compiled(OpKind::Copy, &dtypes, target_backend, op_params, bindings)?;
+        let compiled = resolve_compiled(
+            graph,
+            node,
+            OpKind::Copy,
+            &dtypes,
+            target_backend,
+            op_params,
+            bindings,
+        )?;
         // Output layout: contiguous in the node's shape (mirrors the
         // source's logical shape). Auto-contiguize on the input side
         // (in execute_work_item) handles strided source views by
@@ -3444,8 +3493,15 @@ fn compile_one(
         })?;
         let op_params = OpParams::None;
         let dtypes = build_lookup_dtypes(graph, node);
-        let compiled =
-            resolve_compiled(OpKind::Copy, &dtypes, target_backend, op_params, bindings)?;
+        let compiled = resolve_compiled(
+            graph,
+            node,
+            OpKind::Copy,
+            &dtypes,
+            target_backend,
+            op_params,
+            bindings,
+        )?;
         // Output layout: contiguous in the node's shape, same as
         // Op::Copy (the transfer materializes strided sources via
         // auto-contiguize on the input side).
@@ -3604,6 +3660,7 @@ fn compile_one(
             kernel,
             caps,
             op_params,
+            est_ns: 0,
         };
         return Ok(WorkItem {
             node_id: id,
@@ -3642,7 +3699,15 @@ fn compile_one(
     // (Concat) collapse to the canonical `[T_in, T_out]` shorthand to
     // match how registrations index them.
     let dtypes = build_lookup_dtypes(graph, node);
-    let compiled = resolve_compiled(op_kind, &dtypes, target_backend, op_params, bindings)?;
+    let compiled = resolve_compiled(
+        graph,
+        node,
+        op_kind,
+        &dtypes,
+        target_backend,
+        op_params,
+        bindings,
+    )?;
     let output_layout = Layout::contiguous(node.shape.clone());
     layout_cache.insert(id, output_layout.clone());
     // Multi-output: snapshot the producer's bundle metadata. When
@@ -7271,6 +7336,32 @@ fn poisoned(what: &'static str) -> Error {
 /// the drain O(pending) rather than O(nodes). A re-used NodeId (in-place adopt
 /// re-keys an existing slot) waits the prior handle first so nothing leaks.
 #[inline]
+/// ROADMAP row 158: after a kernel node was submitted, add its compile-time estimate to the device it
+/// landed on. The device comes from the OUTPUT storage (the same source `produce_pending` reads), so a
+/// node stamped for one backend but realized elsewhere is priced where it actually runs. Nothing is added
+/// for a non-kernel item, a CPU output, a `0` estimate, or a storage that cannot name its device.
+fn feed_backlog(
+    ledger: &mut crate::dispatch::BacklogLedger,
+    cache: &StorageCache,
+    item: &WorkItem,
+) {
+    let Some(compiled) = item.compiled.as_ref() else {
+        return;
+    };
+    if !matches!(item.kind, WorkItemKind::Kernel) || compiled.est_ns == 0 {
+        return;
+    }
+    let Some(arc) = cache.get(&item.node_id) else {
+        return;
+    };
+    let Ok(guard) = arc.read() else {
+        return;
+    };
+    if let Some(loc) = guard.inner.location() {
+        ledger.add(loc, compiled.est_ns);
+    }
+}
+
 fn store_handle(
     handles: &mut HashMap<NodeId, CompletionHandle>,
     node_id: NodeId,

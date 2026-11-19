@@ -11597,6 +11597,10 @@ mod generate_tests {
         let vk_device: Device = vk_backend.into();
         // The row-158 arm-choice criterion runs on this same device at the end of this test.
         let vk_device_for_backlog = vk_device.clone();
+        // ROW 158, the executor feed: this test's own Vulkan realizes must add real estimated work to the
+        // device backlog and take all of it back out when each realize ends.
+        let vk_loc_for_feed = vk_device.location();
+        let feed_before = fuel_dispatch::optimizer_trace::snapshot();
 
         let cfg = LlamaConfig {
             vocab_size: 16,
@@ -11671,6 +11675,33 @@ mod generate_tests {
                 "logit[{i}]: vulkan={a}, cpu={b}, diff={diff}, rel={rel}",
             );
         }
+
+        // CRITERION (row 158, executor feed; written before the first run): the two Vulkan realizes above
+        // (prefill + decode) are the ONLY realizes this process ran on the Vulkan device since
+        // `feed_before`, so (1) the executor's own feed added a positive estimate (`backlog_added_ns > 0`:
+        // the feed fired, it is not the injected figure, which the next call does), (2) every added
+        // nanosecond was taken back out (`retired == added`: the guard balances), and (3) the device then
+        // reports a FED-AND-IDLE `Some(0)`, not `None` (never fed) and not a stuck positive figure.
+        // SHOWS: a real Vulkan realize feeds and drains the backlog exactly. DOES NOT SHOW: that the
+        // estimate is accurate (static composite), or any pick improvement under real contention.
+        // Run alone by name (see the run command above): another realize in the process would move the
+        // counters and break the equality for a reason that is not a leak.
+        let feed = fuel_dispatch::optimizer_trace::snapshot().since(&feed_before);
+        assert!(
+            feed.backlog_added_ns > 0,
+            "a Vulkan forward must add estimated work to the backlog: added {} ns",
+            feed.backlog_added_ns
+        );
+        assert_eq!(
+            feed.backlog_retired_ns, feed.backlog_added_ns,
+            "every nanosecond the realizes added must be taken back out: added {} ns, retired {} ns",
+            feed.backlog_added_ns, feed.backlog_retired_ns
+        );
+        assert_eq!(
+            fuel_dispatch::dispatch::backlog_estimate_ns(vk_loc_for_feed),
+            Some(0),
+            "after its realizes end the Vulkan device is fed-and-idle (Some(0)), not None and not stuck"
+        );
 
         assert_vulkan_arm_choice_follows_injected_backlog(vk_device_for_backlog);
     }
