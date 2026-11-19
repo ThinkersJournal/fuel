@@ -26,6 +26,9 @@ jobs:
       # Pinned to a full commit SHA, the same one the other repositories pin (tag v2.1.1).
       - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
         with:
+          # The action's `arguments` input DEFAULTS to `--all-features`, which overrides `all-features = false`
+          # in deny.toml. Empty here so the gate reads the deny.toml graph (default features).
+          arguments: ""
           command: check advisories licenses bans sources
 
   # NOT a gate, NOT required, daily schedule only: the same check over EVERY feature, so the optional `mkl`
