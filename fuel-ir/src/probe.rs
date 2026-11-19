@@ -331,6 +331,129 @@ pub fn resolve_identity_ordinal(
     }
 }
 
+/// Why a device-selector string is not a [`DeviceIdentity`] (ROADMAP row 125, part 2).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IdentityParseError {
+    /// The string is empty or only whitespace.
+    Empty,
+    /// It looks like a UUID (32 hex digits, dashes optional) but is not one.
+    BadUuid,
+    /// An all-zero UUID names no device (it reads as absent), so it is refused here rather than
+    /// resolving to "no match" later.
+    ZeroUuid,
+    /// It looks like a PCI address but is not `[domain:]bus:device[.function]` in hex.
+    BadPci,
+}
+
+impl std::fmt::Display for IdentityParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Empty => "empty device selector",
+            Self::BadUuid => {
+                "not a device UUID (want 8-4-4-4-12 hex digits, optional `GPU-` prefix)"
+            }
+            Self::ZeroUuid => "an all-zero UUID names no device",
+            Self::BadPci => "not a PCI address (want [domain:]bus:device[.function], hex)",
+        })
+    }
+}
+
+impl std::error::Error for IdentityParseError {}
+
+/// Parse a device selector a person can type: a UUID (`05c56c06-f951-3d45-5c8a-c76bbcb1deaa`, the
+/// `GPU-` form `nvidia-smi -L` prints, or 32 bare hex digits) or a PCI address
+/// (`01:00.0`, `0000:01:00.0`, `01:00`; hex, the function optional). The result is a
+/// [`DeviceIdentity`] for the `*_by_identity` constructors; a UUID sets only `uuid`, a PCI address
+/// only `pci`, so the match is made on exactly what the caller named.
+impl std::str::FromStr for DeviceIdentity {
+    type Err = IdentityParseError;
+
+    fn from_str(text: &str) -> std::result::Result<Self, Self::Err> {
+        let t = text.trim();
+        if t.is_empty() {
+            return Err(IdentityParseError::Empty);
+        }
+        let bare = t
+            .strip_prefix("GPU-")
+            .or_else(|| t.strip_prefix("gpu-"))
+            .or_else(|| t.strip_prefix("MIG-"))
+            .unwrap_or(t);
+        // A PCI address has a `:`; a UUID never does.
+        if bare.contains(':') {
+            return parse_pci(bare).map(|pci| DeviceIdentity {
+                uuid: None,
+                pci: Some(pci),
+            });
+        }
+        let hex: String = bare.chars().filter(|c| *c != '-').collect();
+        if hex.len() != 32 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(IdentityParseError::BadUuid);
+        }
+        let mut uuid = [0u8; 16];
+        for (i, byte) in uuid.iter_mut().enumerate() {
+            *byte = u8::from_str_radix(&hex[2 * i..2 * i + 2], 16)
+                .map_err(|_| IdentityParseError::BadUuid)?;
+        }
+        if uuid.iter().all(|b| *b == 0) {
+            return Err(IdentityParseError::ZeroUuid);
+        }
+        Ok(DeviceIdentity {
+            uuid: Some(uuid),
+            pci: None,
+        })
+    }
+}
+
+fn parse_pci(text: &str) -> std::result::Result<PciAddress, IdentityParseError> {
+    let hex = |s: &str, max_digits: usize| -> std::result::Result<u32, IdentityParseError> {
+        if s.is_empty() || s.len() > max_digits || !s.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(IdentityParseError::BadPci);
+        }
+        u32::from_str_radix(s, 16).map_err(|_| IdentityParseError::BadPci)
+    };
+    let parts: Vec<&str> = text.split(':').collect();
+    let (domain, bus, tail) = match parts.as_slice() {
+        [bus, tail] => (0, hex(bus, 2)?, *tail),
+        [domain, bus, tail] => (hex(domain, 4)?, hex(bus, 2)?, *tail),
+        _ => return Err(IdentityParseError::BadPci),
+    };
+    let (device, function) = match tail.split_once('.') {
+        Some((d, f)) => (hex(d, 2)?, Some(hex(f, 1)?)),
+        None => (hex(tail, 2)?, None),
+    };
+    // PCI device numbers are 5 bits, functions 3 bits.
+    if device > 0x1f || function.is_some_and(|f| f > 7) {
+        return Err(IdentityParseError::BadPci);
+    }
+    Ok(PciAddress {
+        domain,
+        bus,
+        device,
+        function,
+    })
+}
+
+/// Read a device selector from the environment variable `var` (for example `FUEL_CUDA_DEVICE`).
+/// `Ok(None)` when it is unset or empty; an unparsable value is an error naming the variable, never
+/// a silent fall-back to the default device (that would run on the wrong GPU without saying so).
+pub fn identity_from_env(var: &str) -> std::result::Result<Option<DeviceIdentity>, String> {
+    identity_from_value(var, std::env::var(var).ok().as_deref())
+}
+
+/// The pure half of [`identity_from_env`]: `value` is what the variable held, `None` if unset.
+pub fn identity_from_value(
+    var: &str,
+    value: Option<&str>,
+) -> std::result::Result<Option<DeviceIdentity>, String> {
+    match value {
+        Some(v) if !v.trim().is_empty() => v
+            .parse::<DeviceIdentity>()
+            .map(Some)
+            .map_err(|e| format!("{var}={v:?}: {e}")),
+        _ => Ok(None),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -601,5 +724,95 @@ mod tests {
                 .same_physical_device(&ident(None, Some((0, 1, 0, Some(0)))))
         );
         assert!(!ident(None, None).same_physical_device(&ident(None, None)));
+    }
+
+    const NV: &str = "05c56c06-f951-3d45-5c8a-c76bbcb1deaa";
+
+    #[test]
+    fn selector_parses_uuid_in_every_written_form() {
+        let want: DeviceIdentity = NV.parse().unwrap();
+        assert_eq!(want.uuid.unwrap()[0], 0x05);
+        assert_eq!(want.uuid.unwrap()[15], 0xaa);
+        assert_eq!(want.pci, None);
+        assert_eq!(format!("GPU-{NV}").parse::<DeviceIdentity>(), Ok(want));
+        assert_eq!(NV.replace('-', "").parse::<DeviceIdentity>(), Ok(want));
+        assert_eq!(
+            format!("  {}\n", NV.to_uppercase()).parse::<DeviceIdentity>(),
+            Ok(want)
+        );
+    }
+
+    #[test]
+    fn selector_parses_pci_addresses() {
+        let p = |s: &str| s.parse::<DeviceIdentity>().unwrap().pci.unwrap();
+        let a = p("01:00.0");
+        assert_eq!((a.domain, a.bus, a.device, a.function), (0, 1, 0, Some(0)));
+        let b = p("0000:0a:1f.7");
+        assert_eq!(
+            (b.domain, b.bus, b.device, b.function),
+            (0, 0x0a, 0x1f, Some(7))
+        );
+        let c = p("0001:81:00");
+        assert_eq!((c.domain, c.bus, c.device, c.function), (1, 0x81, 0, None));
+        assert_eq!("01:00.0".parse::<DeviceIdentity>().unwrap().uuid, None);
+    }
+
+    #[test]
+    fn selector_refuses_what_is_not_a_device() {
+        use IdentityParseError::*;
+        let e = |s: &str| s.parse::<DeviceIdentity>().unwrap_err();
+        assert_eq!(e(""), Empty);
+        assert_eq!(e("   "), Empty);
+        assert_eq!(e("0"), BadUuid);
+        assert_eq!(e("zzzzzzzz-f951-3d45-5c8a-c76bbcb1deaa"), BadUuid);
+        assert_eq!(e(&NV[..35]), BadUuid);
+        assert_eq!(e("00000000-0000-0000-0000-000000000000"), ZeroUuid);
+        assert_eq!(e("01:00.8"), BadPci); // function is 3 bits
+        assert_eq!(e("01:20.0"), BadPci); // device is 5 bits
+        assert_eq!(e("01:"), BadPci);
+        assert_eq!(e("1:2:3:4"), BadPci);
+        assert_eq!(e("012:00.0"), BadPci); // bus is 2 digits
+    }
+
+    /// A parsed selector resolves through the same matcher the constructors use: the UUID picks
+    /// the right device whatever the enumeration order, and a PCI-only selector falls back to the
+    /// bus address (the iGPU case: no usable UUID).
+    #[test]
+    fn selector_resolves_against_an_enumeration_in_either_order() {
+        let nv: DeviceIdentity = NV.parse().unwrap();
+        let other: DeviceIdentity = "11111111-2222-3333-4444-555555555555".parse().unwrap();
+        assert_eq!(resolve_identity_ordinal(&nv, &[nv, other]), Ok(0));
+        assert_eq!(resolve_identity_ordinal(&nv, &[other, nv]), Ok(1));
+        let gpu = |bus| DeviceIdentity {
+            uuid: None,
+            pci: Some(PciAddress {
+                domain: 0,
+                bus,
+                device: 0,
+                function: None,
+            }),
+        };
+        let want: DeviceIdentity = "0000:03:00.0".parse().unwrap();
+        assert_eq!(resolve_identity_ordinal(&want, &[gpu(1), gpu(3)]), Ok(1));
+        assert_eq!(
+            resolve_identity_ordinal(&want, &[gpu(1), gpu(2)]),
+            Err(IdentityResolveError::NoMatch)
+        );
+    }
+
+    #[test]
+    fn env_selector_is_unset_empty_good_or_a_named_error() {
+        let var = "FUEL_CUDA_DEVICE";
+        assert_eq!(identity_from_value(var, None), Ok(None));
+        assert_eq!(identity_from_value(var, Some("  ")), Ok(None));
+        assert_eq!(
+            identity_from_value(var, Some(NV)),
+            Ok(Some(NV.parse().unwrap()))
+        );
+        let err = identity_from_value(var, Some("not-a-gpu")).unwrap_err();
+        assert!(
+            err.contains(var) && err.contains("not a device UUID"),
+            "{err}"
+        );
     }
 }
