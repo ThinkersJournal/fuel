@@ -49,6 +49,8 @@ pub struct Trace {
     recorded: AtomicU64,
     collapsed: AtomicU64,
     rejected: AtomicU64,
+    backlog_added_ns: AtomicU64,
+    backlog_retired_ns: AtomicU64,
     rejections: Mutex<VecDeque<String>>,
 }
 
@@ -68,6 +70,12 @@ pub struct TraceSnapshot {
     pub collapsed: u64,
     /// Branches `finalize_branches` rejected.
     pub rejected: u64,
+    /// Estimated nanoseconds the executor added to a device's backlog (row 158: every kernel it submitted
+    /// to a GPU, at the node's compile-time estimate).
+    pub backlog_added_ns: u64,
+    /// Estimated nanoseconds taken back out of a device's backlog when the realize that added them ended.
+    /// Equal to `backlog_added_ns` once every realize has returned; a gap is a leak.
+    pub backlog_retired_ns: u64,
     /// The newest rejection reasons, oldest first (at most [`MAX_KEPT_REJECTIONS`]).
     pub rejections: Vec<String>,
 }
@@ -93,6 +101,12 @@ impl TraceSnapshot {
             recorded: self.recorded.saturating_sub(earlier.recorded),
             collapsed: self.collapsed.saturating_sub(earlier.collapsed),
             rejected,
+            backlog_added_ns: self
+                .backlog_added_ns
+                .saturating_sub(earlier.backlog_added_ns),
+            backlog_retired_ns: self
+                .backlog_retired_ns
+                .saturating_sub(earlier.backlog_retired_ns),
             rejections: self.rejections[self.rejections.len() - keep..].to_vec(),
         }
     }
@@ -124,6 +138,8 @@ impl Trace {
             recorded: AtomicU64::new(0),
             collapsed: AtomicU64::new(0),
             rejected: AtomicU64::new(0),
+            backlog_added_ns: AtomicU64::new(0),
+            backlog_retired_ns: AtomicU64::new(0),
             rejections: Mutex::new(VecDeque::new()),
         }
     }
@@ -168,6 +184,24 @@ impl Trace {
         }
     }
 
+    /// The executor added `ns` of estimated work to a device's backlog.
+    pub fn record_backlog_added(&self, ns: u64) {
+        let _ = self
+            .backlog_added_ns
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {
+                Some(v.saturating_add(ns))
+            });
+    }
+
+    /// The executor took `ns` back out of a device's backlog (its realize ended or unwound).
+    pub fn record_backlog_retired(&self, ns: u64) {
+        let _ = self
+            .backlog_retired_ns
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {
+                Some(v.saturating_add(ns))
+            });
+    }
+
     /// Copy the counters.
     pub fn snapshot(&self) -> TraceSnapshot {
         let mut arm_chosen = [0u64; ARM_SLOTS];
@@ -185,6 +219,8 @@ impl Trace {
             recorded: self.recorded.load(Ordering::Relaxed),
             collapsed: self.collapsed.load(Ordering::Relaxed),
             rejected: self.rejected.load(Ordering::Relaxed),
+            backlog_added_ns: self.backlog_added_ns.load(Ordering::Relaxed),
+            backlog_retired_ns: self.backlog_retired_ns.load(Ordering::Relaxed),
             rejections: self
                 .rejections
                 .lock()
