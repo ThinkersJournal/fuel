@@ -47,9 +47,9 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 <!-- provenance-summary:begin -->
 | directory | files | candle | candle-modified | not-traced | ggml | own | data | copy |
 |---|--:|--:|--:|--:|--:|--:|--:|--:|
-| `(root)` | 24 | 4 | 4 |  |  | 16 |  |  |
+| `(root)` | 25 | 4 | 4 |  |  | 17 |  |  |
 | `.cargo` | 1 |  | 1 |  |  |  |  |  |
-| `.github` | 8 | 1 | 2 |  |  | 5 |  |  |
+| `.github` | 9 | 1 | 2 |  |  | 6 |  |  |
 | `docs` | 202 |  |  |  |  | 202 |  |  |
 | `fuel` | 9 |  |  |  |  | 6 |  | 3 |
 | `fuel-aocl-cpu-backend` | 8 |  |  |  |  | 5 |  | 3 |
@@ -96,5 +96,5 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-vulkan-dispatch` | 43 |  |  |  |  | 40 |  | 3 |
 | `fuel-vulkan-kernels` | 187 |  |  |  |  | 4 | 180 | 3 |
 | `scripts` | 79 |  |  | 1 |  | 78 |  |  |
-| **all** | **1999** | **112** | **216** | **260** | **4** | **1102** | **185** | **120** |
+| **all** | **2001** | **112** | **216** | **260** | **4** | **1104** | **185** | **120** |
 <!-- provenance-summary:end -->

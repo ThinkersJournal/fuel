@@ -1,0 +1,48 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  # Advisories appear without a commit: re-check the committed lockfile daily so a new RUSTSEC entry turns
+  # this red on main instead of waiting for the next pull request.
+  schedule:
+    - cron: "17 4 * * *"
+
+name: cargo deny
+
+# Least privilege (SUP-008): the check only reads the repository.
+permissions:
+  contents: read
+
+# ROADMAP row 167. Configuration: deny.toml (licence allow-list read from `cargo deny list`; ignores only for
+# notices with no fixed version, each with a reason and a 30-day expiry).
+jobs:
+  # THE GATE: the default-feature graph. Required in branch protection once it has run green.
+  deny:
+    name: cargo deny (advisories, licences, bans, sources)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Pinned to a full commit SHA, the same one the other repositories pin (tag v2.1.1).
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          # The action's `arguments` input DEFAULTS to `--all-features`, which overrides `all-features = false`
+          # in deny.toml. Empty here so the gate reads the deny.toml graph (default features).
+          arguments: ""
+          command: check advisories licenses bans sources
+
+  # NOT a gate, NOT required, daily schedule only: the same check over EVERY feature, so the optional `mkl`
+  # tree stays visible. Its red is READ each sweep. Known set (ROADMAP row 167, part 4): `intel-mkl-src`
+  # 0.8.1 (licence-file, no SPDX expression) and its build dependency `ocipkg` 0.2.9 (RUSTSEC-2026-0449
+  # unmaintained, RUSTSEC-2026-0450 path traversal, no fixed version). Reach: only a user who enables `mkl`
+  # and triggers the build-time OCI unpack. Anything else red here is NEW.
+  deny-all-features:
+    name: cargo deny, all features (scheduled, not required)
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          arguments: --all-features
+          command: check advisories licenses
