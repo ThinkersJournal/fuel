@@ -60,6 +60,12 @@ reason = "four fuel-quantized sources are deliberately unstamped because they de
 style = "layered"
 # The number of waivers may only fall; there is one today. (Not read by coderipper 0.43.x: kept so the declaration is whole.)
 ratchet = true
+# ARC-007 (data owned by one component): Fuel has NO tables, collections or topics to own. Checked 2026-11-19 at 81a370eda: no
+# database, queue or broker crate in Cargo.lock (rusqlite, sqlx, diesel, sled, rocksdb, redb, sea-orm, mongodb, redis, rdkafka,
+# lapin, postgres: 0 hits, the same grep finds `name = "serde"`), 0 tracked `*.sql` files, 0 `CREATE TABLE` / `INSERT INTO`
+# literals in `*.rs`. What Fuel persists is files (the Judge profile cache, checkpoints), which the EFX rules read, not data a
+# component owns. Declare `owns_data` on a component and delete this line the day Fuel gains a store.
+none = ["owns_data"]
 
 # Leaf crates every other layer reads: the IR (dtypes, shapes, ops), the model-config vocabulary, and the kernel sources.
 [[architecture.component]]
@@ -81,6 +87,12 @@ name = "fixtures"
 paths = ["fuel-test-support", "fuel-correctness-fixtures", "fuel-model-fixture", "fuel-model-umbrella-fixture"]
 role = "test-support"
 
+# `pure = true` (EFX-001) is declared ONLY where measured true: `coderipper check EFX-001` with graph, quantized and facade tagged
+# read 43 files and found 0 of its 17 effect entries (file, network, environment, process, clock, randomness, thread). The
+# instrument can find them: with all eight policy components tagged it read 463 files and found 134 effect references, none in
+# these three. NOT tagged because they name effects today: foundation (std::env, std::fs), contract (std::fs: the format readers),
+# dispatch (env, fs, clock, threads), tensor (fs, env, clock, rand, sleep), models (fs, env, rand, clock). `pure` means none of the
+# listed effects is named, not referentially pure; `fuel-graph` is also not claimed free of interior mutability or locks.
 # The lazy graph and its optimizer. Module groups are NOT declared inside it: its one module cycle (see the note at the end) runs
 # over inline `crate::opt::` paths, which ARC-001's module graph does not follow (it reads `mod`/`use` edges), so a waiver for
 # it would be reported as stale.
@@ -88,11 +100,13 @@ role = "test-support"
 name = "graph"
 paths = ["fuel-graph"]
 role = "policy"
+pure = true   # EFX-001: 0 effect references in its files, measured 2026-11-19 (see the note above the components)
 
 [[architecture.component]]
 name = "quantized"
 paths = ["fuel-quantized"]
 role = "policy"
+pure = true   # EFX-001: 0 effect references in its files, measured 2026-11-19 (see the note above the components)
 
 # One crate per target; each holds that target's storage, device and kernels glue and never decides strategy.
 [[architecture.component]]
@@ -134,6 +148,7 @@ role = "policy"
 name = "facade"
 paths = ["fuel"]
 role = "policy"
+pure = true   # EFX-001: 0 effect references in its files, measured 2026-11-19 (see the note above the components)
 
 [[architecture.component]]
 name = "applications"
@@ -188,6 +203,32 @@ components = ["applications"]
 [[architecture.layer]]
 name = "examples"
 components = ["examples"]
+
+# ARC-003: what changes with hardware and vendor churn, which a stable component (foundation, contract) must not name. The
+# backend crates, the vendor kernel libraries and the BLAS routes; feature `cfg` tests count too. Measured 2026-11-19 with
+# `coderipper check ARC-003`: foundation 0 names, contract 0 names, so the declaration is true of the code today; the control,
+# namespaces = ["std::", "serde"], counts 133 and 61 uses, so the matcher sees multi-segment paths. The 24 feature `cfg`
+# attributes in foundation (`serde` x21, `dlpack` x2, `ug` x1) are a real Info finding, not suppressed: optional serialisation and
+# interop gates, not hardware.
+[architecture.volatile]
+namespaces = ["baracuda", "vulkane", "fuel_cuda_backend", "fuel_vulkan_backend", "fuel_metal_backend", "fuel_cpu_backend", "fuel_aocl_cpu_backend", "fuel_mkl_cpu_backend", "intel_mkl_src", "onemkl"]
+feature_cfg_in_policy = true
+
+# ARC-006: a CEILING at today's measured size, not a judgement that this is the right size: `coderipper check ARC-006` at
+# 81a370eda counts public items and the members of public types per component (models 7673, foundation 1916, dispatch 1478,
+# tensor 848, graph 745, contract 333, quantized 95, facade 67). The budget is each number as measured, so growth is a finding
+# and shrinking is free; lower a number when its component shrinks, never raise one without saying why in the same change.
+# Components not listed (backends, kernel-adapters, loaders, applications, examples, fixtures) are adapters, composition or test
+# support: no budget claimed.
+[architecture.api_budget]
+foundation = 1916
+contract = 333
+graph = 745
+quantized = 95
+dispatch = 1478
+tensor = 848
+models = 7673
+facade = 67
 
 # RECORDED EXCEPTION (not an `[[architecture.waiver]]`: the tool cannot see this edge, and a waiver for an unseen edge is reported
 # stale). The fuel-graph module cycle (26 modules in one strongly connected set per coderipper MOD-002): `opt` reaches `registry`
