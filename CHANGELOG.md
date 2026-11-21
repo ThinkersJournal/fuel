@@ -144,7 +144,7 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
-## Unreleased - 2026-11-22 (version PM-allocated at gate; row 125 part 2 live check, board 429 stage 2)
+## Unreleased - 2026-11-22 (version PM-allocated at gate; rows 125 part 2 live check and 158 executor feed; board 429 stage 2)
 
 ### Added
 
@@ -154,6 +154,21 @@ This documents the main changes to the `fuel` workspace.
 ### Not verified
 
 - The new print step on the runner (not yet run); any CUDA constructor reading `FUEL_CUDA_DEVICE`; two identical cards; `--features cuda vulkan`.
+
+### Row 158 executor feed, Vulkan slice
+
+### Added
+
+- The executor feeds the device backlog from its own submissions (ROADMAP row 158): `CompiledNode.est_ns` (`compiled::estimate_static_ns`), `dispatch::BacklogLedger` (RAII; `Drop` subtracts on Ok and unwind; CPU and 0 ns never added), `pipelined::feed_backlog` in both realize walks, and `optimizer_trace` counters `backlog_added_ns` / `backlog_retired_ns`. Work counts from submit to the end of the realize (an upper bound inside it); the estimate is static. 5 ledger tests, each clause sabotaged red.
+- Measured with `gpu-run`, `--features vulkan`, `forward_with_kv_context_vulkan_matches_cpu`, 2 runs: added 1431 ns > 0, retired == added, device `Some(0)` after.
+
+### Changed
+
+- The injected-backlog phases A and C of that test now require arm 0 chosen more often than arm 1 (measured `[32, 3]` of 35) instead of every branch arm 0, because the real feed puts in-flight work in the backlog during a realize; phase B (1 h, all arm 1) is unchanged.
+
+### Not verified
+
+- CUDA (not built; `cfg(cuda)` is uncompiled by hosted CI); a real model; CPU-versus-GPU arm timing; that the 3 arm-1 choices are correct under a measured completion time.
 
 ## v0.49.10 - 2026-11-21 (PM-allocated; row 125 part 2)
 

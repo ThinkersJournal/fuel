@@ -11717,6 +11717,15 @@ mod generate_tests {
     ///   C. backlog back to 0 ns -> NO branch resolves to arm 1 again.
     /// The arm counts are the executor's own `optimizer_trace` counters (bumped in `resolve_branch`).
     ///
+    /// AMENDED AFTER THE FIRST GPU RUN WITH THE EXECUTOR FEED (2026-11-21; the text above is the
+    /// pre-registered one): once the executor adds its own in-flight work to the backlog (this branch),
+    /// phases A and C no longer run on a device with exactly the injected backlog: later branches of a
+    /// realize see the kernels already submitted. The run measured `arm_chosen [32, 3, 0, 0]` in A
+    /// (35 branches; backlog_added 1431 ns), so 3 branches chose arm 1 on the executor's own estimate.
+    /// A and C now require arm 0 to be chosen MORE OFTEN than arm 1 (the majority follows an idle
+    /// device); B is unchanged and is the discriminator (1 hour dominates any in-realize backlog:
+    /// every branch arm 1, none arm 0). The 32:3 split is one observation, not a calibrated bound.
+    ///
     /// SHOWS: the arm the executor chose flips with the injected backlog and back, and the CPU arm's
     /// result equals the CPU reference. DOES NOT SHOW: a backlog the executor measured itself (it is
     /// injected: nothing feeds `backlog_add_ns` from real submissions yet), a real model, or timing.
@@ -11802,10 +11811,9 @@ mod generate_tests {
         let a = optimizer_trace::snapshot().since(&before_a);
         check_logits("A (backlog 0)", &logits_a);
         assert!(a.branches_resolved() > 0, "A: no branch resolved: {a:?}");
-        assert_eq!(
-            a.arm_chosen[0],
-            a.branches_resolved(),
-            "A (backlog 0): every branch must resolve to arm 0; {a:?}"
+        assert!(
+            a.arm_chosen[0] > a.arm_chosen[1],
+            "A (backlog 0): arm 0 must be chosen more often than arm 1 (the executor's own in-realize              backlog may move a few branches); {a:?}"
         );
 
         backlog_add_ns(loc, HOUR_NS);
@@ -11830,10 +11838,9 @@ mod generate_tests {
         let c = optimizer_trace::snapshot().since(&before_c);
         check_logits("C (backlog back to 0)", &logits_c);
         assert!(c.branches_resolved() > 0, "C: no branch resolved: {c:?}");
-        assert_eq!(
-            c.arm_chosen[0],
-            c.branches_resolved(),
-            "C (backlog back to 0): every branch must resolve to arm 0; {c:?}"
+        assert!(
+            c.arm_chosen[0] > c.arm_chosen[1],
+            "C (backlog back to 0): arm 0 must be chosen more often than arm 1; {c:?}"
         );
         eprintln!(
             "backlog phases: A arms {:?} / B arms {:?} / C arms {:?}",
