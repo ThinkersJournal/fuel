@@ -7813,7 +7813,7 @@ impl BacklogLedger {
         }
     }
 
-    /// What this ledger has added to `loc` and not yet taken back.
+    /// What this ledger has added to `loc` and has outstanding (added minus subtracted).
     pub fn outstanding_ns(&self, loc: DeviceLocation) -> u64 {
         self.added
             .iter()
