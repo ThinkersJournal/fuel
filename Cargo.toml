@@ -347,7 +347,7 @@ baracuda-cutlass       = { version = "0.1.0-alpha.148" }
 # upstream. baracuda-kernels-types (alpha.158) still resolves 0.22 for the telemetry/cuda paths until Baracuda
 # publishes a 0.38 family (it moves last), so that path keeps its separate vocab copy.
 # 0.40.0 (2026-11-01, PM task): Baracuda's own bump needs Fuel on 0.40 so its lock holds one copy, not 0.38.4 + 0.40.0.
-unpopped-vocab         = { version = "0.47.0" }
+unpopped-vocab         = { version = "0.56.2" }
 # FireLine kernel-seam crates (wave 1): the grammar and the JIT envelope that used to be fuel-kernel-seam-types and
 # fuel-kernel-seam. `~` pins: pre-1.0, a minor bump is breaking. (fireline-announce, the former -announce crate, is
 # not a Fuel dependency: nothing in Fuel imported it.)
