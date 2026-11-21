@@ -144,6 +144,21 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## Unreleased - 2026-11-21 (version PM-allocated at gate; row 125 part 2)
+
+### Added
+
+- `fuel_ir::DeviceIdentity: FromStr`, `probe::identity_from_env`, `identity_from_value` (ROADMAP row 125 part 2): a typed device selector by UUID or PCI address. Foundation API budget raised 1916 -> 1923 for the seven new public items.
+- `fuel_tensor::vulkan_backend::new_device_by_identity`, `new_device_from_env` (`FUEL_VULKAN_DEVICE`, `DEVICE_ENV_VAR`).
+
+### Changed
+
+- `mlmf` 0.11.29 -> 0.11.49 (crates.io pins in `fuel-formats`, `fuel-loaders`).
+
+### Not verified
+
+- A live `gpu-run` check that the by-identity constructors select the intended adapter; any CUDA constructor reading `FUEL_CUDA_DEVICE`.
+
 ## v0.49.9 - 2026-11-20 (lane-carried; row 156)
 
 ### Added
