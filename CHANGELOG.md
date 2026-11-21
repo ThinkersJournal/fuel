@@ -157,7 +157,11 @@ This documents the main changes to the `fuel` workspace.
 
 ### Not verified
 
-- A live `gpu-run` check that the by-identity constructors select the intended adapter; any CUDA constructor reading `FUEL_CUDA_DEVICE`.
+- Any CUDA constructor reading `FUEL_CUDA_DEVICE`; two identical cards; `--features cuda vulkan`.
+
+### Measured
+
+- `gpu-run`, `--features vulkan`, this box (RTX 4070 Laptop + Radeon 610M): `new_device_by_identity` reopens each adapter at its ordinal; `FUEL_VULKAN_DEVICE` set to the 610M's UUID selects the 610M (non-default), a PCI address selects the 4070, a bad value errors naming the variable. Folded into the existing ignored `mul_add_realize_on_vulkan_matches_reference` (no new `#[ignore]`).
 
 ## v0.49.9 - 2026-11-20 (lane-carried; row 156)
 

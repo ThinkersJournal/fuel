@@ -32,6 +32,77 @@ fn backend_or_skip() -> Option<Arc<VulkanBackend>> {
     }
 }
 
+/// Row 125 part 2 against real adapters. Called from `mul_add_realize_on_vulkan_matches_reference`
+/// (an existing ignored test: the `#[ignore]` ceiling only goes down).
+///
+/// (1) For every adapter that reports an identity, `new_device_by_identity` must open the adapter at
+/// that enumeration ordinal and the opened backend must report the same physical device.
+/// (2) If `FUEL_VULKAN_DEVICE` is set in the environment of the run, `new_device_from_env` must open
+/// THAT adapter: run once with the non-default adapter's identity, so a selector that silently fell
+/// back to `PreferDiscrete` would land on the wrong card and fail. Unset, it must equal `new_device`.
+fn by_identity_constructors_open_the_named_adapter() {
+    use fuel_tensor::vulkan_backend as vk;
+    use fuel_test_support::required_ok;
+    let identities = required_ok(
+        "device_identities()",
+        fuel_vulkan_backend::probe::device_identities(),
+    );
+    let mut checked = 0;
+    for (ordinal, id) in identities.iter().enumerate() {
+        let Some(wanted) = id else { continue };
+        let dev = required_ok("new_device_by_identity", vk::new_device_by_identity(wanted));
+        let b = vk::as_device(&dev).expect("a Vulkan device");
+        assert_eq!(
+            b.gpu_id, ordinal,
+            "identity {wanted:?} opened the wrong ordinal"
+        );
+        assert!(
+            b.identity().is_some_and(|g| g.same_physical_device(wanted)),
+            "opened backend does not report {wanted:?}"
+        );
+        println!(
+            "=== by_identity: ordinal {ordinal} {} -> {wanted:?} ===",
+            b.device_name
+        );
+        checked += 1;
+    }
+    assert!(
+        checked > 0,
+        "no adapter reported an identity: nothing was checked"
+    );
+    let from_env = vk::as_device(&required_ok(
+        "new_device_from_env",
+        vk::new_device_from_env(),
+    ))
+    .expect("a Vulkan device");
+    match fuel_ir::probe::identity_from_env(vk::DEVICE_ENV_VAR).expect("parseable selector") {
+        Some(wanted) => {
+            assert!(
+                from_env
+                    .identity()
+                    .is_some_and(|g| g.same_physical_device(&wanted)),
+                "{} = {wanted:?} but opened {}",
+                vk::DEVICE_ENV_VAR,
+                from_env.device_name
+            );
+            println!(
+                "=== from_env: {} selected {} (ordinal {}) ===",
+                vk::DEVICE_ENV_VAR,
+                from_env.device_name,
+                from_env.gpu_id
+            );
+        }
+        None => {
+            let default = vk::as_device(&vk::new_device().unwrap()).unwrap();
+            assert_eq!(from_env.gpu_id, default.gpu_id);
+            println!(
+                "=== from_env: unset, default {} (ordinal {}) ===",
+                default.device_name, default.gpu_id
+            );
+        }
+    }
+}
+
 /// Stamp an explicit per-node placement on a `Tensor`'s node (the scheduler-assignment seam).
 fn place(t: &Tensor, loc: DeviceLocation) {
     let gt = t.graph_tensor();
@@ -194,6 +265,7 @@ fn two_gpu_graph_realizes() {
 #[test]
 #[ignore = "requires a live Vulkan device"]
 fn mul_add_realize_on_vulkan_matches_reference() {
+    by_identity_constructors_open_the_named_adapter();
     let Some(backend) = backend_or_skip() else {
         return;
     };
