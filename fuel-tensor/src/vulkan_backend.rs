@@ -41,6 +41,30 @@ pub fn new_device() -> Result<Device> {
     Ok(VulkanBackend::new()?.into())
 }
 
+/// Creates a Vulkan device for the physical GPU with this stable identity (UUID or PCI address),
+/// resolved to an adapter index once, here. Unlike an index, the identity survives enumeration
+/// reordering (ROADMAP row 125 part 2).
+pub fn new_device_by_identity(wanted: &fuel_ir::probe::DeviceIdentity) -> Result<Device> {
+    Ok(
+        VulkanBackend::with_selection(fuel_vulkan_backend::DeviceSelection::Identity(*wanted))?
+            .into(),
+    )
+}
+
+/// The environment variable [`new_device_from_env`] reads.
+pub const DEVICE_ENV_VAR: &str = "FUEL_VULKAN_DEVICE";
+
+/// [`new_device_by_identity`] when `FUEL_VULKAN_DEVICE` holds a selector, else [`new_device`]. A
+/// set-but-unparsable value is an error naming the variable, never a silent fall-back to the
+/// default adapter.
+pub fn new_device_from_env() -> Result<Device> {
+    match fuel_ir::probe::identity_from_env(DEVICE_ENV_VAR) {
+        Ok(Some(wanted)) => new_device_by_identity(&wanted),
+        Ok(None) => new_device(),
+        Err(msg) => Err(Error::Msg(msg).bt()),
+    }
+}
+
 /// Returns the underlying [`Arc<VulkanBackend>`] handle, or an error
 /// if `device` is not a Vulkan device.
 ///

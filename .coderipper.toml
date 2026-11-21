@@ -221,7 +221,7 @@ feature_cfg_in_policy = true
 # Components not listed (backends, kernel-adapters, loaders, applications, examples, fixtures) are adapters, composition or test
 # support: no budget claimed.
 [architecture.api_budget]
-foundation = 1916
+foundation = 1923   # raised from 1916 (+7, row 125 part 2): DeviceIdentity::from_str, IdentityParseError (type + 4 variants), identity_from_env, identity_from_value
 contract = 333
 graph = 745
 quantized = 95
