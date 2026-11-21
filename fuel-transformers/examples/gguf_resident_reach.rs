@@ -135,6 +135,134 @@ fn report_bindings(when: &str) {
             .len();
         println!("binding table ({when}): (QMatMul, [F32, U32, F32], {be:?}) alternatives = {n}");
     }
+    // The capability registry the placement DP prices candidates with: does the Vulkan entry advertise
+    // QMatMul (output dtype F32)? MatMul is the control. A backend with no caps, or caps missing the op,
+    // loses its candidate before ranking.
+    for caps in fuel_dispatch::dispatch::global_registry().backends() {
+        println!(
+            "  caps {:?} at {:?} ({when}): QMatMul/F32 = {}, MatMul/F32 = {}, {} (op,dtype) pairs",
+            caps.backend_id,
+            caps.device_location,
+            caps.op_dtype_support.contains(&(OpKind::QMatMul, F32)),
+            caps.op_dtype_support.contains(&(OpKind::MatMul, F32)),
+            caps.op_dtype_support.len()
+        );
+    }
+    // What each registered QMatMul / MatMul binding claims to cost for the same shape (a zero
+    // estimate is the `unknown_cost` sentinel: "no claim").
+    {
+        use fuel_dispatch::OpParams;
+        use fuel_ir::DeviceLocation;
+        use fuel_ir::backend::{BackendCapabilities, SubstrateClass};
+        // The two cost functions read shapes and params, not the capabilities; any caps will do.
+        let caps = BackendCapabilities {
+            backend_id: BackendId::Cpu,
+            device_location: DeviceLocation::Cpu,
+            op_dtype_support: Default::default(),
+            required_alignment: 64,
+            access_granularity_bits: 8,
+            transfer_paths: Vec::new(),
+            storage_substrate: SubstrateClass::HostBytes,
+            compute_throughput_flops_per_ns: 1.0,
+            mem_bandwidth_bytes_per_ns: 4.0,
+        };
+        let qp = OpParams::QMatMul {
+            quant_type: QuantType::Q8_0,
+            batch_count: 1,
+            m: 64,
+            n: 4096,
+            k: 4096,
+        };
+        let q_shapes = [
+            fuel_ir::Shape::from_dims(&[64, 4096]),
+            fuel_ir::Shape::from_dims(&[4096 * 4096 / 32 * 34 / 4]),
+            fuel_ir::Shape::from_dims(&[64, 4096]),
+        ];
+        for be in [BackendId::Cpu, BackendId::Vulkan] {
+            for alt in table.lookup_alternatives(OpKind::QMatMul, &[F32, U32, F32], be) {
+                let c = (alt.cost)(&q_shapes, &[F32, U32, F32], &qp, &caps);
+                println!(
+                    "  QMatMul {be:?} [{}] cost for m=64 n=k=4096 Q8_0: {c:?}",
+                    alt.kernel_source
+                );
+                println!(
+                    "  QMatMul {be:?} [{}] precision: {:?}; caps: {:?}",
+                    alt.kernel_source, alt.precision, alt.caps
+                );
+            }
+        }
+        // Control: the Vulkan MatMul binding for the same GEMM.
+        let mp = OpParams::Matmul {
+            lhs_batch_dims: Vec::new(),
+            rhs_batch_dims: Vec::new(),
+            m: 64,
+            n: 4096,
+            k: 4096,
+            m_compute: fuel_dispatch::kernel::MatmulM::All,
+        };
+        let m_shapes = [
+            fuel_ir::Shape::from_dims(&[64, 4096]),
+            fuel_ir::Shape::from_dims(&[4096, 4096]),
+            fuel_ir::Shape::from_dims(&[64, 4096]),
+        ];
+        for alt in table.lookup_alternatives(OpKind::MatMul, &[F32, F32, F32], BackendId::Vulkan) {
+            let c = (alt.cost)(&m_shapes, &[F32, F32, F32], &mp, &caps);
+            println!(
+                "  MatMul Vulkan [{}] cost for 64x4096x4096: {c:?}",
+                alt.kernel_source
+            );
+            println!(
+                "  MatMul Vulkan [{}] precision: {:?}; caps: {:?}",
+                alt.kernel_source, alt.precision, alt.caps
+            );
+        }
+    }
+}
+
+/// A bare graph, no model: activation `[m, k]` and one resident weight `[n, k]`, one `qmatmul`, realized
+/// on the Vulkan device. Separates "QMatMul itself stays on the CPU" from "QMatMul inside the loaded
+/// model's graph stays on the CPU".
+fn isolated<B: GgmlType>(
+    tag: &str,
+    qtype: QuantType,
+    m: usize,
+    k: usize,
+    n: usize,
+    dev: &fuel_tensor::Device,
+) {
+    use fuel_ir::Shape;
+    use fuel_tensor::lazy::Tensor;
+    let vk = fuel_tensor::vulkan_backend::as_device(dev).expect("a Vulkan device");
+    let w_f32: Vec<f32> = (0..n * k)
+        .map(|i| ((i as f32) * 0.021).sin() * 0.7)
+        .collect();
+    let mut blocks = vec![B::zeros(); n * k / B::BLCK_SIZE];
+    B::from_float(&w_f32, &mut blocks);
+    let bytes = fuel_quantized::blocks_as_bytes(&blocks).to_vec();
+    let w_u32: Vec<u32> = bytes
+        .chunks_exact(4)
+        .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        .collect();
+    let a: Vec<f32> = (0..m * k).map(|i| ((i as f32) * 0.013).cos()).collect();
+    let x = Tensor::from_f32(a, Shape::from_dims(&[m, k]), &fuel_tensor::Device::cpu()).unwrap();
+    let w = x
+        .const_u32_like(w_u32, Shape::from_dims(&[bytes.len() / 4]))
+        .unwrap();
+    let y = x.qmatmul(&w, qtype, k, n).expect("qmatmul");
+    op_profile::set_enabled(true);
+    let _ = op_profile::take();
+    let out = y.realize_f32_vulkan(&vk);
+    let rows = op_profile::take();
+    op_profile::set_enabled(false);
+    let launches: Vec<String> = rows
+        .iter()
+        .map(|(op, be, n, _)| format!("{op}@{be} x{n}"))
+        .collect();
+    println!(
+        "  isolated {tag} m={m} k={k} n={n}: out[0]={:.4}; launches: {}",
+        out[0],
+        launches.join(", ")
+    );
 }
 
 fn main() {
@@ -143,6 +271,13 @@ fn main() {
     println!("adapter: [{}] {}", vk.gpu_id, vk.device_name);
 
     report_bindings("before any realize");
+
+    println!("isolated QMatMul (bare graph, weight resident as blocks):");
+    for (m, k, n) in [(1, 256, 256), (1, 4096, 4096), (64, 4096, 4096)] {
+        isolated::<BlockQ4_0>("Q4_0", QuantType::Q4_0, m, k, n, &dev);
+        isolated::<BlockQ8_0>("Q8_0", QuantType::Q8_0, m, k, n, &dev);
+        isolated::<BlockQ4K>("Q4_K", QuantType::Q4_K_M, m, k, n, &dev);
+    }
 
     let mut failed = false;
     let runs = [

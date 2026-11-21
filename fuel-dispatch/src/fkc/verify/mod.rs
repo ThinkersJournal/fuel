@@ -77,7 +77,7 @@ mod accuracy_common;
 mod accuracy_elementwise;
 #[cfg(all(feature = "dev-tools", feature = "cuda"))]
 mod accuracy_half;
-#[cfg(all(feature = "dev-tools", feature = "cuda"))]
+#[cfg(all(feature = "dev-tools", any(feature = "cuda", feature = "vulkan")))]
 mod accuracy_qmatmul;
 #[cfg(all(feature = "dev-tools", feature = "cuda"))]
 mod accuracy_reduce;

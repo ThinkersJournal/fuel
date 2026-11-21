@@ -75,7 +75,7 @@ pub fn seed_vulkan_ledger(register: fn(&mut crate::kernel::KernelBindingTable)) 
 /// declare the same numbers moved to `fuel-vulkan-dispatch`, so the test that keeps the two in step moved with
 /// them and reads the claims through this function (the constants themselves are private to `fkc::verify`).
 #[cfg(feature = "vulkan")]
-pub fn vulkan_f32_accuracy_claims() -> [(&'static str, f64, f64); 4] {
+pub fn vulkan_f32_accuracy_claims() -> [(&'static str, f64, f64); 5] {
     use verify::seed_vulkan_matmul_accuracy as s;
     [
         (
@@ -97,6 +97,11 @@ pub fn vulkan_f32_accuracy_claims() -> [(&'static str, f64, f64); 4] {
             "rope_f32",
             s::ROPE_F32_CLAIM.max_relative,
             s::ROPE_F32_CLAIM.max_absolute,
+        ),
+        (
+            "qmatmul_vk",
+            s::QMATMUL_F32_CLAIM.max_relative,
+            s::QMATMUL_F32_CLAIM.max_absolute,
         ),
     ]
 }
