@@ -151,7 +151,7 @@ baracuda-types = ["dep:baracuda-kernels-types"]
 # fuel-memory used: each GPU backend's registration entry-point is
 # gated behind its feature.
 cuda = ["dep:fuel-cuda-backend", "baracuda-types", "fuel-memory/cuda", "fuel-hardware/cuda", "dep:fuel-kiss-ref-backend", "dep:fuel-quantized"]
-vulkan = ["dep:fuel-vulkan-backend", "fuel-memory/vulkan", "fuel-hardware/vulkan"]
+vulkan = ["dep:fuel-vulkan-backend", "fuel-memory/vulkan", "fuel-hardware/vulkan", "dep:fuel-quantized"]
 metal = ["dep:fuel-metal-backend", "fuel-memory/metal"]
 # Baracuda dispatch-telemetry / miss-reporting emission (docs/session-prompts/
 # baracuda-telemetry-plan.md). Reads the already-retained Judge timings; emits

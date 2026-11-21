@@ -17,7 +17,7 @@
 
 use fuel_ir::DType;
 use fuel_ir::dispatch::OpKind;
-use fuel_quantized::{BlockQ4_0, BlockQ4K, BlockQ8_0, k_quants::GgmlType};
+use fuel_quantized::{BlockQ4_0, BlockQ4K, BlockQ6K, BlockQ8_0, k_quants::GgmlType};
 
 use super::accuracy_common::{Claim, OpAccuracy, Runner, case, f32_tensor, scaled};
 use super::bit_stability::{HostTensor, VerifyError};
@@ -106,15 +106,31 @@ fn measure_format<T: GgmlType>(
     Ok(())
 }
 
+/// The CUDA claim: Q4_0, Q8_0 and Q4_K (the CUDA binding has no Q6_K route).
+#[cfg(feature = "cuda")]
 pub(crate) fn measure_qmatmul(
     run: &Runner,
     entry: &BindingEntry,
     claim: Claim,
 ) -> Result<OpAccuracy, VerifyError> {
+    measure_qmatmul_formats(run, entry, claim, false)
+}
+
+/// As [`measure_qmatmul`], plus Q6_K when `q6k` (the Vulkan binding has a Q6_K route, so a claim on
+/// the binding must be measured on it too).
+pub(crate) fn measure_qmatmul_formats(
+    run: &Runner,
+    entry: &BindingEntry,
+    claim: Claim,
+    q6k: bool,
+) -> Result<OpAccuracy, VerifyError> {
     let mut cases = Vec::new();
     measure_format::<BlockQ4_0>(run, entry, (QuantType::Q4_0, "q4_0"), &mut cases)?;
     measure_format::<BlockQ8_0>(run, entry, (QuantType::Q8_0, "q8_0"), &mut cases)?;
     measure_format::<BlockQ4K>(run, entry, (QuantType::Q4_K_M, "q4_k"), &mut cases)?;
+    if q6k {
+        measure_format::<BlockQ6K>(run, entry, (QuantType::Q6K, "q6_k"), &mut cases)?;
+    }
     Ok(OpAccuracy::new(
         OpKind::QMatMul,
         &[DType::F32, DType::U32, DType::F32],
@@ -122,6 +138,10 @@ pub(crate) fn measure_qmatmul(
         entry,
         cases,
         "f64 product of the f32 activations and the dequantized weights",
-        "uniform [-1, 1) activations and weights (Q4_0, Q8_0, Q4_K)",
+        if q6k {
+            "uniform [-1, 1) activations and weights (Q4_0, Q8_0, Q4_K, Q6_K)"
+        } else {
+            "uniform [-1, 1) activations and weights (Q4_0, Q8_0, Q4_K)"
+        },
     ))
 }

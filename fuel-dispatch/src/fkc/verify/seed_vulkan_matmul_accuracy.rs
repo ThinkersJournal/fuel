@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Earns the Vulkan f32 accuracy claims (`max_relative`, `max_absolute`) in the verification
-//! ledger for the kernels a decode step needs: `MatMul`, `RmsNormLastDim`, `SoftmaxLastDim` and
-//! `Rope` (board 240, option D).
+//! ledger for the kernels a decode step needs: `MatMul`, `RmsNormLastDim`, `SoftmaxLastDim`,
+//! `Rope` (board 240, option D) and `QMatMul` (ROADMAP row 124 step 3, GAP-393).
 //!
 //! The default placement rule ([`crate::ranker::filters::AccuracyPreferenceFilter`]) lets a
 //! non-bit-stable kernel win placement on cost only if its accuracy claim meets
@@ -34,6 +34,7 @@ use super::accuracy_common::{
     Claim, OpAccuracy, f32s, find_entry, measure_matmul, measure_rms_norm, measure_rope,
     measure_softmax,
 };
+use super::accuracy_qmatmul::measure_qmatmul_formats;
 use super::bit_stability::{HostTensor, KernelInvoker, VerifyError};
 use super::invoker_cpu::CpuInvoker;
 use super::invoker_vulkan::VulkanInvoker;
@@ -66,6 +67,14 @@ pub(crate) const ROPE_F32_CLAIM: Claim = Claim {
     max_absolute: 1.0e-5,
 };
 
+/// `qmatmul_vk` (`kernel-contracts/vulkan/qmatmul.fkc.md`), unit-scale uniform inputs, Q4_0 / Q8_0 /
+/// Q4_K / Q6_K, the same shapes and reference as the CUDA claim. Without a claim the placement rule drops
+/// this kernel whenever a bit-stable CPU `QMatMul` is offered (GAP-393).
+pub(crate) const QMATMUL_F32_CLAIM: Claim = Claim {
+    max_relative: 1.0e-3,
+    max_absolute: 1.0e-3,
+};
+
 /// Run `entry` on the Vulkan device with `inputs`/`params`, returning the f32 output.
 fn run_vulkan(
     backend: &Arc<VulkanBackend>,
@@ -94,7 +103,7 @@ impl AccuracyRun {
     }
 }
 
-/// Measure the registered Vulkan f32 `MatMul`, `RmsNormLastDim`, `SoftmaxLastDim` and `Rope`.
+/// Measure the registered Vulkan f32 `MatMul`, `RmsNormLastDim`, `SoftmaxLastDim`, `Rope` and `QMatMul`.
 pub(crate) fn measure_vulkan_f32_accuracy(
     register: fn(&mut KernelBindingTable),
     selection: fuel_vulkan_backend::DeviceSelection,
@@ -138,6 +147,12 @@ pub(crate) fn measure_vulkan_f32_accuracy(
             &cpu_reference,
             entry(OpKind::Rope, &rope_dt)?,
             ROPE_F32_CLAIM,
+        )?,
+        measure_qmatmul_formats(
+            &run,
+            entry(OpKind::QMatMul, &[DType::F32, DType::U32, DType::F32])?,
+            QMATMUL_F32_CLAIM,
+            true,
         )?,
     ];
     Ok(AccuracyRun { device_name, ops })
@@ -253,6 +268,7 @@ mod tests {
             RMS_NORM_F32_CLAIM,
             SOFTMAX_F32_CLAIM,
             ROPE_F32_CLAIM,
+            QMATMUL_F32_CLAIM,
         ] {
             assert!(c.max_relative <= DEFAULT_ACCURACY_BOUND.max_relative);
             assert!(c.max_absolute <= DEFAULT_ACCURACY_BOUND.max_absolute);
