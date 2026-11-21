@@ -144,6 +144,21 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## Unreleased - 2026-11-22 (version PM-allocated at gate; row 124 step 3 measurement)
+
+### Added
+
+- `fuel-transformers/examples/gguf_resident_reach.rs` (ROADMAP row 124 step 3): realizes a loaded, resident-quantized (Q4_0, Q8_0, Q4_K, Q6_K) synthetic llama on a Vulkan device and prints which backend launched each `QMatMul`. Measured through `gpu-run`: every `QMatMul` ran on the CPU in every format and on both adapters while other ops ran on Vulkan (GAP-393, cause not established).
+- `docs/gaps.md`: GAP-393.
+
+### Changed
+
+- `fuel-transformers/tests/gguf_resident_quantized.rs`: its synthetic-GGUF helpers moved to `tests/common/gguf_synth.rs`, shared with the example (the 5 tests are unchanged and green).
+
+### Not verified
+
+- CUDA reach; a real GGUF; a decode loop; the cause of the CPU placement.
+
 ## v0.49.10 - 2026-11-21 (PM-allocated; row 125 part 2)
 
 ### Added
