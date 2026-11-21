@@ -91,10 +91,10 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-tensor-tools` | 6 |  | 1 | 1 |  | 1 |  | 3 |
 | `fuel-test-support` | 12 |  |  |  |  | 9 |  | 3 |
 | `fuel-training` | 9 |  |  |  |  | 6 |  | 3 |
-| `fuel-transformers` | 197 | 2 | 4 | 154 |  | 31 | 3 | 3 |
+| `fuel-transformers` | 199 | 2 | 4 | 154 |  | 33 | 3 | 3 |
 | `fuel-vulkan-backend` | 27 |  |  |  |  | 24 |  | 3 |
 | `fuel-vulkan-dispatch` | 43 |  |  |  |  | 40 |  | 3 |
 | `fuel-vulkan-kernels` | 187 |  |  |  |  | 4 | 180 | 3 |
 | `scripts` | 79 |  |  | 1 |  | 78 |  |  |
-| **all** | **2001** | **112** | **216** | **260** | **4** | **1104** | **185** | **120** |
+| **all** | **2003** | **112** | **216** | **260** | **4** | **1106** | **185** | **120** |
 <!-- provenance-summary:end -->
