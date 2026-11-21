@@ -144,6 +144,17 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## Unreleased - 2026-11-22 (version PM-allocated at gate; row 125 part 2 live check, board 429 stage 2)
+
+### Added
+
+- `fuel-tensor/tests/vulkan_bridge_realize_live.rs`: a live check of `vulkan_backend::new_device_by_identity` and `new_device_from_env` folded into the existing ignored `mul_add_realize_on_vulkan_matches_reference` (no new `#[ignore]`). Measured with `gpu-run`, `--features vulkan`, this box (RTX 4070 Laptop + Radeon 610M), run alone: each adapter reopens at its ordinal; `FUEL_VULKAN_DEVICE` set to the 610M's UUID selects the 610M (the non-default adapter), a PCI address selects the 4070, a bad value errors naming the variable.
+- A step printing `CARGO_HOME`, `RUSTUP_HOME` and `USERPROFILE` in each of the four self-hosted GPU jobs (`checkpoint-tests`, `cuda-metal-compile-check`, `device-tests` cuda and vulkan), the prerequisite for board 429 stage 2. None of the four installs a toolchain (`dtolnay/rust-toolchain` appears only in hosted `rust-ci` jobs).
+
+### Not verified
+
+- The new print step on the runner (not yet run); any CUDA constructor reading `FUEL_CUDA_DEVICE`; two identical cards; `--features cuda vulkan`.
+
 ## v0.49.10 - 2026-11-21 (PM-allocated; row 125 part 2)
 
 ### Added
