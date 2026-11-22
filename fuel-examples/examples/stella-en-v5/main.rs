@@ -6,9 +6,6 @@
 // embeddings and absolute position scaling; its lazy port is a
 // separate follow-up.
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

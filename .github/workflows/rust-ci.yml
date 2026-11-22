@@ -534,46 +534,6 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: cargo check --locked -p fuel-examples --features symphonia,pdf2image,depth_anything_v2,fuel-datasets --all-targets
 
-      # ⚠️ UNPROVEN ON A CLEAN RUNNER — THIS STEP EXISTS TO BE OBSERVED.
-      # `fuel-cpu-backend --features mkl` had NINETEEN errors and had not
-      # compiled since the edition-2024 migration; fixed in 5617a617. It is a
-      # DEFAULT-MEMBER, so every job builds the crate while the rot sat behind a
-      # non-default feature and the exclude list gave no hint.
-      #
-      # WHY IT IS NOT SIMPLY ADDED: `intel-mkl-src 0.8.1` CAN source MKL by
-      # ocipkg download, so in principle no preinstalled SDK is needed. On the
-      # development box it did NOT download — the build script emitted
-      # `cargo:rustc-link-search=C:/Program Files (x86)/Intel/oneAPI/2026.1\lib`
-      # and `~/.cache/ocipkg` does not exist. So the local green comes entirely
-      # from that machine HAVING oneAPI, and the download path a runner must
-      # take is completely unexercised there. Landing this on the strength of a
-      # local pass would be an inference, not a measurement (GAP-181).
-      #
-      # This step is therefore the EXPERIMENT: if ocipkg fetches MKL on
-      # ubuntu-latest, the leg earns its place with evidence; if it does not,
-      # the "no leg" decision becomes CHOSEN rather than assumed, and the
-      # constraint is measured. Precedent both ways: the `baracuda-types` cell
-      # was proven CI-viable by observation against a Cargo.toml comment
-      # asserting it needed the SDK.
-      #
-      # BORN-RED, strong form, measured locally before this PR: seeding
-      # `const .. = <undefined>;` in `fuel-cpu-backend/src/mkl.rs` (a module
-      # compiled only under the feature) gives LEG=101 with DEFAULT=0 — the
-      # second half proving the seed is invisible without the feature, so a red
-      # leg is not merely a broken crate. Restored clean.
-      #
-      # ✅ EXPERIMENT RESOLVED — run 33134436974, PR #26, Check (ubuntu-latest):
-      # this step PASSED in 39s on a runner with no preinstalled MKL, so ocipkg
-      # does fetch it and the leg is viable. The cost caveat written here before
-      # the run ("may pull a large archive, read the duration before calling it
-      # cheap") is now MEASURED rather than feared: 39s against 25s for the onnx
-      # leg and 3-6s for the pure-host ones. Comparable, not exceptional.
-      # Recorded because the pre-run guess and the measurement disagreed, and
-      # the guess is the kind that would otherwise have justified never trying.
-      - name: Check mkl-gated cpu backend (GAP-247, EXPERIMENT)
-        if: matrix.os == 'ubuntu-latest'
-        run: cargo check --locked -p fuel-cpu-backend --features mkl --all-targets
-
       # DOC-LINK CENSUS (GAP-319). Every broken intra-doc link must carry a
       # human disposition in scripts/doc_link_census.py, or this step fails.
       # It gates on DISPOSITIONS, never on a count: a count is satisfied by

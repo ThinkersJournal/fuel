@@ -18,9 +18,6 @@
 //!   a prompt template. Multi-image / batch / video remain
 //!   unimplemented in v1.
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

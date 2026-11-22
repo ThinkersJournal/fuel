@@ -40,7 +40,7 @@ pub use error::{Context, Error, Result};
 
 /// Hardware / build-feature probes.
 pub mod utils {
-    pub use fuel_cpu_backend::{has_accelerate, has_mkl};
+    pub use fuel_cpu_backend::has_accelerate;
     pub use fuel_hardware::utils::*;
 
     /// `true` iff this build has the `metal` feature (the Metal backend is

@@ -40,8 +40,8 @@ fuel-transformers = { path = "../fuel-transformers", version = "0.49.12" }
 # Features forward to EVERY dependency that declares them, and to no dependency
 # that does not (see fuel/tests/feature_forwarding.rs, which derives this rule
 # from the manifests rather than hardcoding the split). `fuel-tensor` owns all
-# ten backend features; fuel-transformers carries accelerate/cuda/cudnn/mkl/metal/
-# vulkan (a strict subset), so those six forward to BOTH; telemetry/nccl/aocl/
+# nine backend features; fuel-transformers carries accelerate/cuda/cudnn/metal/
+# vulkan (a strict subset), so those five forward to BOTH; telemetry/nccl/aocl/
 # onemkl forward to fuel-tensor only. `telemetry` also forwards to
 # `fuel-dispatch/telemetry` for the `fuel::telemetry` re-export.
 [features]
@@ -50,7 +50,6 @@ telemetry = ["fuel-tensor/telemetry", "fuel-dispatch/telemetry"]
 cuda = ["fuel-tensor/cuda", "fuel-transformers/cuda"]
 cudnn = ["fuel-tensor/cudnn", "fuel-transformers/cudnn"]
 nccl = ["fuel-tensor/nccl"]
-mkl = ["fuel-tensor/mkl", "fuel-transformers/mkl"]
 aocl = ["fuel-tensor/aocl"]
 onemkl = ["fuel-tensor/onemkl"]
 accelerate = ["fuel-tensor/accelerate", "fuel-transformers/accelerate"]

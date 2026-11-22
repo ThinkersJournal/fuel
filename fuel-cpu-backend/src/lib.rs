@@ -3,23 +3,18 @@
 //!
 //! This crate contains the core CPU computation helpers (MatMul, pooling,
 //! convolution, reductions, etc.) extracted from `fuel-core` so they can be
-//! reused and tested independently. It also re-exports the MKL and Accelerate
-//! FFI bindings when the corresponding features are enabled.
+//! reused and tested independently. It also re-exports the Accelerate FFI bindings
+//! when the `accelerate` feature is enabled.
 
 #[cfg(feature = "accelerate")]
 pub mod accelerate;
-#[cfg(feature = "mkl")]
-pub mod mkl;
 
-// Link glue. `mkl` and `accelerate` declare `extern "C"` FFI against the vendor
-// libraries; nothing in this crate NAMES the `-src` crate that supplies the link
-// directives, and rustc drops an unreferenced crate from the link line, so
-// `extern crate` is what forces the native library in. It lives HERE, beside the
-// FFI it serves, so a binary that enables only `fuel-cpu-backend/mkl` links too
-// (GAP-348 (b); it used to sit in `fuel-core/src/lib.rs`).
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
+// Link glue. `accelerate` declares `extern "C"` FFI against the vendor library;
+// nothing in this crate NAMES the `-src` crate that supplies the link directives,
+// and rustc drops an unreferenced crate from the link line, so `extern crate` is
+// what forces the native library in. It lives HERE, beside the FFI it serves, so a
+// binary that enables only `fuel-cpu-backend/accelerate` links too (GAP-348 (b);
+// it used to sit in `fuel-core/src/lib.rs`).
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

@@ -53,9 +53,6 @@
 //!   4. Decode the produced codebook-0..31 stream through Mimi to get
 //!      PCM audio.
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

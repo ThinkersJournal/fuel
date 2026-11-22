@@ -31,11 +31,10 @@ jobs:
           arguments: ""
           command: check advisories licenses bans sources
 
-  # NOT a gate, NOT required, daily schedule only: the same check over EVERY feature, so the optional `mkl`
-  # tree stays visible. Its red is READ each sweep. Known set (ROADMAP row 167, part 4): `intel-mkl-src`
-  # 0.8.1 (licence-file, no SPDX expression) and its build dependency `ocipkg` 0.2.9 (RUSTSEC-2026-0449
-  # unmaintained, RUSTSEC-2026-0450 path traversal, no fixed version). Reach: only a user who enables `mkl`
-  # and triggers the build-time OCI unpack. Anything else red here is NEW.
+  # NOT a gate, NOT required, daily schedule only: the same check over EVERY feature, so a non-default
+  # feature's tree stays visible. Its red is READ each sweep. The old known set (`intel-mkl-src` 0.8.1 unlicensed,
+  # its build dependency `ocipkg` 0.2.9 with RUSTSEC-2026-0449 and -0450) went away when the `mkl` feature was
+  # removed (ROADMAP row 167, part 4, 2026-11-22): anything red here is NEW.
   deny-all-features:
     name: cargo deny, all features (scheduled, not required)
     if: github.event_name == 'schedule'

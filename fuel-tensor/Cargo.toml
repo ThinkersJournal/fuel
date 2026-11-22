@@ -56,7 +56,6 @@ gemm = { workspace = true }
 half = { workspace = true }
 float8 = { workspace = true }
 image = { workspace = true }
-intel-mkl-src = { workspace = true, optional = true }
 libc = { workspace = true, optional = true }
 libm = { workspace = true }
 memmap2 = { workspace = true }
@@ -100,8 +99,6 @@ cuda = [
 cudnn = ["cuda", "dep:baracuda-cudnn", "fuel-cuda-backend?/cudnn"]
 
 nccl = ["cuda", "dep:baracuda-nccl", "fuel-cuda-backend?/nccl"]
-
-mkl = ["dep:libc", "dep:intel-mkl-src", "fuel-cpu-backend/mkl"]
 
 aocl = ["dep:fuel-aocl-cpu-backend"]
 
