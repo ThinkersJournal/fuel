@@ -187,7 +187,7 @@ This documents the main changes to the `fuel` workspace.
 
 ### Measured
 
-- `gpu-run`, `--features dev-tools,vulkan`, this box: all 8 `QMatMul` launches of the loaded model on Vulkan for Q4_0, Q8_0, Q4_K_M and Q6_K (before: all on the CPU); logits within ~2e-6 of the CPU run; bare graphs up to 64x4096x4096 also on Vulkan.
+- `gpu-run`, `--features dev-tools,vulkan`, this box: all 8 `QMatMul` launches of the loaded model on Vulkan for Q4_0, Q8_0, Q4_K_M and Q6_K (before: all on the CPU) on the branch without the executor feed; with the executor feed of this change merged in, 7 of the 8 ran on Vulkan and 1 on the CPU (the executor resolved 1 of 9 branches to arm 1 under its own measured backlog, matching the single CPU launch; that it is the same node is not shown), so the loaded model's QMatMuls reach the GPU by default and the load-aware picker may move one off it; logits within ~2e-6 of the CPU run; bare graphs up to 64x4096x4096 also on Vulkan.
 
 ### Not verified
 
