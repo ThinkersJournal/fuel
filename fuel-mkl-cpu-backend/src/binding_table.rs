@@ -244,7 +244,7 @@ fn matmul_f32_mkl_bytes(
         let ra = rhs_batch_dims[i];
         if la == ra {
             n_rep.push(1);
-        } else if ra > 0 && la > ra && la % ra == 0 {
+        } else if ra > 0 && la > ra && la.is_multiple_of(ra) {
             n_rep.push(la / ra);
         } else {
             return Err(Error::Msg(format!(
@@ -471,7 +471,7 @@ fn matmul_f64_mkl_bytes(
         let ra = rhs_batch_dims[i];
         if la == ra {
             n_rep.push(1);
-        } else if ra > 0 && la > ra && la % ra == 0 {
+        } else if ra > 0 && la > ra && la.is_multiple_of(ra) {
             n_rep.push(la / ra);
         } else {
             return Err(Error::Msg(format!(
