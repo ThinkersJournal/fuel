@@ -41,6 +41,8 @@ fn backend_or_skip() -> Option<Arc<VulkanBackend>> {
 /// THAT adapter: run once with the non-default adapter's identity, so a selector that silently fell
 /// back to `PreferDiscrete` would land on the wrong card and fail. Unset, it must equal `new_device`.
 fn by_identity_constructors_open_the_named_adapter() {
+    // The helper acquires devices itself (`new_device_by_identity`, `new_device()`): hold the GPU mutex.
+    fuel_test_support::require_gpu_run_lock();
     use fuel_tensor::vulkan_backend as vk;
     use fuel_test_support::required_ok;
     let identities = required_ok(
