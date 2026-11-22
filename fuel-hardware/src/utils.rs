@@ -6,7 +6,8 @@
 //! as they did in `fuel-core`: target-arch flags are crate-independent, and
 //! `cuda` is a feature fuel-core's own `cuda` feature already forwards to
 //! `fuel-hardware/cuda`. `has_accelerate`/`has_mkl`/`metal_is_available`
-//! stayed behind in `fuel-core::utils` — fuel-hardware has no matching
+//! stayed behind in `fuel-core::utils` (`has_mkl` is gone since the `mkl` feature was removed,
+//! ROADMAP row 167) — fuel-hardware has no matching
 //! `accelerate`/`mkl`/`metal` features, so moving them here would silently
 //! make them return `false` forever regardless of how the build was
 //! actually configured.

@@ -96,9 +96,6 @@ pub use fuel_cuda_backend::builder_arg;
 #[cfg(feature = "metal")]
 pub use metal_backend::{MetalDevice, MetalError, MetalStorage};
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

@@ -42,4 +42,3 @@
     cudnn      = ["fuel-transformers/cudnn", "fuel/cudnn"]
     default    = []
     metal      = ["fuel-transformers/metal", "fuel/metal"]
-    mkl        = ["fuel-transformers/mkl", "fuel/mkl"]

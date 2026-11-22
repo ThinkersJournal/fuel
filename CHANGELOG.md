@@ -144,6 +144,23 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## Unreleased - 2026-11-22 (version PM-allocated at gate; BREAKING: the `mkl` feature is removed; row 167 part 4)
+
+### Removed (BREAKING)
+
+- The `mkl` Cargo feature of `fuel-cpu-backend`, `fuel-tensor`, `fuel-transformers`, `fuel-examples`, `fuel-inference`, `fuel-training` and `fuel`, and the `intel-mkl-src` dependency (workspace, `fuel-datasets`, `fuel-examples`, `fuel-tensor`, `fuel-transformers`, `fuel-cpu-backend`). Gone with it: `fuel_cpu_backend::mkl` (raw FFI to `sgemm_`, `dgemm_`, `hgemm_` and 24 VML functions that nothing in the repository called), the MKL `MatMul` implementation, `fuel_cpu_backend::has_mkl` and `fuel::utils::has_mkl`, the 93 one-line `extern crate intel_mkl_src;` in `fuel-examples`, and the CI step `Check mkl-gated cpu backend (GAP-247, EXPERIMENT)`. Anyone building with `--features mkl` must drop it; f64 and f16 matmul now run the portable `gemm`-crate path (MKL-backed f32 `MatMul` and `Conv2D` stay in `fuel-mkl-cpu-backend`, which uses the `onemkl` crate and is unchanged).
+- Why: `intel-mkl-src` 0.8.1 is unlicensed and its build dependency `ocipkg` 0.2.9 carries RUSTSEC-2026-0449 (unmaintained) and RUSTSEC-2026-0450 (path traversal, no fixed version). `cargo deny --all-features check advisories licenses bans sources`: 3 errors before, 0 after (whole output read; 39 to 27 `[duplicate]` warnings, no other kind).
+- Consumer scan before deleting: 189 git working trees, 2,961 `Cargo.toml`, 38,722 `.rs` files, no consumer outside the Fuel family (positive control on the Fuel tree: 9, 6 and 5 hits).
+
+### Added
+
+- `ops::matmul_dtype_oracle` in `fuel-cpu-backend`: f64 and f16 `MatMul` against a scalar f64 reference (non-square, batched, `m == 1`), with a sabotage sibling.
+- ROADMAP row 168 (f64 and f16 matmul through `onemkl`; provisional number, the other open branch also adds a 168: the second to merge renumbers), blocked on a consumer.
+
+### Not verified
+
+- The speed of the portable f64 and f16 matmul against the removed MKL path; builds with `accelerate` or on macOS.
+
 ## v0.49.13 - 2026-11-23 (PM-allocated; HOTFIX, region pathfinder gate restored)
 
 ### Fixed
