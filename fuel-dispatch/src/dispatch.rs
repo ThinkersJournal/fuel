@@ -7770,16 +7770,62 @@ pub fn backlog_sub_ns(loc: DeviceLocation, ns: u64) {
 /// The estimated backlog for `loc` in ns, or `None` when nothing has ever
 /// been fed for it (no estimate; NOT idle).
 pub fn backlog_estimate_ns(loc: DeviceLocation) -> Option<u64> {
-    device_backlog_table()
+    let total = device_backlog_table()
         .read()
         .ok()
-        .and_then(|guard| guard.get(&loc).map(|slot| slot.load(Ordering::Relaxed)))
+        .and_then(|guard| guard.get(&loc).map(|slot| slot.load(Ordering::Relaxed)))?;
+    // EXPERIMENT (`FUEL_BACKLOG_EXCLUDE_OWN=1`): a realize's own submitted work is not load that its own
+    // branches should avoid. Only the work of OTHER realizes counts.
+    if backlog_exclude_own() {
+        let own = own_outstanding_ns(loc);
+        return Some(total.saturating_sub(own));
+    }
+    Some(total)
+}
+
+/// What the BacklogLedgers have added to each device and have outstanding, process-wide. The picker that
+/// reads the estimate runs on a DIFFERENT thread from the one holding the ledger (measured: a thread-local
+/// version read 0 own while the total was 2.9 ms), so this is global; it is the experiment's "own work" only
+/// while a single realize runs at a time.
+static OWN_OUTSTANDING: Mutex<Vec<(DeviceLocation, u64)>> = Mutex::new(Vec::new());
+
+fn own_outstanding_add(loc: DeviceLocation, ns: u64) {
+    let mut o = OWN_OUTSTANDING.lock().unwrap_or_else(|p| p.into_inner());
+    match o.iter_mut().find(|(l, _)| *l == loc) {
+        Some((_, v)) => *v = v.saturating_add(ns),
+        None => o.push((loc, ns)),
+    }
+}
+
+fn own_outstanding_sub(loc: DeviceLocation, ns: u64) {
+    let mut o = OWN_OUTSTANDING.lock().unwrap_or_else(|p| p.into_inner());
+    if let Some((_, v)) = o.iter_mut().find(|(l, _)| *l == loc) {
+        *v = v.saturating_sub(ns);
+    }
+}
+
+fn own_outstanding_ns(loc: DeviceLocation) -> u64 {
+    let o = OWN_OUTSTANDING.lock().unwrap_or_else(|p| p.into_inner());
+    o.iter().find(|(l, _)| *l == loc).map_or(0, |(_, v)| *v)
+}
+
+/// Experiment switch (any of `1`, `true`, `on`, `yes` in `FUEL_BACKLOG_EXCLUDE_OWN`).
+fn backlog_exclude_own() -> bool {
+    static FROM_ENV: OnceLock<bool> = OnceLock::new();
+    *FROM_ENV.get_or_init(|| {
+        std::env::var("FUEL_BACKLOG_EXCLUDE_OWN").is_ok_and(|v| {
+            matches!(
+                v.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "on" | "yes"
+            )
+        })
+    })
 }
 
 /// Name of the environment variable that turns the executor's backlog feed ON (any of `1`, `true`, `on`,
 /// `yes`). The feed is OFF by default: with it on, a real Qwen3-0.6B Q4_K_M decode on Vulkan resolved ~85%
 /// of its branches to the CPU arm and ran slower than without it (ROADMAP row 158, n = 3 alternating
-/// pairs, direction only, one model, Vulkan only), and the cause is not established. Set the variable,
+/// pairs, direction only, one model, Vulkan only); the backlog accumulates within a realize and drains only at its end (ROADMAP row 158 CAUSE). Set the variable,
 /// or call [`set_backlog_feed_enabled`], to measure it.
 pub const BACKLOG_FEED_ENV: &str = "FUEL_BACKLOG_FEED";
 
@@ -7841,6 +7887,7 @@ impl BacklogLedger {
             return;
         }
         backlog_add_ns(loc, ns);
+        own_outstanding_add(loc, ns);
         crate::optimizer_trace::global().record_backlog_added(ns);
         match self.added.iter_mut().find(|(l, _)| *l == loc) {
             Some((_, total)) => *total = total.saturating_add(ns),
@@ -7861,6 +7908,7 @@ impl Drop for BacklogLedger {
     fn drop(&mut self) {
         for (loc, ns) in self.added.drain(..) {
             backlog_sub_ns(loc, ns);
+            own_outstanding_sub(loc, ns);
             crate::optimizer_trace::global().record_backlog_retired(ns);
         }
     }

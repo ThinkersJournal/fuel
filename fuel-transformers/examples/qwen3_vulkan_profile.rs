@@ -457,6 +457,16 @@ fn main() {
     );
     let (model, tokenizer, cfg) = load_model().expect("load_model");
     let dev = fuel_tensor::vulkan_backend::new_device().expect("vulkan device");
+    // Diagnostic: `QWEN3_FEED_ZERO=1` registers a ZERO backlog on the device, so it reports `Some(0)` (an estimate, idle)
+    // and the selector ranks by estimated completion time instead of the legacy load tier, with nothing queued.
+    // Separates "the feed changes the selector's mode" from "the feed adds load".
+    if std::env::var_os("QWEN3_FEED_ZERO").is_some() {
+        fuel_dispatch::dispatch::backlog_add_ns(dev.location(), 0);
+        println!(
+            "QWEN3_FEED_ZERO: zero backlog registered on {:?}",
+            dev.location()
+        );
+    }
     planner_estimates();
     if std::env::var_os("QWEN3_VERIFY").is_some() {
         let ok = verify_against_cpu_fixture(&model, &tokenizer, &cfg, &dev);
