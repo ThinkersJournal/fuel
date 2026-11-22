@@ -100,10 +100,11 @@ fn contains_mkl_rt_dll(dir: &std::path::Path) -> bool {
     // 2024+ uses `mkl_rt.2.dll`, older releases used `mkl_rt.dll`.
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
-            if let Some(name) = entry.file_name().to_str() {
-                if name.starts_with("mkl_rt") && name.ends_with(".dll") {
-                    return true;
-                }
+            if let Some(name) = entry.file_name().to_str()
+                && name.starts_with("mkl_rt")
+                && name.ends_with(".dll")
+            {
+                return true;
             }
         }
     }
