@@ -61,6 +61,8 @@ struct Run {
     gpu: Vec<(&'static str, u64, u64)>,
     /// Wall time of each of those steps.
     gpu_steps: Vec<Duration>,
+    /// The executor's own counters over the steady steps (arm choices and backlog feed), rendered.
+    exec_trace: String,
 }
 
 /// What the planner believes a Vulkan<->host copy costs (the numbers it prices
@@ -114,12 +116,23 @@ fn one_run(
     let (n, first_decode) = step(&[next], false);
     next = n;
     op_profile::set_enabled(true);
+    let trace_before = fuel_dispatch::optimizer_trace::snapshot();
     let mut steps = Vec::new();
     for _ in 0..steady {
         let (n, dt) = step(&[next], false);
         next = n;
         steps.push(dt);
     }
+    let exec = fuel_dispatch::optimizer_trace::snapshot().since(&trace_before);
+    let exec_trace = format!(
+        "arm_chosen {:?} of {} branches resolved; backlog added {} ns, retired {} ns;          recorded {} regions, rejected {}",
+        exec.arm_chosen,
+        exec.branches_resolved(),
+        exec.backlog_added_ns,
+        exec.backlog_retired_ns,
+        exec.recorded,
+        exec.rejected
+    );
     op_profile::set_enabled(false);
     // Same number of steps again with Vulkan timestamp queries on, so the
     // per-op table above (host time) is not perturbed by the extra commands.
@@ -163,6 +176,7 @@ fn one_run(
         trace,
         gpu,
         gpu_steps,
+        exec_trace,
     }
 }
 
@@ -433,6 +447,14 @@ fn main() {
             .unwrap_or(d)
     };
     let (runs, steady) = (arg(1, 5), arg(2, 10));
+    println!(
+        "executor backlog feed: {} (set {}=1 to turn it on)",
+        match std::env::var(fuel_dispatch::dispatch::BACKLOG_FEED_ENV) {
+            Ok(v) => format!("env {v:?}"),
+            Err(_) => "default (off)".to_string(),
+        },
+        fuel_dispatch::dispatch::BACKLOG_FEED_ENV
+    );
     let (model, tokenizer, cfg) = load_model().expect("load_model");
     let dev = fuel_tensor::vulkan_backend::new_device().expect("vulkan device");
     planner_estimates();
@@ -458,6 +480,10 @@ fn main() {
         .map(|_| one_run(&model, &cfg, &dev, &prompt_tokens, steady))
         .collect();
 
+    println!(
+        "executor trace over the {steady} steady decode steps of the last run: {}",
+        all.last().expect("at least one run").exec_trace
+    );
     copy_anatomy(&all.last().expect("at least one run").trace);
     let step_all = print_step_summary(&all, prompt_tokens.len(), steady);
     print_op_table(&all, step_all);

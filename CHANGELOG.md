@@ -152,6 +152,10 @@ This documents the main changes to the `fuel` workspace.
 - `gguf_resident_reach` prints a `timing` section (the same one-op `qmatmul` graph on the CPU device and the GPU device, median of 7). Measured on Vulkan, `--release`, RTX 4070 Laptop, k = n = 4096, copies included (every realize re-uploads the weight): gpu/cpu is 0.93 / 1.61 / 4.73 for Q4_0 / Q8_0 / Q4_K at m=1 and 1.74 / 0.87 / 0.58 at m=64. The static placement prior is not a timing; resident-weight steady state and CUDA are not measured.
 - The executor feed is verified on CUDA: the ignored `bf16_decode_cuda_matches_cpu` now asserts the CUDA backlog is added to (1875 ns), retired exactly, and left `Some(0)` (no new `#[ignore]`).
 
+### Changed
+
+- The executor backlog feed (row 158) is now OFF by default and opt-in: `FUEL_BACKLOG_FEED=1`, or `fuel_dispatch::dispatch::set_backlog_feed_enabled(true)` (new public items `BACKLOG_FEED_ENV`, `set_backlog_feed_enabled`; the ARC-006 dispatch count stays 1488). Reason, measured with `examples/qwen3_vulkan_profile.rs` on Qwen3-0.6B Q4_K_M decode on Vulkan (RTX 4070 Laptop, `--release`, 2 runs x 8 steady steps per cell): with the feed on the executor resolved 85 to 87% of 2248 branches to the CPU arm and the steady step was slower than the same code without it in 5 of 5 comparisons (+4% to +68%; about +14 to +18% on the quiet box); with it off the step is within 3% of the baseline on the quiet box, but 33 to 42% of branches still resolve to the CPU arm, so that share does not come from the feed. n is small, one model, Vulkan only; CUDA and other models not shown; the cause is not established. The tests that measure the feed (the Vulkan and CUDA llama tests, `gguf_resident_reach`) enable it explicitly; `qwen3_vulkan_profile` prints the executor's arm counts and backlog feed and honours the variable.
+
 ### Not verified
 
 - That the CPU-arm choices on the toy model are right (static estimate); a real model; a decode loop; two CUDA devices; speed against the CPU kernel.

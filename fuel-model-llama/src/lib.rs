@@ -5693,6 +5693,8 @@ mod generate_tests {
         // the CUDA leg's realizes must add real estimated work to the device backlog and take all of it
         // back out when each realize ends.
         let cuda_loc = cuda_device.location();
+        // The feed is OFF by default (`FUEL_BACKLOG_FEED`); this test measures it, so turn it on.
+        fuel_dispatch::dispatch::set_backlog_feed_enabled(true);
         let feed_before = fuel_dispatch::optimizer_trace::snapshot();
 
         // CUDA leg: byte-identical model/protocol, BF16 cache on the CUDA
@@ -11626,6 +11628,8 @@ mod generate_tests {
         // ROW 158, the executor feed: this test's own Vulkan realizes must add real estimated work to the
         // device backlog and take all of it back out when each realize ends.
         let vk_loc_for_feed = vk_device.location();
+        // The feed is OFF by default (`FUEL_BACKLOG_FEED`); this test measures it, so turn it on.
+        fuel_dispatch::dispatch::set_backlog_feed_enabled(true);
         let feed_before = fuel_dispatch::optimizer_trace::snapshot();
 
         let cfg = LlamaConfig {

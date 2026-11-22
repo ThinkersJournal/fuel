@@ -392,6 +392,14 @@ mod probe {
     }
 
     pub fn main() {
+        // The executor backlog feed is OFF by default; this probe reports its effect, so it is ON here
+        // unless `REACH_FEED=0` (then the trace shows what the default does).
+        let feed_on = std::env::var("REACH_FEED").as_deref() != Ok("0");
+        fuel_dispatch::dispatch::set_backlog_feed_enabled(feed_on);
+        println!(
+            "executor backlog feed: {}",
+            if feed_on { "ON" } else { "OFF" }
+        );
         let gpu = pick_gpu();
         let dev = new_device(gpu);
         let gtag = gpu.tag();

@@ -7345,6 +7345,10 @@ fn feed_backlog(
     cache: &StorageCache,
     item: &WorkItem,
 ) {
+    // OFF by default (`FUEL_BACKLOG_FEED`, `set_backlog_feed_enabled`): see `dispatch::BACKLOG_FEED_ENV`.
+    if !crate::dispatch::backlog_feed_enabled() {
+        return;
+    }
     let Some(compiled) = item.compiled.as_ref() else {
         return;
     };

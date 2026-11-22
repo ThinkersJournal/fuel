@@ -7776,6 +7776,41 @@ pub fn backlog_estimate_ns(loc: DeviceLocation) -> Option<u64> {
         .and_then(|guard| guard.get(&loc).map(|slot| slot.load(Ordering::Relaxed)))
 }
 
+/// Name of the environment variable that turns the executor's backlog feed ON (any of `1`, `true`, `on`,
+/// `yes`). The feed is OFF by default: with it on, a real Qwen3-0.6B Q4_K_M decode on Vulkan resolved ~85%
+/// of its branches to the CPU arm and ran slower than without it (ROADMAP row 158, n = 3 alternating
+/// pairs, direction only, one model, Vulkan only), and the cause is not established. Set the variable,
+/// or call [`set_backlog_feed_enabled`], to measure it.
+pub const BACKLOG_FEED_ENV: &str = "FUEL_BACKLOG_FEED";
+
+/// 0 = no override (read [`BACKLOG_FEED_ENV`]), 1 = forced on, 2 = forced off.
+static BACKLOG_FEED_OVERRIDE: AtomicU32 = AtomicU32::new(0);
+
+/// Force the executor's backlog feed on or off for this process, overriding [`BACKLOG_FEED_ENV`]. For the
+/// tests and probes that measure the feed.
+pub fn set_backlog_feed_enabled(on: bool) {
+    BACKLOG_FEED_OVERRIDE.store(if on { 1 } else { 2 }, Ordering::Relaxed);
+}
+
+/// Whether the executor adds its in-flight work to the device backlog (default: no).
+pub(crate) fn backlog_feed_enabled() -> bool {
+    match BACKLOG_FEED_OVERRIDE.load(Ordering::Relaxed) {
+        1 => true,
+        2 => false,
+        _ => {
+            static FROM_ENV: OnceLock<bool> = OnceLock::new();
+            *FROM_ENV.get_or_init(|| {
+                std::env::var(BACKLOG_FEED_ENV).is_ok_and(|v| {
+                    matches!(
+                        v.trim().to_ascii_lowercase().as_str(),
+                        "1" | "true" | "on" | "yes"
+                    )
+                })
+            })
+        }
+    }
+}
+
 /// What one realize added to the per-device backlog, taken back out when the realize ends (ROADMAP row
 /// 158, the executor feed). The executor owns one for the length of a walk and calls [`Self::add`] for
 /// each kernel it submits to a GPU, with that node's compile-time estimate
