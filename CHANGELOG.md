@@ -144,6 +144,17 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## Unreleased - 2026-11-22 (version PM-allocated at gate; rows 124 step 3 and 158 on CUDA)
+
+### Added
+
+- `fuel-transformers/examples/gguf_resident_reach.rs` is device-generic (first argument `vulkan` or `cuda`; realizes through `pipelined_bridge::realize_one_as`) and prints the executor's arm counts and backlog feed per realize. Built with `--features dev-tools,cuda` it measured, on the RTX 4070 Laptop: bare one-op `QMatMul` graphs launch on CUDA in 9 of 9 cases; the loaded model is mixed (`QMatMul` launches Cuda/Cpu of 8: 4/4, 3/5, 3/5, 3/5 for Q4_0, Q8_0, Q4_K_M, Q6_K; 2 to 4 of 9 branches resolved to the CPU arm by the executor's own backlog); logits within ~2e-6 of the CPU run. The CUDA binding already carries a measured accuracy claim (row 128), so the Vulkan defect (GAP-393) does not recur.
+- The executor feed is verified on CUDA: the ignored `bf16_decode_cuda_matches_cpu` now asserts the CUDA backlog is added to (1875 ns), retired exactly, and left `Some(0)` (no new `#[ignore]`).
+
+### Not verified
+
+- That the CPU-arm choices on the toy model are right (static estimate); a real model; a decode loop; two CUDA devices; speed against the CPU kernel.
+
 ## v0.49.11 - 2026-11-22 (PM-allocated; rows 125 part 2 live check, 158 executor feed, 124 step 3; board 429 stage 2)
 
 ### Added
