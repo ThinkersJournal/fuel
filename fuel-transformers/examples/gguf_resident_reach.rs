@@ -339,6 +339,58 @@ mod probe {
         );
     }
 
+    /// Wall time of the same one-op `qmatmul` graph realized on the CPU device and on the GPU device
+    /// (warm-up, then the median of `REPS`). The GPU figure includes everything the realize does: the
+    /// weight and activation uploads and the result download, because the executor re-realizes the
+    /// graph from host constants each call. This is the evidence for "placement follows the static
+    /// prior": it says whether the GPU `QMatMul` is actually faster for the shape, copies included.
+    fn timing<B: GgmlType>(
+        tag: &str,
+        qtype: QuantType,
+        (m, k, n): (usize, usize, usize),
+        dev: &Device,
+    ) {
+        use fuel_ir::Shape;
+        const REPS: usize = 7;
+        let w_f32: Vec<f32> = (0..n * k)
+            .map(|i| ((i as f32) * 0.021).sin() * 0.7)
+            .collect();
+        let mut blocks = vec![B::zeros(); n * k / B::BLCK_SIZE];
+        B::from_float(&w_f32, &mut blocks);
+        let bytes = fuel_quantized::blocks_as_bytes(&blocks).to_vec();
+        let w_u32: Vec<u32> = bytes
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+            .collect();
+        let a: Vec<f32> = (0..m * k).map(|i| ((i as f32) * 0.013).cos()).collect();
+        let x = Tensor::from_f32(a, Shape::from_dims(&[m, k]), &Device::cpu()).unwrap();
+        let w = x
+            .const_u32_like(w_u32, Shape::from_dims(&[bytes.len() / 4]))
+            .unwrap();
+        let y = x.qmatmul(&w, qtype, k, n).expect("qmatmul");
+        let median = |d: &Device| -> f64 {
+            let _ = realize(&y, d);
+            let mut t: Vec<f64> = (0..REPS)
+                .map(|_| {
+                    let t0 = std::time::Instant::now();
+                    let out = realize(&y, d);
+                    std::hint::black_box(&out);
+                    t0.elapsed().as_secs_f64() * 1e3
+                })
+                .collect();
+            t.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            t[REPS / 2]
+        };
+        let cpu = median(&Device::cpu());
+        let gpu = median(dev);
+        println!(
+            "  timing {tag} m={m} k={k} n={n}: cpu {cpu:.3} ms, gpu {gpu:.3} ms (median of {REPS}, copies included), gpu/cpu = {:.2}",
+            gpu / cpu
+        );
+    }
+
     pub fn main() {
         let gpu = pick_gpu();
         let dev = new_device(gpu);
@@ -351,6 +403,13 @@ mod probe {
             isolated::<BlockQ4_0>("Q4_0", QuantType::Q4_0, shape, &dev);
             isolated::<BlockQ8_0>("Q8_0", QuantType::Q8_0, shape, &dev);
             isolated::<BlockQ4K>("Q4_K", QuantType::Q4_K_M, shape, &dev);
+        }
+
+        println!("timing (same one-op graph on the CPU device and the GPU device):");
+        for shape in [(1, 4096, 4096), (64, 4096, 4096)] {
+            timing::<BlockQ4_0>("Q4_0", QuantType::Q4_0, shape, &dev);
+            timing::<BlockQ8_0>("Q8_0", QuantType::Q8_0, shape, &dev);
+            timing::<BlockQ4K>("Q4_K", QuantType::Q4_K_M, shape, &dev);
         }
 
         let mut failed = false;

@@ -149,6 +149,7 @@ This documents the main changes to the `fuel` workspace.
 ### Added
 
 - `fuel-transformers/examples/gguf_resident_reach.rs` is device-generic (first argument `vulkan` or `cuda`; realizes through `pipelined_bridge::realize_one_as`) and prints the executor's arm counts and backlog feed per realize. Built with `--features dev-tools,cuda` it measured, on the RTX 4070 Laptop: bare one-op `QMatMul` graphs launch on CUDA in 9 of 9 cases; the loaded model is mixed (`QMatMul` launches Cuda/Cpu of 8: 4/4, 3/5, 3/5, 3/5 for Q4_0, Q8_0, Q4_K_M, Q6_K; 2 to 4 of 9 branches resolved to the CPU arm by the executor's own backlog); logits within ~2e-6 of the CPU run. The CUDA binding already carries a measured accuracy claim (row 128), so the Vulkan defect (GAP-393) does not recur.
+- `gguf_resident_reach` prints a `timing` section (the same one-op `qmatmul` graph on the CPU device and the GPU device, median of 7). Measured on Vulkan, `--release`, RTX 4070 Laptop, k = n = 4096, copies included (every realize re-uploads the weight): gpu/cpu is 0.93 / 1.61 / 4.73 for Q4_0 / Q8_0 / Q4_K at m=1 and 1.74 / 0.87 / 0.58 at m=64. The static placement prior is not a timing; resident-weight steady state and CUDA are not measured.
 - The executor feed is verified on CUDA: the ignored `bf16_decode_cuda_matches_cpu` now asserts the CUDA backlog is added to (1875 ns), retired exactly, and left `Some(0)` (no new `#[ignore]`).
 
 ### Not verified
