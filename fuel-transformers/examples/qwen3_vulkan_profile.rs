@@ -456,7 +456,11 @@ fn main() {
         fuel_dispatch::dispatch::BACKLOG_FEED_ENV
     );
     let (model, tokenizer, cfg) = load_model().expect("load_model");
-    let dev = fuel_tensor::vulkan_backend::new_device().expect("vulkan device");
+    let dev = fuel_tensor::vulkan_backend::new_device_from_env().expect("vulkan device");
+    {
+        let vk = fuel_tensor::vulkan_backend::as_device(&dev).expect("vulkan device");
+        println!("adapter: [{}] {}", vk.gpu_id, vk.device_name);
+    }
     // Diagnostic: `QWEN3_FEED_ZERO=1` registers a ZERO backlog on the device, so it reports `Some(0)` (an estimate, idle)
     // and the selector ranks by estimated completion time instead of the legacy load tier, with nothing queued.
     // Separates "the feed changes the selector's mode" from "the feed adds load".
