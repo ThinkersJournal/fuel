@@ -4590,7 +4590,7 @@ impl NodeHandle {
         // Validate the weight byte count matches [N, K/block_size] blocks.
         let expected_bytes =
             n * (k / quant_type.elements_per_block()) * quant_type.bytes_per_block();
-        let expected_u32_elems = expected_bytes / 4;
+        let expected_u32_elems = expected_bytes.div_ceil(4);
         assert_eq!(
             weight_bytes.shape().elem_count(),
             expected_u32_elems,

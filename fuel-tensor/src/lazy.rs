@@ -1083,7 +1083,7 @@ impl Tensor {
             .bt());
         }
         let expected_bytes = n * (k / block_size) * quant_type.bytes_per_block();
-        let expected_u32_elems = expected_bytes / 4;
+        let expected_u32_elems = expected_bytes.div_ceil(4);
         let actual_elems = weight_bytes.inner.shape().elem_count();
         if actual_elems != expected_u32_elems {
             return Err(fuel_ir::Error::Msg(format!(
