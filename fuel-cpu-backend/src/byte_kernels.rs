@@ -5450,7 +5450,10 @@ fn qmatmul_generic_f32<T: fuel_quantized::GgmlType>(
         ))
         .bt());
     }
-    if weight_bytes.len_bytes() != need_w {
+    // The weight is `u32` elements, so a byte count that is not a multiple of 4 (an odd `n` of Q8_0, 34-byte
+    // blocks) is stored rounded up; the block bytes are the leading `need_w` (ROADMAP row 170).
+    if weight_bytes.len_bytes() != need_w && weight_bytes.len_bytes() != need_w.next_multiple_of(4)
+    {
         return Err(Error::Msg(format!(
             "{name}: weight bytes={} doesn't match n={n} × k/block_size={blocks_per_row} × {bytes_per_block}",
             weight_bytes.len_bytes(),
@@ -5471,7 +5474,7 @@ fn qmatmul_generic_f32<T: fuel_quantized::GgmlType>(
     // Reinterpret the U32-typed weight bytes as `&[T]` blocks via
     // a safety-wrapper around `from_raw_parts`. The GGML block
     // types are `#[repr(C)]` POD layouts so the cast is sound.
-    let weight_view: &[T] = block_slice_from_bytes::<T>(name, weight_bytes.bytes())?;
+    let weight_view: &[T] = block_slice_from_bytes::<T>(name, &weight_bytes.bytes()[..need_w])?;
     let out_view: &mut [f32] = out.as_slice_mut()?;
     let act_per_batch = m * k;
     let out_per_batch = m * n;

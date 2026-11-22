@@ -56,3 +56,55 @@ fn a_weight_buffer_too_short_or_too_long_is_still_rejected() {
     );
     assert!(build(97, 100).is_err());
 }
+
+/// Row 170 ("kernel read"): the size check is not the only reader of the padded buffer. Realize an odd-N
+/// Q8_0 `qmatmul` on the CPU backend (no lowering: the fused node goes to the kernel the executor
+/// picks) with the weight stored the way the loader stores it, 3298 block bytes zero-padded to 825 `u32`,
+/// and compare with the exact dequantized product.
+#[test]
+fn odd_n_q8_0_realizes_on_cpu_and_matches_exact_dequant() {
+    use fuel_quantized::{BlockQ8_0, GgmlType};
+    use fuel_tensor::pipelined_bridge::realize_one_as;
+    let (k, n) = (32usize, 97usize);
+    let dev = Device::cpu();
+    let w_f32: Vec<f32> = (0..n * k)
+        .map(|i| ((i as f32) * 0.021).sin() * 0.7)
+        .collect();
+    let mut blocks = vec![BlockQ8_0::zeros(); n * (k / BlockQ8_0::BLCK_SIZE)];
+    BlockQ8_0::from_float(&w_f32, &mut blocks);
+    let mut bytes: Vec<u8> = unsafe {
+        std::slice::from_raw_parts(
+            blocks.as_ptr() as *const u8,
+            blocks.len() * std::mem::size_of::<BlockQ8_0>(),
+        )
+    }
+    .to_vec();
+    assert_eq!(bytes.len(), 3298);
+    bytes.resize(bytes.len().next_multiple_of(4), 0); // the loader's rounding up: 3300 bytes, 825 u32
+    let w_u32: Vec<u32> = bytes
+        .chunks_exact(4)
+        .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        .collect();
+    assert_eq!(w_u32.len(), 825);
+    let mut deq = vec![0f32; n * k];
+    BlockQ8_0::to_float(&blocks, &mut deq);
+
+    let a: Vec<f32> = (0..k).map(|i| ((i as f32) * 0.013).cos()).collect();
+    let x = Tensor::from_f32(a.clone(), Shape::from_dims(&[1, k]), &dev).unwrap();
+    let w = x.const_u32_like(w_u32, Shape::from_dims(&[825])).unwrap();
+    let y = x.qmatmul(&w, QuantType::Q8_0, k, n).unwrap();
+    let t = y.graph_tensor();
+    let graph = t.graph().clone();
+    let got = realize_one_as::<f32>(&graph, t.id(), &dev)
+        .unwrap_or_else(|e| panic!("odd-N Q8_0 realize failed: {e:?}"));
+    assert_eq!(got.len(), n);
+    for ni in 0..n {
+        let want: f32 = (0..k).map(|kk| a[kk] * deq[ni * k + kk]).sum();
+        let rel = (got[ni] - want).abs() / got[ni].abs().max(want.abs()).max(f32::MIN_POSITIVE);
+        assert!(
+            rel < 1e-4,
+            "row {ni}: got {}, want {want}, rel {rel}",
+            got[ni]
+        );
+    }
+}
