@@ -155,6 +155,7 @@ This documents the main changes to the `fuel` workspace.
 ### Added
 
 - `ops::matmul_dtype_oracle` in `fuel-cpu-backend`: f64 and f16 `MatMul` against a scalar f64 reference (non-square, batched, `m == 1`), with a sabotage sibling.
+- ARC-006 facade budget 67 -> 66 (`fuel::utils::has_mkl` is gone).
 - ROADMAP row 168 (f64 and f16 matmul through `onemkl`; provisional number, the other open branch also adds a 168: the second to merge renumbers), blocked on a consumer.
 
 ### Not verified
