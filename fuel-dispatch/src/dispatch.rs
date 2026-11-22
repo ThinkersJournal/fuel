@@ -7776,6 +7776,61 @@ pub fn backlog_estimate_ns(loc: DeviceLocation) -> Option<u64> {
         .and_then(|guard| guard.get(&loc).map(|slot| slot.load(Ordering::Relaxed)))
 }
 
+/// What one realize added to the per-device backlog, taken back out when the realize ends (ROADMAP row
+/// 158, the executor feed). The executor owns one for the length of a walk and calls [`Self::add`] for
+/// each kernel it submits to a GPU, with that node's compile-time estimate
+/// ([`crate::compiled::CompiledNode::est_ns`]); the guard's `Drop` subtracts exactly what was added, on
+/// the `Ok` path AND when an error unwinds the realize, so the backlog cannot leak.
+///
+/// Granularity, stated: work is counted from submit until the END OF THE REALIZE that submitted it, not
+/// until its fence signals. A realize ends by draining every device it used, so at its end the work has
+/// retired; within it the figure is an upper bound on what is still queued. What it is for: a second
+/// realize (multi-agent serving) resolving a branch while this one's work is outstanding.
+///
+/// A CPU location and a zero estimate add nothing: the CPU has no queue to estimate, and a device the
+/// executor cannot price must keep reporting NO estimate ([`backlog_estimate_ns`] `None`), never idle.
+#[derive(Debug, Default)]
+pub struct BacklogLedger {
+    added: Vec<(DeviceLocation, u64)>,
+}
+
+impl BacklogLedger {
+    /// An empty ledger.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add `ns` of estimated work to `loc`'s backlog and remember it for the `Drop` subtract.
+    pub fn add(&mut self, loc: DeviceLocation, ns: u64) {
+        if ns == 0 || matches!(loc, DeviceLocation::Cpu) {
+            return;
+        }
+        backlog_add_ns(loc, ns);
+        crate::optimizer_trace::global().record_backlog_added(ns);
+        match self.added.iter_mut().find(|(l, _)| *l == loc) {
+            Some((_, total)) => *total = total.saturating_add(ns),
+            None => self.added.push((loc, ns)),
+        }
+    }
+
+    /// What this ledger has added to `loc` and has outstanding (added minus subtracted).
+    pub fn outstanding_ns(&self, loc: DeviceLocation) -> u64 {
+        self.added
+            .iter()
+            .find(|(l, _)| *l == loc)
+            .map_or(0, |(_, ns)| *ns)
+    }
+}
+
+impl Drop for BacklogLedger {
+    fn drop(&mut self) {
+        for (loc, ns) in self.added.drain(..) {
+            backlog_sub_ns(loc, ns);
+            crate::optimizer_trace::global().record_backlog_retired(ns);
+        }
+    }
+}
+
 /// Process-wide [`KernelBindingTable`]. Initialized on first access
 /// with the CPU dispatch wrappers from [`register_cpu_kernels`].
 /// Other backends extend it when they register.
@@ -13106,6 +13161,109 @@ mod tests {
         let other = DeviceLocation::Vulkan { gpu_id: 9_002 };
         backlog_sub_ns(other, 5);
         assert_eq!(backlog_estimate_ns(other), None);
+    }
+
+    // ---- BacklogLedger (ROADMAP row 158, the executor feed). Each test uses its own `gpu_id` so the
+    // process-wide table cannot be shared with another test; each clause has a sabotage sibling.
+
+    /// The guard's Drop subtracts EXACTLY what it added: after it the device reads Some(0) (fed, now idle),
+    /// and while it lives the figure is the sum added.
+    #[test]
+    fn ledger_drop_subtracts_exactly_what_it_added() {
+        let loc = DeviceLocation::Vulkan { gpu_id: 9_101 };
+        {
+            let mut ledger = BacklogLedger::new();
+            ledger.add(loc, 1_000);
+            ledger.add(loc, 500);
+            assert_eq!(backlog_estimate_ns(loc), Some(1_500));
+            assert_eq!(ledger.outstanding_ns(loc), 1_500);
+        }
+        assert_eq!(
+            backlog_estimate_ns(loc),
+            Some(0),
+            "a realize that ended leaves its device idle (0), not stuck and not unknown"
+        );
+    }
+
+    /// Sabotage sibling of the above: a ledger that is LEAKED (never dropped) leaves the backlog up. Proves
+    /// the balance in the test above comes from `Drop`, not from the adds cancelling by themselves.
+    #[test]
+    fn a_leaked_ledger_leaves_the_backlog_up() {
+        let loc = DeviceLocation::Vulkan { gpu_id: 9_102 };
+        let mut ledger = BacklogLedger::new();
+        ledger.add(loc, 700);
+        std::mem::forget(ledger);
+        assert_eq!(
+            backlog_estimate_ns(loc),
+            Some(700),
+            "without the Drop subtract the work stays counted: the guard is what balances it"
+        );
+    }
+
+    /// An error (here a panic standing in for any early `?` return) unwinding the realize still takes the
+    /// work back out: the guard is not an Ok-path-only step.
+    #[test]
+    fn ledger_balances_when_the_realize_unwinds() {
+        let loc = DeviceLocation::Vulkan { gpu_id: 9_103 };
+        let r = std::panic::catch_unwind(|| {
+            let mut ledger = BacklogLedger::new();
+            ledger.add(loc, 4_000);
+            assert_eq!(backlog_estimate_ns(loc), Some(4_000));
+            panic!("a node failed mid-walk");
+        });
+        assert!(r.is_err(), "the closure must have panicked");
+        assert_eq!(backlog_estimate_ns(loc), Some(0));
+        // And an early `?` return, the other way a walk ends in an error.
+        fn walk(loc: DeviceLocation) -> std::result::Result<(), &'static str> {
+            let mut ledger = BacklogLedger::new();
+            ledger.add(loc, 250);
+            let failed: std::result::Result<(), &'static str> = Err("node failed");
+            failed?;
+            drop(ledger);
+            Ok(())
+        }
+        let loc2 = DeviceLocation::Vulkan { gpu_id: 9_104 };
+        assert!(walk(loc2).is_err());
+        assert_eq!(backlog_estimate_ns(loc2), Some(0));
+    }
+
+    /// Two realizes on one device (multi-agent serving): each takes back only its own work, so the second
+    /// one's resolver sees the first one's outstanding backlog and nothing it did not add.
+    #[test]
+    fn concurrent_ledgers_each_subtract_only_their_own() {
+        let loc = DeviceLocation::Vulkan { gpu_id: 9_105 };
+        let mut first = BacklogLedger::new();
+        first.add(loc, 3_000);
+        {
+            let mut second = BacklogLedger::new();
+            second.add(loc, 200);
+            assert_eq!(backlog_estimate_ns(loc), Some(3_200));
+        }
+        assert_eq!(
+            backlog_estimate_ns(loc),
+            Some(3_000),
+            "the second realize ending must leave the first one's work counted"
+        );
+        drop(first);
+        assert_eq!(backlog_estimate_ns(loc), Some(0));
+    }
+
+    /// The CPU has no queue to estimate and a zero estimate is no estimate: neither may create a slot,
+    /// because a device nobody priced must keep reporting NO estimate (`None`), never a fabricated idle.
+    /// Positive control: a real add on the same ledger does create one.
+    #[test]
+    fn ledger_never_feeds_cpu_or_a_zero_estimate() {
+        let unpriced = DeviceLocation::Vulkan { gpu_id: 9_106 };
+        let mut ledger = BacklogLedger::new();
+        ledger.add(DeviceLocation::Cpu, 5_000);
+        ledger.add(unpriced, 0);
+        assert_eq!(backlog_estimate_ns(DeviceLocation::Cpu), None);
+        assert_eq!(backlog_estimate_ns(unpriced), None);
+        assert_eq!(ledger.outstanding_ns(DeviceLocation::Cpu), 0);
+        // Positive control: the same ledger, a real estimate on a real device.
+        let priced = DeviceLocation::Vulkan { gpu_id: 9_107 };
+        ledger.add(priced, 10);
+        assert_eq!(backlog_estimate_ns(priced), Some(10));
     }
 
     #[test]

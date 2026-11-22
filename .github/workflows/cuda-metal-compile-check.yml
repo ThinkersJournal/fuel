@@ -38,6 +38,12 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      - name: Print CARGO_HOME and RUSTUP_HOME (board 429 stage 2 read; no toolchain is installed by this job)
+        shell: powershell
+        run: |
+          "CARGO_HOME=$env:CARGO_HOME"
+          "RUSTUP_HOME=$env:RUSTUP_HOME"
+          "USERPROFILE=$env:USERPROFILE"
       - name: Toolchain and CUDA visible to this account (fails loudly)
         shell: powershell
         run: |

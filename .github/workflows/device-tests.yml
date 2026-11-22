@@ -53,6 +53,12 @@ jobs:
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Print CARGO_HOME and RUSTUP_HOME (board 429 stage 2 read; no toolchain is installed by this job)
+        shell: pwsh
+        run: |
+          "CARGO_HOME=$env:CARGO_HOME"
+          "RUSTUP_HOME=$env:RUSTUP_HOME"
+          "USERPROFILE=$env:USERPROFILE"
       - name: Build (forge capped at 4 threads, as cuda-metal-compile-check does)
         shell: pwsh
         run: >
@@ -76,6 +82,12 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Print CARGO_HOME and RUSTUP_HOME (board 429 stage 2 read; no toolchain is installed by this job)
+        shell: pwsh
+        run: |
+          "CARGO_HOME=$env:CARGO_HOME"
+          "RUSTUP_HOME=$env:RUSTUP_HOME"
+          "USERPROFILE=$env:USERPROFILE"
       - name: Build
         shell: pwsh
         run: >

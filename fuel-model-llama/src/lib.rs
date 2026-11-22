@@ -11597,6 +11597,10 @@ mod generate_tests {
         let vk_device: Device = vk_backend.into();
         // The row-158 arm-choice criterion runs on this same device at the end of this test.
         let vk_device_for_backlog = vk_device.clone();
+        // ROW 158, the executor feed: this test's own Vulkan realizes must add real estimated work to the
+        // device backlog and take all of it back out when each realize ends.
+        let vk_loc_for_feed = vk_device.location();
+        let feed_before = fuel_dispatch::optimizer_trace::snapshot();
 
         let cfg = LlamaConfig {
             vocab_size: 16,
@@ -11672,6 +11676,33 @@ mod generate_tests {
             );
         }
 
+        // CRITERION (row 158, executor feed; written before the first run): the two Vulkan realizes above
+        // (prefill + decode) are the ONLY realizes this process ran on the Vulkan device since
+        // `feed_before`, so (1) the executor's own feed added a positive estimate (`backlog_added_ns > 0`:
+        // the feed fired, it is not the injected figure, which the next call does), (2) every added
+        // nanosecond was taken back out (`retired == added`: the guard balances), and (3) the device then
+        // reports a FED-AND-IDLE `Some(0)`, not `None` (never fed) and not a stuck positive figure.
+        // SHOWS: a real Vulkan realize feeds and drains the backlog exactly. DOES NOT SHOW: that the
+        // estimate is accurate (static composite), or any pick improvement under real contention.
+        // Run alone by name (see the run command above): another realize in the process would move the
+        // counters and break the equality for a reason that is not a leak.
+        let feed = fuel_dispatch::optimizer_trace::snapshot().since(&feed_before);
+        assert!(
+            feed.backlog_added_ns > 0,
+            "a Vulkan forward must add estimated work to the backlog: added {} ns",
+            feed.backlog_added_ns
+        );
+        assert_eq!(
+            feed.backlog_retired_ns, feed.backlog_added_ns,
+            "every nanosecond the realizes added must be taken back out: added {} ns, retired {} ns",
+            feed.backlog_added_ns, feed.backlog_retired_ns
+        );
+        assert_eq!(
+            fuel_dispatch::dispatch::backlog_estimate_ns(vk_loc_for_feed),
+            Some(0),
+            "after its realizes end the Vulkan device is fed-and-idle (Some(0)), not None and not stuck"
+        );
+
         assert_vulkan_arm_choice_follows_injected_backlog(vk_device_for_backlog);
     }
 
@@ -11685,6 +11716,15 @@ mod generate_tests {
     ///      arm-0 estimated completion), at least one resolved;
     ///   C. backlog back to 0 ns -> NO branch resolves to arm 1 again.
     /// The arm counts are the executor's own `optimizer_trace` counters (bumped in `resolve_branch`).
+    ///
+    /// AMENDED AFTER THE FIRST GPU RUN WITH THE EXECUTOR FEED (2026-11-21; the text above is the
+    /// pre-registered one): once the executor adds its own in-flight work to the backlog (this branch),
+    /// phases A and C no longer run on a device with exactly the injected backlog: later branches of a
+    /// realize see the kernels already submitted. The run measured `arm_chosen [32, 3, 0, 0]` in A
+    /// (35 branches; backlog_added 1431 ns), so 3 branches chose arm 1 on the executor's own estimate.
+    /// A and C now require arm 0 to be chosen MORE OFTEN than arm 1 (the majority follows an idle
+    /// device); B is unchanged and is the discriminator (1 hour dominates any in-realize backlog:
+    /// every branch arm 1, none arm 0). The 32:3 split is one observation, not a calibrated bound.
     ///
     /// SHOWS: the arm the executor chose flips with the injected backlog and back, and the CPU arm's
     /// result equals the CPU reference. DOES NOT SHOW: a backlog the executor measured itself (it is
@@ -11771,10 +11811,9 @@ mod generate_tests {
         let a = optimizer_trace::snapshot().since(&before_a);
         check_logits("A (backlog 0)", &logits_a);
         assert!(a.branches_resolved() > 0, "A: no branch resolved: {a:?}");
-        assert_eq!(
-            a.arm_chosen[0],
-            a.branches_resolved(),
-            "A (backlog 0): every branch must resolve to arm 0; {a:?}"
+        assert!(
+            a.arm_chosen[0] > a.arm_chosen[1],
+            "A (backlog 0): arm 0 must be chosen more often than arm 1 (the executor's own in-realize              backlog may move a few branches); {a:?}"
         );
 
         backlog_add_ns(loc, HOUR_NS);
@@ -11799,10 +11838,9 @@ mod generate_tests {
         let c = optimizer_trace::snapshot().since(&before_c);
         check_logits("C (backlog back to 0)", &logits_c);
         assert!(c.branches_resolved() > 0, "C: no branch resolved: {c:?}");
-        assert_eq!(
-            c.arm_chosen[0],
-            c.branches_resolved(),
-            "C (backlog back to 0): every branch must resolve to arm 0; {c:?}"
+        assert!(
+            c.arm_chosen[0] > c.arm_chosen[1],
+            "C (backlog back to 0): arm 0 must be chosen more often than arm 1; {c:?}"
         );
         eprintln!(
             "backlog phases: A arms {:?} / B arms {:?} / C arms {:?}",

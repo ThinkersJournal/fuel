@@ -65,6 +65,13 @@ pub struct CompiledNode {
     /// Op-specific parameters. Most ops use `OpParams::None`;
     /// reductions / conv / slice carry their config here.
     pub op_params: OpParams,
+    /// Estimated cost of ONE launch of this kernel in nanoseconds, built once when the node is compiled
+    /// (the binding entry's static cost through the backend's throughput prior, the same composite the
+    /// route picker ranks arms with). `0` means "no estimate": a CPU node, or no cost function or
+    /// capabilities for its backend. The executor adds it to the device's backlog when the node is
+    /// submitted to a GPU ([`crate::dispatch::BacklogLedger`], ROADMAP row 158); a `0` adds nothing, so a
+    /// device the executor cannot price is never reported idle.
+    pub est_ns: u64,
 }
 
 impl CompiledNode {
@@ -271,7 +278,44 @@ pub fn compile_node(
         kernel,
         caps,
         op_params,
+        est_ns: 0,
     })
+}
+
+/// The static estimate for one launch of `op` on `backend`, in nanoseconds: the first-registered binding's
+/// cost function (the entry [`compile_node`] picks) through the backend's throughput prior
+/// ([`crate::ranker::cost::default_backend_rates`]), the SAME composite the route picker ranks arms with
+/// when the Judge has no measurement for the cell. A cost is never invented: `0` for a CPU node (no queue
+/// to estimate), for no binding, and for a backend with no registered capabilities.
+///
+/// Static only, on purpose: the compile path does not query the Judge per node, so where the Judge HAS a
+/// measured latency for an arm the picker compares that measurement against a backlog in static units.
+/// That mismatch is the estimate's error bar, stated in ROADMAP row 158.
+pub fn estimate_static_ns(
+    op: OpKind,
+    dtypes: &[DType],
+    shapes: &[fuel_ir::Shape],
+    backend: BackendId,
+    op_params: &OpParams,
+    bindings: &KernelBindingTable,
+) -> u64 {
+    if backend == BackendId::Cpu {
+        return 0;
+    }
+    let Some(entry) = bindings.lookup_alternatives(op, dtypes, backend).first() else {
+        return 0;
+    };
+    let registry = crate::dispatch::global_registry();
+    let Some(caps) = registry.backends().iter().find(|c| c.backend_id == backend) else {
+        return 0;
+    };
+    let cost = match entry.cost_expr {
+        Some(expr) => crate::fkc::cost_estimate(expr, op, shapes, dtypes, op_params)
+            .unwrap_or_else(|_| (entry.cost)(shapes, dtypes, op_params, caps)),
+        None => (entry.cost)(shapes, dtypes, op_params, caps),
+    };
+    let (compute_rate, bandwidth) = crate::ranker::cost::default_backend_rates(backend);
+    crate::ranker::cost::composite_ns(&cost, compute_rate, bandwidth)
 }
 
 /// The `(kernel_source, kernel_revision_hash)` identity of the kernel the

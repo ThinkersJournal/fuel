@@ -24,7 +24,10 @@ the `OpParams::QMatMul.quant_type` discriminant:
 - **Q8_0** → `dequantize_q8_0` to an f32 scratch buffer, then `matmul_f32_bytes` —
   `VulkanBackend::matmul_q8_0_bytes`.
 
-Other `QuantType`s (Q4_1 / Q5_* / Q2K / Q3K / Q5K / Q6K / Q8_1) are not yet wired — the wrapper
+- **Q6K** → the fused `qmatvec_q6_k` gemv for every row (ROADMAP row 119; a prefill re-reads the weight once per row) —
+  `VulkanBackend::matmul_q6_k_bytes`.
+
+Other `QuantType`s (Q4_1 / Q5_* / Q2K / Q3K / Q5K / Q8_1) are not yet wired — the wrapper
 returns a typed `Err` so the route picker falls back to CPU (never a panic).
 
 **As-built binding model — one wrapper `KernelRef` at one key (route-picking is *internal*).** The
@@ -156,10 +159,10 @@ cost:
 precision:
   bit_stable_on_same_hardware: false  # f32 accumulate over a scheduler-dependent reduction: Q4_0 subgroup/tiled reduction; Q4_K_M/Q8_0 route through the matmul_f32 GEMM (FADD/subgroup order not pinned)
   max_ulp: ~
-  max_relative: ~
-  max_absolute: ~
+  max_relative: 0.001                 # MEASURED (fuel-vulkan-dev-tools check-vulkan-accuracy): worst rel 1.6e-4 over 152 cases; see notes
+  max_absolute: 0.001                 # MEASURED: worst abs 4.7e-4 (q8_0 rows=5 n=200 k=8192) at unit-scale inputs; see notes
   audited: true                       # audited none(reason): non-associative f32 reduction, scheduler-dependent order (§4.8) — the corrected posture (retired VULKAN_QMATMUL_PRECISION over-claimed bit-stable)
-  notes: "f32 accumulate over dequantized GGML blocks; Q4_0 fused subgroup/tiled reduction, Q4_K_M/Q8_0 dequant-then-matmul_f32; NOT bit-stable (scheduler-dependent reduction order). The only quant loss is the pre-baked weight quantization (a QuantType property, audited at model level), not the kernel's contribution."
+  notes: "[evidence: accuracy MEASURED, not derived. The registered qmatmul_vk binding was driven through VulkanInvoker over 11 shapes (rows 1 to 140, n up to 512, k up to 8192, k off the 64-column chunk included; Q6_K only where k is a multiple of 256) x 4 seeds x Q4_0 / Q8_0 / Q4_K / Q6_K (120 + 32 cases), uniform [-1, 1) activations and weights, against an f64 product of the f32 activations and the dequantized weights (the CUDA claim uses the same cases). Worst |out-ref| = 4.73e-4 (q8_0 rows=5 n=200 k=8192), worst |out-ref|/max(|ref|,1.0) = 1.6e-4; Q6_K alone worst 2.0e-5 abs, 1.1e-5 rel; identical worst values on the RTX 4070 Laptop and the Radeon 610M. The claim is 1e-3 for both (2.1x headroom on abs, 6x on rel); it is the ceiling of the default placement bound, so the abs headroom is thin and grows tighter with k. Not evidence about k above 8192, Q6_K with k off a multiple of 256, or inputs off unit scale. Repeatability (bit_stable) is separately NOT claimed. The claim is what lets the default placement rule consider this kernel against the CPU kernel on cost (GAP-393).] f32 accumulate over dequantized GGML blocks; Q4_0 fused subgroup/tiled reduction, Q4_K_M/Q8_0 dequant-then-matmul_f32; NOT bit-stable (scheduler-dependent reduction order). The only quant loss is the pre-baked weight quantization (a QuantType property, audited at model level), not the kernel's contribution."
 
 determinism: nondeterministic
 ```

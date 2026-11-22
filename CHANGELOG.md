@@ -144,6 +144,55 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.49.11 - 2026-11-22 (PM-allocated; rows 125 part 2 live check, 158 executor feed, 124 step 3; board 429 stage 2)
+
+### Added
+
+- `fuel-tensor/tests/vulkan_bridge_realize_live.rs`: a live check of `vulkan_backend::new_device_by_identity` and `new_device_from_env` folded into the existing ignored `mul_add_realize_on_vulkan_matches_reference` (no new `#[ignore]`). Measured with `gpu-run`, `--features vulkan`, this box (RTX 4070 Laptop + Radeon 610M), run alone: each adapter reopens at its ordinal; `FUEL_VULKAN_DEVICE` set to the 610M's UUID selects the 610M (the non-default adapter), a PCI address selects the 4070, a bad value errors naming the variable.
+- A step printing `CARGO_HOME`, `RUSTUP_HOME` and `USERPROFILE` in each of the four self-hosted GPU jobs (`checkpoint-tests`, `cuda-metal-compile-check`, `device-tests` cuda and vulkan), the prerequisite for board 429 stage 2. None of the four installs a toolchain (`dtolnay/rust-toolchain` appears only in hosted `rust-ci` jobs).
+
+### Not verified
+
+- The new print step on the runner (not yet run); any CUDA constructor reading `FUEL_CUDA_DEVICE`; two identical cards; `--features cuda vulkan`.
+
+### Row 158 executor feed, Vulkan slice
+
+### Added
+
+- The executor feeds the device backlog from its own submissions (ROADMAP row 158): `CompiledNode.est_ns` (`compiled::estimate_static_ns`), `dispatch::BacklogLedger` (RAII; `Drop` subtracts on Ok and unwind; CPU and 0 ns never added), `pipelined::feed_backlog` in both realize walks, and `optimizer_trace` counters `backlog_added_ns` / `backlog_retired_ns`. Work counts from submit to the end of the realize (an upper bound inside it); the estimate is static. 5 ledger tests, each clause sabotaged red.
+- Measured with `gpu-run`, `--features vulkan`, `forward_with_kv_context_vulkan_matches_cpu`, 2 runs: added 1431 ns > 0, retired == added, device `Some(0)` after.
+
+### Changed
+
+- The injected-backlog phases A and C of that test now require arm 0 chosen more often than arm 1 (measured `[32, 3]` of 35) instead of every branch arm 0, because the real feed puts in-flight work in the backlog during a realize; phase B (1 h, all arm 1) is unchanged.
+
+### Not verified
+
+- CUDA (not built; `cfg(cuda)` is uncompiled by hosted CI); a real model; CPU-versus-GPU arm timing; that the 3 arm-1 choices are correct under a measured completion time.
+
+### Row 124 step 3: a loaded model's QMatMul places on Vulkan (GAP-393)
+
+### Added
+
+- `fuel-transformers/examples/gguf_resident_reach.rs` (ROADMAP row 124 step 3): realizes a loaded, resident-quantized (Q4_0, Q8_0, Q4_K, Q6_K) synthetic llama, and bare one-op graphs, on a Vulkan device and prints which backend launched each `QMatMul`, plus the binding table, capability registry and cost/precision of the registered bindings. Before the fix every `QMatMul` ran on the CPU in every format and on both adapters while other ops ran on Vulkan (GAP-393).
+- Vulkan `QMatMul` accuracy claim (the cause of GAP-393): `QMatMul` joins `seed_vulkan_matmul_accuracy` (152 cases, Q4_0 / Q8_0 / Q4_K / Q6_K; worst abs 4.7e-4, rel 1.6e-4, identical on the RTX 4070 Laptop and the Radeon 610M); claim 1e-3 / 1e-3 in `vulkan/qmatmul.fkc.md`, `QMATMUL_F32_CLAIM`, and 2 records in `fkc-verified-ledger.json` written by the project's merging writer (the file is re-sorted and the other 8 records refreshed: a noisy diff, 2 new records as data). The default accuracy-preference filter had been dropping the unclaimed Vulkan binding in favour of the bit-stable CPU kernel.
+- `vulkan_claims_match_contracts.rs`: the claim test covers `qmatmul_vk` (5 claims) and `the_vulkan_qmatmul_binding_can_win_default_placement` (red on the unclaimed contract).
+- `docs/gaps.md`: GAP-393, opened and closed (Vulkan).
+
+### Changed
+
+- `fuel-dispatch`: feature `vulkan` now also enables `dep:fuel-quantized` (the Vulkan accuracy seeder reuses the CUDA `QMatMul` measurement, whose module is now built for `cuda` or `vulkan` with `dev-tools`); `accuracy_qmatmul::measure_qmatmul_formats` adds an opt-in Q6_K case, `measure_qmatmul` (CUDA) is unchanged.
+- `vulkan/qmatmul.fkc.md`: the body no longer says Q6K is not wired (it has the `qmatvec_q6_k` route, row 119).
+- `fuel-transformers/tests/gguf_resident_quantized.rs`: its synthetic-GGUF helpers moved to `tests/common/gguf_synth.rs`, shared with the example (the 5 tests are unchanged and green).
+
+### Measured
+
+- `gpu-run`, `--features dev-tools,vulkan`, this box: all 8 `QMatMul` launches of the loaded model on Vulkan for Q4_0, Q8_0, Q4_K_M and Q6_K (before: all on the CPU) on the branch without the executor feed; with the executor feed of this change merged in, 7 of the 8 ran on Vulkan and 1 on the CPU (the executor resolved 1 of 9 branches to arm 1 under its own measured backlog, matching the single CPU launch; that it is the same node is not shown), so the loaded model's QMatMuls reach the GPU by default and the load-aware picker may move one off it; logits within ~2e-6 of the CPU run; bare graphs up to 64x4096x4096 also on Vulkan.
+
+### Not verified
+
+- CUDA placement of a loaded model (not run; `cfg(cuda)` is uncompiled by hosted CI and the CUDA edit here is a feature gate); a real GGUF; a decode loop; that Vulkan is faster than the CPU kernel for these shapes; the claim's headroom is 2.1x on abs at k = 8192.
+
 ## v0.49.10 - 2026-11-21 (PM-allocated; row 125 part 2)
 
 ### Added

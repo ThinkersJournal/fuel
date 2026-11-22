@@ -12852,542 +12852,6 @@
     }
   },
   {
-    "kernel_ref": "vulkan-slang",
-    "backend": "Vulkan",
-    "dtypes": [
-      "F32",
-      "F32",
-      "F32"
-    ],
-    "kernel_revision_hash": 18371565327335149448,
-    "claim": "max_absolute",
-    "result": "pass",
-    "verified_at": "epoch:1792681424",
-    "protocol_version": 1,
-    "evidence": {
-      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
-      "bound": 0.001,
-      "cases": [
-        {
-          "abs": 5.250745090279452e-6,
-          "case": "m=1 n=1024 k=1024",
-          "rel": 2.805220534122233e-6
-        },
-        {
-          "abs": 8.838332234972768e-6,
-          "case": "m=1 n=3072 k=1024",
-          "rel": 3.787209692518445e-6
-        },
-        {
-          "abs": 0.000010909417881066474,
-          "case": "m=1 n=1024 k=3072",
-          "rel": 4.757237434205308e-6
-        },
-        {
-          "abs": 9.869502875403668e-6,
-          "case": "m=1 n=8192 k=1024",
-          "rel": 3.76101445453969e-6
-        },
-        {
-          "abs": 9.842032213214225e-6,
-          "case": "m=1 n=64 k=4096",
-          "rel": 3.2976695482835738e-6
-        },
-        {
-          "abs": 0.00003855901999827438,
-          "case": "m=4 n=1024 k=1024",
-          "rel": 0.00001415942720939256
-        },
-        {
-          "abs": 0.000052461654519220247,
-          "case": "m=16 n=3072 k=1024",
-          "rel": 0.000023159624774393706
-        },
-        {
-          "abs": 0.0001010165498769311,
-          "case": "m=31 n=512 k=2048",
-          "rel": 0.00004081988815585191
-        },
-        {
-          "abs": 0.0000484268298492907,
-          "case": "m=32 n=1024 k=1024",
-          "rel": 0.00002066587120452823
-        },
-        {
-          "abs": 0.00007106863859007717,
-          "case": "m=64 n=3072 k=1024",
-          "rel": 0.000027241252865906063
-        },
-        {
-          "abs": 0.00023245422595152831,
-          "case": "m=127 n=1024 k=4096",
-          "rel": 0.00008771322202960619
-        },
-        {
-          "abs": 0.00005074673318006262,
-          "case": "m=21 n=1024 k=1024",
-          "rel": 0.00001969704030102548
-        }
-      ],
-      "harness": "board-240/seed_vulkan_matmul_accuracy",
-      "input_range": "uniform [-1, 1)",
-      "measured_worst": 0.00023245422595152831,
-      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
-      "op": "MatMul",
-      "reference": "f64 host matmul of the same f32 inputs"
-    }
-  },
-  {
-    "kernel_ref": "vulkan-slang",
-    "backend": "Vulkan",
-    "dtypes": [
-      "F32",
-      "F32",
-      "F32"
-    ],
-    "kernel_revision_hash": 18371565327335149448,
-    "claim": "max_relative",
-    "result": "pass",
-    "verified_at": "epoch:1792681424",
-    "protocol_version": 1,
-    "evidence": {
-      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
-      "bound": 0.001,
-      "cases": [
-        {
-          "abs": 5.250745090279452e-6,
-          "case": "m=1 n=1024 k=1024",
-          "rel": 2.805220534122233e-6
-        },
-        {
-          "abs": 8.838332234972768e-6,
-          "case": "m=1 n=3072 k=1024",
-          "rel": 3.787209692518445e-6
-        },
-        {
-          "abs": 0.000010909417881066474,
-          "case": "m=1 n=1024 k=3072",
-          "rel": 4.757237434205308e-6
-        },
-        {
-          "abs": 9.869502875403668e-6,
-          "case": "m=1 n=8192 k=1024",
-          "rel": 3.76101445453969e-6
-        },
-        {
-          "abs": 9.842032213214225e-6,
-          "case": "m=1 n=64 k=4096",
-          "rel": 3.2976695482835738e-6
-        },
-        {
-          "abs": 0.00003855901999827438,
-          "case": "m=4 n=1024 k=1024",
-          "rel": 0.00001415942720939256
-        },
-        {
-          "abs": 0.000052461654519220247,
-          "case": "m=16 n=3072 k=1024",
-          "rel": 0.000023159624774393706
-        },
-        {
-          "abs": 0.0001010165498769311,
-          "case": "m=31 n=512 k=2048",
-          "rel": 0.00004081988815585191
-        },
-        {
-          "abs": 0.0000484268298492907,
-          "case": "m=32 n=1024 k=1024",
-          "rel": 0.00002066587120452823
-        },
-        {
-          "abs": 0.00007106863859007717,
-          "case": "m=64 n=3072 k=1024",
-          "rel": 0.000027241252865906063
-        },
-        {
-          "abs": 0.00023245422595152831,
-          "case": "m=127 n=1024 k=4096",
-          "rel": 0.00008771322202960619
-        },
-        {
-          "abs": 0.00005074673318006262,
-          "case": "m=21 n=1024 k=1024",
-          "rel": 0.00001969704030102548
-        }
-      ],
-      "harness": "board-240/seed_vulkan_matmul_accuracy",
-      "input_range": "uniform [-1, 1)",
-      "measured_worst": 0.00008771322202960619,
-      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
-      "op": "MatMul",
-      "reference": "f64 host matmul of the same f32 inputs"
-    }
-  },
-  {
-    "kernel_ref": "vulkan-slang",
-    "backend": "Vulkan",
-    "dtypes": [
-      "F32",
-      "F32"
-    ],
-    "kernel_revision_hash": 12504822457066021896,
-    "claim": "max_absolute",
-    "result": "pass",
-    "verified_at": "epoch:1792681424",
-    "protocol_version": 1,
-    "evidence": {
-      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
-      "bound": 0.00001,
-      "cases": [
-        {
-          "abs": 9.017112878595412e-8,
-          "case": "rows=1 cols=1024",
-          "rel": 7.315808559986447e-8
-        },
-        {
-          "abs": 1.404594114351454e-7,
-          "case": "rows=16 cols=1024",
-          "rel": 1.0345817673205189e-7
-        },
-        {
-          "abs": 1.994157832196919e-7,
-          "case": "rows=21 cols=1024",
-          "rel": 1.4021331962202646e-7
-        },
-        {
-          "abs": 8.065948131630307e-8,
-          "case": "rows=1 cols=3072",
-          "rel": 7.08380244304745e-8
-        },
-        {
-          "abs": 1.5595047231364845e-7,
-          "case": "rows=8 cols=128",
-          "rel": 1.1044125730722722e-7
-        },
-        {
-          "abs": 1.7958199505230257e-7,
-          "case": "rows=16 cols=128",
-          "rel": 1.265861582565764e-7
-        },
-        {
-          "abs": 2.288810285744347e-7,
-          "case": "rows=448 cols=128",
-          "rel": 1.515588338817796e-7
-        },
-        {
-          "abs": 1.0370724079500349e-7,
-          "case": "rows=1 cols=4096",
-          "rel": 8.316005178754562e-8
-        },
-        {
-          "abs": 1.7705947930046761e-7,
-          "case": "rows=32 cols=64",
-          "rel": 1.2210309327687396e-7
-        }
-      ],
-      "harness": "board-240/seed_vulkan_matmul_accuracy",
-      "input_range": "uniform [-2, 2)",
-      "measured_worst": 2.288810285744347e-7,
-      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
-      "op": "RmsNormLastDim",
-      "reference": "f64 host x / sqrt(mean(x^2) + eps)"
-    }
-  },
-  {
-    "kernel_ref": "vulkan-slang",
-    "backend": "Vulkan",
-    "dtypes": [
-      "F32",
-      "F32"
-    ],
-    "kernel_revision_hash": 12504822457066021896,
-    "claim": "max_relative",
-    "result": "pass",
-    "verified_at": "epoch:1792681424",
-    "protocol_version": 1,
-    "evidence": {
-      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
-      "bound": 0.00001,
-      "cases": [
-        {
-          "abs": 9.017112878595412e-8,
-          "case": "rows=1 cols=1024",
-          "rel": 7.315808559986447e-8
-        },
-        {
-          "abs": 1.404594114351454e-7,
-          "case": "rows=16 cols=1024",
-          "rel": 1.0345817673205189e-7
-        },
-        {
-          "abs": 1.994157832196919e-7,
-          "case": "rows=21 cols=1024",
-          "rel": 1.4021331962202646e-7
-        },
-        {
-          "abs": 8.065948131630307e-8,
-          "case": "rows=1 cols=3072",
-          "rel": 7.08380244304745e-8
-        },
-        {
-          "abs": 1.5595047231364845e-7,
-          "case": "rows=8 cols=128",
-          "rel": 1.1044125730722722e-7
-        },
-        {
-          "abs": 1.7958199505230257e-7,
-          "case": "rows=16 cols=128",
-          "rel": 1.265861582565764e-7
-        },
-        {
-          "abs": 2.288810285744347e-7,
-          "case": "rows=448 cols=128",
-          "rel": 1.515588338817796e-7
-        },
-        {
-          "abs": 1.0370724079500349e-7,
-          "case": "rows=1 cols=4096",
-          "rel": 8.316005178754562e-8
-        },
-        {
-          "abs": 1.7705947930046761e-7,
-          "case": "rows=32 cols=64",
-          "rel": 1.2210309327687396e-7
-        }
-      ],
-      "harness": "board-240/seed_vulkan_matmul_accuracy",
-      "input_range": "uniform [-2, 2)",
-      "measured_worst": 1.515588338817796e-7,
-      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
-      "op": "RmsNormLastDim",
-      "reference": "f64 host x / sqrt(mean(x^2) + eps)"
-    }
-  },
-  {
-    "kernel_ref": "vulkan-slang",
-    "backend": "Vulkan",
-    "dtypes": [
-      "F32",
-      "F32"
-    ],
-    "kernel_revision_hash": 7678599190885483221,
-    "claim": "max_absolute",
-    "result": "pass",
-    "verified_at": "epoch:1792681424",
-    "protocol_version": 1,
-    "evidence": {
-      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
-      "bound": 0.00001,
-      "cases": [
-        {
-          "abs": 1.2010994837607925e-8,
-          "case": "rows=1 cols=22",
-          "rel": 1.2010994837607925e-8
-        },
-        {
-          "abs": 5.827911847555711e-8,
-          "case": "rows=16 cols=22",
-          "rel": 5.827911847555711e-8
-        },
-        {
-          "abs": 1.0619372416142973e-8,
-          "case": "rows=16 cols=128",
-          "rel": 1.0619372416142973e-8
-        },
-        {
-          "abs": 1.4112424666368195e-9,
-          "case": "rows=28 cols=1024",
-          "rel": 1.4112424666368195e-9
-        },
-        {
-          "abs": 7.21463026473467e-10,
-          "case": "rows=16 cols=2048",
-          "rel": 7.21463026473467e-10
-        },
-        {
-          "abs": 3.417362274237001e-10,
-          "case": "rows=8 cols=4096",
-          "rel": 3.417362274237001e-10
-        },
-        {
-          "abs": 1.7681011190741336e-10,
-          "case": "rows=1 cols=8192",
-          "rel": 1.7681011190741336e-10
-        }
-      ],
-      "harness": "board-240/seed_vulkan_matmul_accuracy",
-      "input_range": "uniform [-4, 4)",
-      "measured_worst": 5.827911847555711e-8,
-      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
-      "op": "SoftmaxLastDim",
-      "reference": "f64 host exp(x - max) / sum"
-    }
-  },
-  {
-    "kernel_ref": "vulkan-slang",
-    "backend": "Vulkan",
-    "dtypes": [
-      "F32",
-      "F32"
-    ],
-    "kernel_revision_hash": 7678599190885483221,
-    "claim": "max_relative",
-    "result": "pass",
-    "verified_at": "epoch:1792681424",
-    "protocol_version": 1,
-    "evidence": {
-      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
-      "bound": 0.00001,
-      "cases": [
-        {
-          "abs": 1.2010994837607925e-8,
-          "case": "rows=1 cols=22",
-          "rel": 1.2010994837607925e-8
-        },
-        {
-          "abs": 5.827911847555711e-8,
-          "case": "rows=16 cols=22",
-          "rel": 5.827911847555711e-8
-        },
-        {
-          "abs": 1.0619372416142973e-8,
-          "case": "rows=16 cols=128",
-          "rel": 1.0619372416142973e-8
-        },
-        {
-          "abs": 1.4112424666368195e-9,
-          "case": "rows=28 cols=1024",
-          "rel": 1.4112424666368195e-9
-        },
-        {
-          "abs": 7.21463026473467e-10,
-          "case": "rows=16 cols=2048",
-          "rel": 7.21463026473467e-10
-        },
-        {
-          "abs": 3.417362274237001e-10,
-          "case": "rows=8 cols=4096",
-          "rel": 3.417362274237001e-10
-        },
-        {
-          "abs": 1.7681011190741336e-10,
-          "case": "rows=1 cols=8192",
-          "rel": 1.7681011190741336e-10
-        }
-      ],
-      "harness": "board-240/seed_vulkan_matmul_accuracy",
-      "input_range": "uniform [-4, 4)",
-      "measured_worst": 5.827911847555711e-8,
-      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
-      "op": "SoftmaxLastDim",
-      "reference": "f64 host exp(x - max) / sum"
-    }
-  },
-  {
-    "kernel_ref": "vulkan-slang",
-    "backend": "Vulkan",
-    "dtypes": [
-      "F32",
-      "F32",
-      "F32",
-      "F32"
-    ],
-    "kernel_revision_hash": 3882325560234614418,
-    "claim": "max_absolute",
-    "result": "pass",
-    "verified_at": "epoch:1792681424",
-    "protocol_version": 1,
-    "evidence": {
-      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
-      "bound": 0.00001,
-      "cases": [
-        {
-          "abs": 0.0,
-          "case": "outer=16 seq=1 hd=128",
-          "rel": 0.0
-        },
-        {
-          "abs": 0.0,
-          "case": "outer=8 seq=1 hd=128",
-          "rel": 0.0
-        },
-        {
-          "abs": 1.1920928955078125e-7,
-          "case": "outer=16 seq=21 hd=128",
-          "rel": 1.1909474654017853e-7
-        },
-        {
-          "abs": 1.1920928955078125e-7,
-          "case": "outer=1 seq=64 hd=128",
-          "rel": 1.188465702662521e-7
-        },
-        {
-          "abs": 1.1920928955078125e-7,
-          "case": "outer=4 seq=512 hd=64",
-          "rel": 1.1919311979170765e-7
-        }
-      ],
-      "harness": "board-240/seed_vulkan_matmul_accuracy",
-      "input_range": "x uniform [-1, 1); cos/sin of position * 10000^(-2j/hd)",
-      "measured_worst": 1.1920928955078125e-7,
-      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
-      "op": "Rope",
-      "reference": "registered portable-cpu Rope kernel (f32)"
-    }
-  },
-  {
-    "kernel_ref": "vulkan-slang",
-    "backend": "Vulkan",
-    "dtypes": [
-      "F32",
-      "F32",
-      "F32",
-      "F32"
-    ],
-    "kernel_revision_hash": 3882325560234614418,
-    "claim": "max_relative",
-    "result": "pass",
-    "verified_at": "epoch:1792681424",
-    "protocol_version": 1,
-    "evidence": {
-      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
-      "bound": 0.00001,
-      "cases": [
-        {
-          "abs": 0.0,
-          "case": "outer=16 seq=1 hd=128",
-          "rel": 0.0
-        },
-        {
-          "abs": 0.0,
-          "case": "outer=8 seq=1 hd=128",
-          "rel": 0.0
-        },
-        {
-          "abs": 1.1920928955078125e-7,
-          "case": "outer=16 seq=21 hd=128",
-          "rel": 1.1909474654017853e-7
-        },
-        {
-          "abs": 1.1920928955078125e-7,
-          "case": "outer=1 seq=64 hd=128",
-          "rel": 1.188465702662521e-7
-        },
-        {
-          "abs": 1.1920928955078125e-7,
-          "case": "outer=4 seq=512 hd=64",
-          "rel": 1.1919311979170765e-7
-        }
-      ],
-      "harness": "board-240/seed_vulkan_matmul_accuracy",
-      "input_range": "x uniform [-1, 1); cos/sin of position * 10000^(-2j/hd)",
-      "measured_worst": 1.1919311979170765e-7,
-      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
-      "op": "Rope",
-      "reference": "registered portable-cpu Rope kernel (f32)"
-    }
-  },
-  {
     "kernel_ref": "baracuda",
     "backend": "Cuda",
     "dtypes": [
@@ -16215,19 +15679,19 @@
           "rel": 9.231944660126334e-9
         },
         {
-          "abs": 1.3446303705894054e-9,
+          "abs": 1.344630370589405e-9,
           "case": "rows=28 cols=1024",
-          "rel": 1.3446303705894054e-9
+          "rel": 1.344630370589405e-9
         },
         {
-          "abs": 7.967265263329746e-10,
+          "abs": 7.967265263329744e-10,
           "case": "rows=16 cols=2048",
-          "rel": 7.967265263329746e-10
+          "rel": 7.967265263329744e-10
         },
         {
-          "abs": 3.709505092420322e-10,
+          "abs": 3.7095050924203217e-10,
           "case": "rows=8 cols=4096",
-          "rel": 3.709505092420322e-10
+          "rel": 3.7095050924203217e-10
         },
         {
           "abs": 1.2660773883281518e-10,
@@ -16275,19 +15739,19 @@
           "rel": 9.231944660126334e-9
         },
         {
-          "abs": 1.3446303705894054e-9,
+          "abs": 1.344630370589405e-9,
           "case": "rows=28 cols=1024",
-          "rel": 1.3446303705894054e-9
+          "rel": 1.344630370589405e-9
         },
         {
-          "abs": 7.967265263329746e-10,
+          "abs": 7.967265263329744e-10,
           "case": "rows=16 cols=2048",
-          "rel": 7.967265263329746e-10
+          "rel": 7.967265263329744e-10
         },
         {
-          "abs": 3.709505092420322e-10,
+          "abs": 3.7095050924203217e-10,
           "case": "rows=8 cols=4096",
-          "rel": 3.709505092420322e-10
+          "rel": 3.7095050924203217e-10
         },
         {
           "abs": 1.2660773883281518e-10,
@@ -40265,6 +39729,2114 @@
       "bound": 0,
       "harness": "capturedrun-4b/seed_cuda_ledger",
       "reference": "cpu"
+    }
+  },
+  {
+    "kernel_ref": "vulkan-slang",
+    "backend": "Vulkan",
+    "dtypes": [
+      "F32",
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 18371565327335149448,
+    "claim": "max_absolute",
+    "result": "pass",
+    "verified_at": "epoch:1795304576",
+    "protocol_version": 1,
+    "evidence": {
+      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
+      "bound": 0.001,
+      "cases": [
+        {
+          "abs": 5.250745090279452e-6,
+          "case": "m=1 n=1024 k=1024",
+          "rel": 2.805220534122233e-6
+        },
+        {
+          "abs": 8.838332234972768e-6,
+          "case": "m=1 n=3072 k=1024",
+          "rel": 3.787209692518445e-6
+        },
+        {
+          "abs": 0.000010909417881066474,
+          "case": "m=1 n=1024 k=3072",
+          "rel": 4.757237434205308e-6
+        },
+        {
+          "abs": 9.869502875403668e-6,
+          "case": "m=1 n=8192 k=1024",
+          "rel": 3.7610144545396906e-6
+        },
+        {
+          "abs": 9.842032213214225e-6,
+          "case": "m=1 n=64 k=4096",
+          "rel": 3.2976695482835738e-6
+        },
+        {
+          "abs": 0.00003855901999827438,
+          "case": "m=4 n=1024 k=1024",
+          "rel": 0.000014159427209392561
+        },
+        {
+          "abs": 0.000052461654519220247,
+          "case": "m=16 n=3072 k=1024",
+          "rel": 0.000023159624774393706
+        },
+        {
+          "abs": 0.0001010165498769311,
+          "case": "m=31 n=512 k=2048",
+          "rel": 0.00004081988815585191
+        },
+        {
+          "abs": 0.0000484268298492907,
+          "case": "m=32 n=1024 k=1024",
+          "rel": 0.00002066587120452823
+        },
+        {
+          "abs": 0.00007106863859007717,
+          "case": "m=64 n=3072 k=1024",
+          "rel": 0.000027241252865906063
+        },
+        {
+          "abs": 0.00023245422595152831,
+          "case": "m=127 n=1024 k=4096",
+          "rel": 0.00008771322202960619
+        },
+        {
+          "abs": 0.00005074673318006262,
+          "case": "m=21 n=1024 k=1024",
+          "rel": 0.00001969704030102548
+        }
+      ],
+      "harness": "board-240/seed_vulkan_matmul_accuracy",
+      "input_range": "uniform [-1, 1)",
+      "measured_worst": 0.00023245422595152831,
+      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
+      "op": "MatMul",
+      "reference": "f64 host matmul of the same f32 inputs"
+    }
+  },
+  {
+    "kernel_ref": "vulkan-slang",
+    "backend": "Vulkan",
+    "dtypes": [
+      "F32",
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 18371565327335149448,
+    "claim": "max_relative",
+    "result": "pass",
+    "verified_at": "epoch:1795304576",
+    "protocol_version": 1,
+    "evidence": {
+      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
+      "bound": 0.001,
+      "cases": [
+        {
+          "abs": 5.250745090279452e-6,
+          "case": "m=1 n=1024 k=1024",
+          "rel": 2.805220534122233e-6
+        },
+        {
+          "abs": 8.838332234972768e-6,
+          "case": "m=1 n=3072 k=1024",
+          "rel": 3.787209692518445e-6
+        },
+        {
+          "abs": 0.000010909417881066474,
+          "case": "m=1 n=1024 k=3072",
+          "rel": 4.757237434205308e-6
+        },
+        {
+          "abs": 9.869502875403668e-6,
+          "case": "m=1 n=8192 k=1024",
+          "rel": 3.7610144545396906e-6
+        },
+        {
+          "abs": 9.842032213214225e-6,
+          "case": "m=1 n=64 k=4096",
+          "rel": 3.2976695482835738e-6
+        },
+        {
+          "abs": 0.00003855901999827438,
+          "case": "m=4 n=1024 k=1024",
+          "rel": 0.000014159427209392561
+        },
+        {
+          "abs": 0.000052461654519220247,
+          "case": "m=16 n=3072 k=1024",
+          "rel": 0.000023159624774393706
+        },
+        {
+          "abs": 0.0001010165498769311,
+          "case": "m=31 n=512 k=2048",
+          "rel": 0.00004081988815585191
+        },
+        {
+          "abs": 0.0000484268298492907,
+          "case": "m=32 n=1024 k=1024",
+          "rel": 0.00002066587120452823
+        },
+        {
+          "abs": 0.00007106863859007717,
+          "case": "m=64 n=3072 k=1024",
+          "rel": 0.000027241252865906063
+        },
+        {
+          "abs": 0.00023245422595152831,
+          "case": "m=127 n=1024 k=4096",
+          "rel": 0.00008771322202960619
+        },
+        {
+          "abs": 0.00005074673318006262,
+          "case": "m=21 n=1024 k=1024",
+          "rel": 0.00001969704030102548
+        }
+      ],
+      "harness": "board-240/seed_vulkan_matmul_accuracy",
+      "input_range": "uniform [-1, 1)",
+      "measured_worst": 0.00008771322202960619,
+      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
+      "op": "MatMul",
+      "reference": "f64 host matmul of the same f32 inputs"
+    }
+  },
+  {
+    "kernel_ref": "vulkan-slang",
+    "backend": "Vulkan",
+    "dtypes": [
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 12504822457066021896,
+    "claim": "max_absolute",
+    "result": "pass",
+    "verified_at": "epoch:1795304576",
+    "protocol_version": 1,
+    "evidence": {
+      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
+      "bound": 0.00001,
+      "cases": [
+        {
+          "abs": 9.017112878595412e-8,
+          "case": "rows=1 cols=1024",
+          "rel": 7.315808559986447e-8
+        },
+        {
+          "abs": 1.404594114351454e-7,
+          "case": "rows=16 cols=1024",
+          "rel": 1.0345817673205188e-7
+        },
+        {
+          "abs": 1.994157832196919e-7,
+          "case": "rows=21 cols=1024",
+          "rel": 1.4021331962202646e-7
+        },
+        {
+          "abs": 8.065948131630307e-8,
+          "case": "rows=1 cols=3072",
+          "rel": 7.08380244304745e-8
+        },
+        {
+          "abs": 1.5595047231364845e-7,
+          "case": "rows=8 cols=128",
+          "rel": 1.1044125730722722e-7
+        },
+        {
+          "abs": 1.7958199505230255e-7,
+          "case": "rows=16 cols=128",
+          "rel": 1.265861582565764e-7
+        },
+        {
+          "abs": 2.288810285744347e-7,
+          "case": "rows=448 cols=128",
+          "rel": 1.5155883388177955e-7
+        },
+        {
+          "abs": 1.0370724079500349e-7,
+          "case": "rows=1 cols=4096",
+          "rel": 8.316005178754561e-8
+        },
+        {
+          "abs": 1.7705947930046761e-7,
+          "case": "rows=32 cols=64",
+          "rel": 1.2210309327687396e-7
+        }
+      ],
+      "harness": "board-240/seed_vulkan_matmul_accuracy",
+      "input_range": "uniform [-2, 2)",
+      "measured_worst": 2.288810285744347e-7,
+      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
+      "op": "RmsNormLastDim",
+      "reference": "f64 host x / sqrt(mean(x^2) + eps)"
+    }
+  },
+  {
+    "kernel_ref": "vulkan-slang",
+    "backend": "Vulkan",
+    "dtypes": [
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 12504822457066021896,
+    "claim": "max_relative",
+    "result": "pass",
+    "verified_at": "epoch:1795304576",
+    "protocol_version": 1,
+    "evidence": {
+      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
+      "bound": 0.00001,
+      "cases": [
+        {
+          "abs": 9.017112878595412e-8,
+          "case": "rows=1 cols=1024",
+          "rel": 7.315808559986447e-8
+        },
+        {
+          "abs": 1.404594114351454e-7,
+          "case": "rows=16 cols=1024",
+          "rel": 1.0345817673205188e-7
+        },
+        {
+          "abs": 1.994157832196919e-7,
+          "case": "rows=21 cols=1024",
+          "rel": 1.4021331962202646e-7
+        },
+        {
+          "abs": 8.065948131630307e-8,
+          "case": "rows=1 cols=3072",
+          "rel": 7.08380244304745e-8
+        },
+        {
+          "abs": 1.5595047231364845e-7,
+          "case": "rows=8 cols=128",
+          "rel": 1.1044125730722722e-7
+        },
+        {
+          "abs": 1.7958199505230255e-7,
+          "case": "rows=16 cols=128",
+          "rel": 1.265861582565764e-7
+        },
+        {
+          "abs": 2.288810285744347e-7,
+          "case": "rows=448 cols=128",
+          "rel": 1.5155883388177955e-7
+        },
+        {
+          "abs": 1.0370724079500349e-7,
+          "case": "rows=1 cols=4096",
+          "rel": 8.316005178754561e-8
+        },
+        {
+          "abs": 1.7705947930046761e-7,
+          "case": "rows=32 cols=64",
+          "rel": 1.2210309327687396e-7
+        }
+      ],
+      "harness": "board-240/seed_vulkan_matmul_accuracy",
+      "input_range": "uniform [-2, 2)",
+      "measured_worst": 1.5155883388177955e-7,
+      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
+      "op": "RmsNormLastDim",
+      "reference": "f64 host x / sqrt(mean(x^2) + eps)"
+    }
+  },
+  {
+    "kernel_ref": "vulkan-slang",
+    "backend": "Vulkan",
+    "dtypes": [
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 7678599190885483221,
+    "claim": "max_absolute",
+    "result": "pass",
+    "verified_at": "epoch:1795304576",
+    "protocol_version": 1,
+    "evidence": {
+      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
+      "bound": 0.00001,
+      "cases": [
+        {
+          "abs": 1.2010994837607925e-8,
+          "case": "rows=1 cols=22",
+          "rel": 1.2010994837607925e-8
+        },
+        {
+          "abs": 5.827911847555711e-8,
+          "case": "rows=16 cols=22",
+          "rel": 5.827911847555711e-8
+        },
+        {
+          "abs": 1.061937241614297e-8,
+          "case": "rows=16 cols=128",
+          "rel": 1.061937241614297e-8
+        },
+        {
+          "abs": 1.4112424666368195e-9,
+          "case": "rows=28 cols=1024",
+          "rel": 1.4112424666368195e-9
+        },
+        {
+          "abs": 7.214630264734678e-10,
+          "case": "rows=16 cols=2048",
+          "rel": 7.214630264734678e-10
+        },
+        {
+          "abs": 3.4173622742370013e-10,
+          "case": "rows=8 cols=4096",
+          "rel": 3.4173622742370013e-10
+        },
+        {
+          "abs": 1.7681011190741336e-10,
+          "case": "rows=1 cols=8192",
+          "rel": 1.7681011190741336e-10
+        }
+      ],
+      "harness": "board-240/seed_vulkan_matmul_accuracy",
+      "input_range": "uniform [-4, 4)",
+      "measured_worst": 5.827911847555711e-8,
+      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
+      "op": "SoftmaxLastDim",
+      "reference": "f64 host exp(x - max) / sum"
+    }
+  },
+  {
+    "kernel_ref": "vulkan-slang",
+    "backend": "Vulkan",
+    "dtypes": [
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 7678599190885483221,
+    "claim": "max_relative",
+    "result": "pass",
+    "verified_at": "epoch:1795304576",
+    "protocol_version": 1,
+    "evidence": {
+      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
+      "bound": 0.00001,
+      "cases": [
+        {
+          "abs": 1.2010994837607925e-8,
+          "case": "rows=1 cols=22",
+          "rel": 1.2010994837607925e-8
+        },
+        {
+          "abs": 5.827911847555711e-8,
+          "case": "rows=16 cols=22",
+          "rel": 5.827911847555711e-8
+        },
+        {
+          "abs": 1.061937241614297e-8,
+          "case": "rows=16 cols=128",
+          "rel": 1.061937241614297e-8
+        },
+        {
+          "abs": 1.4112424666368195e-9,
+          "case": "rows=28 cols=1024",
+          "rel": 1.4112424666368195e-9
+        },
+        {
+          "abs": 7.214630264734678e-10,
+          "case": "rows=16 cols=2048",
+          "rel": 7.214630264734678e-10
+        },
+        {
+          "abs": 3.4173622742370013e-10,
+          "case": "rows=8 cols=4096",
+          "rel": 3.4173622742370013e-10
+        },
+        {
+          "abs": 1.7681011190741336e-10,
+          "case": "rows=1 cols=8192",
+          "rel": 1.7681011190741336e-10
+        }
+      ],
+      "harness": "board-240/seed_vulkan_matmul_accuracy",
+      "input_range": "uniform [-4, 4)",
+      "measured_worst": 5.827911847555711e-8,
+      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
+      "op": "SoftmaxLastDim",
+      "reference": "f64 host exp(x - max) / sum"
+    }
+  },
+  {
+    "kernel_ref": "vulkan-slang",
+    "backend": "Vulkan",
+    "dtypes": [
+      "F32",
+      "F32",
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 3882325560234614418,
+    "claim": "max_absolute",
+    "result": "pass",
+    "verified_at": "epoch:1795304576",
+    "protocol_version": 1,
+    "evidence": {
+      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
+      "bound": 0.00001,
+      "cases": [
+        {
+          "abs": 0.0,
+          "case": "outer=16 seq=1 hd=128",
+          "rel": 0.0
+        },
+        {
+          "abs": 0.0,
+          "case": "outer=8 seq=1 hd=128",
+          "rel": 0.0
+        },
+        {
+          "abs": 1.1920928955078125e-7,
+          "case": "outer=16 seq=21 hd=128",
+          "rel": 1.1909474654017852e-7
+        },
+        {
+          "abs": 1.1920928955078125e-7,
+          "case": "outer=1 seq=64 hd=128",
+          "rel": 1.1884657026625198e-7
+        },
+        {
+          "abs": 1.1920928955078125e-7,
+          "case": "outer=4 seq=512 hd=64",
+          "rel": 1.1919311979170764e-7
+        }
+      ],
+      "harness": "board-240/seed_vulkan_matmul_accuracy",
+      "input_range": "x uniform [-1, 1); cos/sin of position * 10000^(-2j/hd)",
+      "measured_worst": 1.1920928955078125e-7,
+      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
+      "op": "Rope",
+      "reference": "registered portable-cpu Rope kernel (f32)"
+    }
+  },
+  {
+    "kernel_ref": "vulkan-slang",
+    "backend": "Vulkan",
+    "dtypes": [
+      "F32",
+      "F32",
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 3882325560234614418,
+    "claim": "max_relative",
+    "result": "pass",
+    "verified_at": "epoch:1795304576",
+    "protocol_version": 1,
+    "evidence": {
+      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
+      "bound": 0.00001,
+      "cases": [
+        {
+          "abs": 0.0,
+          "case": "outer=16 seq=1 hd=128",
+          "rel": 0.0
+        },
+        {
+          "abs": 0.0,
+          "case": "outer=8 seq=1 hd=128",
+          "rel": 0.0
+        },
+        {
+          "abs": 1.1920928955078125e-7,
+          "case": "outer=16 seq=21 hd=128",
+          "rel": 1.1909474654017852e-7
+        },
+        {
+          "abs": 1.1920928955078125e-7,
+          "case": "outer=1 seq=64 hd=128",
+          "rel": 1.1884657026625198e-7
+        },
+        {
+          "abs": 1.1920928955078125e-7,
+          "case": "outer=4 seq=512 hd=64",
+          "rel": 1.1919311979170764e-7
+        }
+      ],
+      "harness": "board-240/seed_vulkan_matmul_accuracy",
+      "input_range": "x uniform [-1, 1); cos/sin of position * 10000^(-2j/hd)",
+      "measured_worst": 1.1919311979170764e-7,
+      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
+      "op": "Rope",
+      "reference": "registered portable-cpu Rope kernel (f32)"
+    }
+  },
+  {
+    "kernel_ref": "vulkan-slang",
+    "backend": "Vulkan",
+    "dtypes": [
+      "F32",
+      "U32",
+      "F32"
+    ],
+    "kernel_revision_hash": 1419400945849375885,
+    "claim": "max_absolute",
+    "result": "pass",
+    "verified_at": "epoch:1795304576",
+    "protocol_version": 1,
+    "evidence": {
+      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
+      "bound": 0.001,
+      "cases": [
+        {
+          "abs": 8.090573828667402e-7,
+          "case": "q4_0 rows=1 n=64 k=128 seed=1",
+          "rel": 4.270041245035827e-7
+        },
+        {
+          "abs": 7.225171430036426e-7,
+          "case": "q4_0 rows=1 n=64 k=128 seed=2",
+          "rel": 3.2245588954538107e-7
+        },
+        {
+          "abs": 8.563365554437041e-7,
+          "case": "q4_0 rows=1 n=64 k=128 seed=3",
+          "rel": 4.231133866132209e-7
+        },
+        {
+          "abs": 6.754780770279467e-7,
+          "case": "q4_0 rows=1 n=64 k=128 seed=4",
+          "rel": 6.212576408870518e-7
+        },
+        {
+          "abs": 7.024049409665167e-6,
+          "case": "q4_0 rows=1 n=2048 k=2048 seed=1",
+          "rel": 5.145695467945188e-6
+        },
+        {
+          "abs": 8.595248800702393e-6,
+          "case": "q4_0 rows=1 n=2048 k=2048 seed=2",
+          "rel": 8.595248800702393e-6
+        },
+        {
+          "abs": 5.961621354799718e-6,
+          "case": "q4_0 rows=1 n=2048 k=2048 seed=3",
+          "rel": 3.869128704536706e-6
+        },
+        {
+          "abs": 5.568756023421884e-6,
+          "case": "q4_0 rows=1 n=2048 k=2048 seed=4",
+          "rel": 3.657303750514984e-6
+        },
+        {
+          "abs": 0.00001093526225304231,
+          "case": "q4_0 rows=1 n=96 k=8192 seed=1",
+          "rel": 7.371163519565016e-6
+        },
+        {
+          "abs": 0.000010254814696963876,
+          "case": "q4_0 rows=1 n=96 k=8192 seed=2",
+          "rel": 2.9892919613963325e-6
+        },
+        {
+          "abs": 0.000010713149094954133,
+          "case": "q4_0 rows=1 n=96 k=8192 seed=3",
+          "rel": 6.663176463916898e-6
+        },
+        {
+          "abs": 0.000012411655916366726,
+          "case": "q4_0 rows=1 n=96 k=8192 seed=4",
+          "rel": 7.517570338677615e-6
+        },
+        {
+          "abs": 1.2382370186969638e-6,
+          "case": "q4_0 rows=3 n=40 k=256 seed=1",
+          "rel": 6.072654772993397e-7
+        },
+        {
+          "abs": 9.173818398267031e-7,
+          "case": "q4_0 rows=3 n=40 k=256 seed=2",
+          "rel": 6.925256457179785e-7
+        },
+        {
+          "abs": 1.1062293197028339e-6,
+          "case": "q4_0 rows=3 n=40 k=256 seed=3",
+          "rel": 6.036643753759563e-7
+        },
+        {
+          "abs": 1.257285475730896e-6,
+          "case": "q4_0 rows=3 n=40 k=256 seed=4",
+          "rel": 8.210336090996861e-7
+        },
+        {
+          "abs": 2.0335501176305115e-6,
+          "case": "q4_0 rows=7 n=33 k=512 seed=1",
+          "rel": 1.058477209880948e-6
+        },
+        {
+          "abs": 2.2469466784968972e-6,
+          "case": "q4_0 rows=7 n=33 k=512 seed=2",
+          "rel": 1.1691736290231347e-6
+        },
+        {
+          "abs": 2.356187906116247e-6,
+          "case": "q4_0 rows=7 n=33 k=512 seed=3",
+          "rel": 1.1172758719350595e-6
+        },
+        {
+          "abs": 2.2642925614491105e-6,
+          "case": "q4_0 rows=7 n=33 k=512 seed=4",
+          "rel": 1.6743797459639609e-6
+        },
+        {
+          "abs": 4.555251507554203e-6,
+          "case": "q4_0 rows=17 n=96 k=1024 seed=1",
+          "rel": 2.2169988369569182e-6
+        },
+        {
+          "abs": 3.7240679375827312e-6,
+          "case": "q4_0 rows=17 n=96 k=1024 seed=2",
+          "rel": 2.5447805848484344e-6
+        },
+        {
+          "abs": 3.404071321710944e-6,
+          "case": "q4_0 rows=17 n=96 k=1024 seed=3",
+          "rel": 2.724329533521086e-6
+        },
+        {
+          "abs": 3.5886478144675493e-6,
+          "case": "q4_0 rows=17 n=96 k=1024 seed=4",
+          "rel": 2.3392931325361133e-6
+        },
+        {
+          "abs": 0.000010629766620695591,
+          "case": "q4_0 rows=64 n=128 k=4096 seed=1",
+          "rel": 6.242902608926759e-6
+        },
+        {
+          "abs": 9.837829566095024e-6,
+          "case": "q4_0 rows=64 n=128 k=4096 seed=2",
+          "rel": 7.913390981700817e-6
+        },
+        {
+          "abs": 0.000012845455785281956,
+          "case": "q4_0 rows=64 n=128 k=4096 seed=3",
+          "rel": 8.225229976233095e-6
+        },
+        {
+          "abs": 0.000016273384972009808,
+          "case": "q4_0 rows=64 n=128 k=4096 seed=4",
+          "rel": 7.2580151027068496e-6
+        },
+        {
+          "abs": 8.135357347782701e-6,
+          "case": "q4_0 rows=140 n=512 k=2048 seed=1",
+          "rel": 5.4023112170398235e-6
+        },
+        {
+          "abs": 9.152317943517119e-6,
+          "case": "q4_0 rows=140 n=512 k=2048 seed=2",
+          "rel": 5.097143002785742e-6
+        },
+        {
+          "abs": 7.5668212957680225e-6,
+          "case": "q4_0 rows=140 n=512 k=2048 seed=3",
+          "rel": 5.901922122575343e-6
+        },
+        {
+          "abs": 7.905771781224757e-6,
+          "case": "q4_0 rows=140 n=512 k=2048 seed=4",
+          "rel": 5.286092346068472e-6
+        },
+        {
+          "abs": 0.00001544831320643425,
+          "case": "q4_0 rows=5 n=200 k=8192 seed=1",
+          "rel": 0.000010648036550264806
+        },
+        {
+          "abs": 0.00002091548958560452,
+          "case": "q4_0 rows=5 n=200 k=8192 seed=2",
+          "rel": 9.27716404952939e-6
+        },
+        {
+          "abs": 0.000014233759429771453,
+          "case": "q4_0 rows=5 n=200 k=8192 seed=3",
+          "rel": 8.227041689679027e-6
+        },
+        {
+          "abs": 0.000017290141840931028,
+          "case": "q4_0 rows=5 n=200 k=8192 seed=4",
+          "rel": 0.000012212840374559164
+        },
+        {
+          "abs": 8.229108061641455e-7,
+          "case": "q4_0 rows=1 n=40 k=96 seed=1",
+          "rel": 4.5894557842984796e-7
+        },
+        {
+          "abs": 5.414767656475306e-7,
+          "case": "q4_0 rows=1 n=40 k=96 seed=2",
+          "rel": 2.9352668207138777e-7
+        },
+        {
+          "abs": 7.90641934145242e-7,
+          "case": "q4_0 rows=1 n=40 k=96 seed=3",
+          "rel": 2.5660847313702106e-7
+        },
+        {
+          "abs": 4.140238161198795e-7,
+          "case": "q4_0 rows=1 n=40 k=96 seed=4",
+          "rel": 2.578823906394912e-7
+        },
+        {
+          "abs": 1.1066222214139998e-6,
+          "case": "q4_0 rows=9 n=17 k=160 seed=1",
+          "rel": 5.532856448553503e-7
+        },
+        {
+          "abs": 1.2962627806700766e-6,
+          "case": "q4_0 rows=9 n=17 k=160 seed=2",
+          "rel": 7.215858204290271e-7
+        },
+        {
+          "abs": 9.877257980406284e-7,
+          "case": "q4_0 rows=9 n=17 k=160 seed=3",
+          "rel": 7.105845725163817e-7
+        },
+        {
+          "abs": 1.0164585546590388e-6,
+          "case": "q4_0 rows=9 n=17 k=160 seed=4",
+          "rel": 4.985006946770565e-7
+        },
+        {
+          "abs": 6.391896931745578e-7,
+          "case": "q8_0 rows=1 n=64 k=128 seed=1",
+          "rel": 5.156016413820907e-7
+        },
+        {
+          "abs": 9.790574040380307e-7,
+          "case": "q8_0 rows=1 n=64 k=128 seed=2",
+          "rel": 3.5736950534828013e-7
+        },
+        {
+          "abs": 6.627997208852321e-7,
+          "case": "q8_0 rows=1 n=64 k=128 seed=3",
+          "rel": 5.23791641171556e-7
+        },
+        {
+          "abs": 6.659979590040166e-7,
+          "case": "q8_0 rows=1 n=64 k=128 seed=4",
+          "rel": 5.368588062992785e-7
+        },
+        {
+          "abs": 5.6288922678504605e-6,
+          "case": "q8_0 rows=1 n=2048 k=2048 seed=1",
+          "rel": 5.1739243644988164e-6
+        },
+        {
+          "abs": 6.7098035287926905e-6,
+          "case": "q8_0 rows=1 n=2048 k=2048 seed=2",
+          "rel": 3.6484830161498394e-6
+        },
+        {
+          "abs": 6.237597517610993e-6,
+          "case": "q8_0 rows=1 n=2048 k=2048 seed=3",
+          "rel": 3.5393013604334556e-6
+        },
+        {
+          "abs": 6.433307135012001e-6,
+          "case": "q8_0 rows=1 n=2048 k=2048 seed=4",
+          "rel": 3.527019998728065e-6
+        },
+        {
+          "abs": 0.000011767777323257178,
+          "case": "q8_0 rows=1 n=96 k=8192 seed=1",
+          "rel": 6.643640517722815e-6
+        },
+        {
+          "abs": 0.000014084745998843573,
+          "case": "q8_0 rows=1 n=96 k=8192 seed=2",
+          "rel": 2.69274687525467e-6
+        },
+        {
+          "abs": 0.0000112266861833632,
+          "case": "q8_0 rows=1 n=96 k=8192 seed=3",
+          "rel": 3.3919650377356447e-6
+        },
+        {
+          "abs": 0.000011820969120890368,
+          "case": "q8_0 rows=1 n=96 k=8192 seed=4",
+          "rel": 7.737609838154226e-6
+        },
+        {
+          "abs": 6.126158496044809e-6,
+          "case": "q8_0 rows=3 n=40 k=256 seed=1",
+          "rel": 2.3707170839770697e-6
+        },
+        {
+          "abs": 6.713515631417977e-6,
+          "case": "q8_0 rows=3 n=40 k=256 seed=2",
+          "rel": 1.92538527699071e-6
+        },
+        {
+          "abs": 4.8439605961903e-6,
+          "case": "q8_0 rows=3 n=40 k=256 seed=3",
+          "rel": 2.7255009626969695e-6
+        },
+        {
+          "abs": 7.37182745069731e-6,
+          "case": "q8_0 rows=3 n=40 k=256 seed=4",
+          "rel": 3.1971647368659485e-6
+        },
+        {
+          "abs": 0.000011881761565746274,
+          "case": "q8_0 rows=7 n=33 k=512 seed=1",
+          "rel": 6.325105459836777e-6
+        },
+        {
+          "abs": 0.00001220762078446569,
+          "case": "q8_0 rows=7 n=33 k=512 seed=2",
+          "rel": 6.688298071821919e-6
+        },
+        {
+          "abs": 0.000010692261639633216,
+          "case": "q8_0 rows=7 n=33 k=512 seed=3",
+          "rel": 4.682989400049713e-6
+        },
+        {
+          "abs": 0.000018841570636141114,
+          "case": "q8_0 rows=7 n=33 k=512 seed=4",
+          "rel": 5.6702201753229385e-6
+        },
+        {
+          "abs": 0.000049563407173991436,
+          "case": "q8_0 rows=17 n=96 k=1024 seed=1",
+          "rel": 0.000016934578070504358
+        },
+        {
+          "abs": 0.00003962968821724644,
+          "case": "q8_0 rows=17 n=96 k=1024 seed=2",
+          "rel": 0.00002136948705810937
+        },
+        {
+          "abs": 0.000030259868708526483,
+          "case": "q8_0 rows=17 n=96 k=1024 seed=3",
+          "rel": 0.000013843373835698003
+        },
+        {
+          "abs": 0.00004196026384306606,
+          "case": "q8_0 rows=17 n=96 k=1024 seed=4",
+          "rel": 0.000013421296898741275
+        },
+        {
+          "abs": 0.00018729189605437568,
+          "case": "q8_0 rows=64 n=128 k=4096 seed=1",
+          "rel": 0.00005742749676497487
+        },
+        {
+          "abs": 0.00014610650669055758,
+          "case": "q8_0 rows=64 n=128 k=4096 seed=2",
+          "rel": 0.00009117824856730294
+        },
+        {
+          "abs": 0.0001704095489003521,
+          "case": "q8_0 rows=64 n=128 k=4096 seed=3",
+          "rel": 0.0000570531738048885
+        },
+        {
+          "abs": 0.00017549396716276533,
+          "case": "q8_0 rows=64 n=128 k=4096 seed=4",
+          "rel": 0.00007558273819086025
+        },
+        {
+          "abs": 0.00012196951183796045,
+          "case": "q8_0 rows=140 n=512 k=2048 seed=1",
+          "rel": 0.00003797135423155851
+        },
+        {
+          "abs": 0.00010779652575365617,
+          "case": "q8_0 rows=140 n=512 k=2048 seed=2",
+          "rel": 0.000041904721001628786
+        },
+        {
+          "abs": 0.00011781294779211748,
+          "case": "q8_0 rows=140 n=512 k=2048 seed=3",
+          "rel": 0.000039014374578982824
+        },
+        {
+          "abs": 0.00010589731300569838,
+          "case": "q8_0 rows=140 n=512 k=2048 seed=4",
+          "rel": 0.000037023055028839735
+        },
+        {
+          "abs": 0.00039761077641742304,
+          "case": "q8_0 rows=5 n=200 k=8192 seed=1",
+          "rel": 0.00006275749137785169
+        },
+        {
+          "abs": 0.0002537253481023072,
+          "case": "q8_0 rows=5 n=200 k=8192 seed=2",
+          "rel": 0.000093966195890971
+        },
+        {
+          "abs": 0.00047273647169276956,
+          "case": "q8_0 rows=5 n=200 k=8192 seed=3",
+          "rel": 0.00005842281416335027
+        },
+        {
+          "abs": 0.0003229263961657125,
+          "case": "q8_0 rows=5 n=200 k=8192 seed=4",
+          "rel": 0.0000985708770713245
+        },
+        {
+          "abs": 9.6595022114343e-7,
+          "case": "q8_0 rows=1 n=40 k=96 seed=1",
+          "rel": 3.138375177513808e-7
+        },
+        {
+          "abs": 6.186241989780683e-7,
+          "case": "q8_0 rows=1 n=40 k=96 seed=2",
+          "rel": 4.01841589336982e-7
+        },
+        {
+          "abs": 5.441852408694103e-7,
+          "case": "q8_0 rows=1 n=40 k=96 seed=3",
+          "rel": 2.8687257160317934e-7
+        },
+        {
+          "abs": 4.1669227357488126e-7,
+          "case": "q8_0 rows=1 n=40 k=96 seed=4",
+          "rel": 2.5375720724696293e-7
+        },
+        {
+          "abs": 5.730857992602978e-6,
+          "case": "q8_0 rows=9 n=17 k=160 seed=1",
+          "rel": 1.3651120368570234e-6
+        },
+        {
+          "abs": 3.6183550946589094e-6,
+          "case": "q8_0 rows=9 n=17 k=160 seed=2",
+          "rel": 1.4073539205128327e-6
+        },
+        {
+          "abs": 5.523996151168831e-6,
+          "case": "q8_0 rows=9 n=17 k=160 seed=3",
+          "rel": 1.89475856121971e-6
+        },
+        {
+          "abs": 3.6480505514191464e-6,
+          "case": "q8_0 rows=9 n=17 k=160 seed=4",
+          "rel": 1.5372788766399026e-6
+        },
+        {
+          "abs": 6.718809345329646e-6,
+          "case": "q4_k rows=1 n=2048 k=2048 seed=1",
+          "rel": 4.406997049954953e-6
+        },
+        {
+          "abs": 5.588990916294279e-6,
+          "case": "q4_k rows=1 n=2048 k=2048 seed=2",
+          "rel": 3.3063201954064425e-6
+        },
+        {
+          "abs": 6.660251301582321e-6,
+          "case": "q4_k rows=1 n=2048 k=2048 seed=3",
+          "rel": 4.042362888867501e-6
+        },
+        {
+          "abs": 6.500299832623568e-6,
+          "case": "q4_k rows=1 n=2048 k=2048 seed=4",
+          "rel": 4.279749646229902e-6
+        },
+        {
+          "abs": 0.000010813699873324367,
+          "case": "q4_k rows=1 n=96 k=8192 seed=1",
+          "rel": 4.382336938815743e-6
+        },
+        {
+          "abs": 0.00001351685637018818,
+          "case": "q4_k rows=1 n=96 k=8192 seed=2",
+          "rel": 2.558971278225212e-6
+        },
+        {
+          "abs": 0.000015247117289618473,
+          "case": "q4_k rows=1 n=96 k=8192 seed=3",
+          "rel": 9.265865401175688e-6
+        },
+        {
+          "abs": 0.000011328350410622079,
+          "case": "q4_k rows=1 n=96 k=8192 seed=4",
+          "rel": 0.000010480993068995303
+        },
+        {
+          "abs": 6.3090033108892385e-6,
+          "case": "q4_k rows=3 n=40 k=256 seed=1",
+          "rel": 1.888866108856746e-6
+        },
+        {
+          "abs": 4.4519113089336315e-6,
+          "case": "q4_k rows=3 n=40 k=256 seed=2",
+          "rel": 2.204543761763489e-6
+        },
+        {
+          "abs": 6.312260666163638e-6,
+          "case": "q4_k rows=3 n=40 k=256 seed=3",
+          "rel": 1.4445836313825566e-6
+        },
+        {
+          "abs": 4.728423846245278e-6,
+          "case": "q4_k rows=3 n=40 k=256 seed=4",
+          "rel": 1.5156292647588998e-6
+        },
+        {
+          "abs": 0.000013474711067829048,
+          "case": "q4_k rows=7 n=33 k=512 seed=1",
+          "rel": 3.8123930607980583e-6
+        },
+        {
+          "abs": 0.00002062326484519872,
+          "case": "q4_k rows=7 n=33 k=512 seed=2",
+          "rel": 3.1737615699967137e-6
+        },
+        {
+          "abs": 0.000016778021290519973,
+          "case": "q4_k rows=7 n=33 k=512 seed=3",
+          "rel": 3.702272351802094e-6
+        },
+        {
+          "abs": 0.0000153519226842036,
+          "case": "q4_k rows=7 n=33 k=512 seed=4",
+          "rel": 3.333573658892419e-6
+        },
+        {
+          "abs": 0.00003127695572402445,
+          "case": "q4_k rows=17 n=96 k=1024 seed=1",
+          "rel": 0.000012106128024049634
+        },
+        {
+          "abs": 0.00004048975620207784,
+          "case": "q4_k rows=17 n=96 k=1024 seed=2",
+          "rel": 0.000012530099411378615
+        },
+        {
+          "abs": 0.000034008181501121726,
+          "case": "q4_k rows=17 n=96 k=1024 seed=3",
+          "rel": 0.000011419522707001306
+        },
+        {
+          "abs": 0.000029814095569236088,
+          "case": "q4_k rows=17 n=96 k=1024 seed=4",
+          "rel": 0.000011230201380385552
+        },
+        {
+          "abs": 0.00016984114290607977,
+          "case": "q4_k rows=64 n=128 k=4096 seed=1",
+          "rel": 0.00006209708135429537
+        },
+        {
+          "abs": 0.00020002842029498424,
+          "case": "q4_k rows=64 n=128 k=4096 seed=2",
+          "rel": 0.0000689215570586356
+        },
+        {
+          "abs": 0.00022422737424676598,
+          "case": "q4_k rows=64 n=128 k=4096 seed=3",
+          "rel": 0.00005177738057682291
+        },
+        {
+          "abs": 0.00017667994416115107,
+          "case": "q4_k rows=64 n=128 k=4096 seed=4",
+          "rel": 0.00005462127046484966
+        },
+        {
+          "abs": 0.00010985802919094567,
+          "case": "q4_k rows=140 n=512 k=2048 seed=1",
+          "rel": 0.000042024185404443415
+        },
+        {
+          "abs": 0.00010604565818539413,
+          "case": "q4_k rows=140 n=512 k=2048 seed=2",
+          "rel": 0.00004330953265707649
+        },
+        {
+          "abs": 0.00010268699088555877,
+          "case": "q4_k rows=140 n=512 k=2048 seed=3",
+          "rel": 0.000035924676467402605
+        },
+        {
+          "abs": 0.00010496890104150225,
+          "case": "q4_k rows=140 n=512 k=2048 seed=4",
+          "rel": 0.00003821001337200869
+        },
+        {
+          "abs": 0.0003253352556384925,
+          "case": "q4_k rows=5 n=200 k=8192 seed=1",
+          "rel": 0.00004762276739711524
+        },
+        {
+          "abs": 0.0003178075317009643,
+          "case": "q4_k rows=5 n=200 k=8192 seed=2",
+          "rel": 0.0001606753996838961
+        },
+        {
+          "abs": 0.0003578825389922713,
+          "case": "q4_k rows=5 n=200 k=8192 seed=3",
+          "rel": 0.00005404209855441877
+        },
+        {
+          "abs": 0.00029264680711094115,
+          "case": "q4_k rows=5 n=200 k=8192 seed=4",
+          "rel": 0.00011667022795336379
+        },
+        {
+          "abs": 5.5074742277838595e-6,
+          "case": "q6_k rows=1 n=2048 k=2048 seed=1",
+          "rel": 3.5609147346349346e-6
+        },
+        {
+          "abs": 4.834559831579099e-6,
+          "case": "q6_k rows=1 n=2048 k=2048 seed=2",
+          "rel": 3.6770011320186313e-6
+        },
+        {
+          "abs": 6.8181060726146825e-6,
+          "case": "q6_k rows=1 n=2048 k=2048 seed=3",
+          "rel": 4.739555919286431e-6
+        },
+        {
+          "abs": 5.438056149387194e-6,
+          "case": "q6_k rows=1 n=2048 k=2048 seed=4",
+          "rel": 3.914391115245053e-6
+        },
+        {
+          "abs": 0.000013403509697695881,
+          "case": "q6_k rows=1 n=96 k=8192 seed=1",
+          "rel": 0.000011851294431153292
+        },
+        {
+          "abs": 0.000011835004968929752,
+          "case": "q6_k rows=1 n=96 k=8192 seed=2",
+          "rel": 6.195593840629954e-6
+        },
+        {
+          "abs": 0.000018911502436935734,
+          "case": "q6_k rows=1 n=96 k=8192 seed=3",
+          "rel": 6.309110616309127e-6
+        },
+        {
+          "abs": 0.000011819291017900468,
+          "case": "q6_k rows=1 n=96 k=8192 seed=4",
+          "rel": 3.3092281122392664e-6
+        },
+        {
+          "abs": 1.4885003452036472e-6,
+          "case": "q6_k rows=3 n=40 k=256 seed=1",
+          "rel": 9.009439736473723e-7
+        },
+        {
+          "abs": 1.4697159542720328e-6,
+          "case": "q6_k rows=3 n=40 k=256 seed=2",
+          "rel": 4.799714586374948e-7
+        },
+        {
+          "abs": 1.1135900308545388e-6,
+          "case": "q6_k rows=3 n=40 k=256 seed=3",
+          "rel": 8.340027870931475e-7
+        },
+        {
+          "abs": 1.0803284311577954e-6,
+          "case": "q6_k rows=3 n=40 k=256 seed=4",
+          "rel": 8.588135074205638e-7
+        },
+        {
+          "abs": 2.108227704411547e-6,
+          "case": "q6_k rows=7 n=33 k=512 seed=1",
+          "rel": 2.108227704411547e-6
+        },
+        {
+          "abs": 1.957510704642118e-6,
+          "case": "q6_k rows=7 n=33 k=512 seed=2",
+          "rel": 1.3539365966153127e-6
+        },
+        {
+          "abs": 2.1771202938225542e-6,
+          "case": "q6_k rows=7 n=33 k=512 seed=3",
+          "rel": 1.3032865240347746e-6
+        },
+        {
+          "abs": 2.2983058443060145e-6,
+          "case": "q6_k rows=7 n=33 k=512 seed=4",
+          "rel": 1.5094439283303232e-6
+        },
+        {
+          "abs": 3.8073442283348413e-6,
+          "case": "q6_k rows=17 n=96 k=1024 seed=1",
+          "rel": 2.797391502440405e-6
+        },
+        {
+          "abs": 4.418331684519217e-6,
+          "case": "q6_k rows=17 n=96 k=1024 seed=2",
+          "rel": 2.3874136161339266e-6
+        },
+        {
+          "abs": 3.6415497675079678e-6,
+          "case": "q6_k rows=17 n=96 k=1024 seed=3",
+          "rel": 2.608915167456871e-6
+        },
+        {
+          "abs": 4.036959722952815e-6,
+          "case": "q6_k rows=17 n=96 k=1024 seed=4",
+          "rel": 2.3567658473666597e-6
+        },
+        {
+          "abs": 0.000010802075010474255,
+          "case": "q6_k rows=64 n=128 k=4096 seed=1",
+          "rel": 6.633623485186035e-6
+        },
+        {
+          "abs": 0.00001505851437855199,
+          "case": "q6_k rows=64 n=128 k=4096 seed=2",
+          "rel": 8.83244292992913e-6
+        },
+        {
+          "abs": 0.000012802512756593387,
+          "case": "q6_k rows=64 n=128 k=4096 seed=3",
+          "rel": 7.797275089505164e-6
+        },
+        {
+          "abs": 0.00001214320687381587,
+          "case": "q6_k rows=64 n=128 k=4096 seed=4",
+          "rel": 7.658357205286848e-6
+        },
+        {
+          "abs": 8.49945350012149e-6,
+          "case": "q6_k rows=140 n=512 k=2048 seed=1",
+          "rel": 5.651063361256092e-6
+        },
+        {
+          "abs": 7.123797871599891e-6,
+          "case": "q6_k rows=140 n=512 k=2048 seed=2",
+          "rel": 6.051178445432015e-6
+        },
+        {
+          "abs": 8.271282837313265e-6,
+          "case": "q6_k rows=140 n=512 k=2048 seed=3",
+          "rel": 6.250392090123569e-6
+        },
+        {
+          "abs": 8.446276737572589e-6,
+          "case": "q6_k rows=140 n=512 k=2048 seed=4",
+          "rel": 6.202696695822851e-6
+        },
+        {
+          "abs": 0.000018551943654188108,
+          "case": "q6_k rows=5 n=200 k=8192 seed=1",
+          "rel": 0.000012628950642579184
+        },
+        {
+          "abs": 0.000017910741419768783,
+          "case": "q6_k rows=5 n=200 k=8192 seed=2",
+          "rel": 0.000013866435509157782
+        },
+        {
+          "abs": 0.000019669562576041244,
+          "case": "q6_k rows=5 n=200 k=8192 seed=3",
+          "rel": 0.000010863369482194685
+        },
+        {
+          "abs": 0.000018882390932617454,
+          "case": "q6_k rows=5 n=200 k=8192 seed=4",
+          "rel": 0.000014082248981139855
+        }
+      ],
+      "harness": "board-240/seed_vulkan_matmul_accuracy",
+      "input_range": "uniform [-1, 1) activations and weights (Q4_0, Q8_0, Q4_K, Q6_K)",
+      "measured_worst": 0.00047273647169276956,
+      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
+      "op": "QMatMul",
+      "reference": "f64 product of the f32 activations and the dequantized weights"
+    }
+  },
+  {
+    "kernel_ref": "vulkan-slang",
+    "backend": "Vulkan",
+    "dtypes": [
+      "F32",
+      "U32",
+      "F32"
+    ],
+    "kernel_revision_hash": 1419400945849375885,
+    "claim": "max_relative",
+    "result": "pass",
+    "verified_at": "epoch:1795304576",
+    "protocol_version": 1,
+    "evidence": {
+      "adapter": "NVIDIA GeForce RTX 4070 Laptop GPU",
+      "bound": 0.001,
+      "cases": [
+        {
+          "abs": 8.090573828667402e-7,
+          "case": "q4_0 rows=1 n=64 k=128 seed=1",
+          "rel": 4.270041245035827e-7
+        },
+        {
+          "abs": 7.225171430036426e-7,
+          "case": "q4_0 rows=1 n=64 k=128 seed=2",
+          "rel": 3.2245588954538107e-7
+        },
+        {
+          "abs": 8.563365554437041e-7,
+          "case": "q4_0 rows=1 n=64 k=128 seed=3",
+          "rel": 4.231133866132209e-7
+        },
+        {
+          "abs": 6.754780770279467e-7,
+          "case": "q4_0 rows=1 n=64 k=128 seed=4",
+          "rel": 6.212576408870518e-7
+        },
+        {
+          "abs": 7.024049409665167e-6,
+          "case": "q4_0 rows=1 n=2048 k=2048 seed=1",
+          "rel": 5.145695467945188e-6
+        },
+        {
+          "abs": 8.595248800702393e-6,
+          "case": "q4_0 rows=1 n=2048 k=2048 seed=2",
+          "rel": 8.595248800702393e-6
+        },
+        {
+          "abs": 5.961621354799718e-6,
+          "case": "q4_0 rows=1 n=2048 k=2048 seed=3",
+          "rel": 3.869128704536706e-6
+        },
+        {
+          "abs": 5.568756023421884e-6,
+          "case": "q4_0 rows=1 n=2048 k=2048 seed=4",
+          "rel": 3.657303750514984e-6
+        },
+        {
+          "abs": 0.00001093526225304231,
+          "case": "q4_0 rows=1 n=96 k=8192 seed=1",
+          "rel": 7.371163519565016e-6
+        },
+        {
+          "abs": 0.000010254814696963876,
+          "case": "q4_0 rows=1 n=96 k=8192 seed=2",
+          "rel": 2.9892919613963325e-6
+        },
+        {
+          "abs": 0.000010713149094954133,
+          "case": "q4_0 rows=1 n=96 k=8192 seed=3",
+          "rel": 6.663176463916898e-6
+        },
+        {
+          "abs": 0.000012411655916366726,
+          "case": "q4_0 rows=1 n=96 k=8192 seed=4",
+          "rel": 7.517570338677615e-6
+        },
+        {
+          "abs": 1.2382370186969638e-6,
+          "case": "q4_0 rows=3 n=40 k=256 seed=1",
+          "rel": 6.072654772993397e-7
+        },
+        {
+          "abs": 9.173818398267031e-7,
+          "case": "q4_0 rows=3 n=40 k=256 seed=2",
+          "rel": 6.925256457179785e-7
+        },
+        {
+          "abs": 1.1062293197028339e-6,
+          "case": "q4_0 rows=3 n=40 k=256 seed=3",
+          "rel": 6.036643753759563e-7
+        },
+        {
+          "abs": 1.257285475730896e-6,
+          "case": "q4_0 rows=3 n=40 k=256 seed=4",
+          "rel": 8.210336090996861e-7
+        },
+        {
+          "abs": 2.0335501176305115e-6,
+          "case": "q4_0 rows=7 n=33 k=512 seed=1",
+          "rel": 1.058477209880948e-6
+        },
+        {
+          "abs": 2.2469466784968972e-6,
+          "case": "q4_0 rows=7 n=33 k=512 seed=2",
+          "rel": 1.1691736290231347e-6
+        },
+        {
+          "abs": 2.356187906116247e-6,
+          "case": "q4_0 rows=7 n=33 k=512 seed=3",
+          "rel": 1.1172758719350595e-6
+        },
+        {
+          "abs": 2.2642925614491105e-6,
+          "case": "q4_0 rows=7 n=33 k=512 seed=4",
+          "rel": 1.6743797459639609e-6
+        },
+        {
+          "abs": 4.555251507554203e-6,
+          "case": "q4_0 rows=17 n=96 k=1024 seed=1",
+          "rel": 2.2169988369569182e-6
+        },
+        {
+          "abs": 3.7240679375827312e-6,
+          "case": "q4_0 rows=17 n=96 k=1024 seed=2",
+          "rel": 2.5447805848484344e-6
+        },
+        {
+          "abs": 3.404071321710944e-6,
+          "case": "q4_0 rows=17 n=96 k=1024 seed=3",
+          "rel": 2.724329533521086e-6
+        },
+        {
+          "abs": 3.5886478144675493e-6,
+          "case": "q4_0 rows=17 n=96 k=1024 seed=4",
+          "rel": 2.3392931325361133e-6
+        },
+        {
+          "abs": 0.000010629766620695591,
+          "case": "q4_0 rows=64 n=128 k=4096 seed=1",
+          "rel": 6.242902608926759e-6
+        },
+        {
+          "abs": 9.837829566095024e-6,
+          "case": "q4_0 rows=64 n=128 k=4096 seed=2",
+          "rel": 7.913390981700817e-6
+        },
+        {
+          "abs": 0.000012845455785281956,
+          "case": "q4_0 rows=64 n=128 k=4096 seed=3",
+          "rel": 8.225229976233095e-6
+        },
+        {
+          "abs": 0.000016273384972009808,
+          "case": "q4_0 rows=64 n=128 k=4096 seed=4",
+          "rel": 7.2580151027068496e-6
+        },
+        {
+          "abs": 8.135357347782701e-6,
+          "case": "q4_0 rows=140 n=512 k=2048 seed=1",
+          "rel": 5.4023112170398235e-6
+        },
+        {
+          "abs": 9.152317943517119e-6,
+          "case": "q4_0 rows=140 n=512 k=2048 seed=2",
+          "rel": 5.097143002785742e-6
+        },
+        {
+          "abs": 7.5668212957680225e-6,
+          "case": "q4_0 rows=140 n=512 k=2048 seed=3",
+          "rel": 5.901922122575343e-6
+        },
+        {
+          "abs": 7.905771781224757e-6,
+          "case": "q4_0 rows=140 n=512 k=2048 seed=4",
+          "rel": 5.286092346068472e-6
+        },
+        {
+          "abs": 0.00001544831320643425,
+          "case": "q4_0 rows=5 n=200 k=8192 seed=1",
+          "rel": 0.000010648036550264806
+        },
+        {
+          "abs": 0.00002091548958560452,
+          "case": "q4_0 rows=5 n=200 k=8192 seed=2",
+          "rel": 9.27716404952939e-6
+        },
+        {
+          "abs": 0.000014233759429771453,
+          "case": "q4_0 rows=5 n=200 k=8192 seed=3",
+          "rel": 8.227041689679027e-6
+        },
+        {
+          "abs": 0.000017290141840931028,
+          "case": "q4_0 rows=5 n=200 k=8192 seed=4",
+          "rel": 0.000012212840374559164
+        },
+        {
+          "abs": 8.229108061641455e-7,
+          "case": "q4_0 rows=1 n=40 k=96 seed=1",
+          "rel": 4.5894557842984796e-7
+        },
+        {
+          "abs": 5.414767656475306e-7,
+          "case": "q4_0 rows=1 n=40 k=96 seed=2",
+          "rel": 2.9352668207138777e-7
+        },
+        {
+          "abs": 7.90641934145242e-7,
+          "case": "q4_0 rows=1 n=40 k=96 seed=3",
+          "rel": 2.5660847313702106e-7
+        },
+        {
+          "abs": 4.140238161198795e-7,
+          "case": "q4_0 rows=1 n=40 k=96 seed=4",
+          "rel": 2.578823906394912e-7
+        },
+        {
+          "abs": 1.1066222214139998e-6,
+          "case": "q4_0 rows=9 n=17 k=160 seed=1",
+          "rel": 5.532856448553503e-7
+        },
+        {
+          "abs": 1.2962627806700766e-6,
+          "case": "q4_0 rows=9 n=17 k=160 seed=2",
+          "rel": 7.215858204290271e-7
+        },
+        {
+          "abs": 9.877257980406284e-7,
+          "case": "q4_0 rows=9 n=17 k=160 seed=3",
+          "rel": 7.105845725163817e-7
+        },
+        {
+          "abs": 1.0164585546590388e-6,
+          "case": "q4_0 rows=9 n=17 k=160 seed=4",
+          "rel": 4.985006946770565e-7
+        },
+        {
+          "abs": 6.391896931745578e-7,
+          "case": "q8_0 rows=1 n=64 k=128 seed=1",
+          "rel": 5.156016413820907e-7
+        },
+        {
+          "abs": 9.790574040380307e-7,
+          "case": "q8_0 rows=1 n=64 k=128 seed=2",
+          "rel": 3.5736950534828013e-7
+        },
+        {
+          "abs": 6.627997208852321e-7,
+          "case": "q8_0 rows=1 n=64 k=128 seed=3",
+          "rel": 5.23791641171556e-7
+        },
+        {
+          "abs": 6.659979590040166e-7,
+          "case": "q8_0 rows=1 n=64 k=128 seed=4",
+          "rel": 5.368588062992785e-7
+        },
+        {
+          "abs": 5.6288922678504605e-6,
+          "case": "q8_0 rows=1 n=2048 k=2048 seed=1",
+          "rel": 5.1739243644988164e-6
+        },
+        {
+          "abs": 6.7098035287926905e-6,
+          "case": "q8_0 rows=1 n=2048 k=2048 seed=2",
+          "rel": 3.6484830161498394e-6
+        },
+        {
+          "abs": 6.237597517610993e-6,
+          "case": "q8_0 rows=1 n=2048 k=2048 seed=3",
+          "rel": 3.5393013604334556e-6
+        },
+        {
+          "abs": 6.433307135012001e-6,
+          "case": "q8_0 rows=1 n=2048 k=2048 seed=4",
+          "rel": 3.527019998728065e-6
+        },
+        {
+          "abs": 0.000011767777323257178,
+          "case": "q8_0 rows=1 n=96 k=8192 seed=1",
+          "rel": 6.643640517722815e-6
+        },
+        {
+          "abs": 0.000014084745998843573,
+          "case": "q8_0 rows=1 n=96 k=8192 seed=2",
+          "rel": 2.69274687525467e-6
+        },
+        {
+          "abs": 0.0000112266861833632,
+          "case": "q8_0 rows=1 n=96 k=8192 seed=3",
+          "rel": 3.3919650377356447e-6
+        },
+        {
+          "abs": 0.000011820969120890368,
+          "case": "q8_0 rows=1 n=96 k=8192 seed=4",
+          "rel": 7.737609838154226e-6
+        },
+        {
+          "abs": 6.126158496044809e-6,
+          "case": "q8_0 rows=3 n=40 k=256 seed=1",
+          "rel": 2.3707170839770697e-6
+        },
+        {
+          "abs": 6.713515631417977e-6,
+          "case": "q8_0 rows=3 n=40 k=256 seed=2",
+          "rel": 1.92538527699071e-6
+        },
+        {
+          "abs": 4.8439605961903e-6,
+          "case": "q8_0 rows=3 n=40 k=256 seed=3",
+          "rel": 2.7255009626969695e-6
+        },
+        {
+          "abs": 7.37182745069731e-6,
+          "case": "q8_0 rows=3 n=40 k=256 seed=4",
+          "rel": 3.1971647368659485e-6
+        },
+        {
+          "abs": 0.000011881761565746274,
+          "case": "q8_0 rows=7 n=33 k=512 seed=1",
+          "rel": 6.325105459836777e-6
+        },
+        {
+          "abs": 0.00001220762078446569,
+          "case": "q8_0 rows=7 n=33 k=512 seed=2",
+          "rel": 6.688298071821919e-6
+        },
+        {
+          "abs": 0.000010692261639633216,
+          "case": "q8_0 rows=7 n=33 k=512 seed=3",
+          "rel": 4.682989400049713e-6
+        },
+        {
+          "abs": 0.000018841570636141114,
+          "case": "q8_0 rows=7 n=33 k=512 seed=4",
+          "rel": 5.6702201753229385e-6
+        },
+        {
+          "abs": 0.000049563407173991436,
+          "case": "q8_0 rows=17 n=96 k=1024 seed=1",
+          "rel": 0.000016934578070504358
+        },
+        {
+          "abs": 0.00003962968821724644,
+          "case": "q8_0 rows=17 n=96 k=1024 seed=2",
+          "rel": 0.00002136948705810937
+        },
+        {
+          "abs": 0.000030259868708526483,
+          "case": "q8_0 rows=17 n=96 k=1024 seed=3",
+          "rel": 0.000013843373835698003
+        },
+        {
+          "abs": 0.00004196026384306606,
+          "case": "q8_0 rows=17 n=96 k=1024 seed=4",
+          "rel": 0.000013421296898741275
+        },
+        {
+          "abs": 0.00018729189605437568,
+          "case": "q8_0 rows=64 n=128 k=4096 seed=1",
+          "rel": 0.00005742749676497487
+        },
+        {
+          "abs": 0.00014610650669055758,
+          "case": "q8_0 rows=64 n=128 k=4096 seed=2",
+          "rel": 0.00009117824856730294
+        },
+        {
+          "abs": 0.0001704095489003521,
+          "case": "q8_0 rows=64 n=128 k=4096 seed=3",
+          "rel": 0.0000570531738048885
+        },
+        {
+          "abs": 0.00017549396716276533,
+          "case": "q8_0 rows=64 n=128 k=4096 seed=4",
+          "rel": 0.00007558273819086025
+        },
+        {
+          "abs": 0.00012196951183796045,
+          "case": "q8_0 rows=140 n=512 k=2048 seed=1",
+          "rel": 0.00003797135423155851
+        },
+        {
+          "abs": 0.00010779652575365617,
+          "case": "q8_0 rows=140 n=512 k=2048 seed=2",
+          "rel": 0.000041904721001628786
+        },
+        {
+          "abs": 0.00011781294779211748,
+          "case": "q8_0 rows=140 n=512 k=2048 seed=3",
+          "rel": 0.000039014374578982824
+        },
+        {
+          "abs": 0.00010589731300569838,
+          "case": "q8_0 rows=140 n=512 k=2048 seed=4",
+          "rel": 0.000037023055028839735
+        },
+        {
+          "abs": 0.00039761077641742304,
+          "case": "q8_0 rows=5 n=200 k=8192 seed=1",
+          "rel": 0.00006275749137785169
+        },
+        {
+          "abs": 0.0002537253481023072,
+          "case": "q8_0 rows=5 n=200 k=8192 seed=2",
+          "rel": 0.000093966195890971
+        },
+        {
+          "abs": 0.00047273647169276956,
+          "case": "q8_0 rows=5 n=200 k=8192 seed=3",
+          "rel": 0.00005842281416335027
+        },
+        {
+          "abs": 0.0003229263961657125,
+          "case": "q8_0 rows=5 n=200 k=8192 seed=4",
+          "rel": 0.0000985708770713245
+        },
+        {
+          "abs": 9.6595022114343e-7,
+          "case": "q8_0 rows=1 n=40 k=96 seed=1",
+          "rel": 3.138375177513808e-7
+        },
+        {
+          "abs": 6.186241989780683e-7,
+          "case": "q8_0 rows=1 n=40 k=96 seed=2",
+          "rel": 4.01841589336982e-7
+        },
+        {
+          "abs": 5.441852408694103e-7,
+          "case": "q8_0 rows=1 n=40 k=96 seed=3",
+          "rel": 2.8687257160317934e-7
+        },
+        {
+          "abs": 4.1669227357488126e-7,
+          "case": "q8_0 rows=1 n=40 k=96 seed=4",
+          "rel": 2.5375720724696293e-7
+        },
+        {
+          "abs": 5.730857992602978e-6,
+          "case": "q8_0 rows=9 n=17 k=160 seed=1",
+          "rel": 1.3651120368570234e-6
+        },
+        {
+          "abs": 3.6183550946589094e-6,
+          "case": "q8_0 rows=9 n=17 k=160 seed=2",
+          "rel": 1.4073539205128327e-6
+        },
+        {
+          "abs": 5.523996151168831e-6,
+          "case": "q8_0 rows=9 n=17 k=160 seed=3",
+          "rel": 1.89475856121971e-6
+        },
+        {
+          "abs": 3.6480505514191464e-6,
+          "case": "q8_0 rows=9 n=17 k=160 seed=4",
+          "rel": 1.5372788766399026e-6
+        },
+        {
+          "abs": 6.718809345329646e-6,
+          "case": "q4_k rows=1 n=2048 k=2048 seed=1",
+          "rel": 4.406997049954953e-6
+        },
+        {
+          "abs": 5.588990916294279e-6,
+          "case": "q4_k rows=1 n=2048 k=2048 seed=2",
+          "rel": 3.3063201954064425e-6
+        },
+        {
+          "abs": 6.660251301582321e-6,
+          "case": "q4_k rows=1 n=2048 k=2048 seed=3",
+          "rel": 4.042362888867501e-6
+        },
+        {
+          "abs": 6.500299832623568e-6,
+          "case": "q4_k rows=1 n=2048 k=2048 seed=4",
+          "rel": 4.279749646229902e-6
+        },
+        {
+          "abs": 0.000010813699873324367,
+          "case": "q4_k rows=1 n=96 k=8192 seed=1",
+          "rel": 4.382336938815743e-6
+        },
+        {
+          "abs": 0.00001351685637018818,
+          "case": "q4_k rows=1 n=96 k=8192 seed=2",
+          "rel": 2.558971278225212e-6
+        },
+        {
+          "abs": 0.000015247117289618473,
+          "case": "q4_k rows=1 n=96 k=8192 seed=3",
+          "rel": 9.265865401175688e-6
+        },
+        {
+          "abs": 0.000011328350410622079,
+          "case": "q4_k rows=1 n=96 k=8192 seed=4",
+          "rel": 0.000010480993068995303
+        },
+        {
+          "abs": 6.3090033108892385e-6,
+          "case": "q4_k rows=3 n=40 k=256 seed=1",
+          "rel": 1.888866108856746e-6
+        },
+        {
+          "abs": 4.4519113089336315e-6,
+          "case": "q4_k rows=3 n=40 k=256 seed=2",
+          "rel": 2.204543761763489e-6
+        },
+        {
+          "abs": 6.312260666163638e-6,
+          "case": "q4_k rows=3 n=40 k=256 seed=3",
+          "rel": 1.4445836313825566e-6
+        },
+        {
+          "abs": 4.728423846245278e-6,
+          "case": "q4_k rows=3 n=40 k=256 seed=4",
+          "rel": 1.5156292647588998e-6
+        },
+        {
+          "abs": 0.000013474711067829048,
+          "case": "q4_k rows=7 n=33 k=512 seed=1",
+          "rel": 3.8123930607980583e-6
+        },
+        {
+          "abs": 0.00002062326484519872,
+          "case": "q4_k rows=7 n=33 k=512 seed=2",
+          "rel": 3.1737615699967137e-6
+        },
+        {
+          "abs": 0.000016778021290519973,
+          "case": "q4_k rows=7 n=33 k=512 seed=3",
+          "rel": 3.702272351802094e-6
+        },
+        {
+          "abs": 0.0000153519226842036,
+          "case": "q4_k rows=7 n=33 k=512 seed=4",
+          "rel": 3.333573658892419e-6
+        },
+        {
+          "abs": 0.00003127695572402445,
+          "case": "q4_k rows=17 n=96 k=1024 seed=1",
+          "rel": 0.000012106128024049634
+        },
+        {
+          "abs": 0.00004048975620207784,
+          "case": "q4_k rows=17 n=96 k=1024 seed=2",
+          "rel": 0.000012530099411378615
+        },
+        {
+          "abs": 0.000034008181501121726,
+          "case": "q4_k rows=17 n=96 k=1024 seed=3",
+          "rel": 0.000011419522707001306
+        },
+        {
+          "abs": 0.000029814095569236088,
+          "case": "q4_k rows=17 n=96 k=1024 seed=4",
+          "rel": 0.000011230201380385552
+        },
+        {
+          "abs": 0.00016984114290607977,
+          "case": "q4_k rows=64 n=128 k=4096 seed=1",
+          "rel": 0.00006209708135429537
+        },
+        {
+          "abs": 0.00020002842029498424,
+          "case": "q4_k rows=64 n=128 k=4096 seed=2",
+          "rel": 0.0000689215570586356
+        },
+        {
+          "abs": 0.00022422737424676598,
+          "case": "q4_k rows=64 n=128 k=4096 seed=3",
+          "rel": 0.00005177738057682291
+        },
+        {
+          "abs": 0.00017667994416115107,
+          "case": "q4_k rows=64 n=128 k=4096 seed=4",
+          "rel": 0.00005462127046484966
+        },
+        {
+          "abs": 0.00010985802919094567,
+          "case": "q4_k rows=140 n=512 k=2048 seed=1",
+          "rel": 0.000042024185404443415
+        },
+        {
+          "abs": 0.00010604565818539413,
+          "case": "q4_k rows=140 n=512 k=2048 seed=2",
+          "rel": 0.00004330953265707649
+        },
+        {
+          "abs": 0.00010268699088555877,
+          "case": "q4_k rows=140 n=512 k=2048 seed=3",
+          "rel": 0.000035924676467402605
+        },
+        {
+          "abs": 0.00010496890104150225,
+          "case": "q4_k rows=140 n=512 k=2048 seed=4",
+          "rel": 0.00003821001337200869
+        },
+        {
+          "abs": 0.0003253352556384925,
+          "case": "q4_k rows=5 n=200 k=8192 seed=1",
+          "rel": 0.00004762276739711524
+        },
+        {
+          "abs": 0.0003178075317009643,
+          "case": "q4_k rows=5 n=200 k=8192 seed=2",
+          "rel": 0.0001606753996838961
+        },
+        {
+          "abs": 0.0003578825389922713,
+          "case": "q4_k rows=5 n=200 k=8192 seed=3",
+          "rel": 0.00005404209855441877
+        },
+        {
+          "abs": 0.00029264680711094115,
+          "case": "q4_k rows=5 n=200 k=8192 seed=4",
+          "rel": 0.00011667022795336379
+        },
+        {
+          "abs": 5.5074742277838595e-6,
+          "case": "q6_k rows=1 n=2048 k=2048 seed=1",
+          "rel": 3.5609147346349346e-6
+        },
+        {
+          "abs": 4.834559831579099e-6,
+          "case": "q6_k rows=1 n=2048 k=2048 seed=2",
+          "rel": 3.6770011320186313e-6
+        },
+        {
+          "abs": 6.8181060726146825e-6,
+          "case": "q6_k rows=1 n=2048 k=2048 seed=3",
+          "rel": 4.739555919286431e-6
+        },
+        {
+          "abs": 5.438056149387194e-6,
+          "case": "q6_k rows=1 n=2048 k=2048 seed=4",
+          "rel": 3.914391115245053e-6
+        },
+        {
+          "abs": 0.000013403509697695881,
+          "case": "q6_k rows=1 n=96 k=8192 seed=1",
+          "rel": 0.000011851294431153292
+        },
+        {
+          "abs": 0.000011835004968929752,
+          "case": "q6_k rows=1 n=96 k=8192 seed=2",
+          "rel": 6.195593840629954e-6
+        },
+        {
+          "abs": 0.000018911502436935734,
+          "case": "q6_k rows=1 n=96 k=8192 seed=3",
+          "rel": 6.309110616309127e-6
+        },
+        {
+          "abs": 0.000011819291017900468,
+          "case": "q6_k rows=1 n=96 k=8192 seed=4",
+          "rel": 3.3092281122392664e-6
+        },
+        {
+          "abs": 1.4885003452036472e-6,
+          "case": "q6_k rows=3 n=40 k=256 seed=1",
+          "rel": 9.009439736473723e-7
+        },
+        {
+          "abs": 1.4697159542720328e-6,
+          "case": "q6_k rows=3 n=40 k=256 seed=2",
+          "rel": 4.799714586374948e-7
+        },
+        {
+          "abs": 1.1135900308545388e-6,
+          "case": "q6_k rows=3 n=40 k=256 seed=3",
+          "rel": 8.340027870931475e-7
+        },
+        {
+          "abs": 1.0803284311577954e-6,
+          "case": "q6_k rows=3 n=40 k=256 seed=4",
+          "rel": 8.588135074205638e-7
+        },
+        {
+          "abs": 2.108227704411547e-6,
+          "case": "q6_k rows=7 n=33 k=512 seed=1",
+          "rel": 2.108227704411547e-6
+        },
+        {
+          "abs": 1.957510704642118e-6,
+          "case": "q6_k rows=7 n=33 k=512 seed=2",
+          "rel": 1.3539365966153127e-6
+        },
+        {
+          "abs": 2.1771202938225542e-6,
+          "case": "q6_k rows=7 n=33 k=512 seed=3",
+          "rel": 1.3032865240347746e-6
+        },
+        {
+          "abs": 2.2983058443060145e-6,
+          "case": "q6_k rows=7 n=33 k=512 seed=4",
+          "rel": 1.5094439283303232e-6
+        },
+        {
+          "abs": 3.8073442283348413e-6,
+          "case": "q6_k rows=17 n=96 k=1024 seed=1",
+          "rel": 2.797391502440405e-6
+        },
+        {
+          "abs": 4.418331684519217e-6,
+          "case": "q6_k rows=17 n=96 k=1024 seed=2",
+          "rel": 2.3874136161339266e-6
+        },
+        {
+          "abs": 3.6415497675079678e-6,
+          "case": "q6_k rows=17 n=96 k=1024 seed=3",
+          "rel": 2.608915167456871e-6
+        },
+        {
+          "abs": 4.036959722952815e-6,
+          "case": "q6_k rows=17 n=96 k=1024 seed=4",
+          "rel": 2.3567658473666597e-6
+        },
+        {
+          "abs": 0.000010802075010474255,
+          "case": "q6_k rows=64 n=128 k=4096 seed=1",
+          "rel": 6.633623485186035e-6
+        },
+        {
+          "abs": 0.00001505851437855199,
+          "case": "q6_k rows=64 n=128 k=4096 seed=2",
+          "rel": 8.83244292992913e-6
+        },
+        {
+          "abs": 0.000012802512756593387,
+          "case": "q6_k rows=64 n=128 k=4096 seed=3",
+          "rel": 7.797275089505164e-6
+        },
+        {
+          "abs": 0.00001214320687381587,
+          "case": "q6_k rows=64 n=128 k=4096 seed=4",
+          "rel": 7.658357205286848e-6
+        },
+        {
+          "abs": 8.49945350012149e-6,
+          "case": "q6_k rows=140 n=512 k=2048 seed=1",
+          "rel": 5.651063361256092e-6
+        },
+        {
+          "abs": 7.123797871599891e-6,
+          "case": "q6_k rows=140 n=512 k=2048 seed=2",
+          "rel": 6.051178445432015e-6
+        },
+        {
+          "abs": 8.271282837313265e-6,
+          "case": "q6_k rows=140 n=512 k=2048 seed=3",
+          "rel": 6.250392090123569e-6
+        },
+        {
+          "abs": 8.446276737572589e-6,
+          "case": "q6_k rows=140 n=512 k=2048 seed=4",
+          "rel": 6.202696695822851e-6
+        },
+        {
+          "abs": 0.000018551943654188108,
+          "case": "q6_k rows=5 n=200 k=8192 seed=1",
+          "rel": 0.000012628950642579184
+        },
+        {
+          "abs": 0.000017910741419768783,
+          "case": "q6_k rows=5 n=200 k=8192 seed=2",
+          "rel": 0.000013866435509157782
+        },
+        {
+          "abs": 0.000019669562576041244,
+          "case": "q6_k rows=5 n=200 k=8192 seed=3",
+          "rel": 0.000010863369482194685
+        },
+        {
+          "abs": 0.000018882390932617454,
+          "case": "q6_k rows=5 n=200 k=8192 seed=4",
+          "rel": 0.000014082248981139855
+        }
+      ],
+      "harness": "board-240/seed_vulkan_matmul_accuracy",
+      "input_range": "uniform [-1, 1) activations and weights (Q4_0, Q8_0, Q4_K, Q6_K)",
+      "measured_worst": 0.0001606753996838961,
+      "metric": "abs = |out-ref|; rel = |out-ref| / max(|ref|, 1.0)",
+      "op": "QMatMul",
+      "reference": "f64 product of the f32 activations and the dequantized weights"
     }
   }
 ]
