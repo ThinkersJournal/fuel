@@ -290,8 +290,23 @@ fn mul_add_realize_on_vulkan_matches_reference() {
     let c = a.add(&b).expect("add").mul(&a).expect("mul");
     assert_eq!(c.dtype(), DType::F32);
 
+    // ROW 158, retire on completion, the Vulkan fence hook (same ignored test, no new `#[ignore]`): a realize
+    // records dispatches (the clock advances) and, after its read-back drained the queue, every recorded
+    // dispatch is retired (`retired >= recorded`), so a probe stamped at any point of it reads done.
+    let clock = backend.dispatch_clock();
+    let recorded_before = clock.recorded();
     let out = c.realize_f32_vulkan(&backend);
     assert_eq!(out, vec![11.0_f32, 44.0, 99.0, 176.0]);
+    assert!(
+        clock.recorded() > recorded_before,
+        "the realize recorded no dispatch on this backend: the clock cannot see its work"
+    );
+    assert!(
+        clock.retired() >= clock.recorded(),
+        "after the read-back every recorded dispatch must be retired: recorded {}, retired {}",
+        clock.recorded(),
+        clock.retired()
+    );
 }
 
 /// Step E A2 (Vulkan async): a DEEPER chain with fan-out, so several Vulkan

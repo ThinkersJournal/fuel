@@ -7770,56 +7770,10 @@ pub fn backlog_sub_ns(loc: DeviceLocation, ns: u64) {
 /// The estimated backlog for `loc` in ns, or `None` when nothing has ever
 /// been fed for it (no estimate; NOT idle).
 pub fn backlog_estimate_ns(loc: DeviceLocation) -> Option<u64> {
-    let total = device_backlog_table()
+    device_backlog_table()
         .read()
         .ok()
-        .and_then(|guard| guard.get(&loc).map(|slot| slot.load(Ordering::Relaxed)))?;
-    // EXPERIMENT (`FUEL_BACKLOG_EXCLUDE_OWN=1`): a realize's own submitted work is not load that its own
-    // branches should avoid. Only the work of OTHER realizes counts.
-    if backlog_exclude_own() {
-        let own = own_outstanding_ns(loc);
-        return Some(total.saturating_sub(own));
-    }
-    Some(total)
-}
-
-/// What the BacklogLedgers have added to each device and have outstanding, process-wide. The picker that
-/// reads the estimate runs on a DIFFERENT thread from the one holding the ledger (measured: a thread-local
-/// version read 0 own while the total was 2.9 ms), so this is global; it is the experiment's "own work" only
-/// while a single realize runs at a time.
-static OWN_OUTSTANDING: Mutex<Vec<(DeviceLocation, u64)>> = Mutex::new(Vec::new());
-
-fn own_outstanding_add(loc: DeviceLocation, ns: u64) {
-    let mut o = OWN_OUTSTANDING.lock().unwrap_or_else(|p| p.into_inner());
-    match o.iter_mut().find(|(l, _)| *l == loc) {
-        Some((_, v)) => *v = v.saturating_add(ns),
-        None => o.push((loc, ns)),
-    }
-}
-
-fn own_outstanding_sub(loc: DeviceLocation, ns: u64) {
-    let mut o = OWN_OUTSTANDING.lock().unwrap_or_else(|p| p.into_inner());
-    if let Some((_, v)) = o.iter_mut().find(|(l, _)| *l == loc) {
-        *v = v.saturating_sub(ns);
-    }
-}
-
-fn own_outstanding_ns(loc: DeviceLocation) -> u64 {
-    let o = OWN_OUTSTANDING.lock().unwrap_or_else(|p| p.into_inner());
-    o.iter().find(|(l, _)| *l == loc).map_or(0, |(_, v)| *v)
-}
-
-/// Experiment switch (any of `1`, `true`, `on`, `yes` in `FUEL_BACKLOG_EXCLUDE_OWN`).
-fn backlog_exclude_own() -> bool {
-    static FROM_ENV: OnceLock<bool> = OnceLock::new();
-    *FROM_ENV.get_or_init(|| {
-        std::env::var("FUEL_BACKLOG_EXCLUDE_OWN").is_ok_and(|v| {
-            matches!(
-                v.trim().to_ascii_lowercase().as_str(),
-                "1" | "true" | "on" | "yes"
-            )
-        })
-    })
+        .and_then(|guard| guard.get(&loc).map(|slot| slot.load(Ordering::Relaxed)))
 }
 
 /// Name of the environment variable that turns the executor's backlog feed ON (any of `1`, `true`, `on`,
@@ -7836,6 +7790,21 @@ static BACKLOG_FEED_OVERRIDE: AtomicU32 = AtomicU32::new(0);
 /// tests and probes that measure the feed.
 pub fn set_backlog_feed_enabled(on: bool) {
     BACKLOG_FEED_OVERRIDE.store(if on { 1 } else { 2 }, Ordering::Relaxed);
+}
+
+/// Seeded mutant for the acceptance test (`FUEL_BACKLOG_NO_RETIRE=1`): the feed never takes an estimate
+/// back out until the realize ends, which is the cumulative behaviour that sent ~85% of a real model's
+/// branches to the CPU arm (ROADMAP row 158). A test seam, never set in production.
+pub(crate) fn backlog_retire_disabled() -> bool {
+    static FROM_ENV: OnceLock<bool> = OnceLock::new();
+    *FROM_ENV.get_or_init(|| {
+        std::env::var("FUEL_BACKLOG_NO_RETIRE").is_ok_and(|v| {
+            matches!(
+                v.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "on" | "yes"
+            )
+        })
+    })
 }
 
 /// Whether the executor adds its in-flight work to the device backlog (default: no).
@@ -7870,9 +7839,25 @@ pub(crate) fn backlog_feed_enabled() -> bool {
 ///
 /// A CPU location and a zero estimate add nothing: the CPU has no queue to estimate, and a device the
 /// executor cannot price must keep reporting NO estimate ([`backlog_estimate_ns`] `None`), never idle.
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct BacklogLedger {
-    added: Vec<(DeviceLocation, u64)>,
+    entries: Vec<LedgerEntry>,
+}
+
+/// One fed estimate: where it was added, how much, and (when the backend can say) a non-blocking probe
+/// that turns true once the work it stands for has completed.
+struct LedgerEntry {
+    loc: DeviceLocation,
+    ns: u64,
+    done: Option<Box<dyn Fn() -> bool + Send + Sync>>,
+}
+
+impl std::fmt::Debug for BacklogLedger {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BacklogLedger")
+            .field("entries", &self.entries.len())
+            .finish()
+    }
 }
 
 impl BacklogLedger {
@@ -7881,35 +7866,66 @@ impl BacklogLedger {
         Self::default()
     }
 
-    /// Add `ns` of estimated work to `loc`'s backlog and remember it for the `Drop` subtract.
+    /// Add `ns` of estimated work to `loc`'s backlog and keep it until the ledger is dropped (the end of
+    /// the realize). For work with no completion probe.
     pub fn add(&mut self, loc: DeviceLocation, ns: u64) {
+        self.push(loc, ns, None);
+    }
+
+    /// Add `ns` of estimated work to `loc`'s backlog and take it back out as soon as `done()` reports the
+    /// work finished (checked by [`Self::retire_completed`], without blocking), or when the ledger is
+    /// dropped, whichever comes first. `done` must not block.
+    pub fn add_until(
+        &mut self,
+        loc: DeviceLocation,
+        ns: u64,
+        done: impl Fn() -> bool + Send + Sync + 'static,
+    ) {
+        self.push(loc, ns, Some(Box::new(done)));
+    }
+
+    fn push(
+        &mut self,
+        loc: DeviceLocation,
+        ns: u64,
+        done: Option<Box<dyn Fn() -> bool + Send + Sync>>,
+    ) {
         if ns == 0 || matches!(loc, DeviceLocation::Cpu) {
             return;
         }
         backlog_add_ns(loc, ns);
-        own_outstanding_add(loc, ns);
         crate::optimizer_trace::global().record_backlog_added(ns);
-        match self.added.iter_mut().find(|(l, _)| *l == loc) {
-            Some((_, total)) => *total = total.saturating_add(ns),
-            None => self.added.push((loc, ns)),
-        }
+        self.entries.push(LedgerEntry { loc, ns, done });
     }
 
-    /// What this ledger has added to `loc` and has outstanding (added minus subtracted).
+    /// Take back every entry whose probe reports its work finished. Never blocks. Called as the executor
+    /// walks, so the backlog the picker reads is the work still QUEUED, not everything submitted so far.
+    pub fn retire_completed(&mut self) {
+        self.entries.retain(|e| {
+            if e.done.as_ref().is_some_and(|d| d()) {
+                backlog_sub_ns(e.loc, e.ns);
+                crate::optimizer_trace::global().record_backlog_retired(e.ns);
+                false
+            } else {
+                true
+            }
+        });
+    }
+
+    /// What this ledger has added to `loc` and has outstanding (added minus retired).
     pub fn outstanding_ns(&self, loc: DeviceLocation) -> u64 {
-        self.added
+        self.entries
             .iter()
-            .find(|(l, _)| *l == loc)
-            .map_or(0, |(_, ns)| *ns)
+            .filter(|e| e.loc == loc)
+            .fold(0, |acc, e| acc.saturating_add(e.ns))
     }
 }
 
 impl Drop for BacklogLedger {
     fn drop(&mut self) {
-        for (loc, ns) in self.added.drain(..) {
-            backlog_sub_ns(loc, ns);
-            own_outstanding_sub(loc, ns);
-            crate::optimizer_trace::global().record_backlog_retired(ns);
+        for e in self.entries.drain(..) {
+            backlog_sub_ns(e.loc, e.ns);
+            crate::optimizer_trace::global().record_backlog_retired(e.ns);
         }
     }
 }
@@ -13347,6 +13363,87 @@ mod tests {
         let priced = DeviceLocation::Vulkan { gpu_id: 9_107 };
         ledger.add(priced, 10);
         assert_eq!(backlog_estimate_ns(priced), Some(10));
+    }
+
+    // ---- Retire on completion (ROADMAP row 158): the backlog is QUEUED work. A fed estimate carries a
+    // non-blocking probe; `retire_completed` takes back exactly the estimates whose probe reports done.
+
+    /// Completion retires EXACTLY that op's estimate, not the others'.
+    #[test]
+    fn completion_retires_exactly_that_ops_estimate() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let loc = DeviceLocation::Vulkan { gpu_id: 9_110 };
+        let first = Arc::new(AtomicBool::new(false));
+        let second = Arc::new(AtomicBool::new(false));
+        let mut ledger = BacklogLedger::new();
+        let (f, g) = (Arc::clone(&first), Arc::clone(&second));
+        ledger.add_until(loc, 300, move || f.load(Ordering::Relaxed));
+        ledger.add_until(loc, 200, move || g.load(Ordering::Relaxed));
+        assert_eq!(backlog_estimate_ns(loc), Some(500));
+        first.store(true, Ordering::Relaxed);
+        ledger.retire_completed();
+        assert_eq!(
+            backlog_estimate_ns(loc),
+            Some(200),
+            "only the finished op's 300 ns left"
+        );
+        assert_eq!(ledger.outstanding_ns(loc), 200);
+        second.store(true, Ordering::Relaxed);
+        ledger.retire_completed();
+        assert_eq!(
+            backlog_estimate_ns(loc),
+            Some(0),
+            "drained, and idle (0), not unknown"
+        );
+        assert_eq!(ledger.outstanding_ns(loc), 0);
+    }
+
+    /// Sabotage sibling: a probe that never fires retires nothing, however often `retire_completed` runs.
+    /// (This is the cumulative behaviour the feature removes; the acceptance run reproduces it with
+    /// `FUEL_BACKLOG_NO_RETIRE=1`.)
+    #[test]
+    fn a_probe_that_never_fires_retires_nothing() {
+        let loc = DeviceLocation::Vulkan { gpu_id: 9_111 };
+        let mut ledger = BacklogLedger::new();
+        ledger.add_until(loc, 400, || false);
+        ledger.add(loc, 100); // no probe at all
+        for _ in 0..5 {
+            ledger.retire_completed();
+        }
+        assert_eq!(backlog_estimate_ns(loc), Some(500));
+        assert_eq!(ledger.outstanding_ns(loc), 500);
+    }
+
+    /// An op that FAILS or is DROPPED never completes by its probe: the ledger's `Drop` still takes its
+    /// estimate back, so the backlog cannot leak (here the ledger is dropped with a probe that never fired,
+    /// as when an error unwinds the realize).
+    #[test]
+    fn a_failed_or_dropped_op_is_also_retired() {
+        let loc = DeviceLocation::Vulkan { gpu_id: 9_112 };
+        {
+            let mut ledger = BacklogLedger::new();
+            ledger.add_until(loc, 250, || false);
+            assert_eq!(backlog_estimate_ns(loc), Some(250));
+        }
+        assert_eq!(backlog_estimate_ns(loc), Some(0));
+    }
+
+    /// No negative backlog: retiring an estimate that something else already took back saturates at 0, it
+    /// never wraps to a huge figure.
+    #[test]
+    fn retiring_never_drives_the_backlog_negative() {
+        let loc = DeviceLocation::Vulkan { gpu_id: 9_113 };
+        let mut ledger = BacklogLedger::new();
+        ledger.add_until(loc, 100, || true);
+        backlog_sub_ns(loc, 100); // another path already took it back
+        ledger.retire_completed();
+        assert_eq!(backlog_estimate_ns(loc), Some(0));
+        // Positive control: the same figure after a second, normal add is exact, so the 0 above is a
+        // saturation and not a dead counter.
+        ledger.add_until(loc, 60, || true);
+        assert_eq!(backlog_estimate_ns(loc), Some(60));
+        ledger.retire_completed();
+        assert_eq!(backlog_estimate_ns(loc), Some(0));
     }
 
     #[test]

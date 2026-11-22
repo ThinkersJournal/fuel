@@ -28,7 +28,7 @@ pub use mapped_meter::{
 /// by [`VulkanBackend::submit_pending`]; the executor wraps it in its
 /// `Completion` handle and waits it (via [`VulkanBackend::wait_submitted`]) at a
 /// deferred sync point, then drops it (freeing the GPU resources post-fence).
-pub use recorder::{BATCH_TOTAL, GpuTimeStats, SubmittedBatch};
+pub use recorder::{BATCH_TOTAL, DispatchClock, GpuTimeStats, SubmittedBatch};
 
 use fuel_ir::{DType, Layout};
 use pipelines::Pipelines;
@@ -2019,6 +2019,13 @@ impl VulkanBackend {
             .lock()
             .expect("recorder poisoned")
             .retain_in_open_batch(buf);
+    }
+
+    /// The backend's dispatch clock: monotonic recorded and retired dispatch counts. A caller that stamps
+    /// its work with [`DispatchClock::recorded`] after submitting it can later ask, without blocking,
+    /// whether `retired()` has reached the stamp (ROADMAP row 158).
+    pub fn dispatch_clock(&self) -> std::sync::Arc<DispatchClock> {
+        self.recorder.lock().expect("recorder poisoned").clock()
     }
 
     /// Dispatches recorded in the open (unsubmitted) batch.

@@ -7349,6 +7349,9 @@ fn feed_backlog(
     if !crate::dispatch::backlog_feed_enabled() {
         return;
     }
+    // Take back what the GPU has already finished first, so the picker reads QUEUED work, not everything
+    // this realize has submitted so far.
+    ledger.retire_completed();
     let Some(compiled) = item.compiled.as_ref() else {
         return;
     };
@@ -7362,7 +7365,38 @@ fn feed_backlog(
         return;
     };
     if let Some(loc) = guard.inner.location() {
-        ledger.add(loc, compiled.est_ns);
+        match completion_probe(&guard.inner) {
+            Some(done) if !crate::dispatch::backlog_retire_disabled() => {
+                ledger.add_until(loc, compiled.est_ns, done)
+            }
+            _ => ledger.add(loc, compiled.est_ns),
+        }
+    }
+}
+
+/// A non-blocking "has the work just submitted into this storage finished?" probe, from the backend that
+/// holds it (ROADMAP row 158): Vulkan reads its dispatch clock against the count stamped now, after the
+/// kernel was recorded; CUDA records an event on the device stream now and queries it. `None` for a backend
+/// with no probe (the estimate then stays until the end of the realize).
+fn completion_probe(
+    inner: &fuel_memory::BackendStorage,
+) -> Option<Box<dyn Fn() -> bool + Send + Sync>> {
+    match inner {
+        #[cfg(feature = "vulkan")]
+        fuel_memory::BackendStorage::Vulkan(v) => {
+            let clock = v.backend()?.dispatch_clock();
+            let stamp = clock.recorded();
+            Some(Box::new(move || clock.retired() >= stamp))
+        }
+        #[cfg(feature = "cuda")]
+        fuel_memory::BackendStorage::Cuda(c) => {
+            let ev = c.record_completion_event().ok()?;
+            // A failed query counts as finished: a fault surfaces at the realize's own sync, and the
+            // estimate must not stay on the backlog because the probe could not answer.
+            Some(Box::new(move || ev.is_complete().unwrap_or(true)))
+        }
+        #[allow(unreachable_patterns)]
+        _ => None,
     }
 }
 
