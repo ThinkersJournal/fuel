@@ -5689,6 +5689,11 @@ mod generate_tests {
             }
         };
         let cuda_device: Device = cuda.into();
+        // ROW 158, the executor feed on CUDA (folded into this existing ignored test: no new `#[ignore]`):
+        // the CUDA leg's realizes must add real estimated work to the device backlog and take all of it
+        // back out when each realize ends.
+        let cuda_loc = cuda_device.location();
+        let feed_before = fuel_dispatch::optimizer_trace::snapshot();
 
         // CUDA leg: byte-identical model/protocol, BF16 cache on the CUDA
         // device — the homogeneous [bf16;3] CUDA gemm path under test.
@@ -5712,6 +5717,27 @@ mod generate_tests {
         let cuda_logits = model_cuda
             .forward_with_kv_context(&[next_token], &mut cache_cuda, &mut ctx_cuda)
             .expect("cuda bf16 decode");
+
+        let feed = fuel_dispatch::optimizer_trace::snapshot().since(&feed_before);
+        assert!(
+            feed.backlog_added_ns > 0,
+            "a CUDA forward must add estimated work to the backlog: added {} ns",
+            feed.backlog_added_ns
+        );
+        assert_eq!(
+            feed.backlog_retired_ns, feed.backlog_added_ns,
+            "every nanosecond the realizes added must be taken back out: added {} ns, retired {} ns",
+            feed.backlog_added_ns, feed.backlog_retired_ns
+        );
+        assert_eq!(
+            fuel_dispatch::dispatch::backlog_estimate_ns(cuda_loc),
+            Some(0),
+            "after its realizes end the CUDA device is fed-and-idle (Some(0)), not None and not stuck"
+        );
+        println!(
+            "bf16_decode_cuda_matches_cpu: backlog fed {} ns, retired {} ns on {cuda_loc:?}",
+            feed.backlog_added_ns, feed.backlog_retired_ns
+        );
 
         assert_eq!(cpu_logits.len(), cuda_logits.len());
         assert_eq!(cpu_logits.len(), cfg.vocab_size);

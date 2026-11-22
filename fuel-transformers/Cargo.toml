@@ -96,4 +96,4 @@ required-features = ["dev-tools", "vulkan"]
 
 [[example]]
 name = "gguf_resident_reach"
-required-features = ["dev-tools", "vulkan"]
+required-features = ["dev-tools"]
