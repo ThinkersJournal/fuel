@@ -15,6 +15,11 @@
 //! `Const` built from a per-call array has no live source ([`fuel_graph::ConstOrigin::pin`] returns
 //! `None`) and is never registered, so per-token data cannot accumulate here.
 //!
+//! Budget: the registry holds at most a byte cap (set by the device before every seeding: a stated
+//! share of the device's memory, see `inference_context`); past it the least recently used entries
+//! are evicted, and a weight larger than the whole cap is served to the one realize that uploaded it
+//! but never retained. A device that cannot report its memory gets no residency at all.
+//!
 //! Lifetime: an entry whose source array nothing else holds (the model was dropped) is evicted by
 //! [`WeightResidency::sweep_orphans`], which runs at the start of every seeding, so a model swap does
 //! not grow the registry. [`Device::clear_weight_residency`](crate::Device::clear_weight_residency)
@@ -39,9 +44,17 @@ pub struct WeightResidencyStats {
     pub evicted: u64,
     /// Entries resident now.
     pub resident: usize,
+    /// Bytes resident now (the sum of the entries' source-array sizes).
+    pub resident_bytes: u64,
+    /// Entries evicted to stay under the byte cap (a subset of `evicted`).
+    pub evicted_for_budget: u64,
+    /// Weights uploaded but not retained because one weight alone exceeded the whole cap.
+    pub rejected: u64,
 }
 
 struct Resident<S> {
+    bytes: u64,
+    last_used: u64,
     origin: ConstOrigin,
     /// Keeps the source array alive for as long as its key is trusted.
     _pin: Box<dyn std::any::Any + Send + Sync>,
@@ -54,6 +67,19 @@ pub(crate) struct WeightResidency<S> {
     hits: u64,
     uploads: u64,
     evicted: u64,
+    evicted_for_budget: u64,
+    rejected: u64,
+    resident_bytes: u64,
+    /// Monotonic use counter: an entry's `last_used` is the tick of its latest hit or insert.
+    tick: u64,
+    /// Byte cap for what stays resident; `None` means no cap (only tests build that).
+    cap: Option<u64>,
+}
+
+/// Bytes of the host array a weight was built from.
+fn origin_bytes(origin: &ConstOrigin) -> u64 {
+    let k = origin.key();
+    (k.len as u64).saturating_mul(k.dtype.size_in_bytes() as u64)
 }
 
 impl<S: Clone> WeightResidency<S> {
@@ -63,13 +89,51 @@ impl<S: Clone> WeightResidency<S> {
             hits: 0,
             uploads: 0,
             evicted: 0,
+            evicted_for_budget: 0,
+            rejected: 0,
+            resident_bytes: 0,
+            tick: 0,
+            cap: None,
+        }
+    }
+
+    /// Set the byte cap; a lowered cap takes effect at the next insert.
+    pub(crate) fn set_cap(&mut self, cap: Option<u64>) {
+        self.cap = cap;
+    }
+
+    /// Evict least recently used entries until `incoming` more bytes fit under the cap.
+    fn make_room(&mut self, incoming: u64) {
+        let Some(cap) = self.cap else { return };
+        while self.resident_bytes.saturating_add(incoming) > cap {
+            let Some(oldest) = self
+                .entries
+                .iter()
+                .min_by_key(|(_, r)| r.last_used)
+                .map(|(k, _)| *k)
+            else {
+                break;
+            };
+            if let Some(r) = self.entries.remove(&oldest) {
+                self.resident_bytes -= r.bytes;
+                self.evicted += 1;
+                self.evicted_for_budget += 1;
+            }
         }
     }
 
     /// Drop every entry whose source array nothing but this registry's pin holds any more.
     pub(crate) fn sweep_orphans(&mut self) -> usize {
         let before = self.entries.len();
-        self.entries.retain(|_, r| r.origin.strong_count() > 1);
+        let mut freed = 0u64;
+        self.entries.retain(|_, r| {
+            let keep = r.origin.strong_count() > 1;
+            if !keep {
+                freed += r.bytes;
+            }
+            keep
+        });
+        self.resident_bytes -= freed;
         let gone = before - self.entries.len();
         self.evicted += gone as u64;
         gone
@@ -79,6 +143,7 @@ impl<S: Clone> WeightResidency<S> {
     pub(crate) fn clear(&mut self) {
         self.evicted += self.entries.len() as u64;
         self.entries.clear();
+        self.resident_bytes = 0;
     }
 
     /// The resident storage for `origin`, calling `upload` exactly once per live source array.
@@ -88,8 +153,10 @@ impl<S: Clone> WeightResidency<S> {
         origin: &ConstOrigin,
         upload: impl FnOnce() -> Result<S>,
     ) -> Result<Option<S>> {
-        if let Some(r) = self.entries.get(&origin.key()) {
+        self.tick += 1;
+        if let Some(r) = self.entries.get_mut(&origin.key()) {
             self.hits += 1;
+            r.last_used = self.tick;
             return Ok(Some(r.storage.clone()));
         }
         let Some(pin) = origin.pin() else {
@@ -97,9 +164,19 @@ impl<S: Clone> WeightResidency<S> {
         };
         let storage = upload()?;
         self.uploads += 1;
+        let bytes = origin_bytes(origin);
+        if self.cap.is_some_and(|cap| bytes > cap) {
+            // One weight alone is bigger than the whole budget: this realize uses it, nobody keeps it.
+            self.rejected += 1;
+            return Ok(Some(storage));
+        }
+        self.make_room(bytes);
+        self.resident_bytes += bytes;
         self.entries.insert(
             origin.key(),
             Resident {
+                bytes,
+                last_used: self.tick,
                 origin: origin.clone(),
                 _pin: pin,
                 storage: storage.clone(),
@@ -114,6 +191,9 @@ impl<S: Clone> WeightResidency<S> {
             uploads: self.uploads,
             evicted: self.evicted,
             resident: self.entries.len(),
+            resident_bytes: self.resident_bytes,
+            evicted_for_budget: self.evicted_for_budget,
+            rejected: self.rejected,
         }
     }
 }
@@ -247,14 +327,16 @@ mod tests {
         assert_eq!(r.stats().resident, 1);
         drop(w); // the model is unloaded
         assert_eq!(r.sweep_orphans(), 1);
+        let st = r.stats();
         assert_eq!(
-            r.stats(),
-            WeightResidencyStats {
-                hits: 0,
-                uploads: 1,
-                evicted: 1,
-                resident: 0
-            }
+            (
+                st.hits,
+                st.uploads,
+                st.evicted,
+                st.resident,
+                st.resident_bytes
+            ),
+            (0, 1, 1, 0, 0)
         );
         assert_eq!(
             Arc::strong_count(&storage),
@@ -361,5 +443,83 @@ mod tests {
         let copy: Arc<[u32]> = w.iter().copied().collect::<Vec<_>>().into();
         let got = r.get_or_upload(&origin_of(&copy), || Ok(2)).unwrap();
         assert_eq!(got, Some(2), "an equal-content copy is a distinct weight");
+    }
+
+    // ---- BYTE BUDGET ----
+
+    /// A 4-element `u32` array is 16 bytes.
+    fn arr(tag: u32) -> Arc<[u32]> {
+        vec![tag, tag + 1, tag + 2, tag + 3].into()
+    }
+
+    /// The registry never holds more than the cap and evicts the least recently used entry first; a hit
+    /// refreshes an entry. This test FAILS when the cap enforcement is removed (see the row 172 notes).
+    #[test]
+    fn the_byte_cap_holds_and_evicts_least_recently_used() {
+        let (a, b, c, d) = (arr(0), arr(10), arr(20), arr(30));
+        let mut r = WeightResidency::<u32>::new();
+        r.set_cap(Some(40)); // room for two 16-byte weights
+        r.get_or_upload(&origin_of(&a), || Ok(1)).unwrap();
+        r.get_or_upload(&origin_of(&b), || Ok(2)).unwrap();
+        assert_eq!((r.stats().resident, r.stats().resident_bytes), (2, 32));
+        r.get_or_upload(&origin_of(&c), || Ok(3)).unwrap(); // a is the least recently used
+        let st = r.stats();
+        assert!(
+            st.resident_bytes <= 40,
+            "over the cap: {} bytes",
+            st.resident_bytes
+        );
+        assert_eq!((st.resident, st.evicted_for_budget), (2, 1));
+        // `a` went; `b` is still a hit (and is now the most recently used).
+        assert_eq!(r.get_or_upload(&origin_of(&b), || Ok(99)).unwrap(), Some(2));
+        r.get_or_upload(&origin_of(&d), || Ok(4)).unwrap(); // evicts `c`, the least recently used now
+        assert_eq!(
+            r.get_or_upload(&origin_of(&b), || Ok(99)).unwrap(),
+            Some(2),
+            "b was refreshed, so it stays"
+        );
+        assert_eq!(
+            r.get_or_upload(&origin_of(&c), || Ok(33)).unwrap(),
+            Some(33),
+            "c was the least recently used, so it is a miss again"
+        );
+        assert!(r.stats().resident_bytes <= 40);
+    }
+
+    /// One weight bigger than the whole cap is handed to the realize that uploaded it and never kept.
+    #[test]
+    fn a_weight_larger_than_the_cap_is_served_but_not_kept() {
+        let big = arr(0); // 16 bytes
+        let mut r = WeightResidency::<u32>::new();
+        r.set_cap(Some(8));
+        let o = origin_of(&big);
+        assert_eq!(r.get_or_upload(&o, || Ok(5)).unwrap(), Some(5));
+        assert_eq!(
+            r.get_or_upload(&o, || Ok(6)).unwrap(),
+            Some(6),
+            "uploaded again: it was not kept"
+        );
+        let st = r.stats();
+        assert_eq!(
+            (st.resident, st.resident_bytes, st.rejected, st.uploads),
+            (0, 0, 2, 2)
+        );
+    }
+
+    /// `resident_bytes` follows sweeps and clears, so a freed model gives its budget back.
+    #[test]
+    fn freed_models_give_their_budget_back() {
+        let a = arr(0);
+        let mut r = WeightResidency::<u32>::new();
+        r.set_cap(Some(100));
+        r.get_or_upload(&origin_of(&a), || Ok(1)).unwrap();
+        assert_eq!(r.stats().resident_bytes, 16);
+        drop(a);
+        r.sweep_orphans();
+        assert_eq!(r.stats().resident_bytes, 0);
+        let b = arr(5);
+        r.get_or_upload(&origin_of(&b), || Ok(2)).unwrap();
+        r.clear();
+        assert_eq!(r.stats().resident_bytes, 0);
     }
 }

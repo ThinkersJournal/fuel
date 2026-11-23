@@ -2074,6 +2074,36 @@ pub struct InferenceContext {
 /// ROADMAP row 172: every realize then re-uploads its weights as it did before).
 const WEIGHT_RESIDENCY_ENV: &str = "FUEL_WEIGHT_RESIDENCY";
 
+/// `FUEL_WEIGHT_RESIDENCY_BYTES=<n>` sets the weight residency's byte cap outright (0 turns it off),
+/// replacing the share of the device's memory below.
+const WEIGHT_RESIDENCY_BYTES_ENV: &str = "FUEL_WEIGHT_RESIDENCY_BYTES";
+
+/// The share of a device's reported memory the weight residency may hold, in percent.
+///
+/// 40% because the rest has to hold everything else a serving process puts on the same card: KV
+/// caches, activations, the decode session's own buffers, a second model being warmed, and other
+/// processes (a desktop compositor alone takes about 0.5 GB of an 8 GB laptop card). It is a ceiling
+/// on what is RETAINED across contexts, not an extra cost for a single model: the decode session
+/// shares the resident storages, so one model in use needs its weights on the card either way (measured
+/// on the 4070, ROADMAP row 172). On the 8 GB 4070 this is a cap of about 3.2 GB, enough for
+/// Qwen3-0.6B Q4_K_M (1.19 GB) with a second small model alongside.
+const WEIGHT_RESIDENCY_SHARE_PERCENT: u64 = 40;
+
+/// The byte cap for `device`'s weight residency, or `None` for no residency.
+///
+/// `FUEL_WEIGHT_RESIDENCY_BYTES` wins when set. Otherwise the cap is [`WEIGHT_RESIDENCY_SHARE_PERCENT`]
+/// of the device's reported total memory (Vulkan: the `VK_EXT_memory_budget` device-local budget; CUDA:
+/// the driver's total). A device that cannot report it (a Vulkan driver without that extension, a
+/// backend with no runtime surface) gets `None`: no signal means no residency, never a guessed cap,
+/// so such a device behaves exactly as before.
+fn weight_residency_cap(device: &Device) -> Option<u64> {
+    if let Ok(v) = std::env::var(WEIGHT_RESIDENCY_BYTES_ENV) {
+        return v.trim().parse::<u64>().ok().filter(|&n| n > 0);
+    }
+    let total = device.as_dyn().as_backend_runtime()?.total_bytes()?;
+    Some(total / 100 * WEIGHT_RESIDENCY_SHARE_PERCENT).filter(|&n| n > 0)
+}
+
 impl InferenceContext {
     pub fn new(device: Device) -> Self {
         Self {
@@ -2325,6 +2355,9 @@ impl InferenceContext {
         {
             return Ok(cache);
         }
+        let Some(cap) = weight_residency_cap(&self.device) else {
+            return Ok(cache);
+        };
         let wanted: Vec<(NodeId, fuel_graph::ConstOrigin)> = {
             let g = graph
                 .read()
@@ -2342,6 +2375,7 @@ impl InferenceContext {
             .unwrap_or_else(|p| p.into_inner());
         // A model that was dropped since the last realize no longer holds its weights: let those go
         // before taking on new ones, so a model swap does not grow the device's residency.
+        residency.set_cap(Some(cap));
         residency.sweep_orphans();
         for (id, origin) in wanted {
             let resident = residency.get_or_upload(&origin, || {
