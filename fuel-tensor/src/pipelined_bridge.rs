@@ -336,7 +336,9 @@ fn realize_one_to_storage(
     allow_cost_placement: bool,
     extra_devices: &[&Device],
 ) -> Result<(Arc<RwLock<Storage>>, RootKernelIdent)> {
+    let t_prepare = fuel_dispatch::compiled::op_profile::PhaseTimer::start("bridge.prepare");
     let (cache, _backend_id, mut effective_targets) = prepare(graph, &[target], device, initial)?;
+    drop(t_prepare);
     let Some(cpu_target) = effective_targets.pop() else {
         return Err(Error::Msg(
             "pipelined_bridge: prepare returned no effective target for a \
@@ -948,6 +950,8 @@ fn dispatch_with_plan_retry(
         // the residency + layout passes — all consuming its internal
         // `ExecutionPlan`, which is not returned (Step D). Build-time
         // validation (missing binding / no device) fires inside `optimize_graph`.
+        let t_opt =
+            fuel_dispatch::compiled::op_profile::PhaseTimer::start("bridge.build_optimized_graph");
         let optimized = build_optimized_graph(
             graph,
             &[cpu_target],
@@ -955,6 +959,7 @@ fn dispatch_with_plan_retry(
             &cache,
             allow_cost_placement,
         )?;
+        drop(t_opt);
         // Residency (cross-device `Op::Copy`) and layout-fixup
         // (`Op::Contiguize`) are now optimizer passes inside `optimize_graph`
         // (cleanup Step B) — driven by the graph stamps + the `input_residency`
@@ -984,16 +989,21 @@ fn dispatch_with_plan_retry(
         // oracle, which suppresses cross-device placement outright).
         // The primary, then the extra devices the caller handed in (a Vulkan device cannot be derived from an
         // ordinal alone), then the GPUs the plan placed work on.
+        let t_reg =
+            fuel_dispatch::compiled::op_profile::PhaseTimer::start("bridge.register_devices");
         let mut devices = primary_device_registry(device)?;
         for extra in extra_devices {
             devices = register_device(devices, extra)?;
         }
         let devices =
             register_placed_devices(graph, cpu_target, pinned_loc, &cache_for_attempt, devices)?;
+        drop(t_reg);
         // Dispatch the "plan IS the graph" form: the executor recomputes its
         // run/`lower_run` dispatch order from the (now fully-stamped) graph,
         // resolves each branch's arm at the frontier (streaming), then
         // resolves each node's kernel via the binding-table lookup.
+        let t_exec =
+            fuel_dispatch::compiled::op_profile::PhaseTimer::start("bridge.dispatch_executor");
         let result = PipelinedExecutor::realize_with_optimized_picking_env_with_devices(
             graph.clone(),
             cpu_target,
@@ -1004,6 +1014,7 @@ fn dispatch_with_plan_retry(
             sym_env.clone(),
             devices,
         );
+        drop(t_exec);
         match result {
             Ok((storage, _layout)) => {
                 // Session 3 rider: report which sibling dispatched for
@@ -1354,7 +1365,10 @@ fn prepare_split(
     // Build the StorageCache on top of `initial` (which may carry
     // persistent storages from an InferenceContext). build_const_cache
     // adds any reachable Op::Const NodeId not already present.
+    let t_consts =
+        fuel_dispatch::compiled::op_profile::PhaseTimer::start("bridge.prepare.build_const_cache");
     let cache = build_const_cache(graph, &order, device, initial)?;
+    drop(t_consts);
 
     // Picker-arc step 4a: prepare() pins the realize DEVICE only.
     // Per-node `target_backend` is no longer stamped here — the
