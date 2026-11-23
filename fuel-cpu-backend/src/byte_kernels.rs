@@ -5451,7 +5451,7 @@ fn qmatmul_generic_f32<T: fuel_quantized::GgmlType>(
         .bt());
     }
     // The weight is `u32` elements, so a byte count that is not a multiple of 4 (an odd `n` of Q8_0, 34-byte
-    // blocks) is stored rounded up; the block bytes are the leading `need_w` (ROADMAP row 170).
+    // blocks) is stored rounded up; the block bytes are the leading `need_w` (ROADMAP row 169).
     if weight_bytes.len_bytes() != need_w && weight_bytes.len_bytes() != need_w.next_multiple_of(4)
     {
         return Err(Error::Msg(format!(

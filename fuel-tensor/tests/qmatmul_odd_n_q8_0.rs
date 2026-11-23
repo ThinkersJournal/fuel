@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! ROADMAP row 170: a quantized weight whose byte count is not a multiple of 4 (an odd `N` of Q8_0, 34-byte
+//! ROADMAP row 169: a quantized weight whose byte count is not a multiple of 4 (an odd `N` of Q8_0, 34-byte
 //! blocks) is stored rounded UP to whole `u32` elements. `Tensor::qmatmul` must accept that length and
 //! still reject a buffer too short to hold the blocks.
 //!
@@ -57,7 +57,7 @@ fn a_weight_buffer_too_short_or_too_long_is_still_rejected() {
     assert!(build(97, 100).is_err());
 }
 
-/// Row 170 ("kernel read"): the size check is not the only reader of the padded buffer. Realize an odd-N
+/// Row 169 ("kernel read"): the size check is not the only reader of the padded buffer. Realize an odd-N
 /// Q8_0 `qmatmul` on the CPU backend (no lowering: the fused node goes to the kernel the executor
 /// picks) with the weight stored the way the loader stores it, 3298 block bytes zero-padded to 825 `u32`,
 /// and compare with the exact dequantized product.
@@ -82,8 +82,10 @@ fn odd_n_q8_0_realizes_on_cpu_and_matches_exact_dequant() {
     assert_eq!(bytes.len(), 3298);
     bytes.resize(bytes.len().next_multiple_of(4), 0); // the loader's rounding up: 3300 bytes, 825 u32
     let w_u32: Vec<u32> = bytes
-        .chunks_exact(4)
-        .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|c| u32::from_le_bytes(*c))
         .collect();
     assert_eq!(w_u32.len(), 825);
     let mut deq = vec![0f32; n * k];
