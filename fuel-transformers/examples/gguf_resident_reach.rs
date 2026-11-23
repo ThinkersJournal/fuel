@@ -366,6 +366,13 @@ mod probe {
         match std::env::var("ODD_N_SEED").as_deref() {
             Ok("short") => bytes.truncate(exact),
             Ok("shift") => bytes.rotate_right(2),
+            // `tail` corrupts ONLY the final two block bytes (the last two quants of the last block, the bytes
+            // a kernel misreading the odd tail would get wrong), leaving every other byte and the length intact.
+            Ok("tail") => {
+                let at = exact - 2;
+                bytes[at] = 0x7f;
+                bytes[at + 1] = 0x7f;
+            }
             _ => {}
         }
         let w_u32: Vec<u32> = bytes
@@ -418,7 +425,10 @@ mod probe {
             }
         }
         let rel = worst / scale.max(f32::MIN_POSITIVE);
-        let ok = out.len() == m * n && (on_gpu + on_cpu) > 0 && rel <= LOGIT_TOL;
+        // Tight on purpose: clean runs sit near 1e-7 and the `tail` seed (two bytes of one column) reads 1.6e-2, which
+        // the loose logit tolerance would pass.
+        const ODD_N_TOL: f32 = 1e-4;
+        let ok = out.len() == m * n && (on_gpu + on_cpu) > 0 && rel <= ODD_N_TOL;
         println!(
             "  odd-N {qtype:?} m={m} k={k} n={n}: buffer {exact} B -> {} u32; QMatMul launches {gtag}={on_gpu} cpu={on_cpu}; \
              max |err|/max|want| = {rel:.2e} at (row {}, col {}) {}",
