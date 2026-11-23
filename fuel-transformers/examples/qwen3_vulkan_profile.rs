@@ -128,6 +128,7 @@ fn one_run(
     let (mut next, prefill) = step(prompt_tokens, false);
     if profile_prefill {
         op_profile::set_enabled(false);
+        println!("PREFILL#1 wall (the profiled call): {:.1} ms", ms(prefill));
         let mut rows = op_profile::take();
         rows.sort_by_key(|r| std::cmp::Reverse(r.3));
         println!(
@@ -150,6 +151,7 @@ fn one_run(
         op_profile::set_enabled(true);
         let (_, prefill2) = step(prompt_tokens, true);
         op_profile::set_enabled(false);
+        println!("PREFILL#2 wall: {:.1} ms", ms(prefill2));
         let _ = op_profile::take();
         println!(
             "PREFILL#2 (second prefill, same context): {:.0} ms; phases (nested, not additive):",

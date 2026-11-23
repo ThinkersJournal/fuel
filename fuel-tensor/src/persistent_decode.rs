@@ -1096,6 +1096,7 @@ pub fn forward_with_kv_context<M: DecodeBackbone + ?Sized>(
     rope_inv_freq: Option<&[f64]>,
 ) -> Result<Vec<f32>> {
     let seq = tokens.len();
+    let _t_d1 = fuel_dispatch::compiled::op_profile::PhaseTimer::start("d1.total");
     let t_build = fuel_dispatch::compiled::op_profile::PhaseTimer::start("d1.build_graph");
     let built = build_decode_graph(
         model,
@@ -1141,6 +1142,10 @@ pub fn forward_with_kv_context<M: DecodeBackbone + ?Sized>(
     }
 
     advance_cache(cache, seq, model.decode_n_layers());
+    // Attribution (row 170): the per-call graph is dropped here, not at the end of the function body.
+    let t_dropg = fuel_dispatch::compiled::op_profile::PhaseTimer::start("d1.drop_graph");
+    drop(built);
+    drop(t_dropg);
     Ok(logits_vec)
 }
 
@@ -1269,6 +1274,7 @@ pub fn forward_with_kv_context_persistent<M: DecodeBackbone + ?Sized>(
     rope_inv_freq: Option<&[f64]>,
 ) -> Result<Vec<f32>> {
     let seq = tokens.len();
+    let _t_persist = fuel_dispatch::compiled::op_profile::PhaseTimer::start("persistent.total");
     let max_seq_len = cache.max_seq_len;
     let cache_dtype = cache.dtype.unwrap_or(DType::F32);
     let n_layers = model.decode_dims().n_layers;
@@ -1276,7 +1282,11 @@ pub fn forward_with_kv_context_persistent<M: DecodeBackbone + ?Sized>(
     // A non-`seq == 1` step is shape-distinct from the held decode graph — drop
     // any session and rebuild it on the next decode token.
     if seq != 1 {
+        let t_drop = fuel_dispatch::compiled::op_profile::PhaseTimer::start(
+            "persistent.drop_decode_session",
+        );
         drop_decode_session(session, ctx);
+        drop(t_drop);
         return forward_with_kv_context(model, tokens, cache, ctx, false, rope_inv_freq);
     }
 

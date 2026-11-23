@@ -2358,6 +2358,14 @@ impl InferenceContext {
         let Some(cap) = weight_residency_cap(&self.device) else {
             return Ok(cache);
         };
+        let _t_seed = fuel_dispatch::compiled::op_profile::PhaseTimer::start("residency.seed");
+        // Attribution control (row 170): a known delay inside the named phase must show up in its row.
+        if let Some(ms) = std::env::var("ATTRIB_SLEEP_MS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+        {
+            std::thread::sleep(std::time::Duration::from_millis(ms));
+        }
         let wanted: Vec<(NodeId, fuel_graph::ConstOrigin)> = {
             let g = graph
                 .read()
@@ -2379,6 +2387,8 @@ impl InferenceContext {
         residency.sweep_orphans();
         for (id, origin) in wanted {
             let resident = residency.get_or_upload(&origin, || {
+                let _t_up =
+                    fuel_dispatch::compiled::op_profile::PhaseTimer::start("residency.upload");
                 let host = {
                     let g = graph
                         .read()
