@@ -117,6 +117,7 @@ fn one_run(
     let profile_prefill = std::env::var_os("QWEN3_PROFILE_PREFILL").is_some();
     if profile_prefill {
         let _ = op_profile::take();
+        let _ = op_profile::take_phases();
         op_profile::set_enabled(true);
     }
     let (mut next, prefill) = step(prompt_tokens, false);
@@ -130,6 +131,12 @@ fn one_run(
         );
         for (op, be, n, d) in rows {
             println!("  PF {op}/{be} {n} {:.1}", ms(d));
+        }
+        // Phase timers of the same call (hierarchical by name: an outer phase includes the inner ones, rows
+        // are NOT additive). The whole call is `prefill` below.
+        println!("PREFILL phases (phase entries host-ms; nested, not additive):");
+        for (name, n, d) in op_profile::take_phases() {
+            println!("  PH {name} {n} {:.1}", ms(d));
         }
     }
     let (n, first_decode) = step(&[next], false);
