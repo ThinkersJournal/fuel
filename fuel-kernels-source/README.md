@@ -11,6 +11,6 @@ One command per kernel, from the repo root: `VULKAN_SDK=<sdk> bash fuel-kernels-
 `-V -S comp --target-env vulkan1.1`. The output is byte-reproducible with that version: rebuilding the committed
 `qmatvec_q5_k.glsl` and `matvec.glsl` leaves `git status` clean. Check: rebuild, then `git diff --exit-code fuel-vulkan-kernels/spv`.
 
-`qmatvec_q5_k.glsl` and `qmatvec_q3_k.glsl` (ROADMAP row 119) are checked on a device by `vulkan_dispatch_qmatmul_q4_km` (its Q5_K block, exact f64 oracle
+`qmatvec_q5_k.glsl`, `qmatvec_q3_k.glsl` and `qmatvec_iq4_nl.glsl` (ROADMAP row 119) are checked on a device by `vulkan_dispatch_qmatmul_q4_km` (its Q5_K block, exact f64 oracle
 against `BlockQ5K::to_float`, N = 16 and 15, m = 1 and 3). The seeded misread to rerun after a shader edit: replace
-`(((h & u1) != 0u) ? 16u : 0u)` with `0u` in the Q5_K shader (drops the high-bit plane) or `? 4 : 0` with `? 0 : 0` in the Q3_K shader (drops the inverted high-bit term), rebuild, and that test must fail.
+`(((h & u1) != 0u) ? 16u : 0u)` with `0u` in the Q5_K shader (drops the high-bit plane) or `? 4 : 0` with `? 0 : 0` in the Q3_K shader (drops the inverted high-bit term) or `KV[q >> 4u]` with `KV[q & 15u]` in the IQ4_NL shader (reads the high nibble as the low one), rebuild, and that test must fail.
