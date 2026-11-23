@@ -15,7 +15,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 829 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 839 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1384 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 295 lines verbatim
@@ -1375,14 +1375,14 @@ fuel-tensor/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the roo
 fuel-tensor/examples/gap315_probe.rs	own		no lineage; 1 of 116 lines verbatim in candle (1%)
 fuel-tensor/examples/gap315_reconciliation_test.rs	own		no lineage; 1 of 77 lines verbatim in candle (1%)
 fuel-tensor/src/awq.rs	own		no lineage; 1 of 359 lines verbatim in candle (0%)
-fuel-tensor/src/const_residency.rs	own		no lineage; 5 of 168 lines verbatim in candle (3%)
+fuel-tensor/src/const_residency.rs	own		no lineage; 5 of 239 lines verbatim in candle (2%)
 fuel-tensor/src/cpu_accel.rs	own		no lineage; 2 of 79 lines verbatim in candle (3%)
 fuel-tensor/src/cuda_backend/mod.rs	own		no lineage; 3 of 43 lines verbatim in candle (7%)
 fuel-tensor/src/decode_shape.rs	own		no lineage; 2 of 252 lines verbatim in candle (1%)
-fuel-tensor/src/device.rs	candle-modified	candle-core/src/device.rs	rename/copy 38%; 39% of 190 lines verbatim
+fuel-tensor/src/device.rs	candle-modified	candle-core/src/device.rs	rename/copy 38%; 39% of 194 lines verbatim
 fuel-tensor/src/dtype.rs	candle-modified	candle-core/src/dtype.rs	no git lineage; 33 of 52 lines verbatim in candle (mostly candle-core/src/dtype.rs)
 fuel-tensor/src/factories.rs	own		no lineage; 0 of 194 lines verbatim in candle (0%)
-fuel-tensor/src/inference_context.rs	own		no lineage; 16 of 1737 lines verbatim in candle (1%)
+fuel-tensor/src/inference_context.rs	own		no lineage; 16 of 1776 lines verbatim in candle (1%)
 fuel-tensor/src/judge/cache.rs	own		no lineage; 0 of 41 lines verbatim in candle (0%)
 fuel-tensor/src/judge/mod.rs	own		no lineage; 4 of 2130 lines verbatim in candle (0%)
 fuel-tensor/src/kv_block_pool_device.rs	own		no lineage; 4 of 1214 lines verbatim in candle (0%)

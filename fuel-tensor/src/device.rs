@@ -307,8 +307,12 @@ impl Device {
             .stats()
     }
 
-    /// Drop every resident weight upload of this device (a model unload). The next realize that needs
-    /// a weight uploads it again. Storages a running realize still holds stay alive until it ends.
+    /// **The unload call.** Drop every resident weight upload of this device, so the card gets the
+    /// model's memory back at once. Call it when a model is unloaded or replaced and the process goes on
+    /// using the device: without it a dropped model's weights are only evicted at the next seeding on
+    /// this device (see [`crate::const_residency`]), and one that is still loaded is only evicted when
+    /// the byte cap forces it out. The next realize that needs a weight uploads it again. Storages a
+    /// running realize (or a held decode session) still holds stay alive until it ends.
     pub fn clear_weight_residency(&self) {
         self.weights
             .0
