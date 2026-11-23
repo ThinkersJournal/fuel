@@ -1693,11 +1693,13 @@ pub struct ConstOriginKey {
 pub struct ConstOrigin {
     key: ConstOriginKey,
     pin: Arc<dyn Fn() -> Option<Box<dyn std::any::Any + Send + Sync>> + Send + Sync>,
+    strong: Arc<dyn Fn() -> usize + Send + Sync>,
 }
 
 impl ConstOrigin {
     fn of<T: Send + Sync + 'static>(data: &Arc<[T]>, dtype: DType) -> Self {
         let weak = Arc::downgrade(data);
+        let counter = weak.clone();
         Self {
             key: ConstOriginKey {
                 ptr: data.as_ptr() as usize,
@@ -1708,6 +1710,7 @@ impl ConstOrigin {
                 weak.upgrade()
                     .map(|a| Box::new(a) as Box<dyn std::any::Any + Send + Sync>)
             }),
+            strong: Arc::new(move || counter.strong_count()),
         }
     }
 
@@ -1720,6 +1723,12 @@ impl ConstOrigin {
     /// `Const` was built from a per-call array). Hold it for as long as [`Self::key`] is trusted.
     pub fn pin(&self) -> Option<Box<dyn std::any::Any + Send + Sync>> {
         (self.pin)()
+    }
+
+    /// How many strong handles the source array has right now, pins included. A holder of one pin
+    /// sees `1` when nothing else (no model) holds the array any more, which is its cue to let go.
+    pub fn strong_count(&self) -> usize {
+        (self.strong)()
     }
 }
 
