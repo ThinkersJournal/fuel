@@ -3049,4 +3049,36 @@ mod tests {
         assert!(LatentKvCache::with_capacity(1, 0, vec![vec![2]], DType::F32, &device).is_err());
         assert!(LatentKvCache::with_capacity(1, 4, vec![], DType::F32, &device).is_err());
     }
+
+    /// ROADMAP row 172 control: a CPU realize never touches the device's weight residency (no upload, no
+    /// entry, no hit), and the weights it computes with are exactly the source arrays.
+    #[test]
+    fn a_cpu_realize_leaves_the_weight_residency_untouched() {
+        let dev = Device::cpu();
+        let w: Arc<[f32]> = vec![1.0, 2.0, 3.0].into();
+        let a =
+            fuel_graph::NodeHandle::from_f32(Arc::clone(&w), Shape::from_dims(&[3]), dev.as_dyn())
+                .unwrap();
+        let b = a
+            .const_f32_like(Arc::clone(&w), Shape::from_dims(&[3]))
+            .unwrap();
+        let y = a.add(&b);
+        assert_eq!(
+            a.graph().read().unwrap().const_origins().count(),
+            2,
+            "both weight Consts recorded their origin"
+        );
+        let ctx = InferenceContext::new(dev.clone());
+        for _ in 0..2 {
+            let out = ctx
+                .realize_one_as_with_env::<f32>(y.graph(), y.id(), &SymEnv::new())
+                .expect("cpu realize");
+            assert_eq!(out, vec![2.0, 4.0, 6.0]);
+        }
+        assert_eq!(
+            dev.weight_residency_stats(),
+            crate::WeightResidencyStats::default(),
+            "a CPU device must never use the residency"
+        );
+    }
 }
