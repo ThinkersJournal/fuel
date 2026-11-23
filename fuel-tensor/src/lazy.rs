@@ -8421,9 +8421,85 @@ pub enum WeightStorage {
     },
 }
 
-/// Whether this build's [`WeightStorage::from_ggml_bytes`] declines the GGUF types the Vulkan `QMatMul`
-/// has no kernel for (true exactly when the `vulkan` feature of `fuel-tensor` is on).
-pub const DECLINES_UNWIRED_VULKAN_QUANT: bool = cfg!(feature = "vulkan");
+/// The environment variable that opts out of the decline (see [`WeightStorage::from_ggml_bytes`]): the
+/// value `1` keeps the GGUF types the Vulkan `QMatMul` has no kernel for quantized in a `vulkan` build.
+/// For CPU runs of large files (a 27B-class model) in such a build; a Vulkan realize of those weights
+/// errors with "not wired on Vulkan". Removed when the Vulkan kernels land (ROADMAP row 119).
+pub const KEEP_QUANTIZED_ENV: &str = "FUEL_GGML_KEEP_QUANTIZED";
+
+/// Only the value `1` opts out (an unset, empty, `0` or any other value declines).
+#[cfg(feature = "vulkan")]
+fn keep_from_env(v: Option<&std::ffi::OsStr>) -> bool {
+    v == Some(std::ffi::OsStr::new("1"))
+}
+
+/// The opt-out, read ONCE per process at the first decision: a later change of the variable does not
+/// flip behaviour mid-process.
+#[cfg(feature = "vulkan")]
+fn keep_unwired_quantized() -> bool {
+    static KEEP: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *KEEP.get_or_init(|| keep_from_env(std::env::var_os(KEEP_QUANTIZED_ENV).as_deref()))
+}
+
+/// The decision: decline a type the Vulkan `QMatMul` has no arm for, unless the opt-out is set.
+#[cfg(feature = "vulkan")]
+fn unwired_declined(wired: bool, keep: bool) -> bool {
+    !wired && !keep
+}
+
+/// Whether this process's [`WeightStorage::from_ggml_bytes`] declines the GGUF types the Vulkan `QMatMul`
+/// has no kernel for: true in a build with the `vulkan` feature of `fuel-tensor` unless
+/// [`KEEP_QUANTIZED_ENV`] is `1`. The environment is read once per process.
+pub fn declines_unwired_vulkan_quant() -> bool {
+    #[cfg(feature = "vulkan")]
+    {
+        !keep_unwired_quantized()
+    }
+    #[cfg(not(feature = "vulkan"))]
+    {
+        false
+    }
+}
+
+#[cfg(all(test, feature = "vulkan"))]
+mod unwired_decision_tests {
+    use super::{keep_from_env, unwired_declined};
+    use std::ffi::OsStr;
+
+    /// The decision table; each row is the other rows' mutant (a flipped default turns row 1 or 2, an
+    /// ignored opt-out turns row 3, a decline of a wired type turns row 4).
+    #[test]
+    fn the_decision_table() {
+        assert!(
+            unwired_declined(false, false),
+            "default declines an unwired type"
+        );
+        assert!(
+            !unwired_declined(true, false),
+            "a wired type is never declined"
+        );
+        assert!(
+            !unwired_declined(false, true),
+            "the opt-out keeps an unwired type"
+        );
+        assert!(!unwired_declined(true, true));
+    }
+
+    #[test]
+    fn only_the_value_one_opts_out() {
+        assert!(keep_from_env(Some(OsStr::new("1"))));
+        for v in [
+            None,
+            Some(""),
+            Some("0"),
+            Some("true"),
+            Some("11"),
+            Some(" 1"),
+        ] {
+            assert!(!keep_from_env(v.map(OsStr::new)), "{v:?}");
+        }
+    }
+}
 
 impl WeightStorage {
     /// Keep a GGUF weight tensor quantized (ROADMAP row 124): `bytes` is the tensor's block
@@ -8440,7 +8516,10 @@ impl WeightStorage {
     /// device later runs the model: the loader sees no device, the Vulkan `QMatMul` has no arm for the
     /// type and errors at realize ("not wired on Vulkan"), so keeping it quantized would make the model
     /// unrealizable on Vulkan. The cost is that a CPU-only user of such a build holds those weights as
-    /// f32 (5.8x for Q5_K to 9.3x for Q3_K and IQ3_S the block bytes, n = 1, Vulkan) until the kernels are wired; see [`DECLINES_UNWIRED_VULKAN_QUANT`].
+    /// f32 (5.8x for Q5_K to 9.3x for Q3_K and IQ3_S the block bytes, n = 1, Vulkan) until the kernels are
+    /// wired. **Opt-out:** the environment variable [`KEEP_QUANTIZED_ENV`] set to `1` keeps them quantized
+    /// (read once per process, at the first decision); a Vulkan realize of such a weight then errors again.
+    /// See [`declines_unwired_vulkan_quant`].
     pub fn from_ggml_bytes(
         dtype: fuel_ir::quantized::GgmlDType,
         bytes: &[u8],
@@ -8461,7 +8540,8 @@ impl WeightStorage {
         };
         #[cfg(feature = "vulkan")]
         {
-            if !fuel_vulkan_dispatch::vulkan_dispatch::qmatmul::qmatmul_wired(qtype) {
+            let wired = fuel_vulkan_dispatch::vulkan_dispatch::qmatmul::qmatmul_wired(qtype);
+            if unwired_declined(wired, keep_unwired_quantized()) {
                 return None;
             }
         }

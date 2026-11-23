@@ -3,9 +3,6 @@
 //! `examples/gguf_resident_reach.rs` (ROADMAP row 124). Tensor infos only: `from_gguf` takes its
 //! configuration from the caller, so no checkpoint is needed.
 
-// Included by three targets, each using a subset of these helpers.
-#![allow(dead_code)]
-
 use byteorder::{LittleEndian, WriteBytesExt};
 use fuel_quantized::{GgmlType, blocks_as_bytes};
 use fuel_tensor::lazy::WeightStorage;
@@ -36,7 +33,7 @@ pub fn cfg() -> LlamaFullConfig {
     }
 }
 
-pub struct Lcg(u32);
+pub struct Lcg(pub u32);
 impl Lcg {
     pub fn vec(&mut self, n: usize) -> Vec<f32> {
         (0..n)
@@ -181,40 +178,6 @@ pub fn files<B: GgmlType>(code: u32, plain_gain: f32) -> (Vec<u8>, Vec<u8>, usiz
         plain.push(f32_tensor(&name, &[i as u64, o as u64], &back));
     }
     (build_gguf(&quant), build_gguf(&plain), qbytes)
-}
-
-/// Like [`files`] but the quantized file only, with the caller supplying the quantizer (`quant`
-/// maps `[out, in]` f32 values to the block bytes). Lets a probe build a type Fuel cannot quantize to
-/// (decode-only IQ types) from synthetic bytes. Returns `(file, quantized bytes of the projections)`.
-pub fn files_with(code: u32, quant: &dyn Fn(&[f32]) -> Vec<u8>) -> (Vec<u8>, usize) {
-    let mut rng = Lcg(0x5eed);
-    let mut t = vec![f32_tensor(
-        "token_embd.weight",
-        &[H as u64, VOCAB as u64],
-        &rng.vec(H * VOCAB),
-    )];
-    for l in 0..LAYERS {
-        for n in ["attn_norm", "ffn_norm"] {
-            t.push(f32_tensor(
-                &format!("blk.{l}.{n}.weight"),
-                &[H as u64],
-                &vec![1.0; H],
-            ));
-        }
-    }
-    t.push(f32_tensor("output_norm.weight", &[H as u64], &vec![1.0; H]));
-    let mut qbytes = 0;
-    for (name, o, i) in projections() {
-        let data = quant(&rng.vec(o * i));
-        qbytes += data.len();
-        t.push(T {
-            name,
-            dims: vec![i as u64, o as u64],
-            code,
-            data,
-        });
-    }
-    (build_gguf(&t), qbytes)
 }
 
 pub fn load(bytes: &[u8], tag: &str) -> QuantizedLlama3Model {

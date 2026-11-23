@@ -23,7 +23,44 @@ mod synth;
 use fuel_dispatch::compiled::op_profile;
 use fuel_quantized::iq4::{BlockIq4Nl, BlockIq4Xs};
 use fuel_quantized::{BlockQ3K, BlockQ4K, BlockQ5K, BlockQ6K, GgmlType};
-use synth::{files_with, load, projection_weights, projections, quantize};
+use synth::{
+    H, LAYERS, Lcg, T, VOCAB, build_gguf, f32_tensor, files, load, projection_weights, projections,
+    quantize,
+};
+
+/// The quantized-only file of `synth::files`, with the caller supplying the quantizer (`quant` maps
+/// `[out, in]` f32 values to block bytes), for a type Fuel cannot quantize to (IQ3_S is decode-only).
+/// Same tensors and seed as `synth::files`. Returns `(file, quantized bytes of the projections)`.
+fn files_with(code: u32, quant: &dyn Fn(&[f32]) -> Vec<u8>) -> (Vec<u8>, usize) {
+    let mut rng = Lcg(0x5eed);
+    let mut t = vec![f32_tensor(
+        "token_embd.weight",
+        &[H as u64, VOCAB as u64],
+        &rng.vec(H * VOCAB),
+    )];
+    for l in 0..LAYERS {
+        for n in ["attn_norm", "ffn_norm"] {
+            t.push(f32_tensor(
+                &format!("blk.{l}.{n}.weight"),
+                &[H as u64],
+                &vec![1.0; H],
+            ));
+        }
+    }
+    t.push(f32_tensor("output_norm.weight", &[H as u64], &vec![1.0; H]));
+    let mut qbytes = 0;
+    for (name, o, i) in projections() {
+        let data = quant(&rng.vec(o * i));
+        qbytes += data.len();
+        t.push(T {
+            name,
+            dims: vec![i as u64, o as u64],
+            code,
+            data,
+        });
+    }
+    (build_gguf(&t), qbytes)
+}
 
 type Quant = Box<dyn Fn(&[f32]) -> Vec<u8>>;
 
@@ -68,7 +105,17 @@ fn unwired_gguf_types_realize_on_vulkan_and_wired_ones_stay_quantized() {
         .expect("a Vulkan device (a missing adapter is a failure, GAP-157)");
     let f32_bytes: usize = projections().iter().map(|(_, o, i)| o * i * 4).sum();
     for (name, code, quant, wired) in types() {
-        let (file, qbytes) = files_with(code, &*quant);
+        let (file, qbytes) = if wired {
+            // The controls build their file with the shared helper the other tests use.
+            let (f, _plain, q) = if code == 12 {
+                files::<BlockQ4K>(code, 1.0)
+            } else {
+                files::<BlockQ6K>(code, 1.0)
+            };
+            (f, q)
+        } else {
+            files_with(code, &*quant)
+        };
         let model = load(&file, "unwired");
         let fwd = model.forward(&[1_u32, 5, 9], 0).expect("forward");
         let g = fwd.graph_tensor();
