@@ -161,6 +161,27 @@ This documents the main changes to the `fuel` workspace.
 ### Not verified
 
 - The speed of the portable f64 and f16 matmul against the removed MKL path; builds with `accelerate` or on macOS.
+## v0.49.14 - 2026-11-23 (PM-allocated; HOTFIX, Vulkan GGUF loader)
+
+### Fixed
+
+- `WeightStorage::from_ggml_bytes` returns `None` for Q3_K, Q5_K, IQ4_NL, IQ4_XS and IQ3_S in a build with the `vulkan` feature (`fuel-tensor/vulkan`, so any `--features vulkan` build of a crate above it), whatever device runs the model. Since v0.49.0 (#686) those five types stayed quantized, the Vulkan `QMatMul` has no arm for them, and the planner placed the op on Vulkan, so a GGUF holding any of them failed to realize with `QuantType X not wired on Vulkan` (measured at `7ecc79f6e`, n = 1 process, RTX 4070 Laptop: 4 of 4 shapes per type; Q4_K and Q6_K controls unchanged at 8 of 8 `QMatMul` on Vulkan). They load as f32 again, as before v0.49.0.
+- `fuel_vulkan_dispatch::vulkan_dispatch::qmatmul::qmatmul_wired` is the one list of types `qmatmul_vk` has an arm for; `qmatmul_vk` refuses every other type before its match and the loader reads the same function. The test `qmatmul_wired_list_matches_arms` fails when the list and the arms differ (with a mutant that adds an arm without a list entry).
+- **Opt-out:** `FUEL_GGML_KEEP_QUANTIZED=1` (`fuel_tensor::lazy::KEEP_QUANTIZED_ENV`) keeps the five types quantized in a `vulkan` build, for CPU runs of large files (the 27B-class rig). Read once per process at the first decision; only the value `1` opts out; with it set, a Vulkan realize of those types errors "not wired on Vulkan" again (as at `7ecc79f6e`). It is removed when the Vulkan kernels land (ROADMAP row 119). `fuel_tensor::lazy::declines_unwired_vulkan_quant()` says whether this process declines (the replacement for the const `DECLINES_UNWIRED_VULKAN_QUANT` that was in this PR before the opt-out existed).
+
+### Changed
+
+- **Memory cost (measured on the synthetic one-layer projections):** f32 is 9.3x the block bytes for Q3_K and IQ3_S, 7.5x for IQ4_XS, 7.1x for IQ4_NL and 5.8x for Q5_K. A CPU-only user of a `vulkan` build holds those weights as f32 again until the kernels are wired.
+- `docs/gaps.md`: GAP-397 (this defect and its closing condition), GAP-398 (a process exits with an access violation after a failed Vulkan realize; cause not investigated).
+- `docs/design-notes/2026-11-23-row124-nine-loader-audit.md`: the audit and the probe result.
+
+### Added
+
+- `fuel-transformers/tests/gguf_unwired_quant_vulkan_live.rs` (live Vulkan, under the GPU lock, not `#[ignore]`d): red with the decline disabled (Q3_K fails to realize), green with it (7 of 7 types realize; Q4_K and Q6_K stay quantized with 8 of 8 `QMatMul` on Vulkan).
+
+### Not verified
+
+- CUDA and the CPU device. A real Q5_K_M file (none was tried). More than one process. Any model but the synthetic one-layer llama.
 
 ## v0.49.13 - 2026-11-23 (PM-allocated; HOTFIX, region pathfinder gate restored)
 
