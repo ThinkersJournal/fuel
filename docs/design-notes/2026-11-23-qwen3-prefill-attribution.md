@@ -206,6 +206,22 @@ Still not broken down: the cold `bridge.build_optimized_graph` 1.08 s (row 173 (
 the 1.19 GB the residency registry keeps per model because the counters also see the small per-call consts and every
 copy, not only the resident weights; the split was not measured.
 
+## Row 173 (c): the cold `bridge.build_optimized_graph` 1.08 s is `compile_plan` (measured, same day)
+
+Optimizer stage timers on `prefill-attrib` (`8c78440c0`, REFERENCE, measurement only), cold first prefill of 3 processes
+(residency ON; same predicate), ms per process: `bridge.build_optimized_graph` 1160.7 / 1168.1 / 1039.4 =
+`opt.ensure_installed` 21.9 / 23.6 / 21.3 + `opt.topology_current` 0.1-0.2 + `opt.judge_oracle` 0.1-0.2 +
+`opt.optimize_graph` 1138.5 / 1144.1 / 1017.8, and inside `optimize_graph`: **`opt.compile_plan` 1083.5 / 1088.9 / 963.4**
+(95%), `opt.run_lockstep` 49.1 / 49.3 / 49.0, `opt.dtype_fixups` 1.1 / 1.0 / 0.9, the rest (placement stamping, residency
+copies, layout fixups) 4.8 / 5.9 / 4.5. The WARM call (the second prefill of process 1): `build_optimized_graph` 65.2 =
+`run_lockstep` 49.4 + `compile_plan` **10.5** + `dtype_fixups` 0.9 + ~4. So the cold cost is the placement DP / cost
+composer / Judge lookup in `compile_plan` doing 1.0 s of FIRST-USE work that costs 10 ms once warm (a cache of some kind:
+cost expressions, contract compilation, Judge cells, plan store; WHICH one was not timed). `run_lockstep` is a steady
+49 ms on every call, a second small lever. `ensure_installed` (22 ms) and the topology and Judge accessors are not it.
+
+Not done: what inside `compile_plan` warms (one more level of timers, or a flame graph); whether the first-use work can
+be done at load time or persisted (row 162 is the plan cache).
+
 ## Row 170: what its Done-when still owes
 
 Row 170 is CLOSED in `ROADMAP.md` (fixed by intervention; its Done-when items (1) and (2) struck, (3) done); the follow-up is row 173 (provisional number).
