@@ -8433,14 +8433,14 @@ impl WeightStorage {
     /// own variant), or
     /// `in_features` is not a whole number of blocks (32 for Q8_0, 256 for the K-quants), or the
     /// byte count is not `out_features * in_features / block * bytes_per_block`. A caller that
-    /// gets `None` for a quantized dtype is taking the 4x-memory path and should say so.
+    /// gets `None` for a quantized dtype is taking the f32 path (4x the bytes for Q8_0, 5.8x to 9.3x for Q5_K down to Q3_K) and should say so.
     ///
     /// **In a build with the `vulkan` feature, a type `fuel_vulkan_dispatch::vulkan_dispatch::qmatmul::
     /// qmatmul_wired` rejects (today Q3_K, Q5_K, IQ4_NL, IQ4_XS, IQ3_S) also returns `None`**, whatever
     /// device later runs the model: the loader sees no device, the Vulkan `QMatMul` has no arm for the
     /// type and errors at realize ("not wired on Vulkan"), so keeping it quantized would make the model
     /// unrealizable on Vulkan. The cost is that a CPU-only user of such a build holds those weights as
-    /// f32 (about 4x the bytes) until the kernels are wired; see [`DECLINES_UNWIRED_VULKAN_QUANT`].
+    /// f32 (5.8x for Q5_K to 9.3x for Q3_K and IQ3_S the block bytes, n = 1, Vulkan) until the kernels are wired; see [`DECLINES_UNWIRED_VULKAN_QUANT`].
     pub fn from_ggml_bytes(
         dtype: fuel_ir::quantized::GgmlDType,
         bytes: &[u8],
