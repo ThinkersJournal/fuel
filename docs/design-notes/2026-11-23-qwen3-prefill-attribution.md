@@ -169,6 +169,43 @@ investigated.
 - Not measured: CUDA, a loaded GPU, another model, the AMD iGPU, residency on a post-merge main (the tree is the
   residency branch merged with `58debefec`).
 
+## Row 173, first breakdown: `d1.build_graph` is the weight copies; `d1.drop_graph` is freeing them (measured in situ, same day)
+
+Hypothesis first (a stand-alone microbenchmark, `rustc -O`, black-boxed): copying 1,193 MB as one 622 MB f32 table plus
+310 vectors of 1.84 MB (the Qwen3-0.6B f32 embedding table and ~570 MB of quantized words) takes 237 ms (6 rounds,
+236.5 to 251.3) and dropping the copies takes 70 ms (66.3 to 74.7). That matched the 315 ms and 92 ms, so the next
+step was to measure it in the real process. Code: `fuel-graph`'s `Arc`-fed `Const` constructors do
+`HostBuffer::F32(v.to_vec())` (and U32, F64, BF16, F16, 15 call sites); branch `prefill-attrib` (`cb30de83b`, REFERENCE,
+measurement only) wraps them in `timed_const_copy`, which adds the wall time, bytes and calls to three process-wide
+counters that `qwen3_vulkan_profile` prints around the profiled prefill. Same predicate as above (residency ON, 3
+processes; each process has one cold prefill and two warm ones; the counters are per profiled call):
+
+| | cold prefill (N=3) | warm prefill (N=6) |
+|---|---|---|
+| `Const` array copies | 315 calls, 1,508 MB | 315 calls, 1,508 MB |
+| time in those copies | 327.5 [291.8..425.3] ms | **312.1 [302.9..370.9] ms** |
+| `d1.build_graph` | 335.7 [299.8..434.5] ms | **314.8 [305.7..374.4] ms** |
+| build_graph minus the copies | 8.2 ms | **2.8 [2.6..3.5] ms** |
+| copies / build_graph | 97.6% | **99.1% [99.1..99.2]** |
+| `d1.drop_graph` | 94.6 [89.2..148.3] ms | 93.6 [82.5..103.8] ms |
+
+So **99% of `d1.build_graph` is the `to_vec` copy of 315 source arrays** (1.5 GB: the f32 embedding table, every
+quantized weight's `u32` words, and the small per-call arrays), and everything else the build does costs 2.8 ms.
+`d1.drop_graph` (93.6 ms) is consistent with freeing those 1.5 GB (the stand-alone free of 1.19 GB took 70 ms), but that
+was NOT timed in situ: the claim is "matches a free of that size", not "measured to be the free".
+
+What a decode step does not do: the decode session holds its own graph and rebinds, so it never rebuilds the `Const`s.
+
+Consequence (NOT built, NOT proposed for the hot path until the PM says so): with residency ON the uploaded storage is
+already on the device and seeded into the realize cache, so the host copy the graph build makes is never read on a
+warm call; it is 312 + ~90 ms of a 590 ms prefill (68%) spent building and freeing a host copy nothing uses. Whether a
+`Const` could share the source `Arc` instead of copying (the `HostBuffer` would have to hold an `Arc<[T]>`) is a
+design question for row 173 (d), with its own before/after on this predicate.
+
+Still not broken down: the cold `bridge.build_optimized_graph` 1.08 s (row 173 (c)). The 1,508 MB count is larger than
+the 1.19 GB the residency registry keeps per model because the counters also see the small per-call consts and every
+copy, not only the resident weights; the split was not measured.
+
 ## Row 170: what its Done-when still owes
 
 Row 170 is CLOSED in `ROADMAP.md` (fixed by intervention; its Done-when items (1) and (2) struck, (3) done); the follow-up is row 173 (provisional number).
