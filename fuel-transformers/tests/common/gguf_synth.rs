@@ -3,6 +3,9 @@
 //! `examples/gguf_resident_reach.rs` (ROADMAP row 124). Tensor infos only: `from_gguf` takes its
 //! configuration from the caller, so no checkpoint is needed.
 
+// Included by three targets, each using a subset of these helpers.
+#![allow(dead_code)]
+
 use byteorder::{LittleEndian, WriteBytesExt};
 use fuel_quantized::{GgmlType, blocks_as_bytes};
 use fuel_tensor::lazy::WeightStorage;

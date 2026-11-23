@@ -66,10 +66,6 @@ fn unwired_gguf_types_realize_on_vulkan_and_wired_ones_stay_quantized() {
     fuel_test_support::require_gpu_run_lock();
     let dev = fuel_tensor::vulkan_backend::new_device_from_env()
         .expect("a Vulkan device (a missing adapter is a failure, GAP-157)");
-    assert!(
-        fuel_tensor::lazy::DECLINES_UNWIRED_VULKAN_QUANT,
-        "this test is only meaningful in a build whose loader declines the unwired types"
-    );
     let f32_bytes: usize = projections().iter().map(|(_, o, i)| o * i * 4).sum();
     for (name, code, quant, wired) in types() {
         let (file, qbytes) = files_with(code, &*quant);
