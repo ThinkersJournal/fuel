@@ -94,7 +94,7 @@ fn types() -> Vec<(&'static str, u32, Quant, bool)> {
         ("Q5_K", 13, q::<BlockQ5K>(), true), // wired by row 119 (qmatvec_q5_k)
         ("IQ4_NL", 20, q::<BlockIq4Nl>(), true), // wired by row 119 (qmatvec_iq4_nl)
         ("IQ4_XS", 23, q::<BlockIq4Xs>(), true), // wired by row 119 (qmatvec_iq4_xs)
-        ("IQ3_S", 21, iq3s(), false),
+        ("IQ3_S", 21, iq3s(), true),         // wired by row 119 (qmatvec_iq3_s)
     ]
 }
 

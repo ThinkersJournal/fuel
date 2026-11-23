@@ -1,0 +1,85 @@
+#version 450
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// GENERATED FILE: edit `templates/qmatvec_iq3_s.glsl.in`, then run `python scripts/gen_iq3s_glsl.py write`.
+// Fused IQ3_S x F32 gemv (ROADMAP row 119): out[col] = sum_k a[k] * dequant(W[col])[k], one workgroup
+// per output column, one activation row per dispatch (the host loops rows, as for qmatvec_q5_k).
+//
+// PROVENANCE: the block layout, the dequantisation arithmetic and the 512-entry `iq3s_grid` codebook are
+// llama.cpp's / ggml's (MIT, https://github.com/ggml-org/llama.cpp) at commit 9d57ce456c:
+// `ggml/src/ggml-common.h` (`block_iq3_s`, `iq3s_grid`, `kmask_iq2xs`) and `ggml/src/ggml-quants.c`
+// (`dequantize_row_iq3_s`). The grid below is NOT typed or pasted: it is generated from
+// `IQ3S_GRID` in `fuel-quantized/src/iq_grids.rs`, itself generated from `ggml-common.h` at that commit by
+// `scripts/gen_iq_grids.py` (whose `check` mode compares it to upstream); `scripts/gen_iq3s_glsl.py check`
+// and the test `iq3s_glsl_grid_matches_rust_grid` compare this table to the Rust one entry by entry. The
+// shader is checked against `BlockIq3S::decode`. Licence text: `THIRD-PARTY-NOTICES.md` (section
+// "llama.cpp / ggml"). The remaining code is written from the ggml arithmetic, not copied from any shader.
+//
+// Block (110 bytes, 256 elements; NOT a multiple of 4, so every read goes through byte_at):
+//   bytes 0..1     f16 d
+//   bytes 2..65    qs[64]       bytes 66..73  qh[8]      bytes 74..105 signs[32]     bytes 106..109 scales[4]
+// For sub-block ib32 in 0..8 (pair = ib32 / 2): db = d * (1 + 2 * (scales[pair] nibble ib32 % 2)); for l in 0..4:
+//   i1 = qs[8 ib32 + 2l]     | ((qh[ib32] << (8 - 2l)) & 256),  i2 = qs[8 ib32 + 2l + 1] | ((qh[ib32] << (7 - 2l)) & 256)
+//   element 32 ib32 + 8l + j     = db * byte j of grid[i1] * (signs[4 ib32 + l] & (1 << j)       ? -1 : 1)   (j in 0..4)
+//   element 32 ib32 + 8l + j + 4 = db * byte j of grid[i2] * (signs[4 ib32 + l] & (1 << (j + 4)) ? -1 : 1)
+
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer ABuf { float A[]; };
+layout(set = 0, binding = 1, std430) readonly buffer WBuf { uint W[]; };
+layout(set = 0, binding = 2, std430) buffer OBuf { float O[]; };
+
+layout(set = 0, binding = 3, std140) uniform Params {
+    uint n;
+    uint k;
+    uint blocks_per_row;
+    uint _pad;
+} p;
+
+shared float partials[128];
+
+// BEGIN IQ3S_GRID
+@IQ3S_GRID@
+// END IQ3S_GRID
+
+uint byte_at(uint off) {
+    return (W[off >> 2] >> ((off & 3u) * 8u)) & 0xFFu;
+}
+
+void main() {
+    uint col = gl_WorkGroupID.x;
+    if (col >= p.n) return;
+    uint tid = gl_LocalInvocationID.x;
+
+    float acc = 0.0;
+    uint units = p.blocks_per_row * 8u; // (block, sub-block of 32) pairs
+    for (uint u = tid; u < units; u += 128u) {
+        uint blk = u >> 3;
+        uint ib32 = u & 7u;
+        uint base = (col * p.blocks_per_row + blk) * 110u; // byte offset of the block
+        float d = unpackHalf2x16(byte_at(base) | (byte_at(base + 1u) << 8u)).x;
+        uint sc = byte_at(base + 106u + (ib32 >> 1));
+        float db = d * float(1u + 2u * ((ib32 & 1u) == 0u ? (sc & 0xFu) : (sc >> 4u)));
+        uint qh = byte_at(base + 66u + ib32);
+        uint a0 = blk * 256u + ib32 * 32u;
+        for (uint l = 0u; l < 4u; l++) {
+            uint i1 = byte_at(base + 2u + 8u * ib32 + 2u * l) | ((qh << (8u - 2u * l)) & 256u);
+            uint i2 = byte_at(base + 2u + 8u * ib32 + 2u * l + 1u) | ((qh << (7u - 2u * l)) & 256u);
+            uint g1 = IQ3S_GRID[i1];
+            uint g2 = IQ3S_GRID[i2];
+            uint sg = byte_at(base + 74u + 4u * ib32 + l);
+            for (uint j = 0u; j < 4u; j++) {
+                float s1 = ((sg & (1u << j)) != 0u) ? -1.0 : 1.0;
+                float s2 = ((sg & (1u << (j + 4u))) != 0u) ? -1.0 : 1.0;
+                acc += A[a0 + 8u * l + j] * (db * float((g1 >> (8u * j)) & 0xFFu) * s1)
+                     + A[a0 + 8u * l + j + 4u] * (db * float((g2 >> (8u * j)) & 0xFFu) * s2);
+            }
+        }
+    }
+    partials[tid] = acc;
+    barrier();
+    for (uint sh = 64u; sh > 0u; sh >>= 1) {
+        if (tid < sh) partials[tid] += partials[tid + sh];
+        barrier();
+    }
+    if (tid == 0u) O[col] = partials[0];
+}

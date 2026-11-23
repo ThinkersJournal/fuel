@@ -137,7 +137,11 @@ fn from_ggml_bytes_refuses_what_it_cannot_keep() {
         if fuel_tensor::lazy::declines_unwired_vulkan_quant()
             && !matches!(
                 dt,
-                GgmlDType::Q5K | GgmlDType::Q3K | GgmlDType::Iq4Nl | GgmlDType::Iq4Xs
+                GgmlDType::Q5K
+                    | GgmlDType::Q3K
+                    | GgmlDType::Iq4Nl
+                    | GgmlDType::Iq4Xs
+                    | GgmlDType::Iq3S
             )
         {
             // A `vulkan` build declines them by default (no Vulkan `QMatMul` arm; opt-out `FUEL_GGML_KEEP_QUANTIZED=1`): f32 path.
