@@ -7,9 +7,6 @@
 // batches; we get the same last-token effect without padding by simply
 // running each prompt separately).
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

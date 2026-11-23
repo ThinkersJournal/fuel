@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
 
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;

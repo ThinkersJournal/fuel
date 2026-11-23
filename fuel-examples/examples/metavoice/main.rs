@@ -51,9 +51,6 @@
 //     tanh compressor on a plain `&[f32]`) so the lazy path doesn't
 //     have to round-trip through an eager Tensor.
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

@@ -29,9 +29,6 @@
 //!   - `--f16`: the lazy module is F32-only.
 //!   - KV-cache: re-runs full forward each step (correctness > perf for v1).
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 
