@@ -50,6 +50,8 @@ pub struct WeightResidencyStats {
     pub evicted_for_budget: u64,
     /// Weights uploaded but not retained because one weight alone exceeded the whole cap.
     pub rejected: u64,
+    /// The byte cap in force at the last seeding (`0` before any seeding).
+    pub cap_bytes: u64,
 }
 
 struct Resident<S> {
@@ -194,6 +196,7 @@ impl<S: Clone> WeightResidency<S> {
             resident_bytes: self.resident_bytes,
             evicted_for_budget: self.evicted_for_budget,
             rejected: self.rejected,
+            cap_bytes: self.cap.unwrap_or(0),
         }
     }
 }
