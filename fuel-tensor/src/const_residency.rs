@@ -29,6 +29,7 @@ use fuel_memory::Storage;
 
 /// Counters of a device's weight residency (see [`Device::weight_residency_stats`](crate::Device::weight_residency_stats)).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct WeightResidencyStats {
     /// Weight `Const`s served from an earlier upload.
     pub hits: u64,
