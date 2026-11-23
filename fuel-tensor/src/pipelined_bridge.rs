@@ -822,8 +822,12 @@ fn build_optimized_graph(
     // topology snapshot below, not after it: `SystemTopology::current()` is built from the binding table,
     // so a backend installed after it is missing from `backends_for(..)` and the first realize in a process
     // fails with `NoBackendForOp` (GAP-359 CUDA arm: `placements=[]` for `Cuda { gpu_id: 0 }`).
+    let t_ens = fuel_dispatch::compiled::op_profile::PhaseTimer::start("opt.ensure_installed");
     crate::cpu_accel::ensure_installed();
+    drop(t_ens);
+    let t_topo = fuel_dispatch::compiled::op_profile::PhaseTimer::start("opt.topology_current");
     let topology = SystemTopology::current();
+    drop(t_topo);
     let placements_for =
         |dev: DeviceLocation| -> Vec<BackendId> { topology.backends_for(dev).to_vec() };
     let capabilities_for = |b: BackendId| -> Option<&fuel_ir::backend::BackendCapabilities> {
@@ -852,7 +856,9 @@ fn build_optimized_graph(
             .flat_map(|d| topology.backends_for(d).iter().map(move |&b| (b, d)))
             .collect()
     };
+    let t_judge = fuel_dispatch::compiled::op_profile::PhaseTimer::start("opt.judge_oracle");
     let judge_oracle = crate::judge::cached_oracle();
+    drop(t_judge);
     let input_residency = |id: NodeId| -> Option<DeviceLocation> {
         let slot = cache.get(&id)?;
         let guard = slot.read().ok()?;
@@ -914,7 +920,9 @@ fn build_optimized_graph(
     // before placement. With nothing adopted the sidecar scan is an empty-Vec
     // early return — byte-identical to the bare `optimize_graph` every test
     // that doesn't adopt observes (`runtime-fused-op-registration.md` §6).
+    let t_og = fuel_dispatch::compiled::op_profile::PhaseTimer::start("opt.optimize_graph");
     let optimized = optimize_graph_with_runtime_fusion(&mut g, roots, &bindings_guard, &options)?;
+    drop(t_og);
     let live_branches = optimized.branch_count(&g);
     OPTIMIZE_BRANCHES.fetch_add(live_branches, std::sync::atomic::Ordering::Relaxed);
     OPTIMIZE_BRANCHES_TL.with(|c| c.set(c.get() + live_branches));

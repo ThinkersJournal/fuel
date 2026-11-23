@@ -327,13 +327,18 @@ fn optimize_graph_with_passes(
     //      changes what's enumerable; if it rewrites, re-derive the execution
     //      order over the mutated graph. The layout/residency fixups are its
     //      post-plan siblings.
-    let order = if insert_dtype_fixups(graph, roots, bindings_table, opts) {
+    let t_fx = crate::compiled::op_profile::PhaseTimer::start("opt.dtype_fixups");
+    let fixed = insert_dtype_fixups(graph, roots, bindings_table, opts);
+    drop(t_fx);
+    let order = if fixed {
         fuel_graph::opt::execution_plan(graph, roots)
     } else {
         order
     };
 
+    let t_cp = crate::compiled::op_profile::PhaseTimer::start("opt.compile_plan");
     let plan = compile_plan(graph, &order, bindings_table, opts)?;
+    drop(t_cp);
     let generation = plan.generation;
 
     // (3) PR-B3: the lock-step pass driver. The pre-B3 hardcoded
@@ -362,7 +367,9 @@ fn optimize_graph_with_passes(
         cycle_guard: &cycle_guard,
         bindings: bindings_table,
     };
+    let t_ls = crate::compiled::op_profile::PhaseTimer::start("opt.run_lockstep");
     passes.run_lockstep(graph, &ctx)?;
+    drop(t_ls);
 
     // "Plan IS the graph": commit the placement decision INTO the graph's
     // `target_backend` side-table here, so a fully-optimized graph carries
