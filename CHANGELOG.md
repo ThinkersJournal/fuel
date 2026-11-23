@@ -144,6 +144,22 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.49.13 - 2026-11-23 (PM-allocated; HOTFIX, region pathfinder gate restored)
+
+### Fixed
+
+- `fuel-dispatch` region pathfinder: the competitiveness gate is back (`REGION_COMPETITIVE_FACTOR = 2`; an alternative stretch whose summed estimate exceeds twice the winner's is not recorded as a branch arm). #691 (v0.49.5) had removed it so that every feasible alternative stayed an arm; with the default, feed-off ranking (VRAM tier, load tier, estimated time) that sent a third of the Qwen3-0.6B Q4_K_M Vulkan decode branches to the CPU arm and made the step 3,081 to 4,890 ms. Measured with `examples/qwen3_vulkan_profile` (Vulkan, release, RTX 4070 Laptop, 21-token prompt, 3 runs x 10 steady steps, `gpu-run`), interleaved in one session: with the gate restored 25 ms median (24 to 31), 789 launches, 1 Copy, QMatMul on Vulkan 196 of 196, no branches; GOOD control `713a88ccb` 23 ms (789, 1 Copy); unmodified main 3,081 ms (986 launches, 198 Copy, `arm_chosen [1997, 813]`). The restoring run was one build plus one re-run, stable across 4 runs.
+- The test `cross_device_cpu_arm_far_slower_than_the_gpu_is_not_competitive` (inverted by #691 into `..._is_still_kept_as_an_arm`) is back to its original assertion: red without the gate (`6 passed; 1 failed`, panic at `optimize.rs`), green with it (`7 passed`).
+
+### Changed
+
+- The opt-in executor backlog feed sees only the arms inside the factor-2 estimate. On the Qwen3 example above, with the gate back, every feed mode (off, idle-zero, retire-on-completion, never-retire mutant) resolves 0 of 0 branches: the feed is inert there. A gate relaxation only while the feed is ON is a proposal and is not built.
+- ROADMAP rows 168 (load tier decides the feed-off CPU pick, 504 of 504 on CUDA; the CPU pick is NOT shown harmless: the equal step times were measured in the slow state), 170 (bisect: #534 `566bcf7f1` is the first bad commit of the 29 to ~600 ms step by intervention, 25 ms with the 8-line qwen3 loader hunk reverted; the second slowdown is #691's gate removal) and 124 (step 3 is not done for the Qwen3 decode example at `f747717f4`: 13 of 196 QMatMul launches on Vulkan; corrects "DONE FOR VULKAN").
+
+### Not verified
+
+- CUDA, other models, a loaded GPU, the gate with the feed on a workload whose arm is within the factor. One model, Vulkan only.
+
 ## v0.49.12 - 2026-11-23 (PM-allocated; rows 124 step 3 and 158 on CUDA; url 2.5.9; odd-N Q8_0 qmatmul fix row 169)
 
 ### Added
