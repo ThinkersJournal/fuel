@@ -298,8 +298,19 @@ impl SystemTopology {
     /// pricing for unprobed paths; this accessor exposes the raw
     /// probed set for diagnostics and tests.
     pub fn transfer_calibration(&self) -> &TransferCalibration {
-        self.transfer_calibration
-            .get_or_init(|| TransferCalibration::calibrate(&self.devices))
+        self.transfer_calibration.get_or_init(|| {
+            let _t = crate::compiled::op_profile::PhaseTimer::start(
+                "topology.transfer_calibration_probe",
+            );
+            // Attribution control (row 173 (c)): a known delay inside the named level must show up in its row.
+            if let Some(ms) = std::env::var("ATTRIB_SLEEP2_MS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+            {
+                std::thread::sleep(std::time::Duration::from_millis(ms));
+            }
+            TransferCalibration::calibrate(&self.devices)
+        })
     }
 
     /// Numeric cost model for moving bytes `src → dst`, for the

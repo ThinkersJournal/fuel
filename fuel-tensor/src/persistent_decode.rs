@@ -1144,8 +1144,18 @@ pub fn forward_with_kv_context<M: DecodeBackbone + ?Sized>(
     advance_cache(cache, seq, model.decode_n_layers());
     // Attribution (row 170): the per-call graph is dropped here, not at the end of the function body.
     let t_dropg = fuel_dispatch::compiled::op_profile::PhaseTimer::start("d1.drop_graph");
+    let free0 = fuel_graph::big_free_snapshot();
     drop(built);
+    let free1 = fuel_graph::big_free_snapshot();
     drop(t_dropg);
+    if std::env::var_os("ATTRIB_FREE").is_some() {
+        println!(
+            "DROPGRAPH big frees (>= 1 MiB): {} calls, {:.0} MB, {:.1} ms",
+            free1.0 - free0.0,
+            (free1.1 - free0.1) as f64 / 1e6,
+            (free1.2 - free0.2) as f64 / 1e6
+        );
+    }
     Ok(logits_vec)
 }
 

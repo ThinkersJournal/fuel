@@ -17408,3 +17408,48 @@ fn timed_const_copy<T: Clone>(v: &[T]) -> Vec<T> {
     CONST_COPY_CALLS.fetch_add(1, Relaxed);
     out
 }
+
+/// Attribution (row 173 (b)): a global allocator wrapper that times every `dealloc` of a block of at least 1 MiB.
+/// Measurement only; a binary opts in with `#[global_allocator]`.
+pub struct TimedAlloc;
+/// Total wall nanoseconds, bytes and calls of >= 1 MiB deallocations while [`TimedAlloc`] is installed.
+pub static BIG_FREE_NS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// See [`BIG_FREE_NS`].
+pub static BIG_FREE_BYTES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// See [`BIG_FREE_NS`].
+pub static BIG_FREE_CALLS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// `(calls, bytes, ns)` of the big frees so far.
+pub fn big_free_snapshot() -> (u64, u64, u64) {
+    use std::sync::atomic::Ordering::Relaxed;
+    (
+        BIG_FREE_CALLS.load(Relaxed),
+        BIG_FREE_BYTES.load(Relaxed),
+        BIG_FREE_NS.load(Relaxed),
+    )
+}
+
+// SAFETY: every method forwards to `System` with the same arguments; the timing only reads the clock.
+unsafe impl std::alloc::GlobalAlloc for TimedAlloc {
+    unsafe fn alloc(&self, l: std::alloc::Layout) -> *mut u8 {
+        unsafe { std::alloc::System.alloc(l) }
+    }
+    unsafe fn alloc_zeroed(&self, l: std::alloc::Layout) -> *mut u8 {
+        unsafe { std::alloc::System.alloc_zeroed(l) }
+    }
+    unsafe fn realloc(&self, p: *mut u8, l: std::alloc::Layout, n: usize) -> *mut u8 {
+        unsafe { std::alloc::System.realloc(p, l, n) }
+    }
+    unsafe fn dealloc(&self, p: *mut u8, l: std::alloc::Layout) {
+        if l.size() >= 1 << 20 {
+            let t = std::time::Instant::now();
+            unsafe { std::alloc::System.dealloc(p, l) };
+            use std::sync::atomic::Ordering::Relaxed;
+            BIG_FREE_NS.fetch_add(t.elapsed().as_nanos() as u64, Relaxed);
+            BIG_FREE_BYTES.fetch_add(l.size() as u64, Relaxed);
+            BIG_FREE_CALLS.fetch_add(1, Relaxed);
+        } else {
+            unsafe { std::alloc::System.dealloc(p, l) };
+        }
+    }
+}

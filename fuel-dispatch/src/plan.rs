@@ -746,7 +746,10 @@ pub fn compile_plan(
         let early = early_residency(graph, options, id, node);
 
         let mut dp_row_opened = false;
-        let winner_device = match build_node_draft(graph, id, node, bindings_table, options)? {
+        let t_bnd = crate::compiled::op_profile::PhaseTimer::start("cp.build_node_draft");
+        let draft_opt = build_node_draft(graph, id, node, bindings_table, options);
+        drop(t_bnd);
+        let winner_device = match draft_opt? {
             Some(draft) => {
                 let devices = distinct_devices(&draft.set);
                 let dp_estimator = options
@@ -756,6 +759,7 @@ pub fn compile_plan(
                     // Stage 3: open a DP row instead of committing a
                     // winner. Residency stays unresolved until the
                     // backtrack commits a device.
+                    let t_odr = crate::compiled::op_profile::PhaseTimer::start("cp.open_dp_row");
                     open_dp_row(
                         &mut dp,
                         graph,
@@ -767,6 +771,7 @@ pub fn compile_plan(
                         est,
                         options.capabilities_for,
                     );
+                    drop(t_odr);
                     dp_drafts.insert(id, draft);
                     dp_row_opened = true;
                     None
@@ -783,6 +788,8 @@ pub fn compile_plan(
                         close_open_inputs(&mut dp, graph, node, *single, est, &mut residency);
                     }
                     let mut off = None;
+                    let t_fin =
+                        crate::compiled::op_profile::PhaseTimer::start("cp.finalize_node_greedy");
                     let set = finalize_node_greedy(
                         graph,
                         node,
@@ -791,7 +798,9 @@ pub fn compile_plan(
                         options,
                         &residency,
                         &mut off,
-                    )?;
+                    );
+                    drop(t_fin);
+                    let set = set?;
                     if let Some(off) = off {
                         off_device_map.insert(id, off);
                     }
@@ -1256,6 +1265,7 @@ fn open_dp_row(
             })
             .unwrap_or_else(|| default_backend_rates(backend))
     };
+    let t_dc = crate::compiled::op_profile::PhaseTimer::start("cp.dp.device_costs");
     let device_costs: Vec<(DeviceLocation, u64)> = devices
         .iter()
         .map(|&d| {
@@ -1273,6 +1283,8 @@ fn open_dp_row(
         })
         .collect();
 
+    drop(t_dc);
+    let t_in = crate::compiled::op_profile::PhaseTimer::start("cp.dp.inputs_scan");
     let mut fixed: Vec<(DeviceLocation, u64)> = Vec::new();
     let mut chains: Vec<ChainInput> = Vec::new();
     for &input in &node.inputs {
@@ -1298,7 +1310,10 @@ fn open_dp_row(
         // else: chained-but-uncommitted or genuinely unknown — no
         // term (documented fan-out debt).
     }
+    drop(t_in);
+    let t_pr = crate::compiled::op_profile::PhaseTimer::start("cp.dp.push_row");
     dp.push_row(id, &device_costs, &fixed, &chains, est);
+    drop(t_pr);
 }
 
 /// Close any open producer rows feeding `node` toward `toward` —

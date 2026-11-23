@@ -625,14 +625,30 @@ fn probe_cuda_device(gpu_id: usize) -> Option<(TransferEstimate, TransferEstimat
 /// (`VulkanBackend::upload_bytes` / `download_bytes`).
 #[cfg(feature = "vulkan")]
 fn probe_vulkan_device(gpu_id: usize) -> Option<(TransferEstimate, TransferEstimate)> {
+    let t0 = std::time::Instant::now();
     let backend = fuel_vulkan_backend::VulkanBackend::with_selection(
         fuel_vulkan_backend::DeviceSelection::Index(gpu_id),
     )
     .ok()?;
-    measure_calibration_points(
+    let t_new = t0.elapsed();
+    let t1 = std::time::Instant::now();
+    let out = measure_calibration_points(
         |bytes| backend.upload_bytes(bytes).ok(),
         |storage| backend.download_bytes(storage).ok(),
-    )
+    );
+    let t_measure = t1.elapsed();
+    let t2 = std::time::Instant::now();
+    drop(backend);
+    // Attribution (row 173 (c)): where the calibration probe's time goes.
+    if std::env::var_os("ATTRIB_FREE").is_some() {
+        println!(
+            "CALIBRATION probe_vulkan_device({gpu_id}): VulkanBackend::with_selection {:.1} ms, measure_calibration_points {:.1} ms, drop(backend) {:.1} ms",
+            t_new.as_secs_f64() * 1e3,
+            t_measure.as_secs_f64() * 1e3,
+            t2.elapsed().as_secs_f64() * 1e3
+        );
+    }
+    out
 }
 
 #[cfg(test)]

@@ -30,6 +30,9 @@ use fuel_transformers::models::lazy_qwen3::Qwen3Config;
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
+#[global_allocator]
+static ALLOC: fuel_graph::TimedAlloc = fuel_graph::TimedAlloc;
+
 /// `(calls, bytes, ns)` spent in `fuel-graph`'s `Arc`-fed `Const` array copies so far (row 173 attribution).
 fn const_copy_snapshot() -> (u64, u64, u64) {
     use std::sync::atomic::Ordering::Relaxed;
