@@ -2338,7 +2338,7 @@ impl InferenceContext {
     /// [`Self::cloned_persistent`] plus, on a non-CPU device, the resident device copy of every weight
     /// `Const` of `graph` whose source array this context has already uploaded (uploading it now the
     /// first time). `build_const_cache` skips every node already in the cache, so a seeded weight costs
-    /// the realize nothing. Per-call temporaries (no live source) are left to `build_const_cache`.
+    /// the realize nothing. Per-call arrays (no live source) are left to `build_const_cache`.
     fn realize_cache(&self, graph: &Arc<RwLock<Graph>>) -> Result<StorageCache> {
         let mut cache = self.cloned_persistent();
         if self.device.location() == DeviceLocation::Cpu

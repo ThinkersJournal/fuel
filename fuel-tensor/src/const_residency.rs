@@ -9,7 +9,7 @@
 //!
 //! Soundness: an entry keeps a strong pin on the source array, so the array's address cannot be
 //! reused while the entry exists, and an immutable `Arc<[T]>` with the same address and length is the
-//! same bytes. A `Const` built from a temporary has no live source ([`fuel_graph::ConstOrigin::pin`]
+//! same bytes. A `Const` built from a per-call array has no live source ([`fuel_graph::ConstOrigin::pin`]
 //! returns `None`) and is never registered, so per-token data cannot accumulate here.
 
 use std::collections::HashMap;
@@ -40,7 +40,7 @@ impl<S: Clone> WeightResidency<S> {
     }
 
     /// The resident storage for `origin`, calling `upload` exactly once per live source array.
-    /// `Ok(None)` means the source is gone (a temporary): the caller must not treat it as a weight.
+    /// `Ok(None)` means the source is gone (a per-call array): the caller must not treat it as a weight.
     pub(crate) fn get_or_upload(
         &mut self,
         origin: &ConstOrigin,
@@ -133,7 +133,7 @@ mod tests {
         assert_eq!(r.len(), 2);
     }
 
-    /// A temporary (its source already dropped) is never registered: per-token data cannot pile up.
+    /// A per-call array (its source already dropped) is never registered: per-token data cannot pile up.
     #[test]
     fn a_dropped_source_is_not_registered() {
         let w: Arc<[u32]> = vec![9, 9].into();

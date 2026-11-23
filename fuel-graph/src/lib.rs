@@ -1686,7 +1686,7 @@ pub struct ConstOriginKey {
 
 /// A weak handle on the shared host array a `Const` was built from (see [`ConstOriginKey`]).
 ///
-/// Holds only a `Weak`, so recording an origin never extends the array's life: a per-call temporary
+/// Holds only a `Weak`, so recording an origin never extends the array's life: a per-call array
 /// (a token-id table, a RoPE table, a mask) has no live source by the time anyone asks and
 /// [`Self::pin`] returns `None` for it, while a model weight, still held by the model, pins.
 #[derive(Clone)]
