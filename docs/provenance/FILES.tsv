@@ -15,7 +15,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 838 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 848 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1384 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 295 lines verbatim
@@ -937,7 +937,7 @@ fuel-graph/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
 fuel-graph/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
 fuel-graph/src/grad.rs	own		no lineage; 3 of 175 lines verbatim in candle (2%)
 fuel-graph/src/jit.rs	own		no lineage; 1 of 524 lines verbatim in candle (0%)
-fuel-graph/src/lib.rs	not-traced	candle-nn/src/cpu_flash_attention.rs	34 of 8906 lines also appear in candle (mostly candle-nn/src/cpu_flash_attention.rs); not judged
+fuel-graph/src/lib.rs	not-traced	candle-nn/src/cpu_flash_attention.rs	35 of 8978 lines also appear in candle (mostly candle-nn/src/cpu_flash_attention.rs); not judged
 fuel-graph/src/opt.rs	own		no lineage; 16 of 3708 lines verbatim in candle (0%)
 fuel-graph/src/registry.rs	own		no lineage; 8 of 824 lines verbatim in candle (1%)
 fuel-graph/src/registry/awq_matmul.rs	own		no lineage; 1 of 433 lines verbatim in candle (0%)
@@ -1376,19 +1376,20 @@ fuel-tensor/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the roo
 fuel-tensor/examples/gap315_probe.rs	own		no lineage; 1 of 116 lines verbatim in candle (1%)
 fuel-tensor/examples/gap315_reconciliation_test.rs	own		no lineage; 1 of 77 lines verbatim in candle (1%)
 fuel-tensor/src/awq.rs	own		no lineage; 1 of 359 lines verbatim in candle (0%)
+fuel-tensor/src/const_residency.rs	own		no lineage; 5 of 239 lines verbatim in candle (2%)
 fuel-tensor/src/cpu_accel.rs	own		no lineage; 2 of 79 lines verbatim in candle (3%)
 fuel-tensor/src/cuda_backend/mod.rs	own		no lineage; 3 of 43 lines verbatim in candle (7%)
 fuel-tensor/src/decode_shape.rs	own		no lineage; 2 of 252 lines verbatim in candle (1%)
-fuel-tensor/src/device.rs	candle-modified	candle-core/src/device.rs	rename/copy 38%; 43% of 176 lines verbatim
+fuel-tensor/src/device.rs	candle-modified	candle-core/src/device.rs	rename/copy 38%; 39% of 194 lines verbatim
 fuel-tensor/src/dtype.rs	candle-modified	candle-core/src/dtype.rs	no git lineage; 33 of 52 lines verbatim in candle (mostly candle-core/src/dtype.rs)
 fuel-tensor/src/factories.rs	own		no lineage; 0 of 194 lines verbatim in candle (0%)
-fuel-tensor/src/inference_context.rs	own		no lineage; 16 of 1705 lines verbatim in candle (1%)
+fuel-tensor/src/inference_context.rs	own		no lineage; 16 of 1776 lines verbatim in candle (1%)
 fuel-tensor/src/judge/cache.rs	own		no lineage; 0 of 41 lines verbatim in candle (0%)
 fuel-tensor/src/judge/mod.rs	own		no lineage; 4 of 2130 lines verbatim in candle (0%)
 fuel-tensor/src/kv_block_pool_device.rs	own		no lineage; 4 of 1214 lines verbatim in candle (0%)
 fuel-tensor/src/lazy.rs	not-traced	candle-core/tests/bilinear_tests.rs	37 of 6346 lines also appear in candle (mostly candle-core/tests/bilinear_tests.rs); not judged
 fuel-tensor/src/lazy_latent_cache.rs	own		no lineage; 4 of 238 lines verbatim in candle (2%)
-fuel-tensor/src/lib.rs	not-traced	candle-core/src/lib.rs	9 of 84 lines also appear in candle (mostly candle-core/src/lib.rs); not judged
+fuel-tensor/src/lib.rs	not-traced	candle-core/src/lib.rs	9 of 85 lines also appear in candle (mostly candle-core/src/lib.rs); not judged
 fuel-tensor/src/metal_backend/mod.rs	own		no lineage; 1 of 39 lines verbatim in candle (3%)
 fuel-tensor/src/nf4.rs	own		no lineage; 5 of 576 lines verbatim in candle (1%)
 fuel-tensor/src/persistent_decode.rs	own		no lineage; 3 of 848 lines verbatim in candle (0%)

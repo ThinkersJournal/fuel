@@ -87,7 +87,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-parallel` | 14 |  |  |  |  | 11 |  | 3 |
 | `fuel-posttrain` | 7 |  |  | 2 |  | 2 |  | 3 |
 | `fuel-quantized` | 16 |  | 2 | 1 | 4 | 6 |  | 3 |
-| `fuel-tensor` | 70 | 1 | 2 | 4 |  | 58 | 2 | 3 |
+| `fuel-tensor` | 71 | 1 | 2 | 4 |  | 59 | 2 | 3 |
 | `fuel-tensor-tools` | 6 |  | 1 | 1 |  | 1 |  | 3 |
 | `fuel-test-support` | 12 |  |  |  |  | 9 |  | 3 |
 | `fuel-training` | 9 |  |  |  |  | 6 |  | 3 |
@@ -96,5 +96,5 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-vulkan-dispatch` | 43 |  |  |  |  | 40 |  | 3 |
 | `fuel-vulkan-kernels` | 187 |  |  |  |  | 4 | 180 | 3 |
 | `scripts` | 79 |  |  | 1 |  | 78 |  |  |
-| **all** | **2007** | **112** | **216** | **260** | **4** | **1110** | **185** | **120** |
+| **all** | **2008** | **112** | **216** | **260** | **4** | **1111** | **185** | **120** |
 <!-- provenance-summary:end -->
