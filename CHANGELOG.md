@@ -144,6 +144,26 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## Unreleased (row 119; the number is allocated by pm-assist at gate time)
+
+### Added
+
+- Vulkan fused quantized gemv kernels (GLSL, `fuel-kernels-source/kernels/qmatvec_{q5_k,q3_k,iq4_nl,iq4_xs,iq3_s}.glsl`, byte-reproducible `.spv`, ggml/llama.cpp origin cited): `qmatmul_vk` now has arms for Q5_K, Q3_K, IQ4_NL, IQ4_XS and IQ3_S. The IQ3_S grid is generated from `IQ3S_GRID` by `scripts/gen_iq3s_glsl.py` and compared entry by entry in `fuel-vulkan-dispatch/tests/iq3s_grid_glsl.rs`.
+- `fuel-tensor/tests/ggml_kept_types_are_wired.rs`: exhaustive over `GgmlDType`; every type `WeightStorage::from_ggml_bytes` keeps must be in `qmatmul_wired`.
+
+### Removed
+
+- The `FUEL_GGML_KEEP_QUANTIZED` opt-out (`fuel_tensor::lazy::KEEP_QUANTIZED_ENV`), `declines_unwired_vulkan_quant()` and the process-wide decline from v0.49.14: with every kept type wired on Vulkan they have no purpose. `from_ggml_bytes` no longer has a wildcard arm: every other `GgmlDType` is declined by name.
+
+### Changed
+
+- `CLAUDE.md`: the "fuel-internal Slang" line is corrected (the older `.spv` were built by FishStringer; new kernels are GLSL in `fuel-kernels-source`).
+- `docs/gaps.md` GAP-397 CLOSED; ROADMAP row 119 updated.
+
+### Not verified
+
+- Kernel speed (correctness only); CUDA; a real GGUF file of these types on Vulkan.
+
 ## v0.49.14 - 2026-11-23 (PM-allocated; HOTFIX, Vulkan GGUF loader)
 
 ### Fixed
