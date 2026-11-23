@@ -1,36 +1,36 @@
 path	class	candle_source	basis
 .anatomy.toml	own		no lineage; 0 of 8 lines verbatim in candle (0%)
 .cargo/config.toml	candle-modified	.cargo/config.toml	same path; 6% of 48 lines verbatim
-.coderipper.toml	own		no lineage; 1 of 105 lines verbatim in candle (1%)
+.coderipper.toml	own		no lineage; 1 of 106 lines verbatim in candle (1%)
 .git-blame-ignore-revs	own		no lineage; 0 of 19 lines verbatim in candle (0%)
 .gitattributes	own		no lineage; 0 of 25 lines verbatim in candle (0%)
 .github/CODEOWNERS	own		no lineage; 0 of 1 lines verbatim in candle (0%)
 .github/dependabot.yml	candle	.github/dependabot.yml	identical path; 100% of 2 lines verbatim
-.github/workflows/cargo-deny.yml	own		no lineage; 0 of 23 lines verbatim in candle (0%)
+.github/workflows/cargo-deny.yml	own		no lineage; 0 of 22 lines verbatim in candle (0%)
 .github/workflows/checkpoint-tests.yml	own		no lineage; 0 of 33 lines verbatim in candle (0%)
 .github/workflows/cuda-metal-compile-check.yml	own		no lineage; 0 of 88 lines verbatim in candle (0%)
 .github/workflows/device-tests.yml	own		no lineage; 0 of 57 lines verbatim in candle (0%)
 .github/workflows/lavapipe-vulkan.yml	own		no lineage; 0 of 31 lines verbatim in candle (0%)
-.github/workflows/rust-ci.yml	candle-modified	.github/workflows/rust-ci.yml	same path; 3% of 961 lines verbatim
+.github/workflows/rust-ci.yml	candle-modified	.github/workflows/rust-ci.yml	same path; 3% of 926 lines verbatim
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 838 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 846 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
-Cargo.lock	own		no lineage; 2 of 1384 lines verbatim in candle (0%)
-Cargo.toml	candle-modified	Cargo.toml	same path; 6% of 295 lines verbatim
+Cargo.lock	own		no lineage; 2 of 1301 lines verbatim in candle (0%)
+Cargo.toml	candle-modified	Cargo.toml	same path; 5% of 294 lines verbatim
 GLOSSARY.md	own		no lineage; 0 of 56 lines verbatim in candle (0%)
 GUIDE.md	own		no lineage; 2 of 168 lines verbatim in candle (1%)
 LICENSE-APACHE	candle	LICENSE-APACHE	same path; 100% of 164 lines verbatim
 LICENSE-MIT	candle	LICENSE-MIT	identical path; 100% of 18 lines verbatim
 Makefile	candle	Makefile	identical path; 33% of 6 lines verbatim
 PATTERNS.md	own		no lineage; 4 of 179 lines verbatim in candle (2%)
-README.md	candle-modified	README.md	same path; 53% of 383 lines verbatim
-ROADMAP.md	own		no lineage; 0 of 2631 lines verbatim in candle (0%)
+README.md	candle-modified	README.md	same path; 52% of 382 lines verbatim
+ROADMAP.md	own		no lineage; 0 of 2632 lines verbatim in candle (0%)
 SECURITY.md	own		no lineage; 0 of 3 lines verbatim in candle (0%)
 THIRD-PARTY-NOTICES.md	own		judged: the ledger; it reproduces upstream licence texts, which is why git sees a copy of LICENSE-APACHE
 clippy.toml	own		no lineage; 0 of 30 lines verbatim in candle (0%)
-deny.toml	own		no lineage; 0 of 32 lines verbatim in candle (0%)
+deny.toml	own		no lineage; 0 of 31 lines verbatim in candle (0%)
 docs/PATENT-SWEEP-CHARTS.md	own		no lineage; 0 of 78 lines verbatim in candle (0%)
 docs/PATENT-SWEEP.md	own		no lineage; 0 of 170 lines verbatim in candle (0%)
 docs/SLANG-SEAM-REQUIREMENTS.md	own		no lineage; 0 of 167 lines verbatim in candle (0%)
@@ -267,7 +267,7 @@ fuel-correctness-fixtures/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged c
 fuel-correctness-fixtures/src/bin/fuel-capture-fixtures.rs	own		no lineage; 1 of 179 lines verbatim in candle (1%)
 fuel-correctness-fixtures/src/capture.rs	own		no lineage; 7 of 671 lines verbatim in candle (1%)
 fuel-correctness-fixtures/src/lib.rs	own		no lineage; 6 of 269 lines verbatim in candle (2%)
-fuel-cpu-backend/Cargo.toml	own		no lineage; 4 of 33 lines verbatim in candle (12%)
+fuel-cpu-backend/Cargo.toml	own		no lineage; 4 of 31 lines verbatim in candle (13%)
 fuel-cpu-backend/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-cpu-backend/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-cpu-backend/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
@@ -287,13 +287,12 @@ fuel-cpu-backend/src/dyn_impl.rs	not-traced	candle-core/src/cpu_backend/mod.rs	8
 fuel-cpu-backend/src/host_storage/mmap.rs	own		no lineage; 3 of 181 lines verbatim in candle (2%)
 fuel-cpu-backend/src/host_storage/mod.rs	own		no lineage; 0 of 12 lines verbatim in candle (0%)
 fuel-cpu-backend/src/host_storage/shared_mem.rs	own		no lineage; 4 of 179 lines verbatim in candle (2%)
-fuel-cpu-backend/src/lib.rs	not-traced	candle-core/examples/basics.rs	4 of 30 lines also appear in candle (mostly candle-core/examples/basics.rs); not judged
-fuel-cpu-backend/src/mkl.rs	candle	candle-core/src/mkl.rs	rename/copy 98%; 99% of 109 lines verbatim
-fuel-cpu-backend/src/ops.rs	candle-modified	candle-core/src/cpu_backend/mod.rs	rename/copy 42%; 74% of 879 lines verbatim
+fuel-cpu-backend/src/lib.rs	not-traced	candle-core/examples/basics.rs	3 of 29 lines also appear in candle (mostly candle-core/examples/basics.rs); not judged
+fuel-cpu-backend/src/ops.rs	candle-modified	candle-core/src/cpu_backend/mod.rs	rename/copy 39%; 68% of 871 lines verbatim
 fuel-cpu-backend/src/probe.rs	own		no lineage; 0 of 34 lines verbatim in candle (0%)
 fuel-cpu-backend/src/quantized.rs	not-traced	candle-core/src/quantized/mod.rs	18 of 79 lines also appear in candle (mostly candle-core/src/quantized/mod.rs); not judged
 fuel-cpu-backend/src/system_memory.rs	own		no lineage; 1 of 115 lines verbatim in candle (1%)
-fuel-cpu-backend/src/utils.rs	candle-modified	candle-core/src/cpu_backend/utils.rs	rename/copy 84%; 83% of 218 lines verbatim
+fuel-cpu-backend/src/utils.rs	candle-modified	candle-core/src/cpu_backend/utils.rs	rename/copy 87%; 85% of 211 lines verbatim
 fuel-cpu-backend/tests/bf16_minmax_move_or_round.rs	own		no lineage; 1 of 84 lines verbatim in candle (1%)
 fuel-cpu-backend/tests/kiss_int_wrap.rs	own		no lineage; 1 of 98 lines verbatim in candle (1%)
 fuel-cpu-backend/tests/matmul_f32_by_half.rs	own		no lineage; 0 of 114 lines verbatim in candle (0%)
@@ -448,7 +447,7 @@ fuel-cuda-dispatch/tests/gap335_cuda_qmatmul_binding.rs	own		no lineage; 2 of 11
 fuel-cuda-dispatch/tests/golden/cuda_binding_census.txt	own		no lineage; 0 of 476 lines verbatim in candle (0%)
 fuel-cuda-dispatch/tests/jit_synth_kernel_live.rs	own		no lineage; 1 of 626 lines verbatim in candle (0%)
 fuel-cuda-dispatch/tests/qmatmul_cuda_contract.rs	own		no lineage; 1 of 66 lines verbatim in candle (2%)
-fuel-datasets/Cargo.toml	candle-modified	candle-datasets/Cargo.toml	rename/copy 69%; 73% of 15 lines verbatim
+fuel-datasets/Cargo.toml	candle-modified	candle-datasets/Cargo.toml	rename/copy 66%; 71% of 14 lines verbatim
 fuel-datasets/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-datasets/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-datasets/README.md	own		no lineage; 0 of 0 lines verbatim in candle (0%)
@@ -671,133 +670,133 @@ fuel-dispatch/tests/kiss_structure_key_byte_match.rs	own		no lineage; 0 of 729 l
 fuel-dispatch/tests/outreach_chain_status.rs	own		no lineage; 1 of 102 lines verbatim in candle (1%)
 fuel-dispatch/tests/residency_eviction_live.rs	own		no lineage; 1 of 108 lines verbatim in candle (1%)
 fuel-dispatch/tests/runtime_fusion_optimize_e2e.rs	own		no lineage; 1 of 104 lines verbatim in candle (1%)
-fuel-examples/Cargo.toml	candle-modified	candle-examples/Cargo.toml	rename/copy 54%; 79% of 61 lines verbatim
+fuel-examples/Cargo.toml	candle-modified	candle-examples/Cargo.toml	rename/copy 51%; 78% of 60 lines verbatim
 fuel-examples/README.md	own		no lineage; 0 of 0 lines verbatim in candle (0%)
 fuel-examples/build.rs	candle-modified	candle-examples/build.rs	rename/copy 55%; 64% of 39 lines verbatim
 fuel-examples/buildtime_downloader.rs	candle-modified	candle-examples/buildtime_downloader.rs	rename/copy 70%; 87% of 15 lines verbatim
 fuel-examples/examples/based/README.md	candle	candle-examples/examples/based/README.md	rename/copy 98%; 100% of 7 lines verbatim
-fuel-examples/examples/based/main.rs	candle-modified	candle-examples/examples/based/main.rs	no git lineage; 66 of 161 lines verbatim in candle (mostly candle-examples/examples/based/main.rs)
+fuel-examples/examples/based/main.rs	candle-modified	candle-examples/examples/based/main.rs	no git lineage; 65 of 160 lines verbatim in candle (mostly candle-examples/examples/based/main.rs)
 fuel-examples/examples/beit/README.md	candle-modified	candle-examples/examples/beit/README.md	rename/copy 83%; 100% of 10 lines verbatim
-fuel-examples/examples/beit/main.rs	candle-modified	candle-examples/examples/beit/main.rs	rename/copy 35%; 33% of 49 lines verbatim
+fuel-examples/examples/beit/main.rs	candle-modified	candle-examples/examples/beit/main.rs	rename/copy 34%; 31% of 48 lines verbatim
 fuel-examples/examples/bert/README.md	candle	candle-examples/examples/bert/README.md	rename/copy 99%; 100% of 48 lines verbatim
-fuel-examples/examples/bert/main.rs	candle-modified	candle-examples/examples/bert/main.rs	rename/copy 32%; 51% of 75 lines verbatim
+fuel-examples/examples/bert/main.rs	candle-modified	candle-examples/examples/bert/main.rs	rename/copy 31%; 50% of 74 lines verbatim
 fuel-examples/examples/bert_single_file_binary/README.md	candle-modified	candle-examples/examples/bert_single_file_binary/README.md	rename/copy 84%; 100% of 56 lines verbatim
-fuel-examples/examples/bert_single_file_binary/main.rs	candle-modified	candle-examples/examples/bert_single_file_binary/main.rs	rename/copy 35%; 41% of 93 lines verbatim
+fuel-examples/examples/bert_single_file_binary/main.rs	candle-modified	candle-examples/examples/bert_single_file_binary/main.rs	rename/copy 35%; 40% of 92 lines verbatim
 fuel-examples/examples/bigcode/README.md	candle	candle-examples/examples/bigcode/README.md	rename/copy 90%; 100% of 5 lines verbatim
-fuel-examples/examples/bigcode/main.rs	candle-modified	candle-examples/examples/bigcode/main.rs	rename/copy 33%; 46% of 76 lines verbatim
+fuel-examples/examples/bigcode/main.rs	candle-modified	candle-examples/examples/bigcode/main.rs	rename/copy 32%; 45% of 75 lines verbatim
 fuel-examples/examples/blip/README.md	candle-modified	candle-examples/examples/blip/README.md	rename/copy 80%; 100% of 7 lines verbatim
-fuel-examples/examples/blip/main.rs	candle-modified	candle-examples/examples/blip/main.rs	no git lineage; 30 of 86 lines verbatim in candle (mostly candle-examples/examples/blip/main.rs)
+fuel-examples/examples/blip/main.rs	candle-modified	candle-examples/examples/blip/main.rs	no git lineage; 29 of 85 lines verbatim in candle (mostly candle-examples/examples/blip/main.rs)
 fuel-examples/examples/chatglm/README.md	candle	candle-examples/examples/chatglm/README.md	rename/copy 95%; 100% of 3 lines verbatim
-fuel-examples/examples/chatglm/main.rs	candle-modified	candle-examples/examples/chatglm/main.rs	rename/copy 36%; 57% of 109 lines verbatim
+fuel-examples/examples/chatglm/main.rs	candle-modified	candle-examples/examples/chatglm/main.rs	rename/copy 36%; 56% of 108 lines verbatim
 fuel-examples/examples/chinese_clip/README.md	candle-modified	candle-examples/examples/chinese_clip/README.md	rename/copy 65%; 100% of 22 lines verbatim
-fuel-examples/examples/chinese_clip/main.rs	candle-modified	candle-examples/examples/chinese_clip/main.rs	rename/copy 42%; 43% of 115 lines verbatim
+fuel-examples/examples/chinese_clip/main.rs	candle-modified	candle-examples/examples/chinese_clip/main.rs	rename/copy 41%; 42% of 114 lines verbatim
 fuel-examples/examples/clip/README.md	candle-modified	candle-examples/examples/clip/README.md	rename/copy 45%; 100% of 24 lines verbatim
-fuel-examples/examples/clip/main.rs	candle-modified	candle-examples/examples/clip/main.rs	rename/copy 37%; 42% of 125 lines verbatim
+fuel-examples/examples/clip/main.rs	candle-modified	candle-examples/examples/clip/main.rs	rename/copy 37%; 41% of 124 lines verbatim
 fuel-examples/examples/codegeex4-9b/README.org	candle	candle-examples/examples/codegeex4-9b/README.org	rename/copy 100%; 100% of 25 lines verbatim
-fuel-examples/examples/codegeex4-9b/main.rs	candle-modified	candle-examples/examples/codegeex4-9b/main.rs	no git lineage; 63 of 140 lines verbatim in candle (mostly candle-examples/examples/codegeex4-9b/main.rs)
+fuel-examples/examples/codegeex4-9b/main.rs	candle-modified	candle-examples/examples/codegeex4-9b/main.rs	no git lineage; 62 of 139 lines verbatim in candle (mostly candle-examples/examples/codegeex4-9b/main.rs)
 fuel-examples/examples/colpali/README.md	candle	candle-examples/examples/colpali/README.md	rename/copy 100%; 100% of 7 lines verbatim
 fuel-examples/examples/colpali/main.rs	candle-modified	candle-examples/examples/colpali/main.rs	rename/copy 34%; 45% of 98 lines verbatim
 fuel-examples/examples/convmixer/README.md	candle-modified	candle-examples/examples/convmixer/README.md	rename/copy 81%; 100% of 8 lines verbatim
-fuel-examples/examples/convmixer/main.rs	candle-modified	candle-examples/examples/convmixer/main.rs	rename/copy 36%; 35% of 43 lines verbatim
+fuel-examples/examples/convmixer/main.rs	candle-modified	candle-examples/examples/convmixer/main.rs	rename/copy 35%; 33% of 42 lines verbatim
 fuel-examples/examples/convnext/README.md	candle-modified	candle-examples/examples/convnext/README.md	rename/copy 73%; 100% of 12 lines verbatim
-fuel-examples/examples/convnext/main.rs	candle-modified	candle-examples/examples/convnext/main.rs	rename/copy 43%; 43% of 87 lines verbatim
+fuel-examples/examples/convnext/main.rs	candle-modified	candle-examples/examples/convnext/main.rs	rename/copy 43%; 42% of 86 lines verbatim
 fuel-examples/examples/csm/README.md	candle-modified	candle-examples/examples/csm/README.md	rename/copy 86%; 100% of 8 lines verbatim
-fuel-examples/examples/csm/main.rs	own		no lineage; 9 of 146 lines verbatim in candle (6%)
+fuel-examples/examples/csm/main.rs	own		no lineage; 8 of 145 lines verbatim in candle (6%)
 fuel-examples/examples/csm/voices.safetensors	candle-modified	candle-examples/examples/csm/voices.safetensors	rename/copy 100%; 0% of 0 lines verbatim
 fuel-examples/examples/debertav2/README.md	candle	candle-examples/examples/debertav2/README.md	rename/copy 97%; 100% of 77 lines verbatim
-fuel-examples/examples/debertav2/main.rs	not-traced	candle-examples/examples/debertav2/main.rs	27 of 179 lines also appear in candle (mostly candle-examples/examples/debertav2/main.rs); not judged
+fuel-examples/examples/debertav2/main.rs	not-traced	candle-examples/examples/debertav2/main.rs	26 of 178 lines also appear in candle (mostly candle-examples/examples/debertav2/main.rs); not judged
 fuel-examples/examples/deepseekv2/README.md	candle	candle-examples/examples/deepseekv2/README.md	rename/copy 100%; 100% of 9 lines verbatim
-fuel-examples/examples/deepseekv2/main.rs	candle-modified	candle-examples/examples/deepseekv2/main.rs	no git lineage; 60 of 148 lines verbatim in candle (mostly candle-examples/examples/deepseekv2/main.rs)
+fuel-examples/examples/deepseekv2/main.rs	candle-modified	candle-examples/examples/deepseekv2/main.rs	no git lineage; 59 of 147 lines verbatim in candle (mostly candle-examples/examples/deepseekv2/main.rs)
 fuel-examples/examples/depth_anything_v2/README.md	candle-modified	candle-examples/examples/depth_anything_v2/README.md	rename/copy 65%; 100% of 5 lines verbatim
 fuel-examples/examples/depth_anything_v2/color_map.rs	candle-modified	candle-examples/examples/depth_anything_v2/color_map.rs	rename/copy 52%; 53% of 34 lines verbatim
-fuel-examples/examples/depth_anything_v2/main.rs	candle-modified	candle-examples/examples/depth_anything_v2/main.rs	rename/copy 39%; 39% of 111 lines verbatim
+fuel-examples/examples/depth_anything_v2/main.rs	candle-modified	candle-examples/examples/depth_anything_v2/main.rs	rename/copy 39%; 38% of 110 lines verbatim
 fuel-examples/examples/dinov2/README.md	candle-modified	candle-examples/examples/dinov2/README.md	rename/copy 83%; 100% of 10 lines verbatim
-fuel-examples/examples/dinov2/main.rs	candle-modified	candle-examples/examples/dinov2/main.rs	rename/copy 43%; 39% of 38 lines verbatim
+fuel-examples/examples/dinov2/main.rs	candle-modified	candle-examples/examples/dinov2/main.rs	rename/copy 42%; 38% of 37 lines verbatim
 fuel-examples/examples/dinov2reg4/README.md	candle-modified	candle-examples/examples/dinov2reg4/README.md	rename/copy 72%; 100% of 13 lines verbatim
-fuel-examples/examples/dinov2reg4/main.rs	candle-modified	candle-examples/examples/dinov2reg4/main.rs	rename/copy 47%; 44% of 48 lines verbatim
+fuel-examples/examples/dinov2reg4/main.rs	candle-modified	candle-examples/examples/dinov2reg4/main.rs	rename/copy 47%; 43% of 47 lines verbatim
 fuel-examples/examples/distilbert/README.md	candle	candle-examples/examples/distilbert/README.md	rename/copy 98%; 100% of 25 lines verbatim
-fuel-examples/examples/distilbert/main.rs	candle-modified	candle-examples/examples/distilbert/main.rs	no git lineage; 51 of 95 lines verbatim in candle (mostly candle-examples/examples/distilbert/main.rs)
+fuel-examples/examples/distilbert/main.rs	candle-modified	candle-examples/examples/distilbert/main.rs	no git lineage; 50 of 94 lines verbatim in candle (mostly candle-examples/examples/distilbert/main.rs)
 fuel-examples/examples/efficientnet/README.md	candle-modified	candle-examples/examples/efficientnet/README.md	rename/copy 51%; 100% of 7 lines verbatim
-fuel-examples/examples/efficientnet/main.rs	candle-modified	candle-examples/examples/efficientnet/main.rs	rename/copy 51%; 47% of 59 lines verbatim
+fuel-examples/examples/efficientnet/main.rs	candle-modified	candle-examples/examples/efficientnet/main.rs	rename/copy 50%; 47% of 58 lines verbatim
 fuel-examples/examples/efficientvit/README.md	candle-modified	candle-examples/examples/efficientvit/README.md	rename/copy 67%; 100% of 10 lines verbatim
-fuel-examples/examples/efficientvit/main.rs	candle-modified	candle-examples/examples/efficientvit/main.rs	rename/copy 49%; 43% of 42 lines verbatim
+fuel-examples/examples/efficientvit/main.rs	candle-modified	candle-examples/examples/efficientvit/main.rs	rename/copy 48%; 41% of 41 lines verbatim
 fuel-examples/examples/eva2/README.md	candle-modified	candle-examples/examples/eva2/README.md	rename/copy 83%; 100% of 10 lines verbatim
-fuel-examples/examples/eva2/main.rs	candle-modified	candle-examples/examples/eva2/main.rs	rename/copy 34%; 33% of 49 lines verbatim
+fuel-examples/examples/eva2/main.rs	candle-modified	candle-examples/examples/eva2/main.rs	rename/copy 33%; 31% of 48 lines verbatim
 fuel-examples/examples/falcon/README.md	candle	candle-examples/examples/falcon/README.md	rename/copy 94%; 100% of 3 lines verbatim
-fuel-examples/examples/falcon/main.rs	candle-modified	candle-examples/examples/falcon/main.rs	no git lineage; 39 of 87 lines verbatim in candle (mostly candle-examples/examples/falcon/main.rs)
+fuel-examples/examples/falcon/main.rs	candle-modified	candle-examples/examples/falcon/main.rs	no git lineage; 38 of 86 lines verbatim in candle (mostly candle-examples/examples/falcon/main.rs)
 fuel-examples/examples/fastvit/README.md	candle-modified	candle-examples/examples/fastvit/README.md	rename/copy 71%; 100% of 11 lines verbatim
-fuel-examples/examples/fastvit/main.rs	candle-modified	candle-examples/examples/fastvit/main.rs	rename/copy 45%; 41% of 51 lines verbatim
+fuel-examples/examples/fastvit/main.rs	candle-modified	candle-examples/examples/fastvit/main.rs	rename/copy 44%; 40% of 50 lines verbatim
 fuel-examples/examples/flux/README.md	candle-modified	candle-examples/examples/flux/README.md	rename/copy 80%; 100% of 9 lines verbatim
 fuel-examples/examples/flux/assets/flux-robot.jpg	candle-modified	candle-examples/examples/flux/assets/flux-robot.jpg	rename/copy 100%; 0% of 0 lines verbatim
-fuel-examples/examples/flux/main.rs	not-traced	candle-examples/examples/flux/main.rs	59 of 261 lines also appear in candle (mostly candle-examples/examples/flux/main.rs); not judged
+fuel-examples/examples/flux/main.rs	not-traced	candle-examples/examples/flux/main.rs	58 of 260 lines also appear in candle (mostly candle-examples/examples/flux/main.rs); not judged
 fuel-examples/examples/flux/t5_tokenizer.py	candle-modified	candle-examples/examples/flux/t5_tokenizer.py	rename/copy 58%; 71% of 7 lines verbatim
 fuel-examples/examples/gemma/README.md	candle	candle-examples/examples/gemma/README.md	rename/copy 96%; 100% of 13 lines verbatim
-fuel-examples/examples/gemma/main.rs	candle-modified	candle-examples/examples/gemma/main.rs	rename/copy 34%; 40% of 229 lines verbatim
-fuel-examples/examples/gemma4/main.rs	candle-modified	candle-examples/examples/gemma4/main.rs	no git lineage; 61 of 179 lines verbatim in candle (mostly candle-examples/examples/gemma4/main.rs)
+fuel-examples/examples/gemma/main.rs	candle-modified	candle-examples/examples/gemma/main.rs	rename/copy 34%; 39% of 228 lines verbatim
+fuel-examples/examples/gemma4/main.rs	candle-modified	candle-examples/examples/gemma4/main.rs	no git lineage; 60 of 178 lines verbatim in candle (mostly candle-examples/examples/gemma4/main.rs)
 fuel-examples/examples/gguf-tokenizer.rs	candle-modified	candle-examples/examples/gguf-tokenizer.rs	rename/copy 83%; 93% of 45 lines verbatim
 fuel-examples/examples/glm4/README.md	candle	candle-examples/examples/glm4/README.md	rename/copy 100%; 100% of 23 lines verbatim
 fuel-examples/examples/glm4/main.rs	candle-modified	candle-examples/examples/glm4/main.rs	no git lineage; 63 of 203 lines verbatim in candle (mostly candle-examples/examples/glm4/main.rs)
 fuel-examples/examples/granite/README.md	candle	candle-examples/examples/granite/README.md	rename/copy 97%; 100% of 8 lines verbatim
-fuel-examples/examples/granite/main.rs	candle-modified	candle-examples/examples/granite/main.rs	no git lineage; 51 of 149 lines verbatim in candle (mostly candle-examples/examples/granite/main.rs)
+fuel-examples/examples/granite/main.rs	candle-modified	candle-examples/examples/granite/main.rs	no git lineage; 50 of 148 lines verbatim in candle (mostly candle-examples/examples/granite/main.rs)
 fuel-examples/examples/granitemoehybrid/README.md	candle-modified	candle-examples/examples/granitemoehybrid/README.md	rename/copy 82%; 100% of 13 lines verbatim
-fuel-examples/examples/granitemoehybrid/main.rs	candle-modified	candle-examples/examples/granitemoehybrid/main.rs	no git lineage; 61 of 158 lines verbatim in candle (mostly candle-examples/examples/granitemoehybrid/main.rs)
+fuel-examples/examples/granitemoehybrid/main.rs	candle-modified	candle-examples/examples/granitemoehybrid/main.rs	no git lineage; 60 of 157 lines verbatim in candle (mostly candle-examples/examples/granitemoehybrid/main.rs)
 fuel-examples/examples/gte-qwen/README.md	candle	candle-examples/examples/gte-qwen/README.md	rename/copy 100%; 100% of 7 lines verbatim
-fuel-examples/examples/gte-qwen/main.rs	candle-modified	candle-examples/examples/gte-qwen/main.rs	no git lineage; 61 of 182 lines verbatim in candle (mostly candle-examples/examples/gte-qwen/main.rs)
+fuel-examples/examples/gte-qwen/main.rs	candle-modified	candle-examples/examples/gte-qwen/main.rs	no git lineage; 60 of 181 lines verbatim in candle (mostly candle-examples/examples/gte-qwen/main.rs)
 fuel-examples/examples/helium/README.md	candle	candle-examples/examples/helium/README.md	rename/copy 91%; 100% of 7 lines verbatim
-fuel-examples/examples/helium/main.rs	candle-modified	candle-examples/examples/helium/main.rs	rename/copy 31%; 41% of 159 lines verbatim
+fuel-examples/examples/helium/main.rs	candle-modified	candle-examples/examples/helium/main.rs	rename/copy 30%; 41% of 158 lines verbatim
 fuel-examples/examples/hiera/README.md	candle-modified	candle-examples/examples/hiera/README.md	rename/copy 72%; 100% of 10 lines verbatim
-fuel-examples/examples/hiera/main.rs	candle-modified	candle-examples/examples/hiera/main.rs	rename/copy 48%; 42% of 50 lines verbatim
+fuel-examples/examples/hiera/main.rs	candle-modified	candle-examples/examples/hiera/main.rs	rename/copy 47%; 41% of 49 lines verbatim
 fuel-examples/examples/jina-bert/README.md	candle	candle-examples/examples/jina-bert/README.md	rename/copy 98%; 100% of 27 lines verbatim
-fuel-examples/examples/jina-bert/main.rs	not-traced	candle-examples/examples/jina-bert/main.rs	37 of 146 lines also appear in candle (mostly candle-examples/examples/jina-bert/main.rs); not judged
+fuel-examples/examples/jina-bert/main.rs	not-traced	candle-examples/examples/jina-bert/main.rs	36 of 145 lines also appear in candle (mostly candle-examples/examples/jina-bert/main.rs); not judged
 fuel-examples/examples/llama/README.md	candle-modified	candle-examples/examples/llama/README.md	rename/copy 74%; 100% of 3 lines verbatim
-fuel-examples/examples/llama/main.rs	candle-modified	candle-examples/examples/llama/main.rs	rename/copy 30%; 49% of 172 lines verbatim
-fuel-examples/examples/llama2-c/main.rs	candle-modified	candle-examples/examples/llama2-c/main.rs	rename/copy 41%; 60% of 129 lines verbatim
-fuel-examples/examples/llava/main.rs	not-traced	candle-examples/examples/paligemma/main.rs	23 of 144 lines also appear in candle (mostly candle-examples/examples/paligemma/main.rs); not judged
+fuel-examples/examples/llama/main.rs	candle-modified	candle-examples/examples/llama/main.rs	rename/copy 30%; 49% of 171 lines verbatim
+fuel-examples/examples/llama2-c/main.rs	candle-modified	candle-examples/examples/llama2-c/main.rs	rename/copy 41%; 59% of 128 lines verbatim
+fuel-examples/examples/llava/main.rs	not-traced	candle-examples/examples/paligemma/main.rs	22 of 143 lines also appear in candle (mostly candle-examples/examples/paligemma/main.rs); not judged
 fuel-examples/examples/llava/readme.md	candle	candle-examples/examples/llava/readme.md	rename/copy 98%; 95% of 19 lines verbatim
 fuel-examples/examples/mamba/README.md	candle-modified	candle-examples/examples/mamba/README.md	rename/copy 82%; 100% of 9 lines verbatim
-fuel-examples/examples/mamba/main.rs	candle-modified	candle-examples/examples/mamba/main.rs	no git lineage; 77 of 188 lines verbatim in candle (mostly candle-examples/examples/mamba/main.rs)
+fuel-examples/examples/mamba/main.rs	candle-modified	candle-examples/examples/mamba/main.rs	no git lineage; 76 of 187 lines verbatim in candle (mostly candle-examples/examples/mamba/main.rs)
 fuel-examples/examples/mamba2/README.md	candle	candle-examples/examples/mamba2/README.md	rename/copy 91%; 100% of 17 lines verbatim
-fuel-examples/examples/mamba2/main.rs	candle-modified	candle-examples/examples/mamba2/main.rs	no git lineage; 74 of 193 lines verbatim in candle (mostly candle-examples/examples/mamba2/main.rs)
+fuel-examples/examples/mamba2/main.rs	candle-modified	candle-examples/examples/mamba2/main.rs	no git lineage; 73 of 192 lines verbatim in candle (mostly candle-examples/examples/mamba2/main.rs)
 fuel-examples/examples/marian-mt/README.md	candle	candle-examples/examples/marian-mt/README.md	rename/copy 98%; 100% of 17 lines verbatim
-fuel-examples/examples/marian-mt/main.rs	candle-modified	candle-examples/examples/marian-mt/main.rs	rename/copy 46%; 62% of 117 lines verbatim
+fuel-examples/examples/marian-mt/main.rs	candle-modified	candle-examples/examples/marian-mt/main.rs	rename/copy 45%; 62% of 116 lines verbatim
 fuel-examples/examples/marian-mt/python/convert_slow_tokenizer.py	candle-modified	candle-examples/examples/marian-mt/python/convert_slow_tokenizer.py	rename/copy 85%; 89% of 38 lines verbatim
 fuel-examples/examples/marian-mt/python/requirements.txt	own		no lineage; 0 of 0 lines verbatim in candle (0%)
 fuel-examples/examples/metavoice/README.md	own		no lineage; 1 of 26 lines verbatim in candle (4%)
 fuel-examples/examples/metavoice/main.rs	not-traced		names candle in its text; not judged
 fuel-examples/examples/mistral/README.md	candle	candle-examples/examples/mistral/README.md	rename/copy 97%; 100% of 27 lines verbatim
-fuel-examples/examples/mistral/main.rs	candle-modified	candle-examples/examples/mistral/main.rs	no git lineage; 78 of 173 lines verbatim in candle (mostly candle-examples/examples/mistral/main.rs)
+fuel-examples/examples/mistral/main.rs	candle-modified	candle-examples/examples/mistral/main.rs	no git lineage; 77 of 172 lines verbatim in candle (mostly candle-examples/examples/mistral/main.rs)
 fuel-examples/examples/mixtral/README.md	candle	candle-examples/examples/mixtral/README.md	rename/copy 91%; 100% of 7 lines verbatim
-fuel-examples/examples/mixtral/main.rs	candle-modified	candle-examples/examples/gemma4/main.rs	no git lineage; 58 of 181 lines verbatim in candle (mostly candle-examples/examples/gemma4/main.rs)
+fuel-examples/examples/mixtral/main.rs	candle-modified	candle-examples/examples/gemma4/main.rs	no git lineage; 57 of 180 lines verbatim in candle (mostly candle-examples/examples/gemma4/main.rs)
 fuel-examples/examples/mnist-training/README.md	candle-modified	candle-examples/examples/mnist-training/README.md	rename/copy 63%; 100% of 6 lines verbatim
 fuel-examples/examples/mnist-training/main.rs	own		no lineage; 0 of 28 lines verbatim in candle (0%)
 fuel-examples/examples/mobileclip/README.md	candle-modified	candle-examples/examples/mobileclip/README.md	rename/copy 48%; 100% of 13 lines verbatim
-fuel-examples/examples/mobileclip/main.rs	candle-modified	candle-examples/examples/mobileclip/main.rs	rename/copy 32%; 39% of 125 lines verbatim
+fuel-examples/examples/mobileclip/main.rs	candle-modified	candle-examples/examples/mobileclip/main.rs	rename/copy 32%; 39% of 124 lines verbatim
 fuel-examples/examples/mobilenetv4/README.md	candle-modified	candle-examples/examples/mobilenetv4/README.md	rename/copy 68%; 100% of 10 lines verbatim
-fuel-examples/examples/mobilenetv4/main.rs	candle-modified	candle-examples/examples/mobilenetv4/main.rs	rename/copy 47%; 44% of 59 lines verbatim
+fuel-examples/examples/mobilenetv4/main.rs	candle-modified	candle-examples/examples/mobilenetv4/main.rs	rename/copy 47%; 43% of 58 lines verbatim
 fuel-examples/examples/mobileone/README.md	candle-modified	candle-examples/examples/mobileone/README.md	rename/copy 69%; 100% of 11 lines verbatim
-fuel-examples/examples/mobileone/main.rs	candle-modified	candle-examples/examples/mobileone/main.rs	rename/copy 47%; 41% of 49 lines verbatim
+fuel-examples/examples/mobileone/main.rs	candle-modified	candle-examples/examples/mobileone/main.rs	rename/copy 46%; 40% of 48 lines verbatim
 fuel-examples/examples/modernbert/README.md	candle	candle-examples/examples/modernbert/README.md	rename/copy 93%; 100% of 3 lines verbatim
 fuel-examples/examples/modernbert/main.rs	not-traced	candle-examples/examples/modernbert/main.rs	31 of 164 lines also appear in candle (mostly candle-examples/examples/modernbert/main.rs); not judged
 fuel-examples/examples/moondream/README.md	candle-modified	candle-examples/examples/moondream/README.md	rename/copy 85%; 100% of 15 lines verbatim
-fuel-examples/examples/moondream/main.rs	candle-modified	candle-examples/examples/moondream/main.rs	no git lineage; 59 of 188 lines verbatim in candle (mostly candle-examples/examples/moondream/main.rs)
+fuel-examples/examples/moondream/main.rs	candle-modified	candle-examples/examples/moondream/main.rs	no git lineage; 58 of 187 lines verbatim in candle (mostly candle-examples/examples/moondream/main.rs)
 fuel-examples/examples/musicgen/README.md	candle-modified	candle-examples/examples/musicgen/README.md	rename/copy 82%; 100% of 10 lines verbatim
-fuel-examples/examples/musicgen/main.rs	candle-modified	candle-examples/examples/musicgen/main.rs	rename/copy 48%; 42% of 55 lines verbatim
+fuel-examples/examples/musicgen/main.rs	candle-modified	candle-examples/examples/musicgen/main.rs	rename/copy 48%; 41% of 54 lines verbatim
 fuel-examples/examples/ngram_draft_probe/main.rs	own		no lineage; 3 of 70 lines verbatim in candle (4%)
 fuel-examples/examples/nomic-bert/README.md	candle	candle-examples/examples/nomic-bert/README.md	rename/copy 98%; 100% of 29 lines verbatim
-fuel-examples/examples/nomic-bert/main.rs	not-traced	candle-examples/examples/nomic-bert/main.rs	48 of 188 lines also appear in candle (mostly candle-examples/examples/nomic-bert/main.rs); not judged
+fuel-examples/examples/nomic-bert/main.rs	not-traced	candle-examples/examples/nomic-bert/main.rs	47 of 187 lines also appear in candle (mostly candle-examples/examples/nomic-bert/main.rs); not judged
 fuel-examples/examples/nvembed_v2/README.md	candle	candle-examples/examples/nvembed_v2/README.md	rename/copy 90%; 100% of 18 lines verbatim
-fuel-examples/examples/nvembed_v2/main.rs	not-traced	candle-examples/examples/nvembed_v2/main.rs	41 of 146 lines also appear in candle (mostly candle-examples/examples/nvembed_v2/main.rs); not judged
+fuel-examples/examples/nvembed_v2/main.rs	not-traced	candle-examples/examples/nvembed_v2/main.rs	40 of 145 lines also appear in candle (mostly candle-examples/examples/nvembed_v2/main.rs); not judged
 fuel-examples/examples/olmo/README.md	candle	candle-examples/examples/olmo/README.md	rename/copy 94%; 100% of 22 lines verbatim
-fuel-examples/examples/olmo/main.rs	candle-modified	candle-examples/examples/olmo/main.rs	no git lineage; 59 of 179 lines verbatim in candle (mostly candle-examples/examples/olmo/main.rs)
+fuel-examples/examples/olmo/main.rs	candle-modified	candle-examples/examples/olmo/main.rs	no git lineage; 58 of 178 lines verbatim in candle (mostly candle-examples/examples/olmo/main.rs)
 fuel-examples/examples/onnx-llm/README.md	candle-modified	candle-examples/examples/onnx-llm/README.md	rename/copy 76%; 100% of 5 lines verbatim
-fuel-examples/examples/onnx-llm/main.rs	candle-modified	candle-examples/examples/onnx-llm/main.rs	rename/copy 35%; 38% of 144 lines verbatim
+fuel-examples/examples/onnx-llm/main.rs	candle-modified	candle-examples/examples/onnx-llm/main.rs	rename/copy 35%; 37% of 143 lines verbatim
 fuel-examples/examples/onnx/README.md	candle-modified	candle-examples/examples/onnx/README.md	rename/copy 76%; 100% of 24 lines verbatim
-fuel-examples/examples/onnx/main.rs	candle-modified	candle-examples/examples/onnx/main.rs	rename/copy 33%; 38% of 84 lines verbatim
+fuel-examples/examples/onnx/main.rs	candle-modified	candle-examples/examples/onnx/main.rs	rename/copy 33%; 37% of 83 lines verbatim
 fuel-examples/examples/onnx_basics.rs	candle-modified	candle-examples/examples/onnx_basics.rs	rename/copy 40%; 56% of 45 lines verbatim
 fuel-examples/examples/orpheus/README.md	candle	candle-examples/examples/orpheus/README.md	rename/copy 100%; 100% of 4 lines verbatim
-fuel-examples/examples/orpheus/main.rs	candle-modified	candle-examples/examples/orpheus/main.rs	rename/copy 46%; 47% of 175 lines verbatim
+fuel-examples/examples/orpheus/main.rs	candle-modified	candle-examples/examples/orpheus/main.rs	rename/copy 46%; 47% of 174 lines verbatim
 fuel-examples/examples/paddleocr-vl/README.md	candle-modified	candle-examples/examples/paddleocr-vl/README.md	rename/copy 81%; 100% of 47 lines verbatim
-fuel-examples/examples/paddleocr-vl/main.rs	not-traced	candle-examples/examples/gemma/main.rs	18 of 173 lines also appear in candle (mostly candle-examples/examples/gemma/main.rs); not judged
+fuel-examples/examples/paddleocr-vl/main.rs	own		no lineage; 17 of 172 lines verbatim in candle (10%)
 fuel-examples/examples/paddleocr-vl/test_chart.png	candle-modified	candle-examples/examples/paddleocr-vl/test_chart.png	rename/copy 100%; 0% of 0 lines verbatim
 fuel-examples/examples/paddleocr-vl/test_formula.png	candle-modified	candle-examples/examples/paddleocr-vl/test_formula.png	rename/copy 100%; 0% of 0 lines verbatim
 fuel-examples/examples/paddleocr-vl/test_ocr.png	candle-modified	candle-examples/examples/paddleocr-vl/test_ocr.png	rename/copy 100%; 0% of 0 lines verbatim
@@ -805,107 +804,107 @@ fuel-examples/examples/paddleocr-vl/test_ocr_page2.png	candle-modified	candle-ex
 fuel-examples/examples/paddleocr-vl/test_table.png	candle-modified	candle-examples/examples/paddleocr-vl/test_table.png	rename/copy 100%; 0% of 0 lines verbatim
 fuel-examples/examples/paddleocr-vl/test_video.mp4	candle-modified	candle-examples/examples/paddleocr-vl/test_video.mp4	rename/copy 100%; 0% of 0 lines verbatim
 fuel-examples/examples/paligemma/README.md	candle-modified	candle-examples/examples/paligemma/README.md	rename/copy 80%; 100% of 14 lines verbatim
-fuel-examples/examples/paligemma/main.rs	candle-modified	candle-examples/examples/paligemma/main.rs	rename/copy 33%; 45% of 128 lines verbatim
+fuel-examples/examples/paligemma/main.rs	candle-modified	candle-examples/examples/paligemma/main.rs	rename/copy 32%; 44% of 127 lines verbatim
 fuel-examples/examples/parler-tts/README.md	candle	candle-examples/examples/parler-tts/README.md	rename/copy 97%; 100% of 10 lines verbatim
 fuel-examples/examples/parler-tts/hello.mp4	candle-modified	candle-examples/examples/parler-tts/hello.mp4	rename/copy 100%; 0% of 0 lines verbatim
-fuel-examples/examples/parler-tts/main.rs	not-traced	candle-examples/examples/parler-tts/main.rs	66 of 330 lines also appear in candle (mostly candle-examples/examples/parler-tts/main.rs); not judged
+fuel-examples/examples/parler-tts/main.rs	not-traced	candle-examples/examples/parler-tts/main.rs	65 of 329 lines also appear in candle (mostly candle-examples/examples/parler-tts/main.rs); not judged
 fuel-examples/examples/phi/README.md	candle	candle-examples/examples/phi/README.md	rename/copy 94%; 100% of 33 lines verbatim
-fuel-examples/examples/phi/main.rs	candle-modified	candle-examples/examples/phi/main.rs	rename/copy 48%; 75% of 146 lines verbatim
+fuel-examples/examples/phi/main.rs	candle-modified	candle-examples/examples/phi/main.rs	rename/copy 48%; 74% of 145 lines verbatim
 fuel-examples/examples/pixtral/README.md	candle	candle-examples/examples/pixtral/README.md	rename/copy 94%; 100% of 15 lines verbatim
-fuel-examples/examples/pixtral/main.rs	candle-modified	candle-examples/examples/paligemma/main.rs	no git lineage; 61 of 174 lines verbatim in candle (mostly candle-examples/examples/paligemma/main.rs)
+fuel-examples/examples/pixtral/main.rs	candle-modified	candle-examples/examples/paligemma/main.rs	no git lineage; 60 of 173 lines verbatim in candle (mostly candle-examples/examples/paligemma/main.rs)
 fuel-examples/examples/quantized-gemma/README.md	candle-modified	candle-examples/examples/quantized-gemma/README.md	rename/copy 83%; 100% of 4 lines verbatim
-fuel-examples/examples/quantized-gemma/main.rs	candle-modified	candle-examples/examples/quantized-gemma/main.rs	rename/copy 48%; 55% of 234 lines verbatim
+fuel-examples/examples/quantized-gemma/main.rs	candle-modified	candle-examples/examples/quantized-gemma/main.rs	rename/copy 48%; 55% of 233 lines verbatim
 fuel-examples/examples/quantized-glm4/README.md	candle	candle-examples/examples/quantized-glm4/README.md	rename/copy 93%; 100% of 14 lines verbatim
-fuel-examples/examples/quantized-glm4/main.rs	candle-modified	candle-examples/examples/quantized-glm4/main.rs	rename/copy 54%; 62% of 203 lines verbatim
+fuel-examples/examples/quantized-glm4/main.rs	candle-modified	candle-examples/examples/quantized-glm4/main.rs	rename/copy 54%; 61% of 202 lines verbatim
 fuel-examples/examples/quantized-lfm2/README.md	own		no lineage; 1 of 35 lines verbatim in candle (3%)
-fuel-examples/examples/quantized-lfm2/main.rs	candle-modified	candle-examples/examples/quantized-qwen2-instruct/main.rs	no git lineage; 67 of 182 lines verbatim in candle (mostly candle-examples/examples/quantized-qwen2-instruct/main.rs)
+fuel-examples/examples/quantized-lfm2/main.rs	candle-modified	candle-examples/examples/quantized-qwen2-instruct/main.rs	no git lineage; 66 of 181 lines verbatim in candle (mostly candle-examples/examples/quantized-qwen2-instruct/main.rs)
 fuel-examples/examples/quantized-phi/README.md	candle	candle-examples/examples/quantized-phi/README.md	rename/copy 92%; 100% of 8 lines verbatim
-fuel-examples/examples/quantized-phi/main.rs	candle-modified	candle-examples/examples/quantized-phi/main.rs	rename/copy 46%; 50% of 243 lines verbatim
+fuel-examples/examples/quantized-phi/main.rs	candle-modified	candle-examples/examples/quantized-phi/main.rs	rename/copy 46%; 50% of 242 lines verbatim
 fuel-examples/examples/quantized-qwen2-instruct/README.md	candle	candle-examples/examples/quantized-qwen2-instruct/README.md	rename/copy 93%; 100% of 5 lines verbatim
-fuel-examples/examples/quantized-qwen2-instruct/main.rs	candle-modified	candle-examples/examples/quantized-qwen2-instruct/main.rs	rename/copy 45%; 51% of 227 lines verbatim
+fuel-examples/examples/quantized-qwen2-instruct/main.rs	candle-modified	candle-examples/examples/quantized-qwen2-instruct/main.rs	rename/copy 44%; 51% of 226 lines verbatim
 fuel-examples/examples/quantized-qwen3-moe/README.md	candle	candle-examples/examples/quantized-qwen3-moe/README.md	rename/copy 96%; 100% of 6 lines verbatim
-fuel-examples/examples/quantized-qwen3-moe/main.rs	candle-modified	candle-examples/examples/quantized-qwen3-moe/main.rs	rename/copy 53%; 60% of 230 lines verbatim
+fuel-examples/examples/quantized-qwen3-moe/main.rs	candle-modified	candle-examples/examples/quantized-qwen3-moe/main.rs	rename/copy 53%; 60% of 229 lines verbatim
 fuel-examples/examples/quantized-qwen3/README.md	candle	candle-examples/examples/quantized-qwen3/README.md	rename/copy 95%; 100% of 4 lines verbatim
-fuel-examples/examples/quantized-qwen3/main.rs	candle-modified	candle-examples/examples/quantized-qwen3/main.rs	rename/copy 59%; 66% of 193 lines verbatim
+fuel-examples/examples/quantized-qwen3/main.rs	candle-modified	candle-examples/examples/quantized-qwen3/main.rs	rename/copy 59%; 66% of 192 lines verbatim
 fuel-examples/examples/quantized-t5/README.md	candle	candle-examples/examples/quantized-t5/README.md	rename/copy 90%; 96% of 28 lines verbatim
-fuel-examples/examples/quantized-t5/main.rs	candle-modified	candle-examples/examples/quantized-t5/main.rs	rename/copy 40%; 42% of 181 lines verbatim
+fuel-examples/examples/quantized-t5/main.rs	candle-modified	candle-examples/examples/quantized-t5/main.rs	rename/copy 40%; 42% of 180 lines verbatim
 fuel-examples/examples/quantized/README.md	candle	candle-examples/examples/quantized/README.md	rename/copy 97%; 100% of 28 lines verbatim
 fuel-examples/examples/quantized/assets/aoc.gif	candle-modified	candle-examples/examples/quantized/assets/aoc.gif	rename/copy 100%; 0% of 0 lines verbatim
-fuel-examples/examples/quantized/main.rs	candle-modified	candle-examples/examples/quantized/main.rs	rename/copy 65%; 69% of 372 lines verbatim
+fuel-examples/examples/quantized/main.rs	candle-modified	candle-examples/examples/quantized/main.rs	rename/copy 65%; 69% of 371 lines verbatim
 fuel-examples/examples/qwen/README.md	candle	candle-examples/examples/qwen/README.md	rename/copy 97%; 100% of 32 lines verbatim
-fuel-examples/examples/qwen/main.rs	candle-modified	candle-examples/examples/qwen/main.rs	rename/copy 39%; 71% of 98 lines verbatim
+fuel-examples/examples/qwen/main.rs	candle-modified	candle-examples/examples/qwen/main.rs	rename/copy 38%; 71% of 97 lines verbatim
 fuel-examples/examples/recurrent-gemma/README.md	candle	candle-examples/examples/recurrent-gemma/README.md	rename/copy 91%; 100% of 4 lines verbatim
-fuel-examples/examples/recurrent-gemma/main.rs	candle-modified	candle-examples/examples/recurrent-gemma/main.rs	no git lineage; 65 of 164 lines verbatim in candle (mostly candle-examples/examples/recurrent-gemma/main.rs)
+fuel-examples/examples/recurrent-gemma/main.rs	candle-modified	candle-examples/examples/recurrent-gemma/main.rs	no git lineage; 64 of 163 lines verbatim in candle (mostly candle-examples/examples/recurrent-gemma/main.rs)
 fuel-examples/examples/replit-code/README.md	candle	candle-examples/examples/replit-code/README.md	rename/copy 94%; 100% of 12 lines verbatim
-fuel-examples/examples/replit-code/main.rs	not-traced	candle-examples/examples/replit-code/main.rs	56 of 192 lines also appear in candle (mostly candle-examples/examples/replit-code/main.rs); not judged
+fuel-examples/examples/replit-code/main.rs	not-traced	candle-examples/examples/replit-code/main.rs	55 of 191 lines also appear in candle (mostly candle-examples/examples/replit-code/main.rs); not judged
 fuel-examples/examples/repvgg/README.md	candle-modified	candle-examples/examples/repvgg/README.md	rename/copy 71%; 100% of 11 lines verbatim
-fuel-examples/examples/repvgg/main.rs	candle-modified	candle-examples/examples/repvgg/main.rs	rename/copy 47%; 36% of 50 lines verbatim
+fuel-examples/examples/repvgg/main.rs	candle-modified	candle-examples/examples/repvgg/main.rs	rename/copy 46%; 35% of 49 lines verbatim
 fuel-examples/examples/resnet/README.md	candle-modified	candle-examples/examples/resnet/README.md	rename/copy 64%; 100% of 10 lines verbatim
 fuel-examples/examples/resnet/export_models.py	candle-modified	candle-examples/examples/resnet/export_models.py	rename/copy 71%; 80% of 10 lines verbatim
-fuel-examples/examples/resnet/main.rs	candle-modified	candle-examples/examples/resnet/main.rs	rename/copy 50%; 46% of 52 lines verbatim
+fuel-examples/examples/resnet/main.rs	candle-modified	candle-examples/examples/resnet/main.rs	rename/copy 49%; 45% of 51 lines verbatim
 fuel-examples/examples/rwkv/README.md	candle	candle-examples/examples/rwkv/README.md	rename/copy 99%; 100% of 83 lines verbatim
-fuel-examples/examples/rwkv/main.rs	not-traced	candle-examples/examples/yi/main.rs	28 of 226 lines also appear in candle (mostly candle-examples/examples/yi/main.rs); not judged
+fuel-examples/examples/rwkv/main.rs	not-traced	candle-examples/examples/yi/main.rs	27 of 225 lines also appear in candle (mostly candle-examples/examples/yi/main.rs); not judged
 fuel-examples/examples/segformer/README.md	candle-modified	candle-examples/examples/segformer/README.md	rename/copy 82%; 93% of 14 lines verbatim
 fuel-examples/examples/segformer/assets/labels.json	candle	candle-examples/examples/segformer/assets/labels.json	rename/copy 100%; 100% of 65 lines verbatim
-fuel-examples/examples/segformer/main.rs	candle-modified	candle-examples/examples/segformer/main.rs	rename/copy 42%; 45% of 128 lines verbatim
+fuel-examples/examples/segformer/main.rs	candle-modified	candle-examples/examples/segformer/main.rs	rename/copy 42%; 45% of 127 lines verbatim
 fuel-examples/examples/segment-anything/README.md	candle	candle-examples/examples/segment-anything/README.md	rename/copy 94%; 100% of 25 lines verbatim
 fuel-examples/examples/segment-anything/assets/sam_merged.jpg	candle-modified	candle-examples/examples/segment-anything/assets/sam_merged.jpg	rename/copy 100%; 0% of 0 lines verbatim
 fuel-examples/examples/segment-anything/assets/single_pt_prompt.jpg	candle-modified	candle-examples/examples/segment-anything/assets/single_pt_prompt.jpg	rename/copy 100%; 0% of 0 lines verbatim
 fuel-examples/examples/segment-anything/assets/two_pt_prompt.jpg	candle-modified	candle-examples/examples/segment-anything/assets/two_pt_prompt.jpg	rename/copy 100%; 0% of 0 lines verbatim
-fuel-examples/examples/segment-anything/main.rs	candle-modified	candle-examples/examples/segment-anything/main.rs	no git lineage; 59 of 137 lines verbatim in candle (mostly candle-examples/examples/segment-anything/main.rs)
+fuel-examples/examples/segment-anything/main.rs	candle-modified	candle-examples/examples/segment-anything/main.rs	no git lineage; 58 of 136 lines verbatim in candle (mostly candle-examples/examples/segment-anything/main.rs)
 fuel-examples/examples/siglip/README.md	candle-modified	candle-examples/examples/siglip/README.md	rename/copy 66%; 100% of 12 lines verbatim
-fuel-examples/examples/siglip/main.rs	candle-modified	candle-examples/examples/siglip/main.rs	rename/copy 34%; 51% of 198 lines verbatim
+fuel-examples/examples/siglip/main.rs	candle-modified	candle-examples/examples/siglip/main.rs	rename/copy 34%; 50% of 197 lines verbatim
 fuel-examples/examples/silero-vad/README.md	candle	candle-examples/examples/silero-vad/README.md	rename/copy 100%; 100% of 5 lines verbatim
-fuel-examples/examples/silero-vad/main.rs	candle-modified	candle-examples/examples/silero-vad/main.rs	rename/copy 62%; 58% of 81 lines verbatim
+fuel-examples/examples/silero-vad/main.rs	candle-modified	candle-examples/examples/silero-vad/main.rs	rename/copy 62%; 57% of 80 lines verbatim
 fuel-examples/examples/smollm3/README.md	candle	candle-examples/examples/smollm3/README.md	rename/copy 94%; 100% of 55 lines verbatim
-fuel-examples/examples/smollm3/main.rs	candle-modified	candle-examples/examples/gemma4/main.rs	no git lineage; 53 of 152 lines verbatim in candle (mostly candle-examples/examples/gemma4/main.rs)
+fuel-examples/examples/smollm3/main.rs	candle-modified	candle-examples/examples/gemma4/main.rs	no git lineage; 52 of 151 lines verbatim in candle (mostly candle-examples/examples/gemma4/main.rs)
 fuel-examples/examples/splade/README.md	candle	candle-examples/examples/splade/README.md	rename/copy 98%; 100% of 15 lines verbatim
 fuel-examples/examples/splade/main.rs	not-traced	candle-examples/examples/modernbert/main.rs	19 of 110 lines also appear in candle (mostly candle-examples/examples/modernbert/main.rs); not judged
 fuel-examples/examples/stable-diffusion-3/README.md	candle-modified	candle-examples/examples/stable-diffusion-3/README.md	rename/copy 89%; 94% of 35 lines verbatim
 fuel-examples/examples/stable-diffusion-3/assets/stable-diffusion-3.jpg	candle-modified	candle-examples/examples/stable-diffusion-3/assets/stable-diffusion-3.jpg	rename/copy 100%; 0% of 0 lines verbatim
-fuel-examples/examples/stable-diffusion-3/main.rs	not-traced	candle-examples/examples/flux/main.rs	21 of 251 lines also appear in candle (mostly candle-examples/examples/flux/main.rs); not judged
+fuel-examples/examples/stable-diffusion-3/main.rs	not-traced	candle-examples/examples/stable-diffusion-3/main.rs	20 of 250 lines also appear in candle (mostly candle-examples/examples/stable-diffusion-3/main.rs); not judged
 fuel-examples/examples/stable-diffusion/README.md	candle-modified	candle-examples/examples/stable-diffusion/README.md	rename/copy 88%; 98% of 43 lines verbatim
 fuel-examples/examples/stable-diffusion/assets/stable-diffusion-xl.jpg	candle-modified	candle-examples/examples/stable-diffusion/assets/stable-diffusion-xl.jpg	rename/copy 100%; 0% of 0 lines verbatim
-fuel-examples/examples/stable-diffusion/main.rs	candle-modified	candle-examples/examples/stable-diffusion/main.rs	no git lineage; 77 of 229 lines verbatim in candle (mostly candle-examples/examples/stable-diffusion/main.rs)
+fuel-examples/examples/stable-diffusion/main.rs	candle-modified	candle-examples/examples/stable-diffusion/main.rs	no git lineage; 76 of 228 lines verbatim in candle (mostly candle-examples/examples/stable-diffusion/main.rs)
 fuel-examples/examples/stable-lm/README.md	candle	candle-examples/examples/stable-lm/README.md	rename/copy 98%; 100% of 18 lines verbatim
-fuel-examples/examples/stable-lm/main.rs	not-traced	candle-examples/examples/stable-lm/main.rs	57 of 196 lines also appear in candle (mostly candle-examples/examples/stable-lm/main.rs); not judged
+fuel-examples/examples/stable-lm/main.rs	not-traced	candle-examples/examples/stable-lm/main.rs	56 of 195 lines also appear in candle (mostly candle-examples/examples/stable-lm/main.rs); not judged
 fuel-examples/examples/starcoder2/README.md	candle-modified	candle-examples/examples/starcoder2/README.md	rename/copy 53%; 100% of 3 lines verbatim
-fuel-examples/examples/starcoder2/main.rs	not-traced	candle-examples/examples/starcoder2/main.rs	50 of 184 lines also appear in candle (mostly candle-examples/examples/starcoder2/main.rs); not judged
+fuel-examples/examples/starcoder2/main.rs	not-traced	candle-examples/examples/starcoder2/main.rs	49 of 183 lines also appear in candle (mostly candle-examples/examples/starcoder2/main.rs); not judged
 fuel-examples/examples/stella-en-v5/README.md	candle	candle-examples/examples/stella-en-v5/README.md	rename/copy 96%; 100% of 30 lines verbatim
-fuel-examples/examples/stella-en-v5/main.rs	candle-modified	candle-examples/examples/stella-en-v5/main.rs	rename/copy 36%; 40% of 187 lines verbatim
+fuel-examples/examples/stella-en-v5/main.rs	candle-modified	candle-examples/examples/stella-en-v5/main.rs	rename/copy 36%; 39% of 186 lines verbatim
 fuel-examples/examples/t5/README.md	candle-modified	candle-examples/examples/t5/README.md	rename/copy 89%; 100% of 18 lines verbatim
-fuel-examples/examples/t5/main.rs	candle-modified	candle-examples/examples/t5/main.rs	rename/copy 43%; 44% of 240 lines verbatim
+fuel-examples/examples/t5/main.rs	candle-modified	candle-examples/examples/t5/main.rs	rename/copy 43%; 44% of 239 lines verbatim
 fuel-examples/examples/trocr/assets/noto.png	candle-modified	candle-examples/examples/trocr/assets/noto.png	rename/copy 100%; 0% of 0 lines verbatim
 fuel-examples/examples/trocr/assets/trocr.png	candle-modified	candle-examples/examples/trocr/assets/trocr.png	rename/copy 100%; 0% of 0 lines verbatim
-fuel-examples/examples/trocr/main.rs	not-traced	candle-examples/examples/trocr/main.rs	40 of 176 lines also appear in candle (mostly candle-examples/examples/trocr/main.rs); not judged
+fuel-examples/examples/trocr/main.rs	not-traced	candle-examples/examples/trocr/main.rs	39 of 175 lines also appear in candle (mostly candle-examples/examples/trocr/main.rs); not judged
 fuel-examples/examples/trocr/readme.md	candle-modified	candle-examples/examples/trocr/readme.md	rename/copy 71%; 100% of 15 lines verbatim
 fuel-examples/examples/vgg/README.md	candle-modified	candle-examples/examples/vgg/README.md	rename/copy 43%; 100% of 6 lines verbatim
-fuel-examples/examples/vgg/main.rs	not-traced	candle-examples/examples/efficientnet/main.rs	16 of 96 lines also appear in candle (mostly candle-examples/examples/efficientnet/main.rs); not judged
+fuel-examples/examples/vgg/main.rs	not-traced	candle-examples/examples/efficientnet/main.rs	15 of 95 lines also appear in candle (mostly candle-examples/examples/efficientnet/main.rs); not judged
 fuel-examples/examples/vit/README.md	candle-modified	candle-examples/examples/vit/README.md	rename/copy 83%; 100% of 11 lines verbatim
-fuel-examples/examples/vit/main.rs	candle-modified	candle-examples/examples/vit/main.rs	no git lineage; 15 of 48 lines verbatim in candle (mostly candle-examples/examples/vit/main.rs)
+fuel-examples/examples/vit/main.rs	not-traced	candle-examples/examples/vit/main.rs	14 of 47 lines also appear in candle (mostly candle-examples/examples/vit/main.rs); not judged
 fuel-examples/examples/whisper/README.md	candle	candle-examples/examples/whisper/README.md	rename/copy 94%; 92% of 25 lines verbatim
 fuel-examples/examples/whisper/extract_weights.py	candle-modified	candle-examples/examples/whisper/extract_weights.py	rename/copy 69%; 78% of 9 lines verbatim
-fuel-examples/examples/whisper/main.rs	candle-modified	candle-examples/examples/whisper/main.rs	rename/copy 57%; 56% of 364 lines verbatim
+fuel-examples/examples/whisper/main.rs	candle-modified	candle-examples/examples/whisper/main.rs	rename/copy 57%; 56% of 363 lines verbatim
 fuel-examples/examples/whisper/melfilters.bytes	candle-modified	candle-examples/examples/whisper/melfilters.bytes	rename/copy 100%; 0% of 0 lines verbatim
 fuel-examples/examples/whisper/melfilters128.bytes	candle-modified	candle-examples/examples/voxtral/melfilters128.bytes	rename/copy 100%; 0% of 0 lines verbatim
 fuel-examples/examples/whisper/multilingual.rs	candle-modified	candle-examples/examples/whisper/multilingual.rs	rename/copy 51%; 11% of 46 lines verbatim
 fuel-examples/examples/wuerstchen/README.md	candle-modified	candle-examples/examples/wuerstchen/README.md	rename/copy 87%; 100% of 15 lines verbatim
 fuel-examples/examples/wuerstchen/assets/cat.jpg	candle-modified	candle-examples/examples/wuerstchen/assets/cat.jpg	rename/copy 100%; 0% of 0 lines verbatim
-fuel-examples/examples/wuerstchen/main.rs	candle-modified	candle-examples/examples/wuerstchen/main.rs	no git lineage; 32 of 77 lines verbatim in candle (mostly candle-examples/examples/wuerstchen/main.rs)
+fuel-examples/examples/wuerstchen/main.rs	candle-modified	candle-examples/examples/wuerstchen/main.rs	no git lineage; 31 of 76 lines verbatim in candle (mostly candle-examples/examples/wuerstchen/main.rs)
 fuel-examples/examples/xlm-roberta/Readme.md	candle-modified	candle-examples/examples/xlm-roberta/Readme.md	rename/copy 84%; 100% of 17 lines verbatim
-fuel-examples/examples/xlm-roberta/main.rs	not-traced	candle-examples/examples/olmo/main.rs	11 of 109 lines also appear in candle (mostly candle-examples/examples/olmo/main.rs); not judged
+fuel-examples/examples/xlm-roberta/main.rs	own		no lineage; 10 of 108 lines verbatim in candle (9%)
 fuel-examples/examples/yi/README.md	candle-modified	candle-examples/examples/yi/README.md	rename/copy 60%; 100% of 2 lines verbatim
-fuel-examples/examples/yi/main.rs	not-traced	candle-examples/examples/yi/main.rs	36 of 128 lines also appear in candle (mostly candle-examples/examples/yi/main.rs); not judged
+fuel-examples/examples/yi/main.rs	not-traced	candle-examples/examples/yi/main.rs	35 of 127 lines also appear in candle (mostly candle-examples/examples/yi/main.rs); not judged
 fuel-examples/examples/yolo-v3/README.md	candle	candle-examples/examples/yolo-v3/README.md	rename/copy 91%; 100% of 24 lines verbatim
 fuel-examples/examples/yolo-v3/extract-weights.py	candle-modified	candle-examples/examples/yolo-v3/extract-weights.py	rename/copy 55%; 75% of 8 lines verbatim
-fuel-examples/examples/yolo-v3/main.rs	candle-modified	candle-examples/examples/yolo-v3/main.rs	rename/copy 39%; 47% of 92 lines verbatim
+fuel-examples/examples/yolo-v3/main.rs	candle-modified	candle-examples/examples/yolo-v3/main.rs	rename/copy 38%; 46% of 91 lines verbatim
 fuel-examples/examples/yolo-v3/yolo-v3.cfg	candle	candle-examples/examples/yolo-v3/yolo-v3.cfg	rename/copy 100%; 100% of 3 lines verbatim
 fuel-examples/examples/yolo-v8/README.md	candle-modified	candle-examples/examples/yolo-v8/README.md	rename/copy 84%; 96% of 24 lines verbatim
 fuel-examples/examples/yolo-v8/assets/bike.jpg	candle-modified	candle-examples/examples/yolo-v8/assets/bike.jpg	rename/copy 100%; 0% of 0 lines verbatim
 fuel-examples/examples/yolo-v8/assets/bike.od.jpg	candle-modified	candle-examples/examples/yolo-v8/assets/bike.od.jpg	rename/copy 100%; 0% of 0 lines verbatim
 fuel-examples/examples/yolo-v8/assets/bike.pose.jpg	candle-modified	candle-examples/examples/yolo-v8/assets/bike.pose.jpg	rename/copy 100%; 0% of 0 lines verbatim
 fuel-examples/examples/yolo-v8/assets/bike.pp.jpg	candle-modified	candle-examples/examples/yolo-v8/assets/bike.pp.jpg	rename/copy 100%; 0% of 0 lines verbatim
-fuel-examples/examples/yolo-v8/main.rs	candle-modified	candle-examples/examples/yolo-v8/main.rs	no git lineage; 58 of 123 lines verbatim in candle (mostly candle-examples/examples/yolo-v8/main.rs)
+fuel-examples/examples/yolo-v8/main.rs	candle-modified	candle-examples/examples/yolo-v8/main.rs	no git lineage; 57 of 122 lines verbatim in candle (mostly candle-examples/examples/yolo-v8/main.rs)
 fuel-examples/examples/yolo-v8/roboto-mono-stripped.ttf	candle-modified	candle-examples/examples/yolo-v8/roboto-mono-stripped.ttf	rename/copy 100%; 0% of 0 lines verbatim
 fuel-examples/examples/z_image/README.md	candle	candle-examples/examples/z_image/README.md	rename/copy 97%; 100% of 62 lines verbatim
 fuel-examples/examples/z_image/main.rs	candle-modified	candle-examples/examples/z_image/main.rs	rename/copy 30%; 56% of 129 lines verbatim
@@ -979,8 +978,8 @@ fuel-hardware/src/inventory.rs	own		no lineage; 1 of 205 lines verbatim in candl
 fuel-hardware/src/lib.rs	own		no lineage; 0 of 9 lines verbatim in candle (0%)
 fuel-hardware/src/probe.rs	own		no lineage; 4 of 218 lines verbatim in candle (2%)
 fuel-hardware/src/transfer_cost.rs	own		no lineage; 3 of 553 lines verbatim in candle (1%)
-fuel-hardware/src/utils.rs	candle-modified	candle-core/src/utils.rs	no git lineage; 13 of 36 lines verbatim in candle (mostly candle-core/src/utils.rs)
-fuel-inference/Cargo.toml	own		no lineage; 3 of 37 lines verbatim in candle (8%)
+fuel-hardware/src/utils.rs	candle-modified	candle-core/src/utils.rs	no git lineage; 13 of 37 lines verbatim in candle (mostly candle-core/src/utils.rs)
+fuel-inference/Cargo.toml	own		no lineage; 3 of 36 lines verbatim in candle (8%)
 fuel-inference/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-inference/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-inference/README.md	own		no lineage; 0 of 1 lines verbatim in candle (0%)
@@ -1251,7 +1250,7 @@ fuel-mkl-cpu-backend/LICENSE-APACHE	copy		byte-identical packaged copy of the ro
 fuel-mkl-cpu-backend/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-mkl-cpu-backend/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
 fuel-mkl-cpu-backend/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
-fuel-mkl-cpu-backend/src/binding_table.rs	own		no lineage; 1 of 357 lines verbatim in candle (0%)
+fuel-mkl-cpu-backend/src/binding_table.rs	own		no lineage; 1 of 520 lines verbatim in candle (0%)
 fuel-mkl-cpu-backend/src/dll_path.rs	own		no lineage; 0 of 58 lines verbatim in candle (0%)
 fuel-mkl-cpu-backend/src/lib.rs	own		no lineage; 0 of 75 lines verbatim in candle (0%)
 fuel-model-core/Cargo.toml	own		no lineage; 4 of 20 lines verbatim in candle (20%)
@@ -1368,7 +1367,7 @@ fuel-tensor-tools/README.md	own		no lineage; 0 of 1 lines verbatim in candle (0%
 fuel-tensor-tools/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
 fuel-tensor-tools/src/main.rs	not-traced	tensor-tools/src/main.rs	33 of 279 lines also appear in candle (mostly tensor-tools/src/main.rs); not judged
 fuel-tensor/.coderipper.toml	own		no lineage; 0 of 4 lines verbatim in candle (0%)
-fuel-tensor/Cargo.toml	own		no lineage; 30 of 85 lines verbatim in candle (35%)
+fuel-tensor/Cargo.toml	own		no lineage; 29 of 83 lines verbatim in candle (35%)
 fuel-tensor/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-tensor/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-tensor/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
@@ -1388,7 +1387,7 @@ fuel-tensor/src/judge/mod.rs	own		no lineage; 4 of 2130 lines verbatim in candle
 fuel-tensor/src/kv_block_pool_device.rs	own		no lineage; 4 of 1214 lines verbatim in candle (0%)
 fuel-tensor/src/lazy.rs	not-traced	candle-core/tests/bilinear_tests.rs	37 of 6346 lines also appear in candle (mostly candle-core/tests/bilinear_tests.rs); not judged
 fuel-tensor/src/lazy_latent_cache.rs	own		no lineage; 4 of 238 lines verbatim in candle (2%)
-fuel-tensor/src/lib.rs	not-traced	candle-core/src/lib.rs	9 of 84 lines also appear in candle (mostly candle-core/src/lib.rs); not judged
+fuel-tensor/src/lib.rs	own		no lineage; 8 of 83 lines verbatim in candle (10%)
 fuel-tensor/src/metal_backend/mod.rs	own		no lineage; 1 of 39 lines verbatim in candle (3%)
 fuel-tensor/src/nf4.rs	own		no lineage; 5 of 576 lines verbatim in candle (1%)
 fuel-tensor/src/persistent_decode.rs	own		no lineage; 3 of 848 lines verbatim in candle (0%)
@@ -1458,7 +1457,7 @@ fuel-training/src/checkpoint.rs	own		no lineage; 5 of 110 lines verbatim in cand
 fuel-training/src/lib.rs	own		no lineage; 1 of 57 lines verbatim in candle (2%)
 fuel-training/src/train.rs	own		no lineage; 6 of 945 lines verbatim in candle (1%)
 fuel-training/src/training_loop.rs	own		no lineage; 2 of 92 lines verbatim in candle (2%)
-fuel-transformers/Cargo.toml	own		no lineage; 19 of 78 lines verbatim in candle (24%)
+fuel-transformers/Cargo.toml	own		no lineage; 18 of 76 lines verbatim in candle (24%)
 fuel-transformers/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-transformers/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-transformers/README.md	own		no lineage; 0 of 0 lines verbatim in candle (0%)
@@ -1916,7 +1915,7 @@ fuel-vulkan-kernels/spv/write_slice_b4.spv	data		binary file; no path or similar
 fuel-vulkan-kernels/spv/write_slice_b8.spv	data		binary file; no path or similarity match to a candle file
 fuel-vulkan-kernels/src/lib.rs	own		no lineage; 0 of 670 lines verbatim in candle (0%)
 fuel.code-workspace	own		no lineage; 0 of 0 lines verbatim in candle (0%)
-fuel/Cargo.toml	own		no lineage; 2 of 44 lines verbatim in candle (5%)
+fuel/Cargo.toml	own		no lineage; 2 of 43 lines verbatim in candle (5%)
 fuel/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
@@ -1924,7 +1923,7 @@ fuel/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD
 fuel/src/lib.rs	own		no lineage; 2 of 64 lines verbatim in candle (3%)
 fuel/tests/facade_disjoint.rs	own		no lineage; 0 of 103 lines verbatim in candle (0%)
 fuel/tests/feature_forwarding.rs	own		no lineage; 0 of 158 lines verbatim in candle (0%)
-fuel/tests/utils_features.rs	own		no lineage; 1 of 17 lines verbatim in candle (6%)
+fuel/tests/utils_features.rs	own		no lineage; 1 of 12 lines verbatim in candle (8%)
 rename.ps1	own		no lineage; 0 of 12 lines verbatim in candle (0%)
 rust-toolchain.toml	own		no lineage; 0 of 1 lines verbatim in candle (0%)
 scripts/aarch64-cross-check.ps1	own		no lineage; 0 of 170 lines verbatim in candle (0%)
@@ -1937,6 +1936,7 @@ scripts/compose-check.ps1	own		no lineage; 0 of 133 lines verbatim in candle (0%
 scripts/cuda-build.ps1	own		no lineage; 0 of 222 lines verbatim in candle (0%)
 scripts/doc_link_census.py	own		no lineage; 1 of 426 lines verbatim in candle (0%)
 scripts/doc_name_census.py	own		no lineage; 1 of 196 lines verbatim in candle (1%)
+scripts/drop_mkl_examples.py	own		no lineage; 2 of 30 lines verbatim in candle (7%)
 scripts/fdx_field_coverage.py	own		no lineage; 1 of 193 lines verbatim in candle (1%)
 scripts/feature-combination-check.ps1	not-traced		names candle in its text; not judged
 scripts/g2_add_cpu_dev_helper.py	own		no lineage; 1 of 38 lines verbatim in candle (3%)
