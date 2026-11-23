@@ -305,6 +305,10 @@ pub static EMBEDDED: &[(&str, &[u8])] = &[
         "qmatvec_iq4_nl",
         include_bytes!("../spv/qmatvec_iq4_nl.spv"),
     ),
+    (
+        "qmatvec_iq4_xs",
+        include_bytes!("../spv/qmatvec_iq4_xs.spv"),
+    ),
     ("quantize_q8_0", include_bytes!("../spv/quantize_q8_0.spv")),
     ("matmul", include_bytes!("../spv/matmul.spv")),
     ("matmul_tiled", include_bytes!("../spv/matmul_tiled.spv")),
@@ -990,6 +994,8 @@ pub const QMATVEC_Q5_K: &str = "qmatvec_q5_k";
 pub const QMATVEC_Q3_K: &str = "qmatvec_q3_k";
 /// Fused IQ4_NL × F32 gemv (ROADMAP row 119). GLSL source: `fuel-kernels-source/kernels/qmatvec_iq4_nl.glsl`.
 pub const QMATVEC_IQ4_NL: &str = "qmatvec_iq4_nl";
+/// Fused IQ4_XS × F32 gemv (ROADMAP row 119). GLSL source: `fuel-kernels-source/kernels/qmatvec_iq4_xs.glsl`.
+pub const QMATVEC_IQ4_XS: &str = "qmatvec_iq4_xs";
 /// Fused Q4_0 × F32 tiled matmul for M>1 (prefill hot path).
 pub const MATMUL_Q4_0_TILED: &str = "matmul_q4_0_tiled";
 /// F32 → Q8_0 quantization (for KV-cache compression).

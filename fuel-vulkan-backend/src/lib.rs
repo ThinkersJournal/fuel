@@ -5947,6 +5947,10 @@ impl VulkanBackend {
                 &self.pipelines.qmatvec_iq4_nl_pipeline,
                 &self.pipelines.qmatvec_iq4_nl_layout,
             ),
+            QmvKind::Iq4Xs => (
+                &self.pipelines.qmatvec_iq4_xs_pipeline,
+                &self.pipelines.qmatvec_iq4_xs_layout,
+            ),
         };
         for b in 0..rows {
             let (pbuf, pmem) = self.upload_params(&p)?;
@@ -6054,6 +6058,20 @@ impl VulkanBackend {
         n: usize,
     ) -> fuel_ir::Result<()> {
         self.qmatvec_bytes(QmvKind::Iq4Nl, a_f32, w_iq4_nl, out, batch.max(1) * m, k, n)
+    }
+
+    /// IQ4_XS × F32 matmul over byte-storage (ROADMAP row 119). Fused gemv (`qmatvec_iq4_xs`) for every row.
+    pub fn matmul_iq4_xs_bytes(
+        &self,
+        a_f32: &VulkanStorageBytes,
+        w_iq4_xs: &VulkanStorageBytes,
+        out: &mut VulkanStorageBytes,
+        batch: usize,
+        m: usize,
+        k: usize,
+        n: usize,
+    ) -> fuel_ir::Result<()> {
+        self.qmatvec_bytes(QmvKind::Iq4Xs, a_f32, w_iq4_xs, out, batch.max(1) * m, k, n)
     }
 
     /// Q8_0 × F32 matmul over byte-storage. Same dequant-then-matmul path
@@ -15150,6 +15168,7 @@ enum QmvKind {
     Q5K,
     Q3K,
     Iq4Nl,
+    Iq4Xs,
 }
 
 impl QmvKind {
@@ -15161,6 +15180,7 @@ impl QmvKind {
             QmvKind::Q5K => ("qmatvec_q5_k", 256, 176),
             QmvKind::Q3K => ("qmatvec_q3_k", 256, 110),
             QmvKind::Iq4Nl => ("qmatvec_iq4_nl", 32, 18),
+            QmvKind::Iq4Xs => ("qmatvec_iq4_xs", 256, 136),
         }
     }
 }

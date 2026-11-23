@@ -10533,6 +10533,74 @@ fn vulkan_dispatch_qmatmul_q4_km() {
             }
         }
     }
+
+    // IQ4_XS (row 119): `qmatvec_iq4_xs`, 136-byte blocks of 256. k = 768 (3 blocks per row).
+    {
+        use fuel_quantized::iq4::BlockIq4Xs;
+        let k4 = 768usize;
+        for n4 in [16usize, 15] {
+            let w4: Vec<f32> = (0..n4 * k4)
+                .map(|i| ((i as f32 + 13.0) * 0.0083).sin() * 0.6)
+                .collect();
+            let mut blocks4 = vec![BlockIq4Xs::zeros(); n4 * (k4 / 256)];
+            BlockIq4Xs::from_float(&w4, &mut blocks4);
+            let mut w4_deq = vec![0.0_f32; n4 * k4];
+            BlockIq4Xs::to_float(&blocks4, &mut w4_deq);
+            let mut bytes4: Vec<u8> = unsafe {
+                std::slice::from_raw_parts(
+                    blocks4.as_ptr() as *const u8,
+                    blocks4.len() * std::mem::size_of::<BlockIq4Xs>(),
+                )
+            }
+            .to_vec();
+            bytes4.resize(bytes4.len().div_ceil(4) * 4, 0); // whole U32 words, as from_ggml_bytes pads
+            for m4 in [1usize, 3] {
+                let a4: Vec<f32> = (0..m4 * k4)
+                    .map(|i| (i as f32 * 0.011).cos() * 0.5)
+                    .collect();
+                let a_arc4 = Arc::new(RwLock::new(upload_f32(&backend, &a4)));
+                let w_arc4 = Arc::new(RwLock::new(upload_raw(&backend, &bytes4, DType::U32)));
+                let out_bytes4 = backend.alloc_bytes_handle(m4 * n4 * 4).expect("alloc");
+                let out_arc4 = Arc::new(RwLock::new(Storage::new(
+                    BackendStorage::Vulkan(out_bytes4),
+                    DType::F32,
+                )));
+                kernel(
+                    &[Arc::clone(&a_arc4), Arc::clone(&w_arc4)],
+                    &mut [Arc::clone(&out_arc4)],
+                    &[
+                        Layout::contiguous(Shape::from_dims(&[m4, k4])),
+                        Layout::contiguous(Shape::from_dims(&[bytes4.len() / 4])),
+                        Layout::contiguous(Shape::from_dims(&[m4, n4])),
+                    ],
+                    &OpParams::QMatMul {
+                        quant_type: QuantType::Iq4Xs,
+                        batch_count: 1,
+                        m: m4,
+                        n: n4,
+                        k: k4,
+                    },
+                )
+                .expect("qmatmul IQ4_XS");
+                let got4 = download_f32(&backend, &out_arc4.read().unwrap());
+                for row in 0..m4 {
+                    for col in 0..n4 {
+                        let exact: f64 = (0..k4)
+                            .map(|kk| {
+                                f64::from(a4[row * k4 + kk]) * f64::from(w4_deq[col * k4 + kk])
+                            })
+                            .sum();
+                        let g = f64::from(got4[row * n4 + col]);
+                        assert!(
+                            (g - exact).abs() < 1e-3,
+                            "IQ4_XS n={n4} m={m4} [{row},{col}]: got {g}, exact {exact}"
+                        );
+                    }
+                }
+                eprintln!("IQ4_XS n={n4} m={m4}: matches the exact host oracle");
+            }
+        }
+    }
 }
 
 #[test]
