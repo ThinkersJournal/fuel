@@ -222,6 +222,38 @@ cost expressions, contract compilation, Judge cells, plan store; WHICH one was n
 Not done: what inside `compile_plan` warms (one more level of timers, or a flame graph); whether the first-use work can
 be done at load time or persisted (row 162 is the plan cache).
 
+## Row 173 (b) and (c) closed to a function (measured, same day; timers on `prefill-attrib` `c815e328f`, REFERENCE)
+
+**(b) `d1.drop_graph` IS the free of the weight copies.** A global allocator wrapper (`fuel_graph::TimedAlloc`, installed
+by the example) times every `dealloc` of a block of at least 1 MiB; around the explicit `drop(built)` it counts **142
+calls, 1,471 MB, 86.8 [79.5..107.1] ms**, against `d1.drop_graph` 92.8 [85.0..112.8] ms: **93.4% [92.4..94.9]** of the
+drop is those frees (N=18 paired calls over 3 processes, cold and warm alike, residency ON). The other ~6 ms are the
+small frees and the node and slot drops. Row 173 can say "is".
+
+**(c) The cold `compile_plan` 1.0 s is `SystemTopology::transfer_calibration()`, i.e. `TransferCalibration::calibrate`.**
+Chain, each level timed: `opt.compile_plan` 995.8 / 1082.8 / 970.0 ms (cold, N=3) -> `cp.open_dp_row` (592 entries)
+985.6 / 1072.5 / 960.4 -> `cp.dp.push_row` 1030.0 / 951.5 / 981.7 (second build) -> `topology.transfer_calibration_probe`
+1029.6 / 951.0 / 981.3 (the `OnceLock` initialiser in `fuel-dispatch/src/topology.rs`, first reached from the DP's
+`estimate_transfer_ns`); the other plan stages are `cp.build_node_draft` 3.2 ms (1557 entries) and
+`cp.finalize_node_greedy` 0.2 ms; WARM `compile_plan` is 11.3 ms with `open_dp_row` 0.7 ms. Inside the probe
+(`fuel-hardware/src/transfer_cost.rs`, `calibrate` -> `probe_vulkan_device` for BOTH Vulkan adapters on this box, gpu 0 and
+gpu 1), ms per process for the pair of devices, N=3: **a second `VulkanBackend::with_selection` per adapter 205.8 / 256.9 /
+269.9, the timed H2D and D2H round trips (`measure_calibration_points`, 64 KiB, 4 MiB, 64 MiB x 3) 607.8 / 700.7 / 558.4,
+and `drop(backend)` 187.1 / 208.9 / 217.2**; they sum to the probe timer to within 0.2 ms (999.7 / 1166.5 / 1045.5 against 999.8 /
+1166.7 / 1045.5). So the cold 1 s is: build and destroy a second Vulkan device per adapter (about 0.4 s) and time real
+transfers (about 0.6 s), to price transfers for the placement DP, once per topology generation. **The calibration runs
+TWICE per process in this example** (the startup "planner estimate" lines and the profiled prefill: the first probe of
+the first process took 3.9 s, the cold driver and device creation, the later ones 0.65 to 1.2 s), because the topology
+snapshot is rebuilt in between (cause not traced).
+
+Controls: a known delay inside `topology.transfer_calibration_probe` (`ATTRIB_SLEEP2_MS`): +1000 ms shows as +1044 ms in
+that row (2067.0 / 2049.7 / 1976.7 against 1029.6 / 951.0 / 981.3 / 1072.1, median 1005.5; the base spread is about
++-60 ms); a +100 ms sleep was run (N=3) and is NOT resolved against that spread (1001 / 1030 / 1009), so the 1000 ms control
+is the one that counts. The `drop` counters are exact counts and times of the allocator calls, not an estimate.
+
+Consequence (NOT built): the calibration result is machine state that changes rarely; row 162 (persistence) could
+cache it across processes, and the second in-process probe is a plain waste. No hot-path change was made.
+
 ## Row 170: what its Done-when still owes
 
 Row 170 is CLOSED in `ROADMAP.md` (fixed by intervention; its Done-when items (1) and (2) struck, (3) done); the follow-up is row 173 (provisional number).
