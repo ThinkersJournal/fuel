@@ -68,7 +68,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-hardware` | 11 |  | 1 |  |  | 7 |  | 3 |
 | `fuel-inference` | 26 |  |  | 2 |  | 21 |  | 3 |
 | `fuel-ir` | 66 |  | 6 | 8 |  | 49 |  | 3 |
-| `fuel-kernels-source` | 36 |  |  | 2 |  | 31 |  | 3 |
+| `fuel-kernels-source` | 37 |  |  | 2 |  | 32 |  | 3 |
 | `fuel-kiss-ref-backend` | 9 |  |  |  |  | 6 |  | 3 |
 | `fuel-kv-pool` | 9 |  |  |  |  | 6 |  | 3 |
 | `fuel-lazy-examples` | 25 |  |  | 21 |  | 4 |  |  |
@@ -94,7 +94,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-transformers` | 200 | 2 | 4 | 154 |  | 34 | 3 | 3 |
 | `fuel-vulkan-backend` | 27 |  |  |  |  | 24 |  | 3 |
 | `fuel-vulkan-dispatch` | 43 |  |  |  |  | 40 |  | 3 |
-| `fuel-vulkan-kernels` | 189 |  |  |  |  | 4 | 182 | 3 |
+| `fuel-vulkan-kernels` | 190 |  |  |  |  | 4 | 183 | 3 |
 | `scripts` | 79 |  |  | 1 |  | 78 |  |  |
-| **all** | **2011** | **112** | **216** | **262** | **4** | **1110** | **187** | **120** |
+| **all** | **2013** | **112** | **216** | **262** | **4** | **1111** | **188** | **120** |
 <!-- provenance-summary:end -->
