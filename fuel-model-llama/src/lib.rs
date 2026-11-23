@@ -5689,6 +5689,13 @@ mod generate_tests {
             }
         };
         let cuda_device: Device = cuda.into();
+        // ROW 158, the executor feed on CUDA (folded into this existing ignored test: no new `#[ignore]`):
+        // the CUDA leg's realizes must add real estimated work to the device backlog and take all of it
+        // back out when each realize ends.
+        let cuda_loc = cuda_device.location();
+        // The feed is OFF by default (`FUEL_BACKLOG_FEED`); this test measures it, so turn it on.
+        fuel_dispatch::dispatch::set_backlog_feed_enabled(true);
+        let feed_before = fuel_dispatch::optimizer_trace::snapshot();
 
         // CUDA leg: byte-identical model/protocol, BF16 cache on the CUDA
         // device — the homogeneous [bf16;3] CUDA gemm path under test.
@@ -5712,6 +5719,56 @@ mod generate_tests {
         let cuda_logits = model_cuda
             .forward_with_kv_context(&[next_token], &mut cache_cuda, &mut ctx_cuda)
             .expect("cuda bf16 decode");
+
+        let feed = fuel_dispatch::optimizer_trace::snapshot().since(&feed_before);
+        assert!(
+            feed.backlog_added_ns > 0,
+            "a CUDA forward must add estimated work to the backlog: added {} ns",
+            feed.backlog_added_ns
+        );
+        assert_eq!(
+            feed.backlog_retired_ns, feed.backlog_added_ns,
+            "every nanosecond the realizes added must be taken back out: added {} ns, retired {} ns",
+            feed.backlog_added_ns, feed.backlog_retired_ns
+        );
+        assert_eq!(
+            fuel_dispatch::dispatch::backlog_estimate_ns(cuda_loc),
+            Some(0),
+            "after its realizes end the CUDA device is fed-and-idle (Some(0)), not None and not stuck"
+        );
+        println!(
+            "bf16_decode_cuda_matches_cpu: backlog fed {} ns, retired {} ns on {cuda_loc:?}",
+            feed.backlog_added_ns, feed.backlog_retired_ns
+        );
+
+        // ROW 158, retire on completion, the CUDA event hook (same ignored test, no new `#[ignore]`): the
+        // probe the executor builds is `record_completion_event` + `Event::is_complete`. After the stream
+        // is synchronized the event reports done, and the ledger takes back exactly that op's estimate.
+        {
+            use fuel_dispatch::dispatch::{BacklogLedger, backlog_estimate_ns};
+            let dev =
+                fuel_cuda_backend::CudaDevice::new(0).expect("a second handle on CUDA device 0");
+            let bytes = fuel_cuda_backend::CudaStorageBytes::alloc(&dev, 256).expect("alloc 256 B");
+            let ev = bytes
+                .record_completion_event()
+                .expect("record a completion event");
+            dev.synchronize().expect("synchronize");
+            assert!(
+                ev.is_complete().expect("query the event"),
+                "an event recorded before a synchronize must report complete after it"
+            );
+            let loc = dev.location();
+            let before = backlog_estimate_ns(loc).unwrap_or(0);
+            let mut ledger = BacklogLedger::new();
+            ledger.add_until(loc, 4_321, move || ev.is_complete().unwrap_or(true));
+            assert_eq!(backlog_estimate_ns(loc), Some(before + 4_321));
+            ledger.retire_completed();
+            assert_eq!(
+                backlog_estimate_ns(loc),
+                Some(before),
+                "the completed op's estimate (4321 ns) was taken back, exactly"
+            );
+        }
 
         assert_eq!(cpu_logits.len(), cuda_logits.len());
         assert_eq!(cpu_logits.len(), cfg.vocab_size);
@@ -11600,6 +11657,8 @@ mod generate_tests {
         // ROW 158, the executor feed: this test's own Vulkan realizes must add real estimated work to the
         // device backlog and take all of it back out when each realize ends.
         let vk_loc_for_feed = vk_device.location();
+        // The feed is OFF by default (`FUEL_BACKLOG_FEED`); this test measures it, so turn it on.
+        fuel_dispatch::dispatch::set_backlog_feed_enabled(true);
         let feed_before = fuel_dispatch::optimizer_trace::snapshot();
 
         let cfg = LlamaConfig {

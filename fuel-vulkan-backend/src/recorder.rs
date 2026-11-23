@@ -166,6 +166,10 @@ impl BatchTiming {
 /// signalled anyway, so even if it didn't skip the wait would be instant.
 pub struct SubmittedBatch {
     fence: Fence,
+    /// The backend's dispatch clock and the `recorded` value this batch was submitted at: once its fence
+    /// is known signalled, every dispatch up to `upto` is retired.
+    clock: Arc<DispatchClock>,
+    upto: u64,
     /// `true` once [`wait`](Self::wait) has fence-waited this batch (the normal
     /// `wait_submitted` path). When set, `Drop` skips the fence wait — the GPU is
     /// already known idle. When `false` (the batch is dropped without an explicit
@@ -230,6 +234,9 @@ impl SubmittedBatch {
         // retry in Drop would just re-hit the same error), so we don't want Drop
         // to wait again either way.
         self.consumed = true;
+        if r.is_ok() {
+            self.clock.retire_upto(self.upto);
+        }
         if r.is_ok()
             && let Some(t) = self.timing.take()
         {
@@ -270,7 +277,11 @@ impl Drop for SubmittedBatch {
             // `SubmittedBatch` is only ever constructed there, after
             // `queue.submit(.., Some(&fence))`), so the fence IS pending GPU work
             // — waiting it is always valid and bounded by the GPU's CB.
-            if let Err(e) = self.fence.wait(u64::MAX) {
+            let waited = self.fence.wait(u64::MAX);
+            if waited.is_ok() {
+                self.clock.retire_upto(self.upto);
+            }
+            if let Err(e) = waited {
                 tracing::error!(
                     error = ?e,
                     "SubmittedBatch dropped without wait_submitted; \
@@ -279,6 +290,39 @@ impl Drop for SubmittedBatch {
                 );
             }
         }
+    }
+}
+
+/// Monotonic counts of dispatches this backend has recorded and retired, so a caller can ask "has the
+/// work I submitted finished?" without blocking (ROADMAP row 158, the backlog feed). A dispatch is
+/// RETIRED when the fence of the batch that carried it is known signalled: after a blocking flush, or when
+/// a submitted batch's fence wait returns. `recorded` is bumped under the recorder lock, so the value a
+/// batch is stamped with at submit is exact.
+#[derive(Debug, Default)]
+pub struct DispatchClock {
+    recorded: std::sync::atomic::AtomicU64,
+    retired: std::sync::atomic::AtomicU64,
+}
+
+impl DispatchClock {
+    /// Dispatches recorded so far (monotonic).
+    pub fn recorded(&self) -> u64 {
+        self.recorded.load(std::sync::atomic::Ordering::Acquire)
+    }
+
+    /// Dispatches known complete: every dispatch numbered up to this value has finished on the GPU.
+    pub fn retired(&self) -> u64 {
+        self.retired.load(std::sync::atomic::Ordering::Acquire)
+    }
+
+    fn record_one(&self) {
+        self.recorded
+            .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+    }
+
+    fn retire_upto(&self, upto: u64) {
+        self.retired
+            .fetch_max(upto, std::sync::atomic::Ordering::AcqRel);
     }
 }
 
@@ -296,6 +340,8 @@ pub(crate) struct Recorder {
     batch_descs: Vec<DescriptorSet>,
     /// Number of dispatches recorded in the current batch.
     pub(crate) batch_count: usize,
+    /// Monotonic recorded/retired dispatch counts (see [`DispatchClock`]).
+    clock: Arc<DispatchClock>,
     /// Data buffers the OPEN batch's recorded commands may read that the executor has
     /// evicted (freed): retained here so they outlive the batch. Moved into the
     /// `SubmittedBatch` at submit (freed post-fence), cleared after a blocking flush.
@@ -338,6 +384,7 @@ impl Recorder {
             batch_transients: Vec::new(),
             batch_descs: Vec::new(),
             batch_count: 0,
+            clock: Arc::new(DispatchClock::default()),
             open_retained: Vec::new(),
             dirty_buffers: std::collections::HashSet::new(),
             timing_cfg,
@@ -541,11 +588,17 @@ impl Recorder {
         self.batch_transients.extend(transient_buffers);
         self.batch_descs.push(desc);
         self.batch_count += 1;
+        self.clock.record_one();
         // Mark write buffers as dirty for dependency tracking.
         for &wb in write_bufs {
             self.dirty_buffers.insert(wb);
         }
         Ok(())
+    }
+
+    /// The shared dispatch clock.
+    pub fn clock(&self) -> Arc<DispatchClock> {
+        Arc::clone(&self.clock)
     }
 
     /// True if the batch should be flushed (hit the per-batch limit).
@@ -573,11 +626,13 @@ impl Recorder {
         }
 
         // Submit with a fence and wait.
+        let upto = self.clock.recorded();
         let fence = Fence::new(device)?;
         queue.submit(&[&cmd], Some(&fence))?;
         self.epoch
             .fetch_add(1, std::sync::atomic::Ordering::Release);
         fence.wait(u64::MAX)?;
+        self.clock.retire_upto(upto);
         if let Some(t) = self.batch_timing.take() {
             t.finish();
         }
@@ -643,6 +698,7 @@ impl Recorder {
         }
 
         // Submit with a fence but DO NOT wait — the async split.
+        let upto = self.clock.recorded();
         let fence = Fence::new(device)?;
         queue.submit(&[&cmd], Some(&fence))?;
         self.epoch
@@ -654,6 +710,8 @@ impl Recorder {
         // travels with the batch and frees only after the fence signals.
         let batch = SubmittedBatch {
             fence,
+            clock: Arc::clone(&self.clock),
+            upto,
             consumed: false,
             _cmd: cmd,
             _transients: std::mem::take(&mut self.batch_transients),
@@ -675,5 +733,43 @@ impl Recorder {
         self.dirty_buffers.clear();
 
         Ok(Some(batch))
+    }
+}
+
+#[cfg(test)]
+mod dispatch_clock_tests {
+    use super::DispatchClock;
+
+    /// The probe the executor builds: stamp `recorded()` after submitting, ask `retired() >= stamp`.
+    /// Not done before the batch's fence is known signalled, done exactly after.
+    #[test]
+    fn a_stamped_dispatch_is_done_only_after_its_batch_retires() {
+        let clock = DispatchClock::default();
+        clock.record_one();
+        clock.record_one();
+        let stamp = clock.recorded();
+        assert_eq!(stamp, 2);
+        assert!(clock.retired() < stamp, "recorded but not yet retired");
+        // A later dispatch joins the next batch; retiring the FIRST batch (upto = 2) leaves it queued.
+        clock.record_one();
+        let later = clock.recorded();
+        clock.retire_upto(stamp);
+        assert!(clock.retired() >= stamp, "the first batch retired");
+        assert!(
+            clock.retired() < later,
+            "a dispatch recorded after the batch was submitted stays queued"
+        );
+    }
+
+    /// Retirement is monotonic: an older batch's fence wait returning late cannot move the clock back.
+    #[test]
+    fn retiring_never_moves_the_clock_backwards() {
+        let clock = DispatchClock::default();
+        for _ in 0..3 {
+            clock.record_one();
+        }
+        clock.retire_upto(3);
+        clock.retire_upto(1);
+        assert_eq!(clock.retired(), 3);
     }
 }

@@ -61,6 +61,8 @@ struct Run {
     gpu: Vec<(&'static str, u64, u64)>,
     /// Wall time of each of those steps.
     gpu_steps: Vec<Duration>,
+    /// The executor's own counters over the steady steps (arm choices and backlog feed), rendered.
+    exec_trace: String,
 }
 
 /// What the planner believes a Vulkan<->host copy costs (the numbers it prices
@@ -114,29 +116,45 @@ fn one_run(
     let (n, first_decode) = step(&[next], false);
     next = n;
     op_profile::set_enabled(true);
+    let trace_before = fuel_dispatch::optimizer_trace::snapshot();
     let mut steps = Vec::new();
     for _ in 0..steady {
         let (n, dt) = step(&[next], false);
         next = n;
         steps.push(dt);
     }
+    let exec = fuel_dispatch::optimizer_trace::snapshot().since(&trace_before);
+    let exec_trace = format!(
+        "arm_chosen {:?} of {} branches resolved; backlog added {} ns, retired {} ns;          recorded {} regions, rejected {}",
+        exec.arm_chosen,
+        exec.branches_resolved(),
+        exec.backlog_added_ns,
+        exec.backlog_retired_ns,
+        exec.recorded,
+        exec.rejected
+    );
     op_profile::set_enabled(false);
     // Same number of steps again with Vulkan timestamp queries on, so the
     // per-op table above (host time) is not perturbed by the extra commands.
-    let vk = fuel_tensor::vulkan_backend::as_device(dev).expect("vulkan device");
+    #[cfg_attr(not(feature = "vulkan"), allow(unused_mut))]
     let mut gpu_steps = Vec::new();
-    let gpu = if vk.set_gpu_timing(true) {
-        vk.reset_gpu_time();
-        for _ in 0..steady {
-            let (n, dt) = step(&[next], false);
-            next = n;
-            gpu_steps.push(dt);
+    #[cfg(feature = "vulkan")]
+    let gpu = match fuel_tensor::vulkan_backend::as_device(dev) {
+        Ok(vk) if vk.set_gpu_timing(true) => {
+            vk.reset_gpu_time();
+            for _ in 0..steady {
+                let (n, dt) = step(&[next], false);
+                next = n;
+                gpu_steps.push(dt);
+            }
+            vk.set_gpu_timing(false);
+            vk.gpu_time_snapshot()
         }
-        vk.set_gpu_timing(false);
-        vk.gpu_time_snapshot()
-    } else {
-        Vec::new()
+        _ => Vec::new(),
     };
+    // A CUDA run has no Vulkan timestamp table: the host table and the arm trace are its output.
+    #[cfg(not(feature = "vulkan"))]
+    let gpu = Vec::new();
     let ops = op_profile::take()
         .into_iter()
         .map(|(op, be, n, d)| ((op, be), (n, d)))
@@ -163,6 +181,7 @@ fn one_run(
         trace,
         gpu,
         gpu_steps,
+        exec_trace,
     }
 }
 
@@ -425,6 +444,34 @@ fn verify_against_cpu_fixture(
     first_divergent.is_none()
 }
 
+/// The GPU under test: Vulkan when that feature is built (unless `QWEN3_BACKEND=cuda` and CUDA is built
+/// too), else CUDA device 0.
+fn new_gpu_device() -> Device {
+    #[cfg(all(feature = "vulkan", feature = "cuda"))]
+    if std::env::var("QWEN3_BACKEND").as_deref() == Ok("cuda") {
+        let dev = fuel_tensor::cuda_backend::new_device(0).expect("cuda device");
+        println!("adapter: CUDA device 0");
+        return dev;
+    }
+    #[cfg(feature = "vulkan")]
+    {
+        let dev = fuel_tensor::vulkan_backend::new_device_from_env().expect("vulkan device");
+        let vk = fuel_tensor::vulkan_backend::as_device(&dev).expect("vulkan device");
+        println!("adapter: [{}] {}", vk.gpu_id, vk.device_name);
+        dev
+    }
+    #[cfg(all(feature = "cuda", not(feature = "vulkan")))]
+    {
+        let dev = fuel_tensor::cuda_backend::new_device(0).expect("cuda device");
+        println!("adapter: CUDA device 0");
+        dev
+    }
+    #[cfg(not(any(feature = "vulkan", feature = "cuda")))]
+    {
+        panic!("build with --features vulkan or cuda: this example profiles a GPU backend")
+    }
+}
+
 fn main() {
     let arg = |i: usize, d: usize| {
         std::env::args()
@@ -433,8 +480,26 @@ fn main() {
             .unwrap_or(d)
     };
     let (runs, steady) = (arg(1, 5), arg(2, 10));
+    println!(
+        "executor backlog feed: {} (set {}=1 to turn it on)",
+        match std::env::var(fuel_dispatch::dispatch::BACKLOG_FEED_ENV) {
+            Ok(v) => format!("env {v:?}"),
+            Err(_) => "default (off)".to_string(),
+        },
+        fuel_dispatch::dispatch::BACKLOG_FEED_ENV
+    );
     let (model, tokenizer, cfg) = load_model().expect("load_model");
-    let dev = fuel_tensor::vulkan_backend::new_device().expect("vulkan device");
+    let dev = new_gpu_device();
+    // Diagnostic: `QWEN3_FEED_ZERO=1` registers a ZERO backlog on the device, so it reports `Some(0)` (an estimate, idle)
+    // and the selector ranks by estimated completion time instead of the legacy load tier, with nothing queued.
+    // Separates "the feed changes the selector's mode" from "the feed adds load".
+    if std::env::var_os("QWEN3_FEED_ZERO").is_some() {
+        fuel_dispatch::dispatch::backlog_add_ns(dev.location(), 0);
+        println!(
+            "QWEN3_FEED_ZERO: zero backlog registered on {:?}",
+            dev.location()
+        );
+    }
     planner_estimates();
     if std::env::var_os("QWEN3_VERIFY").is_some() {
         let ok = verify_against_cpu_fixture(&model, &tokenizer, &cfg, &dev);
@@ -458,6 +523,10 @@ fn main() {
         .map(|_| one_run(&model, &cfg, &dev, &prompt_tokens, steady))
         .collect();
 
+    println!(
+        "executor trace over the {steady} steady decode steps of the last run: {}",
+        all.last().expect("at least one run").exec_trace
+    );
     copy_anatomy(&all.last().expect("at least one run").trace);
     let step_all = print_step_summary(&all, prompt_tokens.len(), steady);
     print_op_table(&all, step_all);

@@ -92,8 +92,8 @@ required-features = ["dev-tools"]
 
 [[example]]
 name = "qwen3_vulkan_profile"
-required-features = ["dev-tools", "vulkan"]
+required-features = ["dev-tools"]
 
 [[example]]
 name = "gguf_resident_reach"
-required-features = ["dev-tools", "vulkan"]
+required-features = ["dev-tools"]

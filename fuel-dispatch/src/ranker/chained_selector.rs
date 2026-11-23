@@ -210,6 +210,23 @@ impl ChainedSelector {
     }
 }
 
+/// Diagnostic (`FUEL_PRINT_ARM_DECISIONS=<n>`): print what the selector saw for each arm of the first `n`
+/// branches it resolves (VRAM fit, load tier, latency, inbound transfer, backlog, the key it ranked on).
+/// Off by default; for ROADMAP row 168.
+fn arm_decision_trace_enabled() -> bool {
+    use std::sync::OnceLock;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static LIMIT: OnceLock<usize> = OnceLock::new();
+    static SEEN: AtomicUsize = AtomicUsize::new(0);
+    let limit = *LIMIT.get_or_init(|| {
+        std::env::var("FUEL_PRINT_ARM_DECISIONS")
+            .ok()
+            .and_then(|v| v.trim().parse::<usize>().ok())
+            .unwrap_or(0)
+    });
+    limit > 0 && SEEN.fetch_add(1, Ordering::Relaxed) < limit
+}
+
 impl std::fmt::Debug for ChainedSelector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ChainedSelector")
@@ -256,6 +273,8 @@ impl RuntimeSelector for ChainedSelector {
             .collect();
         let timed = scored.iter().any(|&(_, _, _, b)| b.is_some());
         let mut best: Option<(u8, u8, u64, usize)> = None;
+        let trace = arm_decision_trace_enabled();
+        let mut trace_rows: Vec<String> = Vec::new();
         for &(i, fit, load_tier, backlog) in &scored {
             let c = &alts[i];
             let pressure_tier = match fit {
@@ -271,9 +290,30 @@ impl RuntimeSelector for ChainedSelector {
                 load_tier
             };
             let key = (pressure_tier, tier, ns, i);
+            if trace {
+                trace_rows.push(format!(
+                    "arm{i} {:?}@{:?} fit={fit:?} load_tier={load_tier} lat_incl_inbound_ns={} inbound_ns={} backlog={backlog:?} ns={ns} key=({},{},{})",
+                    c.backend,
+                    c.device,
+                    self.latency_ns(c, ctx),
+                    c.inbound_transfer_ns,
+                    key.0,
+                    key.1,
+                    key.2
+                ));
+            }
             if best.is_none_or(|b| key < b) {
                 best = Some(key);
             }
+        }
+        if !trace_rows.is_empty() {
+            eprintln!(
+                "ARMDEC op={:?} size={:?} timed={timed} -> arm{} | {}",
+                ctx.map(|c| c.op),
+                ctx.map(|c| c.size_class),
+                best.map_or(0, |b| b.3),
+                trace_rows.join(" | ")
+            );
         }
 
         match best {
