@@ -91,7 +91,7 @@ fn types() -> Vec<(&'static str, u32, Quant, bool)> {
         ("Q4_K", 12, q::<BlockQ4K>(), true),
         ("Q6_K", 14, q::<BlockQ6K>(), true),
         ("Q3_K", 11, q::<BlockQ3K>(), false),
-        ("Q5_K", 13, q::<BlockQ5K>(), false),
+        ("Q5_K", 13, q::<BlockQ5K>(), true), // wired by row 119 (qmatvec_q5_k)
         ("IQ4_NL", 20, q::<BlockIq4Nl>(), false),
         ("IQ4_XS", 23, q::<BlockIq4Xs>(), false),
         ("IQ3_S", 21, iq3s(), false),
@@ -105,7 +105,7 @@ fn unwired_gguf_types_realize_on_vulkan_and_wired_ones_stay_quantized() {
         .expect("a Vulkan device (a missing adapter is a failure, GAP-157)");
     let f32_bytes: usize = projections().iter().map(|(_, o, i)| o * i * 4).sum();
     for (name, code, quant, wired) in types() {
-        let (file, qbytes) = if wired {
+        let (file, qbytes) = if wired && (code == 12 || code == 14) {
             // The controls build their file with the shared helper the other tests use.
             let (f, _plain, q) = if code == 12 {
                 files::<BlockQ4K>(code, 1.0)

@@ -10324,6 +10324,77 @@ fn vulkan_dispatch_qmatmul_q4_km() {
             eprintln!("Q6_K m={m6}: matches the exact host oracle");
         }
     }
+
+    // Q5_K (row 119): one fused gemv (`qmatvec_q5_k`, GLSL) for every row. Exact host oracle: the CPU
+    // port's `to_float` dequantizes the same bytes, the dot is taken in f64. Even and odd N (the
+    // probe's shapes), m = 1 and m = 3, k = 512 so all 128 threads hold work. A shader that drops the
+    // high-bit plane moves an element by 16 * d * scale, far over the 1e-3 tolerance: the seeded
+    // misread is run by hand: see `fuel-kernels-source/README.md` (Q5_K shader).
+    {
+        use fuel_quantized::BlockQ5K;
+        let k5 = 512usize;
+        for n5 in [16usize, 15] {
+            let w5: Vec<f32> = (0..n5 * k5)
+                .map(|i| ((i as f32 + 5.0) * 0.0093).sin() * 0.6)
+                .collect();
+            let mut blocks5 = vec![BlockQ5K::zeros(); n5 * (k5 / 256)];
+            BlockQ5K::from_float(&w5, &mut blocks5);
+            let mut w5_deq = vec![0.0_f32; n5 * k5];
+            BlockQ5K::to_float(&blocks5, &mut w5_deq);
+            let bytes5: Vec<u8> = unsafe {
+                std::slice::from_raw_parts(
+                    blocks5.as_ptr() as *const u8,
+                    blocks5.len() * std::mem::size_of::<BlockQ5K>(),
+                )
+            }
+            .to_vec();
+            for m5 in [1usize, 3] {
+                let a5: Vec<f32> = (0..m5 * k5)
+                    .map(|i| (i as f32 * 0.011).cos() * 0.5)
+                    .collect();
+                let a_arc5 = Arc::new(RwLock::new(upload_f32(&backend, &a5)));
+                let w_arc5 = Arc::new(RwLock::new(upload_raw(&backend, &bytes5, DType::U32)));
+                let out_bytes5 = backend.alloc_bytes_handle(m5 * n5 * 4).expect("alloc");
+                let out_arc5 = Arc::new(RwLock::new(Storage::new(
+                    BackendStorage::Vulkan(out_bytes5),
+                    DType::F32,
+                )));
+                kernel(
+                    &[Arc::clone(&a_arc5), Arc::clone(&w_arc5)],
+                    &mut [Arc::clone(&out_arc5)],
+                    &[
+                        Layout::contiguous(Shape::from_dims(&[m5, k5])),
+                        Layout::contiguous(Shape::from_dims(&[bytes5.len() / 4])),
+                        Layout::contiguous(Shape::from_dims(&[m5, n5])),
+                    ],
+                    &OpParams::QMatMul {
+                        quant_type: QuantType::Q5K,
+                        batch_count: 1,
+                        m: m5,
+                        n: n5,
+                        k: k5,
+                    },
+                )
+                .expect("qmatmul Q5_K");
+                let got5 = download_f32(&backend, &out_arc5.read().unwrap());
+                for row in 0..m5 {
+                    for col in 0..n5 {
+                        let exact: f64 = (0..k5)
+                            .map(|kk| {
+                                f64::from(a5[row * k5 + kk]) * f64::from(w5_deq[col * k5 + kk])
+                            })
+                            .sum();
+                        let g = f64::from(got5[row * n5 + col]);
+                        assert!(
+                            (g - exact).abs() < 1e-3,
+                            "Q5_K n={n5} m={m5} [{row},{col}]: got {g}, exact {exact}"
+                        );
+                    }
+                }
+                eprintln!("Q5_K n={n5} m={m5}: matches the exact host oracle");
+            }
+        }
+    }
 }
 
 #[test]

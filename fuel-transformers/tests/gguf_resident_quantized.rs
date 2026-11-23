@@ -133,7 +133,8 @@ fn from_ggml_bytes_refuses_what_it_cannot_keep() {
     ] {
         let bytes = vec![0_u8; bytes_per_block * (512 / block) * 3];
         let w = WeightStorage::from_ggml_bytes(dt, &bytes, 512, 3);
-        if fuel_tensor::lazy::declines_unwired_vulkan_quant() {
+        // Q5_K has a Vulkan arm since row 119 (`qmatmul_wired`), so it is kept in every build.
+        if fuel_tensor::lazy::declines_unwired_vulkan_quant() && dt != GgmlDType::Q5K {
             // A `vulkan` build declines them by default (no Vulkan `QMatMul` arm; opt-out `FUEL_GGML_KEEP_QUANTIZED=1`): f32 path.
             assert!(w.is_none(), "{dt:?} must decline in a vulkan build");
             continue;

@@ -5935,6 +5935,10 @@ impl VulkanBackend {
                 &self.pipelines.qmatvec_q6_k_pipeline,
                 &self.pipelines.qmatvec_q6_k_layout,
             ),
+            QmvKind::Q5K => (
+                &self.pipelines.qmatvec_q5_k_pipeline,
+                &self.pipelines.qmatvec_q5_k_layout,
+            ),
         };
         for b in 0..rows {
             let (pbuf, pmem) = self.upload_params(&p)?;
@@ -5995,6 +5999,21 @@ impl VulkanBackend {
         n: usize,
     ) -> fuel_ir::Result<()> {
         self.qmatvec_bytes(QmvKind::Q6K, a_f32, w_q6_k, out, batch.max(1) * m, k, n)
+    }
+
+    /// Q5_K × F32 matmul over byte-storage (ROADMAP row 119). Like Q6_K, every row goes through the
+    /// fused gemv (`qmatvec_q5_k`); a prefill with `m > 1` re-reads the weight once per row.
+    pub fn matmul_q5_k_bytes(
+        &self,
+        a_f32: &VulkanStorageBytes,
+        w_q5_k: &VulkanStorageBytes,
+        out: &mut VulkanStorageBytes,
+        batch: usize,
+        m: usize,
+        k: usize,
+        n: usize,
+    ) -> fuel_ir::Result<()> {
+        self.qmatvec_bytes(QmvKind::Q5K, a_f32, w_q5_k, out, batch.max(1) * m, k, n)
     }
 
     /// Q8_0 × F32 matmul over byte-storage. Same dequant-then-matmul path
@@ -15088,6 +15107,7 @@ mod recycler_depth_tests {
 enum QmvKind {
     Q8_0,
     Q6K,
+    Q5K,
 }
 
 impl QmvKind {
@@ -15096,6 +15116,7 @@ impl QmvKind {
         match self {
             QmvKind::Q8_0 => ("qmatvec_q8_0", 32, 34),
             QmvKind::Q6K => ("qmatvec_q6_k", 256, 210),
+            QmvKind::Q5K => ("qmatvec_q5_k", 256, 176),
         }
     }
 }

@@ -168,7 +168,7 @@ Per-machine memory lives at `~/.claude/projects/c--Projects-fuel/memory/` (wiped
 - **Engage critically.** Architectural pushback is welcome; investigate "why does X work this way" fully before accepting it. Deliver assessments, not deferral.
 - **Lazy-only: new features land lazy-only.** A deferral is fine if RECORDED in `docs/gaps.md` with a tier and an owner; an unrecorded deferral is what is forbidden. → [`lazy-only-and-recorded-deferrals`](docs/method-rules.md#lazy-only-and-recorded-deferrals)
 - **"No consumer" is not a reason to skip building a capability** — but it *is* a reason to sequence it behind things with consumers (see ROADMAP priority).
-- **Ask before modifying sibling projects** (baracuda, aocl, vulkane, lightbulb, mlmf). Propose cross-project edits first; missing Vulkan kernels are fuel-internal Slang (`fuel-vulkan-kernels`), never a baracuda ask.
+- **Ask before modifying sibling projects** (baracuda, aocl, vulkane, lightbulb, mlmf). Propose cross-project edits first; missing Vulkan kernels are Fuel's own to write, never a baracuda ask: a new one is GLSL in `fuel-kernels-source/kernels/` with its `.spv` in `fuel-vulkan-kernels/spv/` (the older Slang-derived `.spv` there were built by FishStringer, see `spv/SOURCE.txt`; their Slang sources are not in this repo).
 - **Match external convention for well-known ops** (PyTorch/CUDA semantics) over internal consistency; design param surfaces up front.
 
 ## Reporting
