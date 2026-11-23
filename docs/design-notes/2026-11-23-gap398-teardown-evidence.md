@@ -70,9 +70,15 @@ flush is logged). Red/green on the old probe (`row124-audit` `18a2c897c` + this 
 `{139: 5}` before, `{0: 10}` after; full probe `{139: 70}` before, `{0: 30}` after. The backend code is identical
 at `7ecc79f6e` and `58debefec` (empty diff), so the patch applies to main as is.
 
-**No automated test is committed for it:** with every GGUF type wired the failing model realize that produced the
-open batch can no longer be built from a GGUF, and a direct kernel call that leaves a batch open was not tried as a
-crash test. The regression instrument is the old probe at `18a2c897c`.
+**Automated test:** `fuel-vulkan-dispatch/tests/vulkan_backend_drop_open_batch_live.rs` (GPU lock, not `#[ignore]`d): no
+failing realize needed; it records three wired Q8_0 `QMatMul` dispatches through the kernel wrapper without a download or
+synchronize, asserts `open_batch_len() >= 3` (not vacuous), drops every handle and the backend. RED (the `Drop` impl
+removed): the test binary exits 139 (`0xC0000005`) at the drop, 3 of 3 runs, after printing "open batch before drop: 3
+dispatches". GREEN: 10 of 10 pass. The old probe at `18a2c897c` stays the end-to-end instrument.
+
+**Risk, stated:** the drop's flush submits the recorded work and waits on its fence. On an already-lost device the
+Vulkan specification returns `VK_ERROR_DEVICE_LOST` from the wait (the drop logs it, no hang); that was NOT exercised
+here (no way to lose the device on purpose was found), so it is unchecked.
 
 ## Not done / next
 
