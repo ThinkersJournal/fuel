@@ -1425,6 +1425,8 @@ pub(crate) fn build_const_cache(
     // Pass 1: collect (user_const_id, host_bytes, dtype, need_bytes)
     // for every reachable Op::Const that isn't already in the cache
     // (persistent slots from InferenceContext take precedence).
+    let t_extract =
+        fuel_dispatch::compiled::op_profile::PhaseTimer::start("const_cache.host_extract");
     let consts_to_upload: Vec<(NodeId, Vec<u8>, fuel_ir::DType)> = {
         let g = graph
             .read()
@@ -1467,6 +1469,7 @@ pub(crate) fn build_const_cache(
         out
     };
 
+    drop(t_extract);
     if consts_to_upload.is_empty() {
         return Ok(cache);
     }
@@ -1494,6 +1497,8 @@ pub(crate) fn build_const_cache(
     // Op::Copy { target: target_loc }` pairs and realize the Op::Copy
     // targets multi-target. The transient graph is internal — the
     // user's graph stays unmodified.
+    let t_build =
+        fuel_dispatch::compiled::op_profile::PhaseTimer::start("const_cache.transient_graph_build");
     let transient = Arc::new(RwLock::new(Graph::new()));
     let mut transient_cache = StorageCache::new();
 
@@ -1551,13 +1556,17 @@ pub(crate) fn build_const_cache(
         }
     }
 
+    drop(t_build);
     let copy_targets: Vec<NodeId> = user_to_copy.iter().map(|(_, c)| *c).collect();
+    let t_h2d =
+        fuel_dispatch::compiled::op_profile::PhaseTimer::start("const_cache.realize_many_h2d");
     let realized = PipelinedExecutor::realize_many_with_devices(
         Arc::clone(&transient),
         &copy_targets,
         transient_cache,
         primary_device_registry(device)?,
     )?;
+    drop(t_h2d);
     if realized.len() != user_to_copy.len() {
         return Err(Error::Msg(format!(
             "build_const_cache: realize_many returned {} storages for {} \
