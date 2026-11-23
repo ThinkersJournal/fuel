@@ -30,6 +30,16 @@ use fuel_transformers::models::lazy_qwen3::Qwen3Config;
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
+/// `(calls, bytes, ns)` spent in `fuel-graph`'s `Arc`-fed `Const` array copies so far (row 173 attribution).
+fn const_copy_snapshot() -> (u64, u64, u64) {
+    use std::sync::atomic::Ordering::Relaxed;
+    (
+        fuel_graph::CONST_COPY_CALLS.load(Relaxed),
+        fuel_graph::CONST_COPY_BYTES.load(Relaxed),
+        fuel_graph::CONST_COPY_NS.load(Relaxed),
+    )
+}
+
 fn argmax(logits: &[f32]) -> u32 {
     logits
         .iter()
@@ -125,9 +135,17 @@ fn one_run(
         let _ = op_profile::take_phases();
         op_profile::set_enabled(true);
     }
+    let cc0 = const_copy_snapshot();
     let (mut next, prefill) = step(prompt_tokens, false);
+    let cc1 = const_copy_snapshot();
     if profile_prefill {
         op_profile::set_enabled(false);
+        println!(
+            "PREFILL#1 const to_vec copies: {} calls, {:.0} MB, {:.1} ms",
+            cc1.0 - cc0.0,
+            (cc1.1 - cc0.1) as f64 / 1e6,
+            (cc1.2 - cc0.2) as f64 / 1e6
+        );
         println!("PREFILL#1 wall (the profiled call): {:.1} ms", ms(prefill));
         let mut rows = op_profile::take();
         rows.sort_by_key(|r| std::cmp::Reverse(r.3));

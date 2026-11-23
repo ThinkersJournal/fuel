@@ -3987,7 +3987,7 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f32]> = data.into();
-        let buf = fuel_ir::HostBuffer::F32(v.to_vec());
+        let buf = fuel_ir::HostBuffer::F32(timed_const_copy(&v));
         let origin = ConstOrigin::of(&v, DType::F32);
         Self::from_host_buffer(buf, DType::F32, shape, device).map(|h| h.with_origin(origin))
     }
@@ -4000,7 +4000,7 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f64]> = data.into();
-        let buf = fuel_ir::HostBuffer::F64(v.to_vec());
+        let buf = fuel_ir::HostBuffer::F64(timed_const_copy(&v));
         Self::from_host_buffer(buf, DType::F64, shape, device)
     }
 
@@ -4012,7 +4012,7 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[bf16]> = data.into();
-        let buf = fuel_ir::HostBuffer::BF16(v.to_vec());
+        let buf = fuel_ir::HostBuffer::BF16(timed_const_copy(&v));
         let origin = ConstOrigin::of(&v, DType::BF16);
         Self::from_host_buffer(buf, DType::BF16, shape, device).map(|h| h.with_origin(origin))
     }
@@ -4025,7 +4025,7 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f16]> = data.into();
-        let buf = fuel_ir::HostBuffer::F16(v.to_vec());
+        let buf = fuel_ir::HostBuffer::F16(timed_const_copy(&v));
         let origin = ConstOrigin::of(&v, DType::F16);
         Self::from_host_buffer(buf, DType::F16, shape, device).map(|h| h.with_origin(origin))
     }
@@ -4043,7 +4043,7 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[u32]> = data.into();
-        let buf = fuel_ir::HostBuffer::U32(v.to_vec());
+        let buf = fuel_ir::HostBuffer::U32(timed_const_copy(&v));
         let origin = ConstOrigin::of(&v, DType::U32);
         Self::from_host_buffer(buf, DType::U32, shape, device).map(|h| h.with_origin(origin))
     }
@@ -4133,7 +4133,7 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f32]> = data.into();
-        let buf = fuel_ir::HostBuffer::F32(v.to_vec());
+        let buf = fuel_ir::HostBuffer::F32(timed_const_copy(&v));
         let origin = ConstOrigin::of(&v, DType::F32);
         Self::from_host_buffer_on(graph, buf, DType::F32, shape, device)
             .map(|h| h.with_origin(origin))
@@ -4148,7 +4148,7 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f64]> = data.into();
-        let buf = fuel_ir::HostBuffer::F64(v.to_vec());
+        let buf = fuel_ir::HostBuffer::F64(timed_const_copy(&v));
         Self::from_host_buffer_on(graph, buf, DType::F64, shape, device)
     }
 
@@ -4162,7 +4162,7 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[half::bf16]> = data.into();
-        let buf = fuel_ir::HostBuffer::BF16(v.to_vec());
+        let buf = fuel_ir::HostBuffer::BF16(timed_const_copy(&v));
         let origin = ConstOrigin::of(&v, DType::BF16);
         Self::from_host_buffer_on(graph, buf, DType::BF16, shape, device)
             .map(|h| h.with_origin(origin))
@@ -4176,7 +4176,7 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[half::f16]> = data.into();
-        let buf = fuel_ir::HostBuffer::F16(v.to_vec());
+        let buf = fuel_ir::HostBuffer::F16(timed_const_copy(&v));
         let origin = ConstOrigin::of(&v, DType::F16);
         Self::from_host_buffer_on(graph, buf, DType::F16, shape, device)
             .map(|h| h.with_origin(origin))
@@ -4191,7 +4191,7 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[u32]> = data.into();
-        let buf = fuel_ir::HostBuffer::U32(v.to_vec());
+        let buf = fuel_ir::HostBuffer::U32(timed_const_copy(&v));
         let origin = ConstOrigin::of(&v, DType::U32);
         Self::from_host_buffer_on(graph, buf, DType::U32, shape, device)
             .map(|h| h.with_origin(origin))
@@ -4249,8 +4249,12 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f32]> = data.into();
         let origin = ConstOrigin::of(&v, DType::F32);
-        self.const_like_host_buffer(fuel_ir::HostBuffer::F32(v.to_vec()), DType::F32, shape)
-            .map(|h| h.with_origin(origin))
+        self.const_like_host_buffer(
+            fuel_ir::HostBuffer::F32(timed_const_copy(&v)),
+            DType::F32,
+            shape,
+        )
+        .map(|h| h.with_origin(origin))
     }
 
     /// Build a second `Const f64` tensor on the same graph as `self`.
@@ -4260,7 +4264,11 @@ impl NodeHandle {
         shape: impl Into<Shape>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f64]> = data.into();
-        self.const_like_host_buffer(fuel_ir::HostBuffer::F64(v.to_vec()), DType::F64, shape)
+        self.const_like_host_buffer(
+            fuel_ir::HostBuffer::F64(timed_const_copy(&v)),
+            DType::F64,
+            shape,
+        )
     }
 
     /// Build a second `Const bf16` tensor on the same graph as `self`.
@@ -4271,8 +4279,12 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[bf16]> = data.into();
         let origin = ConstOrigin::of(&v, DType::BF16);
-        self.const_like_host_buffer(fuel_ir::HostBuffer::BF16(v.to_vec()), DType::BF16, shape)
-            .map(|h| h.with_origin(origin))
+        self.const_like_host_buffer(
+            fuel_ir::HostBuffer::BF16(timed_const_copy(&v)),
+            DType::BF16,
+            shape,
+        )
+        .map(|h| h.with_origin(origin))
     }
 
     /// Build a second `Const f16` tensor on the same graph as `self`.
@@ -4283,8 +4295,12 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f16]> = data.into();
         let origin = ConstOrigin::of(&v, DType::F16);
-        self.const_like_host_buffer(fuel_ir::HostBuffer::F16(v.to_vec()), DType::F16, shape)
-            .map(|h| h.with_origin(origin))
+        self.const_like_host_buffer(
+            fuel_ir::HostBuffer::F16(timed_const_copy(&v)),
+            DType::F16,
+            shape,
+        )
+        .map(|h| h.with_origin(origin))
     }
 
     /// Build a second `Const u32` (index) tensor on the same graph as `self`.
@@ -4295,8 +4311,12 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[u32]> = data.into();
         let origin = ConstOrigin::of(&v, DType::U32);
-        self.const_like_host_buffer(fuel_ir::HostBuffer::U32(v.to_vec()), DType::U32, shape)
-            .map(|h| h.with_origin(origin))
+        self.const_like_host_buffer(
+            fuel_ir::HostBuffer::U32(timed_const_copy(&v)),
+            DType::U32,
+            shape,
+        )
+        .map(|h| h.with_origin(origin))
     }
 
     /// Build a sibling U8 `Const` on the same graph. Used by
@@ -17369,4 +17389,22 @@ mod tests {
             "body nodes must be reachable from Op::Scan via inputs (no effective_roots edit needed)"
         );
     }
+}
+
+/// Attribution (row 173): wall time, bytes and calls spent copying an `Arc`-fed `Const`'s source array into
+/// a fresh `HostBuffer` (`v.to_vec()`), process-wide. Measurement only.
+pub static CONST_COPY_NS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// See [`CONST_COPY_NS`].
+pub static CONST_COPY_BYTES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// See [`CONST_COPY_NS`].
+pub static CONST_COPY_CALLS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+fn timed_const_copy<T: Clone>(v: &[T]) -> Vec<T> {
+    let t = std::time::Instant::now();
+    let out = v.to_vec();
+    use std::sync::atomic::Ordering::Relaxed;
+    CONST_COPY_NS.fetch_add(t.elapsed().as_nanos() as u64, Relaxed);
+    CONST_COPY_BYTES.fetch_add(std::mem::size_of_val(v) as u64, Relaxed);
+    CONST_COPY_CALLS.fetch_add(1, Relaxed);
+    out
 }
