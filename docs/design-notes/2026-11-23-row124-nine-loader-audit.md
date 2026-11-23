@@ -92,3 +92,15 @@ Options for the PM (no fix made): (1) `from_ggml_bytes` declines these five type
 them, so the loader dequantizes to f32 as before #686; (2) wire Vulkan kernels (row 119 for Q3_K/Q5_K, new
 work for IQ4_NL/IQ4_XS/IQ3_S); (3) place the `QMatMul` on the CPU arm for an unwired type (the CPU has the #686
 float route) so it runs, slowly.
+
+## What was done (hotfix, PM ruling 2026-11-23)
+
+The example behind the RESULT table lives on branch `row124-audit` at `18a2c897c`; this change replaces it with the
+test `fuel-transformers/tests/gguf_unwired_quant_vulkan_live.rs` and applies option (1) in the process-wide form:
+`from_ggml_bytes` has no device (neither do the ten loaders), so in a build with the `vulkan` feature it
+declines every type `qmatmul_vk` has no arm for, whatever device later runs the model. The per-device decision
+(the loaders taking the target) and the kernels are the follow-up (GAP-397). Option (3) in the list above was
+rejected for cost: running an unwired type through a host dequantize reads the whole weight back per matmul.
+Measured with the test (n = 1 process): red without the decline (Q3_K fails to realize), green with it (7 of 7
+types realize; Q4_K and Q6_K unchanged at 8 of 8 `QMatMul` on Vulkan); the f32 residency of the five types is
+5.8x (Q5_K) to 9.3x (Q3_K, IQ3_S) the block bytes on the synthetic projections.

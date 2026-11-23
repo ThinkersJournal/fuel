@@ -4173,6 +4173,17 @@ pub mod qmatmul {
     use super::*;
     use fuel_graph::QuantType;
 
+    /// Whether [`qmatmul_vk`] has a kernel for `quant_type`. The ONE list of wired types: `qmatmul_vk`
+    /// refuses every other type before its match, and `fuel-tensor`'s `WeightStorage::from_ggml_bytes`
+    /// (feature `vulkan`) keeps a GGUF weight quantized only when this returns true, so the two cannot
+    /// drift apart. Add a type here in the same change that adds its arm to `qmatmul_vk`.
+    pub const fn qmatmul_wired(quant_type: QuantType) -> bool {
+        matches!(
+            quant_type,
+            QuantType::Q4_0 | QuantType::Q4_K_M | QuantType::Q8_0 | QuantType::Q6K
+        )
+    }
+
     /// `qmatmul_vk` kernel-binding wrapper: takes the executor's inputs, outputs, layouts and `OpParams` and runs the Vulkan kernel for that op and dtype.
     pub fn qmatmul_vk(
         inputs: &[Arc<RwLock<Storage>>],
@@ -4204,6 +4215,12 @@ pub mod qmatmul {
                 .bt());
             }
         };
+        if !qmatmul_wired(quant_type) {
+            return Err(Error::Msg(format!(
+                "vulkan_dispatch::qmatmul: QuantType {quant_type:?} not wired on Vulkan;                  add a dequant-then-matmul path or a fused kernel and retry"
+            ))
+            .bt());
+        }
         let a_guard = read_storage(&inputs[0])?;
         let w_guard = read_storage(&inputs[1])?;
         let mut out_guard = write_storage(&outputs[0])?;
@@ -8560,5 +8577,121 @@ mod attention_contract_tests {
             checked, 12,
             "all 12 FlashAttn family bindings (6 forward + 6 backward) checked"
         );
+    }
+}
+
+/// The wired-type list ([`qmatmul::qmatmul_wired`]) and the arms of `qmatmul_vk`'s `match quant_type`
+/// must name the same types: `fuel-tensor`'s loader keeps a GGUF weight quantized exactly when the list
+/// says wired, so a type with an arm and no list entry stays on the f32 path for no reason, and a type
+/// in the list with no arm errors at realize ("not wired on Vulkan"). Source-scanning, no GPU.
+#[cfg(test)]
+mod qmatmul_wired_list_matches_arms {
+    use super::qmatmul::qmatmul_wired;
+    use fuel_graph::QuantType;
+    use std::collections::BTreeSet;
+
+    /// Every variant, named. The `match` is exhaustive, so a new `QuantType` variant is a compile
+    /// error here until it is added and given a verdict.
+    fn all() -> Vec<(QuantType, &'static str)> {
+        let v = [
+            (QuantType::Q4_0, "Q4_0"),
+            (QuantType::Q4_1, "Q4_1"),
+            (QuantType::Q5_0, "Q5_0"),
+            (QuantType::Q5_1, "Q5_1"),
+            (QuantType::Q8_0, "Q8_0"),
+            (QuantType::Q8_1, "Q8_1"),
+            (QuantType::Q2K, "Q2K"),
+            (QuantType::Q3K, "Q3K"),
+            (QuantType::Q4_K_M, "Q4_K_M"),
+            (QuantType::Q5K, "Q5K"),
+            (QuantType::Q6K, "Q6K"),
+            (QuantType::Iq4Nl, "Iq4Nl"),
+            (QuantType::Iq4Xs, "Iq4Xs"),
+            (QuantType::Iq3S, "Iq3S"),
+        ];
+        for (q, _) in &v {
+            match q {
+                QuantType::Q4_0
+                | QuantType::Q4_1
+                | QuantType::Q5_0
+                | QuantType::Q5_1
+                | QuantType::Q8_0
+                | QuantType::Q8_1
+                | QuantType::Q2K
+                | QuantType::Q3K
+                | QuantType::Q4_K_M
+                | QuantType::Q5K
+                | QuantType::Q6K
+                | QuantType::Iq4Nl
+                | QuantType::Iq4Xs
+                | QuantType::Iq3S => {}
+            }
+        }
+        v.to_vec()
+    }
+
+    /// The `QuantType::X =>` arms of the `match quant_type {` inside `qmatmul_vk`, read from this file.
+    fn arms_in(src: &str) -> BTreeSet<String> {
+        let start = src
+            .find("pub fn qmatmul_vk(")
+            .expect("qmatmul_vk is in this file");
+        let body = &src[start..];
+        let m = body
+            .find("match quant_type {")
+            .expect("qmatmul_vk matches on quant_type");
+        let mut arms = BTreeSet::new();
+        for line in body[m..].lines().skip(1) {
+            let t = line.trim_start();
+            if t.starts_with("other =>") || t.starts_with("_ =>") {
+                break;
+            }
+            if let Some(rest) = t.strip_prefix("QuantType::")
+                && let Some((name, _)) = rest.split_once(" =>")
+            {
+                arms.insert(name.to_string());
+            }
+        }
+        arms
+    }
+
+    fn listed() -> BTreeSet<String> {
+        all()
+            .into_iter()
+            .filter(|(q, _)| qmatmul_wired(*q))
+            .map(|(_, n)| n.to_string())
+            .collect()
+    }
+
+    #[test]
+    fn the_list_and_the_arms_name_the_same_types() {
+        let arms = arms_in(include_str!("vulkan_dispatch.rs"));
+        assert_eq!(
+            arms,
+            listed(),
+            "qmatmul_wired and qmatmul_vk's match arms disagree: change both in one commit"
+        );
+        // Control: the scan finds the arms that exist today (so an empty parse cannot pass).
+        assert!(arms.contains("Q4_K_M") && arms.len() == 4, "{arms:?}");
+    }
+
+    /// The mutant the divergence test exists for: an arm added without the list entry.
+    #[test]
+    fn an_arm_without_a_list_entry_is_caught() {
+        let src = include_str!("vulkan_dispatch.rs");
+        // Built from pieces so this test's own text does not contain the text it counts.
+        let needle = concat!("QuantType::Q8_0 =", "> backend.matmul_q8_0_bytes");
+        assert_eq!(src.matches(needle).count(), 1);
+        let mutated = src.replacen(
+            needle,
+            concat!(
+                "QuantType::Q5K =",
+                "> backend.matmul_q5_k_bytes(a, w, out, batch_count, m, k, n),
+            ",
+                "QuantType::Q8_0 =",
+                "> backend.matmul_q8_0_bytes"
+            ),
+            1,
+        );
+        assert_ne!(arms_in(&mutated), listed(), "the mutant was not caught");
     }
 }
