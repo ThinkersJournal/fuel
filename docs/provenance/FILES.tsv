@@ -1386,7 +1386,7 @@ fuel-tensor/src/inference_context.rs	own		no lineage; 16 of 1705 lines verbatim 
 fuel-tensor/src/judge/cache.rs	own		no lineage; 0 of 41 lines verbatim in candle (0%)
 fuel-tensor/src/judge/mod.rs	own		no lineage; 4 of 2130 lines verbatim in candle (0%)
 fuel-tensor/src/kv_block_pool_device.rs	own		no lineage; 4 of 1214 lines verbatim in candle (0%)
-fuel-tensor/src/lazy.rs	not-traced	candle-core/tests/bilinear_tests.rs	37 of 6306 lines also appear in candle (mostly candle-core/tests/bilinear_tests.rs); not judged
+fuel-tensor/src/lazy.rs	not-traced	candle-core/tests/bilinear_tests.rs	37 of 6346 lines also appear in candle (mostly candle-core/tests/bilinear_tests.rs); not judged
 fuel-tensor/src/lazy_latent_cache.rs	own		no lineage; 4 of 238 lines verbatim in candle (2%)
 fuel-tensor/src/lib.rs	not-traced	candle-core/src/lib.rs	9 of 84 lines also appear in candle (mostly candle-core/src/lib.rs); not judged
 fuel-tensor/src/metal_backend/mod.rs	own		no lineage; 1 of 39 lines verbatim in candle (3%)
@@ -1413,6 +1413,7 @@ fuel-tensor/tests/fixtures/bnb_double_quant/orig_k_proj_16rows_bf16.bin	data		bi
 fuel-tensor/tests/flash_attn_oracle.rs	own		no lineage; 1 of 103 lines verbatim in candle (1%)
 fuel-tensor/tests/fuse_linear_oracle.rs	own		no lineage; 0 of 41 lines verbatim in candle (0%)
 fuel-tensor/tests/gap029_step0_q4_0_cuda_prefill_probe.rs	own		no lineage; 1 of 142 lines verbatim in candle (1%)
+fuel-tensor/tests/ggml_keep_quantized_env.rs	own		no lineage; 0 of 63 lines verbatim in candle (0%)
 fuel-tensor/tests/incc_conv_im2col_grouped_oracle.rs	own		no lineage; 0 of 87 lines verbatim in candle (0%)
 fuel-tensor/tests/incc_conv_im2col_oracle.rs	own		no lineage; 0 of 82 lines verbatim in candle (0%)
 fuel-tensor/tests/incc_conv_transpose_im2col_oracle.rs	own		no lineage; 0 of 95 lines verbatim in candle (0%)
@@ -1627,7 +1628,7 @@ fuel-transformers/src/object_detection.rs	candle	candle-transformers/src/object_
 fuel-transformers/src/pipelines/mod.rs	candle-modified	candle-transformers/src/pipelines/mod.rs	rename/copy 35%; 0% of 1 lines verbatim
 fuel-transformers/src/pipelines/text_generation.rs	not-traced	candle-transformers/src/pipelines/text_generation.rs	same file name as candle candle-transformers/src/pipelines/text_generation.rs; a port or re-expression is presumed until judged
 fuel-transformers/src/utils.rs	own		no lineage; 1 of 22 lines verbatim in candle (5%)
-fuel-transformers/tests/common/gguf_synth.rs	own		no lineage; 3 of 91 lines verbatim in candle (3%)
+fuel-transformers/tests/common/gguf_synth.rs	own		no lineage; 3 of 77 lines verbatim in candle (4%)
 fuel-transformers/tests/config_parser_membership.rs	own		no lineage; 0 of 248 lines verbatim in candle (0%)
 fuel-transformers/tests/fixtures/qwen35_27b_q4km_tensors.tsv	own		no lineage; 0 of 771 lines verbatim in candle (0%)
 fuel-transformers/tests/fixtures/qwen3_0_6b_awq_greedy.PROVENANCE.md	own		no lineage; 0 of 16 lines verbatim in candle (0%)
@@ -1645,7 +1646,7 @@ fuel-transformers/tests/generation_tests.rs	candle-modified	candle-transformers/
 fuel-transformers/tests/gguf_qwen35_loader.rs	own		no lineage; 3 of 291 lines verbatim in candle (1%)
 fuel-transformers/tests/gguf_resident_quantized.rs	own		no lineage; 0 of 95 lines verbatim in candle (0%)
 fuel-transformers/tests/gguf_resident_quantized_qwen3.rs	own		no lineage; 3 of 138 lines verbatim in candle (2%)
-fuel-transformers/tests/gguf_unwired_quant_vulkan_live.rs	own		no lineage; 0 of 72 lines verbatim in candle (0%)
+fuel-transformers/tests/gguf_unwired_quant_vulkan_live.rs	own		no lineage; 0 of 89 lines verbatim in candle (0%)
 fuel-transformers/tests/nms_tests.rs	candle	candle-transformers/tests/nms_tests.rs	rename/copy 96%; 94% of 54 lines verbatim
 fuel-transformers/tests/phase6a_anchor_oracle.rs	own		no lineage; 0 of 123 lines verbatim in candle (0%)
 fuel-transformers/tests/phase6b_cuda_anchor.rs	own		no lineage; 0 of 254 lines verbatim in candle (0%)
