@@ -533,6 +533,27 @@ pub struct VulkanBackend {
     matvec_cols_enabled: std::sync::atomic::AtomicBool,
 }
 
+impl Drop for VulkanBackend {
+    /// GAP-398: flush and wait for the recorder's open batch BEFORE any field is destroyed. A realize that
+    /// fails part-way (an op the backend refuses, `qmatmul_vk` "not wired on Vulkan") returns with
+    /// dispatches recorded into the open command buffer and never submitted; destroying the device with
+    /// that batch still open made the NVIDIA driver call a null pointer (access violation at process exit,
+    /// 70 of 70 runs of the pre-row-119 probe; 0 of 10 with this flush). Never panics: a poisoned recorder
+    /// or a failed flush is logged and the teardown continues.
+    fn drop(&mut self) {
+        let flushed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.force_flush()));
+        match flushed {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => {
+                tracing::error!(error = ?e, "VulkanBackend dropped with an open batch; flush failed")
+            }
+            Err(_) => tracing::error!(
+                "VulkanBackend dropped with a poisoned recorder; open batch not flushed"
+            ),
+        }
+    }
+}
+
 impl VulkanBackend {
     /// Snapshot of per-op-kind timing accumulated since init or since
     /// the last `reset_op_stats()` call. Sorted by total time
