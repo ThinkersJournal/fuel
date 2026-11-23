@@ -1096,6 +1096,7 @@ pub fn forward_with_kv_context<M: DecodeBackbone + ?Sized>(
     rope_inv_freq: Option<&[f64]>,
 ) -> Result<Vec<f32>> {
     let seq = tokens.len();
+    let t_build = fuel_dispatch::compiled::op_profile::PhaseTimer::start("d1.build_graph");
     let built = build_decode_graph(
         model,
         DataConsts::Baked,
@@ -1105,26 +1106,32 @@ pub fn forward_with_kv_context<M: DecodeBackbone + ?Sized>(
         return_all_positions,
         rope_inv_freq,
     )?;
+    drop(t_build);
     let cached_len = cache.cached_len;
 
     // Planner Stage 4a: populate the plan store for this graph before realizing,
     // so realize's planning half HITs the store. Advisory by design — a warm
     // failure is discarded because the realize below runs the identical planning
     // path and surfaces any genuine error with full realize context.
+    let t_warm = fuel_dispatch::compiled::op_profile::PhaseTimer::start("d1.planner_warm");
     let _ = crate::planner::Planner::warm(
         built.logits_root.inner.graph(),
         &[built.logits_root.inner.id()],
         ctx.device(),
     );
+    drop(t_warm);
 
     let mut sym_env = fuel_ir::SymEnv::new();
     sym_env.bind(built.cached_len_sym, cached_len)?;
     sym_env.bind(built.attended_len_sym, cached_len + seq)?;
+    let t_real =
+        fuel_dispatch::compiled::op_profile::PhaseTimer::start("d1.realize_one_as_with_env");
     let logits_vec = ctx.realize_one_as_with_env::<f32>(
         built.logits_root.inner.graph(),
         built.logits_root.inner.id(),
         &sym_env,
     )?;
+    drop(t_real);
 
     // Per-step bindings reference a graph that dies with this call; leaving them
     // in ctx.persistent would leak across decode steps.
