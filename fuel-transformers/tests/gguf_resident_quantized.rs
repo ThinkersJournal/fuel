@@ -132,8 +132,13 @@ fn from_ggml_bytes_refuses_what_it_cannot_keep() {
         (GgmlDType::Iq3S, 110, 256),
     ] {
         let bytes = vec![0_u8; bytes_per_block * (512 / block) * 3];
-        let w = WeightStorage::from_ggml_bytes(dt, &bytes, 512, 3)
-            .unwrap_or_else(|| panic!("{dt:?} must stay quantized"));
+        let w = WeightStorage::from_ggml_bytes(dt, &bytes, 512, 3);
+        if fuel_tensor::lazy::declines_unwired_vulkan_quant() {
+            // A `vulkan` build declines them by default (no Vulkan `QMatMul` arm; opt-out `FUEL_GGML_KEEP_QUANTIZED=1`): f32 path.
+            assert!(w.is_none(), "{dt:?} must decline in a vulkan build");
+            continue;
+        }
+        let w = w.unwrap_or_else(|| panic!("{dt:?} must stay quantized"));
         assert_eq!(w.resident_bytes(), bytes.len(), "{dt:?}");
     }
     // A format with no QMatMul kernel here (Q2_K, IQ2_XXS), and f32.

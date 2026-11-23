@@ -33,7 +33,7 @@ pub fn cfg() -> LlamaFullConfig {
     }
 }
 
-pub struct Lcg(u32);
+pub struct Lcg(pub u32);
 impl Lcg {
     pub fn vec(&mut self, n: usize) -> Vec<f32> {
         (0..n)
