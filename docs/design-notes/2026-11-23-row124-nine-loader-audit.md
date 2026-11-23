@@ -51,3 +51,44 @@ Q5_K_M files carry Q3_K and Q5_K) is the input that would show it.
 3. If (1) shows a run-time error for an unwired type, the loaders should decline to keep that type quantized
    on a Vulkan device or the kernel should be written (row 119); a registered decision in `docs/gaps.md`
    either way.
+
+## RESULT of the probe (added 2026-11-23; measured)
+
+Build: `fuel-transformers` example `gguf_unwired_quant_probe` (this branch, `--release`, `--features
+dev-tools,vulkan`, `-j 4`), tree = `7ecc79f6e` plus this branch's docs, example, `files_with` helper. Run once
+(n = 1 process) through `gpu-run`, RTX 4070 Laptop (Vulkan adapter 1), backlog feed at its default (OFF).
+Per type, four realizes: a bare one-op `qmatmul` graph at `m=1 n=256`, `m=1 n=255` (odd), `m=3 n=256`, all
+`k=256`, and the one-layer llama of `tests/common/gguf_synth.rs` (3 tokens), weights resident as blocks
+(`resident_bytes` equals the quantized file bytes in every model run). Outcome (a) = ok with every `QMatMul` on
+Vulkan, (b) = ok with a `QMatMul` on the CPU arm, (c) = error.
+
+| type | role | isolated 256/m1, 255/m1, 256/m3, model | `QMatMul` launches on Vulkan / CPU |
+|---|---|---|---|
+| Q4_K | control | A A A A | 1 / 0 each; model 8 / 0 |
+| Q6_K | control | A A A A | 1 / 0 each; model 8 / 0 |
+| Q3_K | subject | C C C C | the op was placed on Vulkan, 0 on CPU |
+| Q5_K | subject | C C C C | same |
+| IQ4_NL | subject | C C C C | same |
+| IQ4_XS | subject | C C C C | same |
+| IQ3_S (synthetic bytes) | subject | C C C C | same |
+
+Every (c) is the same error, e.g. `vulkan_dispatch::qmatmul: QuantType Q5K not wired on Vulkan; add a
+dequant-then-matmul path or a fused kernel and retry`. The planner puts the `QMatMul` on Vulkan and the kernel
+refuses: it is NOT a CPU fallback (no `QMatMul` launch on the CPU arm in any run), it is a run-time error.
+Controls came out (a) everywhere, so the probe can see a success. A model whose GGUF holds any of these five
+types fails to realize on Vulkan.
+
+**First bad commit, by source, NOT by running the probe on its parent:** `git log -S` on
+`fuel-tensor/src/lazy.rs` puts the arms for all five types in `ed3ce9746` (#686, 2026-11-15, 0.49.0, "Q3_K/Q5_K/IQ
+stay quantized"), not in #534 (`566bcf7f1`), which admitted Q8_0/Q4_K/Q6_K. Before #686 these types
+dequantized to f32 in the loader and ran as an f32 MatMul on Vulkan. The pre-#686 behaviour was not re-run.
+
+**Not tested:** CUDA (it may wire these types differently); a real Q5_K_M file (the synthetic model is one layer
+with `H = 256`); the CPU device (#686 added a CPU float route for these types); m larger than 3.
+The exe exited 139 (segmentation fault) AFTER printing its last line; the cause is not investigated (the
+verdict lines were all printed before it).
+
+Options for the PM (no fix made): (1) `from_ggml_bytes` declines these five types on a device with no kernel for
+them, so the loader dequantizes to f32 as before #686; (2) wire Vulkan kernels (row 119 for Q3_K/Q5_K, new
+work for IQ4_NL/IQ4_XS/IQ3_S); (3) place the `QMatMul` on the CPU arm for an unwired type (the CPU has the #686
+float route) so it runs, slowly.

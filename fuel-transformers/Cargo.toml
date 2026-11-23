@@ -97,3 +97,7 @@ required-features = ["dev-tools"]
 [[example]]
 name = "gguf_resident_reach"
 required-features = ["dev-tools"]
+
+[[example]]
+name = "gguf_unwired_quant_probe"
+required-features = ["dev-tools"]
