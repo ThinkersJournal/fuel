@@ -171,4 +171,4 @@ investigated.
 
 ## Row 170: what its Done-when still owes
 
-See the status sentence appended to row 170 in `ROADMAP.md`.
+Row 170 is CLOSED in `ROADMAP.md` (fixed by intervention; its Done-when items (1) and (2) struck, (3) done); the follow-up is row 173 (provisional number).
