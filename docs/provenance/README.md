@@ -47,7 +47,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 <!-- provenance-summary:begin -->
 | directory | files | candle | candle-modified | not-traced | ggml | own | data | copy |
 |---|--:|--:|--:|--:|--:|--:|--:|--:|
-| `(root)` | 25 | 4 | 4 |  |  | 17 |  |  |
+| `(root)` | 27 | 4 | 4 |  |  | 19 |  |  |
 | `.cargo` | 1 |  | 1 |  |  |  |  |  |
 | `.github` | 9 | 1 | 2 |  |  | 6 |  |  |
 | `docs` | 202 |  |  |  |  | 202 |  |  |
@@ -56,13 +56,13 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-backend-contract` | 10 |  |  | 3 |  | 4 |  | 3 |
 | `fuel-conv` | 7 |  |  |  |  | 4 |  | 3 |
 | `fuel-correctness-fixtures` | 8 |  |  |  |  | 5 |  | 3 |
-| `fuel-cpu-backend` | 32 | 2 | 3 | 5 |  | 19 |  | 3 |
+| `fuel-cpu-backend` | 31 | 1 | 3 | 5 |  | 19 |  | 3 |
 | `fuel-cpu-kernels` | 13 | 1 | 4 |  |  | 5 |  | 3 |
 | `fuel-cuda-backend` | 57 |  | 3 | 11 |  | 40 |  | 3 |
 | `fuel-cuda-dispatch` | 79 |  |  |  |  | 76 |  | 3 |
 | `fuel-datasets` | 13 |  | 7 |  |  | 3 |  | 3 |
 | `fuel-dispatch` | 210 |  |  | 1 |  | 206 |  | 3 |
-| `fuel-examples` | 247 | 56 | 162 | 21 |  | 8 |  |  |
+| `fuel-examples` | 247 | 56 | 161 | 20 |  | 10 |  |  |
 | `fuel-formats` | 12 |  | 2 | 3 |  | 4 |  | 3 |
 | `fuel-graph` | 39 |  |  | 3 |  | 33 |  | 3 |
 | `fuel-hardware` | 11 |  | 1 |  |  | 7 |  | 3 |
@@ -87,7 +87,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-parallel` | 14 |  |  |  |  | 11 |  | 3 |
 | `fuel-posttrain` | 7 |  |  | 2 |  | 2 |  | 3 |
 | `fuel-quantized` | 16 |  | 2 | 1 | 4 | 6 |  | 3 |
-| `fuel-tensor` | 69 | 1 | 2 | 4 |  | 57 | 2 | 3 |
+| `fuel-tensor` | 69 | 1 | 2 | 3 |  | 58 | 2 | 3 |
 | `fuel-tensor-tools` | 6 |  | 1 | 1 |  | 1 |  | 3 |
 | `fuel-test-support` | 12 |  |  |  |  | 9 |  | 3 |
 | `fuel-training` | 9 |  |  |  |  | 6 |  | 3 |
@@ -96,5 +96,5 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-vulkan-dispatch` | 43 |  |  |  |  | 40 |  | 3 |
 | `fuel-vulkan-kernels` | 187 |  |  |  |  | 4 | 180 | 3 |
 | `scripts` | 79 |  |  | 1 |  | 78 |  |  |
-| **all** | **2004** | **112** | **216** | **260** | **4** | **1107** | **185** | **120** |
+| **all** | **2005** | **111** | **215** | **258** | **4** | **1112** | **185** | **120** |
 <!-- provenance-summary:end -->
