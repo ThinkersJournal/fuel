@@ -112,7 +112,26 @@ fn one_run(
             .expect("forward");
         (argmax(&logits), t.elapsed())
     };
+    // QWEN3_PROFILE_PREFILL=1: print the per-op launch table of the prefill call itself (the steady-state
+    // table below covers decode only), so a QMatMul that reaches the GPU at m = 1 but not at m = prompt length shows.
+    let profile_prefill = std::env::var_os("QWEN3_PROFILE_PREFILL").is_some();
+    if profile_prefill {
+        let _ = op_profile::take();
+        op_profile::set_enabled(true);
+    }
     let (mut next, prefill) = step(prompt_tokens, false);
+    if profile_prefill {
+        op_profile::set_enabled(false);
+        let mut rows = op_profile::take();
+        rows.sort_by_key(|r| std::cmp::Reverse(r.3));
+        println!(
+            "PREFILL per-op launches for the {}-token prefill call (op/backend launches host-ms):",
+            prompt_tokens.len()
+        );
+        for (op, be, n, d) in rows {
+            println!("  PF {op}/{be} {n} {:.1}", ms(d));
+        }
+    }
     let (n, first_decode) = step(&[next], false);
     next = n;
     op_profile::set_enabled(true);
