@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Device-resident weight storages kept by the identity of the host array they were built from
 //! (ROADMAP row 172).
 //!
