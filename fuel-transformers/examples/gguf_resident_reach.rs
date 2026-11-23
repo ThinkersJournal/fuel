@@ -360,6 +360,14 @@ mod probe {
         let mut bytes = fuel_quantized::blocks_as_bytes(&blocks).to_vec();
         let exact = bytes.len();
         bytes.resize(exact.next_multiple_of(4), 0); // the loader's rounding up
+        // `ODD_N_SEED` seeds a fault so the probe can be shown RED (a probe that only ever passed proves
+        // nothing): `short` leaves the buffer two bytes short (the old `isolated()` truncation), `shift` offsets
+        // every weight byte by 2 (what a kernel reading the blocks at the wrong byte offset would see).
+        match std::env::var("ODD_N_SEED").as_deref() {
+            Ok("short") => bytes.truncate(exact),
+            Ok("shift") => bytes.rotate_right(2),
+            _ => {}
+        }
         let w_u32: Vec<u32> = bytes
             .as_chunks::<4>()
             .0
