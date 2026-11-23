@@ -105,6 +105,11 @@ fn one_run(
     let mut step = |tokens: &[u32], reset: bool| {
         if reset {
             session = None;
+            // QWEN3_PREFILL_TWICE: a reset with a multi-token prompt also rewinds the KV cache to length 0, so the call is a
+            // second prefill in the SAME context (same InferenceContext, same model).
+            if tokens.len() > 1 {
+                cache.truncate_to(0);
+            }
         }
         let t = Instant::now();
         let logits = model
@@ -112,7 +117,48 @@ fn one_run(
             .expect("forward");
         (argmax(&logits), t.elapsed())
     };
+    // QWEN3_PROFILE_PREFILL=1: print the per-op launch table of the prefill call itself (the steady-state
+    // table below covers decode only), so a QMatMul that reaches the GPU at m = 1 but not at m = prompt length shows.
+    let profile_prefill = std::env::var_os("QWEN3_PROFILE_PREFILL").is_some();
+    if profile_prefill {
+        let _ = op_profile::take();
+        let _ = op_profile::take_phases();
+        op_profile::set_enabled(true);
+    }
     let (mut next, prefill) = step(prompt_tokens, false);
+    if profile_prefill {
+        op_profile::set_enabled(false);
+        let mut rows = op_profile::take();
+        rows.sort_by_key(|r| std::cmp::Reverse(r.3));
+        println!(
+            "PREFILL per-op launches for the {}-token prefill call (op/backend launches host-ms):",
+            prompt_tokens.len()
+        );
+        for (op, be, n, d) in rows {
+            println!("  PF {op}/{be} {n} {:.1}", ms(d));
+        }
+        // Phase timers of the same call (hierarchical by name: an outer phase includes the inner ones, rows
+        // are NOT additive). The whole call is `prefill` below.
+        println!("PREFILL phases (phase entries host-ms; nested, not additive):");
+        for (name, n, d) in op_profile::take_phases() {
+            println!("  PH {name} {n} {:.1}", ms(d));
+        }
+    }
+    if profile_prefill && std::env::var_os("QWEN3_PREFILL_TWICE").is_some() {
+        let _ = op_profile::take();
+        let _ = op_profile::take_phases();
+        op_profile::set_enabled(true);
+        let (_, prefill2) = step(prompt_tokens, true);
+        op_profile::set_enabled(false);
+        let _ = op_profile::take();
+        println!(
+            "PREFILL#2 (second prefill, same context): {:.0} ms; phases (nested, not additive):",
+            ms(prefill2)
+        );
+        for (name, n, d) in op_profile::take_phases() {
+            println!("  PH2 {name} {n} {:.1}", ms(d));
+        }
+    }
     let (n, first_decode) = step(&[next], false);
     next = n;
     op_profile::set_enabled(true);
