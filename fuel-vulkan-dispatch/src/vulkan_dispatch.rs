@@ -4180,7 +4180,12 @@ pub mod qmatmul {
     pub const fn qmatmul_wired(quant_type: QuantType) -> bool {
         matches!(
             quant_type,
-            QuantType::Q4_0 | QuantType::Q4_K_M | QuantType::Q8_0 | QuantType::Q6K | QuantType::Q5K
+            QuantType::Q4_0
+                | QuantType::Q4_K_M
+                | QuantType::Q8_0
+                | QuantType::Q6K
+                | QuantType::Q5K
+                | QuantType::Q3K
         )
     }
 
@@ -4237,6 +4242,7 @@ pub mod qmatmul {
             QuantType::Q8_0 => backend.matmul_q8_0_bytes(a, w, out, batch_count, m, k, n),
             QuantType::Q6K => backend.matmul_q6_k_bytes(a, w, out, batch_count, m, k, n),
             QuantType::Q5K => backend.matmul_q5_k_bytes(a, w, out, batch_count, m, k, n),
+            QuantType::Q3K => backend.matmul_q3_k_bytes(a, w, out, batch_count, m, k, n),
             other => Err(Error::Msg(format!(
                 "vulkan_dispatch::qmatmul: QuantType {other:?} not wired on Vulkan; \
                  add a dequant-then-matmul path or a fused kernel and retry"
@@ -8672,7 +8678,7 @@ mod qmatmul_wired_list_matches_arms {
             "qmatmul_wired and qmatmul_vk's match arms disagree: change both in one commit"
         );
         // Control: the scan finds the arms that exist today (so an empty parse cannot pass).
-        assert!(arms.contains("Q4_K_M") && arms.len() == 5, "{arms:?}");
+        assert!(arms.contains("Q4_K_M") && arms.len() == 6, "{arms:?}");
     }
 
     /// The mutant the divergence test exists for: an arm added without the list entry.
@@ -8685,8 +8691,8 @@ mod qmatmul_wired_list_matches_arms {
         let mutated = src.replacen(
             needle,
             concat!(
-                "QuantType::Q3K =",
-                "> backend.matmul_q3_k_bytes(a, w, out, batch_count, m, k, n),
+                "QuantType::Iq4Nl =",
+                "> backend.matmul_iq4_nl_bytes(a, w, out, batch_count, m, k, n),
             ",
                 "QuantType::Q8_0 =",
                 "> backend.matmul_q8_0_bytes"

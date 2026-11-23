@@ -5939,6 +5939,10 @@ impl VulkanBackend {
                 &self.pipelines.qmatvec_q5_k_pipeline,
                 &self.pipelines.qmatvec_q5_k_layout,
             ),
+            QmvKind::Q3K => (
+                &self.pipelines.qmatvec_q3_k_pipeline,
+                &self.pipelines.qmatvec_q3_k_layout,
+            ),
         };
         for b in 0..rows {
             let (pbuf, pmem) = self.upload_params(&p)?;
@@ -5953,7 +5957,11 @@ impl VulkanBackend {
                 (b * k * 4) as u64,
                 (k * 4) as u64,
             );
-            desc.write_buffer(1, DescriptorType::STORAGE_BUFFER, w_buf, 0, need_w as u64);
+            // The shaders read the weight as u32 words; a block size that is not a multiple of 4 (Q3_K,
+            // 110 B) can leave the last word straddling `need_w`, so round the range up to whole words
+            // (the weight storage is U32-padded, so the buffer is at least that long).
+            let w_range = need_w.next_multiple_of(4).min(w_q.len_bytes());
+            desc.write_buffer(1, DescriptorType::STORAGE_BUFFER, w_buf, 0, w_range as u64);
             desc.write_buffer(
                 2,
                 DescriptorType::STORAGE_BUFFER,
@@ -6014,6 +6022,20 @@ impl VulkanBackend {
         n: usize,
     ) -> fuel_ir::Result<()> {
         self.qmatvec_bytes(QmvKind::Q5K, a_f32, w_q5_k, out, batch.max(1) * m, k, n)
+    }
+
+    /// Q3_K × F32 matmul over byte-storage (ROADMAP row 119). Fused gemv (`qmatvec_q3_k`) for every row.
+    pub fn matmul_q3_k_bytes(
+        &self,
+        a_f32: &VulkanStorageBytes,
+        w_q3_k: &VulkanStorageBytes,
+        out: &mut VulkanStorageBytes,
+        batch: usize,
+        m: usize,
+        k: usize,
+        n: usize,
+    ) -> fuel_ir::Result<()> {
+        self.qmatvec_bytes(QmvKind::Q3K, a_f32, w_q3_k, out, batch.max(1) * m, k, n)
     }
 
     /// Q8_0 × F32 matmul over byte-storage. Same dequant-then-matmul path
@@ -15108,6 +15130,7 @@ enum QmvKind {
     Q8_0,
     Q6K,
     Q5K,
+    Q3K,
 }
 
 impl QmvKind {
@@ -15117,6 +15140,7 @@ impl QmvKind {
             QmvKind::Q8_0 => ("qmatvec_q8_0", 32, 34),
             QmvKind::Q6K => ("qmatvec_q6_k", 256, 210),
             QmvKind::Q5K => ("qmatvec_q5_k", 256, 176),
+            QmvKind::Q3K => ("qmatvec_q3_k", 256, 110),
         }
     }
 }

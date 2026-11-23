@@ -10395,6 +10395,75 @@ fn vulkan_dispatch_qmatmul_q4_km() {
             }
         }
     }
+
+    // Q3_K (row 119): `qmatvec_q3_k`, blocks of 110 bytes (not a multiple of 4). k = 768 (3 blocks per
+    // row) makes n = 15 a 4950-byte weight, so the word-rounding of the weight range is exercised too.
+    {
+        use fuel_quantized::BlockQ3K;
+        let k3 = 768usize;
+        for n3 in [16usize, 15] {
+            let w3: Vec<f32> = (0..n3 * k3)
+                .map(|i| ((i as f32 + 7.0) * 0.0087).sin() * 0.6)
+                .collect();
+            let mut blocks3 = vec![BlockQ3K::zeros(); n3 * (k3 / 256)];
+            BlockQ3K::from_float(&w3, &mut blocks3);
+            let mut w3_deq = vec![0.0_f32; n3 * k3];
+            BlockQ3K::to_float(&blocks3, &mut w3_deq);
+            let mut bytes3: Vec<u8> = unsafe {
+                std::slice::from_raw_parts(
+                    blocks3.as_ptr() as *const u8,
+                    blocks3.len() * std::mem::size_of::<BlockQ3K>(),
+                )
+            }
+            .to_vec();
+            bytes3.resize(bytes3.len().div_ceil(4) * 4, 0); // whole U32 words, as from_ggml_bytes pads
+            for m3 in [1usize, 3] {
+                let a3: Vec<f32> = (0..m3 * k3)
+                    .map(|i| (i as f32 * 0.011).cos() * 0.5)
+                    .collect();
+                let a_arc3 = Arc::new(RwLock::new(upload_f32(&backend, &a3)));
+                let w_arc3 = Arc::new(RwLock::new(upload_raw(&backend, &bytes3, DType::U32)));
+                let out_bytes3 = backend.alloc_bytes_handle(m3 * n3 * 4).expect("alloc");
+                let out_arc3 = Arc::new(RwLock::new(Storage::new(
+                    BackendStorage::Vulkan(out_bytes3),
+                    DType::F32,
+                )));
+                kernel(
+                    &[Arc::clone(&a_arc3), Arc::clone(&w_arc3)],
+                    &mut [Arc::clone(&out_arc3)],
+                    &[
+                        Layout::contiguous(Shape::from_dims(&[m3, k3])),
+                        Layout::contiguous(Shape::from_dims(&[bytes3.len() / 4])),
+                        Layout::contiguous(Shape::from_dims(&[m3, n3])),
+                    ],
+                    &OpParams::QMatMul {
+                        quant_type: QuantType::Q3K,
+                        batch_count: 1,
+                        m: m3,
+                        n: n3,
+                        k: k3,
+                    },
+                )
+                .expect("qmatmul Q3_K");
+                let got3 = download_f32(&backend, &out_arc3.read().unwrap());
+                for row in 0..m3 {
+                    for col in 0..n3 {
+                        let exact: f64 = (0..k3)
+                            .map(|kk| {
+                                f64::from(a3[row * k3 + kk]) * f64::from(w3_deq[col * k3 + kk])
+                            })
+                            .sum();
+                        let g = f64::from(got3[row * n3 + col]);
+                        assert!(
+                            (g - exact).abs() < 1e-3,
+                            "Q3_K n={n3} m={m3} [{row},{col}]: got {g}, exact {exact}"
+                        );
+                    }
+                }
+                eprintln!("Q3_K n={n3} m={m3}: matches the exact host oracle");
+            }
+        }
+    }
 }
 
 #[test]
