@@ -1666,6 +1666,71 @@ pub fn infer_storage_class(op: &Op) -> StorageClass {
     }
 }
 
+/// Identity of the shared host array a weight `Const` was built from: the data pointer, the element
+/// count and the dtype of the `Arc<[T]>` its constructor was handed.
+///
+/// Two `Const`s on different graphs built from the SAME `Arc` have the same key, which is what lets a
+/// caller that holds realized device copies of weights recognise a weight it has already uploaded
+/// (ROADMAP row 172). The key alone proves nothing about liveness (a freed allocation's address can be
+/// reused): use [`ConstOrigin::pin`], which succeeds only while the source `Arc` is alive, and keep the
+/// returned pin for as long as the key is trusted.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct ConstOriginKey {
+    /// Address of the first element of the source array.
+    pub ptr: usize,
+    /// Element count of the source array.
+    pub len: usize,
+    /// Element dtype of the source array.
+    pub dtype: DType,
+}
+
+/// A weak handle on the shared host array a `Const` was built from (see [`ConstOriginKey`]).
+///
+/// Holds only a `Weak`, so recording an origin never extends the array's life: a per-call temporary
+/// (a token-id table, a RoPE table, a mask) has no live source by the time anyone asks and
+/// [`Self::pin`] returns `None` for it, while a model weight, still held by the model, pins.
+#[derive(Clone)]
+pub struct ConstOrigin {
+    key: ConstOriginKey,
+    pin: Arc<dyn Fn() -> Option<Box<dyn std::any::Any + Send + Sync>> + Send + Sync>,
+}
+
+impl ConstOrigin {
+    fn of<T: Send + Sync + 'static>(data: &Arc<[T]>, dtype: DType) -> Self {
+        let weak = Arc::downgrade(data);
+        Self {
+            key: ConstOriginKey {
+                ptr: data.as_ptr() as usize,
+                len: data.len(),
+                dtype,
+            },
+            pin: Arc::new(move || {
+                weak.upgrade()
+                    .map(|a| Box::new(a) as Box<dyn std::any::Any + Send + Sync>)
+            }),
+        }
+    }
+
+    /// The identity of the source array.
+    pub fn key(&self) -> ConstOriginKey {
+        self.key
+    }
+
+    /// A strong handle that keeps the source array alive, or `None` if it is already gone (the
+    /// `Const` was built from a temporary). Hold it for as long as [`Self::key`] is trusted.
+    pub fn pin(&self) -> Option<Box<dyn std::any::Any + Send + Sync>> {
+        (self.pin)()
+    }
+}
+
+impl std::fmt::Debug for ConstOrigin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ConstOrigin")
+            .field("key", &self.key)
+            .finish_non_exhaustive()
+    }
+}
+
 /// The graph arena. Stores every node added during a computation-building
 /// session. Nodes are append-only and indexed by [`NodeId`].
 ///
@@ -1756,6 +1821,10 @@ pub struct Graph {
     /// Absent ⇒ a normal, static-M matmul. A side-table (not an `Op::MatMul`
     /// field) so the dense-matmul enum + its every match arm stay untouched.
     node_matmul_row_count: HashMap<NodeId, DynScalar>,
+    /// Per-`Const` source identity ([`ConstOrigin`]), recorded by the `Arc`-taking `Const` constructors
+    /// (`from_f32`, `const_u32_like`, and their dtype and `_on` siblings). Sparse: a `Const` built from
+    /// an owned buffer has none. Weak: it never keeps a source array alive.
+    const_origins: HashMap<NodeId, ConstOrigin>,
     /// Process-unique identity for this graph, minted at construction.
     ///
     /// Tensors are **graph-affine**: every binary op requires both operands to
@@ -1804,6 +1873,7 @@ impl Graph {
             node_output_views: HashMap::new(),
             storage_class: HashMap::new(),
             node_matmul_row_count: HashMap::new(),
+            const_origins: HashMap::new(),
         }
     }
 
@@ -1811,6 +1881,16 @@ impl Graph {
     /// name *which* graphs disagree; see [`NodeHandle::graph_id`].
     pub fn id(&self) -> GraphId {
         self.id
+    }
+
+    /// Record where `id`'s `Const` data came from (see [`ConstOrigin`]).
+    pub fn set_const_origin(&mut self, id: NodeId, origin: ConstOrigin) {
+        self.const_origins.insert(id, origin);
+    }
+
+    /// Every `Const` of this graph with a recorded source identity.
+    pub fn const_origins(&self) -> impl Iterator<Item = (NodeId, &ConstOrigin)> {
+        self.const_origins.iter().map(|(id, o)| (*id, o))
     }
 
     /// Look up the resolved target backend for a node, if any has
@@ -2671,6 +2751,7 @@ impl Graph {
         self.node_output_views = remap.rekey(std::mem::take(&mut self.node_output_views));
         self.storage_class = remap.rekey(std::mem::take(&mut self.storage_class));
         self.node_matmul_row_count = remap.rekey(std::mem::take(&mut self.node_matmul_row_count));
+        self.const_origins = remap.rekey(std::mem::take(&mut self.const_origins));
 
         // Remap the side-effect-roots vector (every entry is live — they
         // were reachability seeds — so each maps).
@@ -3898,7 +3979,8 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f32]> = data.into();
         let buf = fuel_ir::HostBuffer::F32(v.to_vec());
-        Self::from_host_buffer(buf, DType::F32, shape, device)
+        let origin = ConstOrigin::of(&v, DType::F32);
+        Self::from_host_buffer(buf, DType::F32, shape, device).map(|h| h.with_origin(origin))
     }
 
     /// Build a `Const` tensor from an `f64` slice and shape on a fresh graph.
@@ -3922,7 +4004,8 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[bf16]> = data.into();
         let buf = fuel_ir::HostBuffer::BF16(v.to_vec());
-        Self::from_host_buffer(buf, DType::BF16, shape, device)
+        let origin = ConstOrigin::of(&v, DType::BF16);
+        Self::from_host_buffer(buf, DType::BF16, shape, device).map(|h| h.with_origin(origin))
     }
 
     /// Build a `Const` tensor from an `f16` slice and shape on a fresh graph.
@@ -3934,7 +4017,8 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f16]> = data.into();
         let buf = fuel_ir::HostBuffer::F16(v.to_vec());
-        Self::from_host_buffer(buf, DType::F16, shape, device)
+        let origin = ConstOrigin::of(&v, DType::F16);
+        Self::from_host_buffer(buf, DType::F16, shape, device).map(|h| h.with_origin(origin))
     }
 
     /// Build a `Const` tensor from a `u32` slice and shape on a fresh
@@ -3951,7 +4035,8 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[u32]> = data.into();
         let buf = fuel_ir::HostBuffer::U32(v.to_vec());
-        Self::from_host_buffer(buf, DType::U32, shape, device)
+        let origin = ConstOrigin::of(&v, DType::U32);
+        Self::from_host_buffer(buf, DType::U32, shape, device).map(|h| h.with_origin(origin))
     }
 
     /// G2 internal funnel: allocate Storage on `device` from `buf`,
@@ -4040,7 +4125,9 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f32]> = data.into();
         let buf = fuel_ir::HostBuffer::F32(v.to_vec());
+        let origin = ConstOrigin::of(&v, DType::F32);
         Self::from_host_buffer_on(graph, buf, DType::F32, shape, device)
+            .map(|h| h.with_origin(origin))
     }
 
     /// `f64` sibling of [`from_f32_on`](Self::from_f32_on) — builds on the given
@@ -4067,7 +4154,9 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[half::bf16]> = data.into();
         let buf = fuel_ir::HostBuffer::BF16(v.to_vec());
+        let origin = ConstOrigin::of(&v, DType::BF16);
         Self::from_host_buffer_on(graph, buf, DType::BF16, shape, device)
+            .map(|h| h.with_origin(origin))
     }
 
     /// `f16` sibling of [`from_f32_on`](Self::from_f32_on).
@@ -4079,7 +4168,9 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[half::f16]> = data.into();
         let buf = fuel_ir::HostBuffer::F16(v.to_vec());
+        let origin = ConstOrigin::of(&v, DType::F16);
         Self::from_host_buffer_on(graph, buf, DType::F16, shape, device)
+            .map(|h| h.with_origin(origin))
     }
 
     /// `u32` sibling of [`from_f32_on`](Self::from_f32_on) — index tensors for
@@ -4092,7 +4183,9 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[u32]> = data.into();
         let buf = fuel_ir::HostBuffer::U32(v.to_vec());
+        let origin = ConstOrigin::of(&v, DType::U32);
         Self::from_host_buffer_on(graph, buf, DType::U32, shape, device)
+            .map(|h| h.with_origin(origin))
     }
 
     /// Phase 7.5 work item G2: build a `Const` leaf on a fresh graph
@@ -4146,7 +4239,9 @@ impl NodeHandle {
         shape: impl Into<Shape>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f32]> = data.into();
+        let origin = ConstOrigin::of(&v, DType::F32);
         self.const_like_host_buffer(fuel_ir::HostBuffer::F32(v.to_vec()), DType::F32, shape)
+            .map(|h| h.with_origin(origin))
     }
 
     /// Build a second `Const f64` tensor on the same graph as `self`.
@@ -4166,7 +4261,9 @@ impl NodeHandle {
         shape: impl Into<Shape>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[bf16]> = data.into();
+        let origin = ConstOrigin::of(&v, DType::BF16);
         self.const_like_host_buffer(fuel_ir::HostBuffer::BF16(v.to_vec()), DType::BF16, shape)
+            .map(|h| h.with_origin(origin))
     }
 
     /// Build a second `Const f16` tensor on the same graph as `self`.
@@ -4176,7 +4273,9 @@ impl NodeHandle {
         shape: impl Into<Shape>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f16]> = data.into();
+        let origin = ConstOrigin::of(&v, DType::F16);
         self.const_like_host_buffer(fuel_ir::HostBuffer::F16(v.to_vec()), DType::F16, shape)
+            .map(|h| h.with_origin(origin))
     }
 
     /// Build a second `Const u32` (index) tensor on the same graph as `self`.
@@ -4186,7 +4285,9 @@ impl NodeHandle {
         shape: impl Into<Shape>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[u32]> = data.into();
+        let origin = ConstOrigin::of(&v, DType::U32);
         self.const_like_host_buffer(fuel_ir::HostBuffer::U32(v.to_vec()), DType::U32, shape)
+            .map(|h| h.with_origin(origin))
     }
 
     /// Build a sibling U8 `Const` on the same graph. Used by
@@ -4198,7 +4299,9 @@ impl NodeHandle {
         shape: impl Into<Shape>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[u8]> = data.into();
+        let origin = ConstOrigin::of(&v, DType::U8);
         self.const_like_host_buffer(fuel_ir::HostBuffer::U8(v.to_vec()), DType::U8, shape)
+            .map(|h| h.with_origin(origin))
     }
 
     /// Build a sibling I64 `Const` on the same graph. Used by
@@ -4218,6 +4321,15 @@ impl NodeHandle {
     /// so callers don't have to thread a device through hot paths
     /// like RoPE table construction or LoRA application — the const
     /// goes on the same device as the graph it joins.
+    /// Record this `Const`'s source array identity (see [`ConstOrigin`]).
+    fn with_origin(self, origin: ConstOrigin) -> Self {
+        self.graph
+            .write()
+            .unwrap()
+            .set_const_origin(self.id, origin);
+        self
+    }
+
     fn const_like_host_buffer(
         &self,
         buf: fuel_ir::HostBuffer,

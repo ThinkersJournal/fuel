@@ -159,6 +159,13 @@ fn one_run(
             println!("  PH2 {name} {n} {:.1}", ms(d));
         }
     }
+    if profile_prefill {
+        // Weight residency of this run's context (ROADMAP row 172): hits, uploads, resident weights.
+        println!(
+            "WEIGHT RESIDENCY after the prefill calls: {:?}",
+            ctx.weight_residency_stats()
+        );
+    }
     let (n, first_decode) = step(&[next], false);
     next = n;
     op_profile::set_enabled(true);
