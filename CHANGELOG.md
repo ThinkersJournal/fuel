@@ -144,6 +144,25 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## Unreleased - row 172, device-level weight residency (version allocated by pm-assist; a minor-line change, not breaking)
+
+### Changed
+
+- **MEMORY BEHAVIOUR CHANGE on every non-CPU realize through `InferenceContext`, default ON.** The model's weights are now kept resident on the `Device` after the realize that uploaded them, keyed by the identity of the host `Arc` they were built from, and shared by every context on that device (a consumer that makes a context per sequence, as lightbulb does, now finds the model already uploaded). Before this a prefill built a fresh graph and re-copied and re-uploaded the whole model on every call, about 2 to 3 s of a 21-token Qwen3-0.6B Q4_K_M prefill on Vulkan. **Retained memory: about 1.19 GB per Qwen3-0.6B Q4_K_M (it has an f32 embedding table) until `Device::clear_weight_residency()` or eviction.**
+- **Bounds.** The registry holds at most 40% of the device's reported memory (Vulkan: the `VK_EXT_memory_budget` device-local budget; `FUEL_WEIGHT_RESIDENCY_BYTES=<n>` sets the cap outright), evicting least recently used first; a weight larger than the whole cap is served to the realize that uploaded it and not kept; a device that cannot report its memory gets no residency (the old behaviour). A model whose last `Arc` is dropped is evicted at the NEXT seeding on that device, not instantly. **`Device::clear_weight_residency()` is the unload call**: use it when a model is unloaded and the process goes on using the device.
+- **Opt-out:** `FUEL_WEIGHT_RESIDENCY=0` restores the old behaviour. CPU devices are untouched (test `a_cpu_realize_leaves_the_weight_residency_untouched`).
+- `fuel-graph`: the `Arc`-fed `Const` constructors (`from_f32`/`bf16`/`f16`/`u32` and their `_on` forms, `const_f32`/`bf16`/`f16`/`u32`/`u8_like`) record a weak `ConstOrigin`; new public `ConstOrigin`, `ConstOriginKey`, `Graph::set_const_origin`, `Graph::const_origins`. `fuel-tensor`: new public `Device::weight_residency_stats`, `Device::clear_weight_residency`, `WeightResidencyStats` (non-exhaustive). No signature changed.
+
+### Measured (Vulkan, RTX 4070 Laptop 8 GB, Qwen3-0.6B Q4_K_M GGUF, 21-token prompt)
+
+- Same-context second prefill 2.5 to 3.5 s with the residency off, 0.60 to 0.74 s on; first decode call 2.46 s off, 0.47 s on; steady decode 30 ms both (n = 2 processes per mode, 3 runs plus a warm-up each, 4 contexts per process).
+- VRAM (`nvidia-smi` every 25 ms, n = 2 per mode): peak 1,969 MiB off and on; with every context dropped and the device alive 524 MiB off, 1,711 MiB on, back to 524 MiB after `clear_weight_residency`.
+- Two different models back and forth (Qwen3-0.6B Q4_K_M and TinyLlama-1.1B-Chat Q4_0, 3 round trips, n = 2 processes per setting, plus 2 with a 1.6 GB cap): 54 visits over 9 runs produced exactly one logits hash list per model (FNV over every call's logits) for residency off, on and capped; peak 2,723 MiB off, 2,729 on, 2,473 and 2,729 capped; with the device alive 1,536 MiB off, 2,729 on (2.37 GB resident, cap 3.01 GB here), about 1,290 to 1,540 after clear.
+
+### Not verified
+
+- Other models or loaders (the mechanism covers every `Arc`-fed `Const`, measured on two models only), CUDA, a loaded GPU, the AMD iGPU, lightbulb's own model end to end. With a cap below one model the LRU scan thrashes (every visit re-uploads what the other evicted) and was not shown to beat the old behaviour; the swap peak did not fall under the cap (an evicted storage a running realize still holds stays alive until it ends).
+
 ## v0.49.13 - 2026-11-23 (PM-allocated; HOTFIX, region pathfinder gate restored)
 
 ### Fixed
