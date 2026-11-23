@@ -44,6 +44,7 @@
 
 pub mod awq;
 mod const_residency;
+pub use const_residency::WeightResidencyStats;
 pub mod cpu_accel;
 pub mod cuda_backend;
 pub mod decode_shape;

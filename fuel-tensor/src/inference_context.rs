@@ -2068,14 +2068,9 @@ pub struct InferenceContext {
     /// — and the held plan self-heals regardless: `DecodeSession::is_valid_for`
     /// drops it on any cache-geometry or dtype change.
     decode_session: Option<DecodeSession>,
-    /// Uploaded weight storages keyed by the identity of the host array they were built from, so a
-    /// prefill (a fresh graph, fresh `NodeId`s, every call) does not re-copy and re-upload the model
-    /// (ROADMAP row 172). See [`crate::const_residency`]. Empty on a CPU device.
-    weight_residency:
-        std::sync::Mutex<crate::const_residency::WeightResidency<Arc<RwLock<Storage>>>>,
 }
 
-/// `FUEL_WEIGHT_RESIDENCY=0` turns the per-context weight residency off (the measurement control for
+/// `FUEL_WEIGHT_RESIDENCY=0` turns the per-device weight residency off (the measurement control for
 /// ROADMAP row 172: every realize then re-uploads its weights as it did before).
 const WEIGHT_RESIDENCY_ENV: &str = "FUEL_WEIGHT_RESIDENCY";
 
@@ -2085,23 +2080,11 @@ impl InferenceContext {
             device,
             persistent: HashMap::new(),
             decode_session: None,
-            weight_residency: std::sync::Mutex::new(crate::const_residency::WeightResidency::new()),
         }
     }
 
     pub fn device(&self) -> &Device {
         &self.device
-    }
-
-    /// `(hits, uploads, resident weights)` of this context's weight residency: how many weight `Const`s
-    /// were served from an earlier upload, how many were uploaded, and how many are held now (ROADMAP row 172).
-    pub fn weight_residency_stats(&self) -> (u64, u64, usize) {
-        let r = self
-            .weight_residency
-            .lock()
-            .unwrap_or_else(|p| p.into_inner());
-        let (hits, uploads) = r.counters();
-        (hits, uploads, r.len())
     }
 
     /// Take the held decode plan out of the context, leaving `None`.
@@ -2331,12 +2314,8 @@ impl InferenceContext {
         )
     }
 
-    /// Build a [`StorageCache`] containing Arc-clones of every
-    /// persistent entry. The clone is cheap (Arc refcount bumps); the
-    /// returned `StorageCache` is consumed by the realize call but
-    /// the original Arcs in `self.persistent` survive.
     /// [`Self::cloned_persistent`] plus, on a non-CPU device, the resident device copy of every weight
-    /// `Const` of `graph` whose source array this context has already uploaded (uploading it now the
+    /// `Const` of `graph` whose source array this device has already uploaded (uploading it now the
     /// first time). `build_const_cache` skips every node already in the cache, so a seeded weight costs
     /// the realize nothing. Per-call arrays (no live source) are left to `build_const_cache`.
     fn realize_cache(&self, graph: &Arc<RwLock<Graph>>) -> Result<StorageCache> {
@@ -2356,9 +2335,14 @@ impl InferenceContext {
                 .collect()
         };
         let mut residency = self
-            .weight_residency
+            .device
+            .weights
+            .0
             .lock()
             .unwrap_or_else(|p| p.into_inner());
+        // A model that was dropped since the last realize no longer holds its weights: let those go
+        // before taking on new ones, so a model swap does not grow the device's residency.
+        residency.sweep_orphans();
         for (id, origin) in wanted {
             let resident = residency.get_or_upload(&origin, || {
                 let host = {
@@ -2382,6 +2366,10 @@ impl InferenceContext {
         Ok(cache)
     }
 
+    /// Build a [`StorageCache`] containing Arc-clones of every
+    /// persistent entry. The clone is cheap (Arc refcount bumps); the
+    /// returned `StorageCache` is consumed by the realize call but
+    /// the original Arcs in `self.persistent` survive.
     fn cloned_persistent(&self) -> StorageCache {
         let mut out = StorageCache::with_capacity(self.persistent.len());
         for (id, arc) in &self.persistent {

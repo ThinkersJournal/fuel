@@ -102,6 +102,9 @@ fn one_run(
     .expect("KvCache::with_capacity");
     let mut ctx = InferenceContext::new(dev.clone());
     let mut session: Option<DecodeSession> = None;
+    // FNV-1a over the bit patterns of the last call's logits (QWEN3_PROFILE_PREFILL prints it so two runs, or two
+    // settings of an env switch, can be compared for BIT equality rather than just the same argmax).
+    let last_hash = std::cell::Cell::new(0u64);
     let mut step = |tokens: &[u32], reset: bool| {
         if reset {
             session = None;
@@ -115,7 +118,11 @@ fn one_run(
         let logits = model
             .forward_with_kv_context_persistent(tokens, &mut cache, &mut ctx, &mut session)
             .expect("forward");
-        (argmax(&logits), t.elapsed())
+        let dt = t.elapsed();
+        last_hash.set(logits.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, x| {
+            (h ^ u64::from(x.to_bits())).wrapping_mul(0x0100_0000_01b3)
+        }));
+        (argmax(&logits), dt)
     };
     // QWEN3_PROFILE_PREFILL=1: print the per-op launch table of the prefill call itself (the steady-state
     // table below covers decode only), so a QMatMul that reaches the GPU at m = 1 but not at m = prompt length shows.
@@ -126,6 +133,9 @@ fn one_run(
         op_profile::set_enabled(true);
     }
     let (mut next, prefill) = step(prompt_tokens, false);
+    if profile_prefill {
+        println!("LOGITS HASH prefill#1 {:016x}", last_hash.get());
+    }
     if profile_prefill {
         op_profile::set_enabled(false);
         let mut rows = op_profile::take();
@@ -149,6 +159,7 @@ fn one_run(
         let _ = op_profile::take_phases();
         op_profile::set_enabled(true);
         let (_, prefill2) = step(prompt_tokens, true);
+        println!("LOGITS HASH prefill#2 {:016x}", last_hash.get());
         op_profile::set_enabled(false);
         let _ = op_profile::take();
         println!(
@@ -159,14 +170,10 @@ fn one_run(
             println!("  PH2 {name} {n} {:.1}", ms(d));
         }
     }
-    if profile_prefill {
-        // Weight residency of this run's context (ROADMAP row 172): hits, uploads, resident weights.
-        println!(
-            "WEIGHT RESIDENCY after the prefill calls: {:?}",
-            ctx.weight_residency_stats()
-        );
-    }
     let (n, first_decode) = step(&[next], false);
+    if profile_prefill {
+        println!("LOGITS HASH first-decode {:016x}", last_hash.get());
+    }
     next = n;
     op_profile::set_enabled(true);
     let trace_before = fuel_dispatch::optimizer_trace::snapshot();
@@ -225,6 +232,13 @@ fn one_run(
     op_profile::set_trace(false);
     let trace = op_profile::take_trace();
     let _ = op_profile::take();
+    if profile_prefill {
+        // Weight residency of this run's context (ROADMAP row 172): hits, uploads, resident weights.
+        println!(
+            "WEIGHT RESIDENCY after the whole run: {:?}",
+            ctx.device().weight_residency_stats()
+        );
+    }
     Run {
         prefill,
         first_decode,
@@ -525,6 +539,21 @@ fn new_gpu_device() -> Device {
     }
 }
 
+/// GPU memory in use, MiB, from `nvidia-smi` (the whole card, so only differences within one run mean
+/// anything). `None` when nvidia-smi is missing. Used by `QWEN3_VRAM=1` (ROADMAP row 172).
+fn vram_used_mib() -> Option<u64> {
+    let out = std::process::Command::new("nvidia-smi")
+        .args(["--query-gpu=memory.used", "--format=csv,noheader,nounits"])
+        .output()
+        .ok()?;
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .next()?
+        .trim()
+        .parse()
+        .ok()
+}
+
 fn main() {
     let arg = |i: usize, d: usize| {
         std::env::args()
@@ -571,10 +600,42 @@ fn main() {
         .get_ids()
         .to_vec();
 
+    // QWEN3_VRAM=1: sample the card's memory every ~25 ms on a thread for the whole of the runs.
+    let vram = std::env::var_os("QWEN3_VRAM").is_some().then(|| {
+        let base = vram_used_mib().unwrap_or(0);
+        let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let peak = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(base));
+        let (stop2, peak2) = (stop.clone(), peak.clone());
+        let h = std::thread::spawn(move || {
+            while !stop2.load(std::sync::atomic::Ordering::Relaxed) {
+                if let Some(v) = vram_used_mib() {
+                    peak2.fetch_max(v, std::sync::atomic::Ordering::Relaxed);
+                }
+                std::thread::sleep(std::time::Duration::from_millis(25));
+            }
+        });
+        (base, stop, peak, h)
+    });
     let _ = one_run(&model, &cfg, &dev, &prompt_tokens, steady); // warm-up, discarded
     let all: Vec<Run> = (0..runs)
         .map(|_| one_run(&model, &cfg, &dev, &prompt_tokens, steady))
         .collect();
+    if let Some((base, stop, peak, h)) = vram {
+        stop.store(true, std::sync::atomic::Ordering::Relaxed);
+        let _ = h.join();
+        let end = vram_used_mib().unwrap_or(0);
+        println!(
+            "WEIGHT RESIDENCY on the device at the end: {:?}",
+            dev.weight_residency_stats()
+        );
+        dev.clear_weight_residency();
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        let cleared = vram_used_mib().unwrap_or(0);
+        println!(
+            "VRAM MiB: baseline {base}, peak during the runs {}, end of runs (contexts dropped, device alive) {end}, after clear_weight_residency {cleared}",
+            peak.load(std::sync::atomic::Ordering::Relaxed)
+        );
+    }
 
     println!(
         "executor trace over the {steady} steady decode steps of the last run: {}",
