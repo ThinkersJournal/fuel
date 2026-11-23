@@ -339,6 +339,89 @@ mod probe {
         );
     }
 
+    /// ROADMAP row 169, the kernel read: a Q8_0 weight whose block bytes are not a multiple of 4 (an odd `n` of
+    /// 34-byte blocks) is stored rounded UP to whole `u32` elements, zero-padded at the tail. `isolated` cannot
+    /// show this (it drops the tail bytes with `as_chunks`). This builds the padded buffer the way the loader
+    /// does, realizes the one-op graph on the GPU device and compares every output with the exact dequantized
+    /// product, so a kernel or a size check that misreads the padded buffer shows as an error or a panic.
+    /// Returns `true` when the realize succeeded, a QMatMul launch was seen, and the error is within `LOGIT_TOL`.
+    fn odd_n<B: GgmlType>(
+        qtype: QuantType,
+        (m, k, n): (usize, usize, usize),
+        dev: &Device,
+        gtag: &str,
+    ) -> bool {
+        use fuel_ir::Shape;
+        let w_f32: Vec<f32> = (0..n * k)
+            .map(|i| ((i as f32) * 0.021).sin() * 0.7)
+            .collect();
+        let mut blocks = vec![B::zeros(); n * k / B::BLCK_SIZE];
+        B::from_float(&w_f32, &mut blocks);
+        let mut bytes = fuel_quantized::blocks_as_bytes(&blocks).to_vec();
+        let exact = bytes.len();
+        bytes.resize(exact.next_multiple_of(4), 0); // the loader's rounding up
+        let w_u32: Vec<u32> = bytes
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|c| u32::from_le_bytes(*c))
+            .collect();
+        let mut deq = vec![0f32; n * k];
+        B::to_float(&blocks, &mut deq);
+        let a: Vec<f32> = (0..m * k).map(|i| ((i as f32) * 0.013).cos()).collect();
+        let x = Tensor::from_f32(a.clone(), Shape::from_dims(&[m, k]), &Device::cpu()).unwrap();
+        let w = x
+            .const_u32_like(w_u32.clone(), Shape::from_dims(&[w_u32.len()]))
+            .unwrap();
+        let y = match x.qmatmul(&w, qtype, k, n) {
+            Ok(y) => y,
+            Err(e) => {
+                println!("  odd-N {qtype:?} m={m} k={k} n={n}: qmatmul REFUSED: {e:?}");
+                return false;
+            }
+        };
+        let g = y.graph_tensor();
+        let graph = g.graph().clone();
+        op_profile::set_enabled(true);
+        let _ = op_profile::take();
+        let out = fuel_tensor::pipelined_bridge::realize_one_as::<f32>(&graph, g.id(), dev);
+        let rows = op_profile::take();
+        op_profile::set_enabled(false);
+        let out = match out {
+            Ok(o) => o,
+            Err(e) => {
+                println!("  odd-N {qtype:?} m={m} k={k} n={n}: realize FAILED: {e:?}");
+                return false;
+            }
+        };
+        let (on_gpu, on_cpu) = (launches(&rows, gtag, true), launches(&rows, "Cpu", true));
+        let mut scale = 0f32;
+        let mut worst = 0f32;
+        let mut worst_at = (0usize, 0usize);
+        for mi in 0..m {
+            for ni in 0..n {
+                let want: f32 = (0..k).map(|kk| a[mi * k + kk] * deq[ni * k + kk]).sum();
+                scale = scale.max(want.abs());
+                let err = (out[mi * n + ni] - want).abs();
+                if err > worst {
+                    worst = err;
+                    worst_at = (mi, ni);
+                }
+            }
+        }
+        let rel = worst / scale.max(f32::MIN_POSITIVE);
+        let ok = out.len() == m * n && (on_gpu + on_cpu) > 0 && rel <= LOGIT_TOL;
+        println!(
+            "  odd-N {qtype:?} m={m} k={k} n={n}: buffer {exact} B -> {} u32; QMatMul launches {gtag}={on_gpu} cpu={on_cpu}; \
+             max |err|/max|want| = {rel:.2e} at (row {}, col {}) {}",
+            w_u32.len(),
+            worst_at.0,
+            worst_at.1,
+            if ok { "OK" } else { "FAIL" }
+        );
+        ok
+    }
+
     /// Wall time of the same one-op `qmatmul` graph realized on the CPU device and on the GPU device
     /// (warm-up, then the median of `REPS`). The GPU figure includes everything the realize does: the
     /// weight and activation uploads and the result download, because the executor re-realizes the
@@ -421,6 +504,16 @@ mod probe {
         }
 
         let mut failed = false;
+        println!(
+            "odd-N padded weight (row 169; K=32 Q8_0, buffer rounded up to whole u32; n=98 is the even control):"
+        );
+        for n in [97usize, 98] {
+            for m in [1usize, 4] {
+                if !odd_n::<BlockQ8_0>(QuantType::Q8_0, (m, 32, n), &dev, &gtag) {
+                    failed = true;
+                }
+            }
+        }
         let runs = [
             (
                 "Q4_0",
