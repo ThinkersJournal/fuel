@@ -5947,13 +5947,18 @@ impl VulkanBackend {
             blocks_per_row: (k / block_elems) as u32,
             _pad: 0,
         };
-        let (pipe_slot, layout) = match kind {
+        // Q8_0 and Q6_K are `gated` rows (an `Option` pipeline, absent when the device lacks a feature their
+        // SPIR-V needs); the five GLSL kernels of row 119 need no optional feature, so they are `required` rows
+        // (a plain pipeline). The spirv_caps test pins that split against each module's own capabilities.
+        let (pipeline, layout) = match kind {
             QmvKind::Q8_0 => (
-                &self.pipelines.qmatvec_q8_0_pipeline,
+                self.pipelines
+                    .pipeline(&self.pipelines.qmatvec_q8_0_pipeline, name)?,
                 &self.pipelines.qmatvec_q8_0_layout,
             ),
             QmvKind::Q6K => (
-                &self.pipelines.qmatvec_q6_k_pipeline,
+                self.pipelines
+                    .pipeline(&self.pipelines.qmatvec_q6_k_pipeline, name)?,
                 &self.pipelines.qmatvec_q6_k_layout,
             ),
             QmvKind::Q5K => (
@@ -6013,7 +6018,7 @@ impl VulkanBackend {
             let wb = [out_buf.raw()];
             self.record_dispatch_batched(
                 name,
-                self.pipelines.pipeline(pipe_slot, name)?,
+                pipeline,
                 layout,
                 desc,
                 (n as u32, 1, 1),

@@ -151,6 +151,10 @@ This documents the main changes to the `fuel` workspace.
 - Vulkan fused quantized gemv kernels (GLSL, `fuel-kernels-source/kernels/qmatvec_{q5_k,q3_k,iq4_nl,iq4_xs,iq3_s}.glsl`, byte-reproducible `.spv`, ggml/llama.cpp origin cited): `qmatmul_vk` now has arms for Q5_K, Q3_K, IQ4_NL, IQ4_XS and IQ3_S. The IQ3_S grid is generated from `IQ3S_GRID` by `scripts/gen_iq3s_glsl.py` and compared entry by entry in `fuel-vulkan-dispatch/tests/iq3s_grid_glsl.rs`.
 - `fuel-tensor/tests/ggml_kept_types_are_wired.rs`: exhaustive over `GgmlDType`; every type `WeightStorage::from_ggml_bytes` keeps must be in `qmatmul_wired`.
 
+### Fixed
+
+- `fuel-vulkan-backend`: a `VulkanBackend` dropped with an open recorder batch (after a failed realize) crashed the process with an access violation; `Drop` now flushes and waits for the open batch before any field is destroyed (GAP-398). Its regression test, `fuel-vulkan-dispatch/tests/vulkan_backend_drop_open_batch_live.rs`, needs a live Vulkan device, so it must be `#[ignore]`d like the crate's other live tests, and the `#[ignore]` ceiling (500, `fuel-ir`'s `suppression_ratchet`) is reached: the test is HELD OUT of this change, on `vk-qmatmul-q5k-docs`, until the ceiling is decided.
+
 ### Removed
 
 - The `FUEL_GGML_KEEP_QUANTIZED` opt-out (`fuel_tensor::lazy::KEEP_QUANTIZED_ENV`), `declines_unwired_vulkan_quant()` and the process-wide decline from v0.49.14: with every kept type wired on Vulkan they have no purpose. `from_ggml_bytes` no longer has a wildcard arm: every other `GgmlDType` is declined by name.
