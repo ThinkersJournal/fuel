@@ -86,15 +86,15 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-onnx` | 13 | 1 | 3 | 2 |  | 4 |  | 3 |
 | `fuel-parallel` | 14 |  |  |  |  | 11 |  | 3 |
 | `fuel-posttrain` | 7 |  |  | 2 |  | 2 |  | 3 |
-| `fuel-quantized` | 16 |  | 2 | 1 | 4 | 6 |  | 3 |
+| `fuel-quantized` | 15 |  | 2 | 1 | 4 | 5 |  | 3 |
 | `fuel-tensor` | 71 | 1 | 2 | 3 |  | 60 | 2 | 3 |
 | `fuel-tensor-tools` | 6 |  | 1 | 1 |  | 1 |  | 3 |
 | `fuel-test-support` | 12 |  |  |  |  | 9 |  | 3 |
 | `fuel-training` | 9 |  |  |  |  | 6 |  | 3 |
-| `fuel-transformers` | 200 | 2 | 4 | 154 |  | 34 | 3 | 3 |
+| `fuel-transformers` | 202 | 2 | 4 | 154 |  | 36 | 3 | 3 |
 | `fuel-vulkan-backend` | 27 |  |  |  |  | 24 |  | 3 |
 | `fuel-vulkan-dispatch` | 43 |  |  |  |  | 40 |  | 3 |
 | `fuel-vulkan-kernels` | 187 |  |  |  |  | 4 | 180 | 3 |
 | `scripts` | 80 |  |  | 1 |  | 79 |  |  |
-| **all** | **2008** | **111** | **215** | **258** | **4** | **1115** | **185** | **120** |
+| **all** | **2009** | **111** | **215** | **258** | **4** | **1116** | **185** | **120** |
 <!-- provenance-summary:end -->
