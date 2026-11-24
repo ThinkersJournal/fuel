@@ -174,6 +174,79 @@ mod tests {
         Ok(())
     }
 
+    /// FNV-1a 64.
+    fn fnv(bytes: &[u8]) -> u64 {
+        let mut h = 0xcbf2_9ce4_8422_2325_u64;
+        for b in bytes {
+            h ^= u64::from(*b);
+            h = h.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+        h
+    }
+
+    /// A fixed map: names that sort differently by name and by size, three shapes, values with distinct bit patterns.
+    fn fixed_map() -> Result<VarMap> {
+        let m = VarMap::new();
+        m.insert(Var::new(
+            "w.b",
+            Shape::from_dims(&[2, 3]),
+            vec![1.5_f32, -2.0, 3.25, 0.0, -0.0, 7.0],
+        )?);
+        m.insert(Var::new(
+            "w.a",
+            Shape::from_dims(&[4]),
+            vec![0.1_f32, 0.2, 0.3, f32::MIN_POSITIVE],
+        )?);
+        m.insert(Var::new("bias", Shape::from_dims(&[1]), vec![42.0_f32])?);
+        Ok(m)
+    }
+
+    /// The saved FILE, byte for byte (MLMF move, survey S1: `VarMap::save` writes through
+    /// `mlmf-safetensors`' `encode_safetensors`). The digest was recorded from the previous writer
+    /// (`safetensors::tensor::serialize_to_file`) before the swap, so the swap cannot change a byte.
+    #[test]
+    fn save_writes_the_same_file_bytes_as_before() -> Result<()> {
+        let dir = tempfile_dir();
+        let path = dir.join("fixed.safetensors");
+        fixed_map()?.save(&path)?;
+        let bytes = std::fs::read(&path).unwrap();
+        println!("SAVE digest={:#018x} len={}", fnv(&bytes), bytes.len());
+        assert_eq!(fnv(&bytes), SAVED_FILE_DIGEST);
+        assert_eq!(bytes.len(), SAVED_FILE_LEN);
+        // The file is a valid safetensors image to the reference reader, tensor by tensor.
+        let st = SafeTensors::deserialize(&bytes).unwrap();
+        assert_eq!(st.len(), 3);
+        let a = st.tensor("w.a").unwrap();
+        assert_eq!(a.shape(), [4]);
+        assert_eq!(&a.data()[..4], &0.1_f32.to_le_bytes());
+        Ok(())
+    }
+
+    /// Sabotage sibling: one changed value moves the digest.
+    #[test]
+    fn a_changed_value_changes_the_saved_file() -> Result<()> {
+        let dir = tempfile_dir();
+        let path = dir.join("other.safetensors");
+        let m = fixed_map()?;
+        m.insert(Var::new("bias", Shape::from_dims(&[1]), vec![43.0_f32])?);
+        m.save(&path)?;
+        assert_ne!(fnv(&std::fs::read(&path).unwrap()), SAVED_FILE_DIGEST);
+        Ok(())
+    }
+
+    fn tempfile_dir() -> std::path::PathBuf {
+        let d = std::env::temp_dir().join(format!(
+            "fuel-nn-varmap-{}-{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    const SAVED_FILE_DIGEST: u64 = 0x1635_2b98_5925_1fd8;
+    const SAVED_FILE_LEN: usize = 228;
+
     #[test]
     fn save_and_load_roundtrips() -> Result<()> {
         let tmp = std::env::temp_dir().join("fuel_lazy_varmap_save_load.safetensors");
