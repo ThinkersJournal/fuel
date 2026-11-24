@@ -6,7 +6,7 @@
 //! The operands are built from LOGICAL codes with the kernel layout written out
 //! longhand below (OC-major; nibble `k % 8` of word `k / 8`; zeros nibble
 //! `g % 8` of word `g / 8`; scales entry `g`), independently of
-//! `fuel_quantized::awq_repack`, so a layout error in either would show here.
+//! `ml_convertant_awq`, so a layout error in either would show here.
 //!
 //! Not `#[ignore]`d: the file is `cfg(feature = "cuda")`, so no CI leg builds it,
 //! and `require_gpu_run_lock` plus `CudaDevice::new` fail loudly without the

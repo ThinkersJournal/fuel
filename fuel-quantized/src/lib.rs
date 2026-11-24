@@ -15,7 +15,6 @@
 //! their own crates and implement the same trait pair from
 //! `fuel-core-types`.
 
-pub mod awq_repack;
 pub mod cpu;
 pub mod dequant;
 pub mod iq4;

@@ -13,7 +13,7 @@
 //! Inputs: `[activations, weight, zeros, scales]`. The three quantized
 //! operands are in the layout baracuda's AWQ GEMM kernel reads (documented on
 //! baracuda's `Int4AwqGemmArgs`, alpha.147), NOT the HuggingFace checkpoint
-//! layout. `fuel_quantized::awq_repack::repack_hf_awq_for_kernel` converts a
+//! layout. `ml_convertant_awq::repack_for_kernel` converts a
 //! checkpoint's `qweight`/`qzeros`/`scales` into it on the host. Everything is
 //! OC-major (`N` = output channels, `K` = input features,
 //! `groups = K / group_size`, `mult = 128 / group_size`):
@@ -78,7 +78,7 @@ use fuel_ir::{DType, Shape};
 /// with `groups = k / group_size` and `mult = 128 / group_size`. `None` when
 /// `group_size` is not 64 or 128 or does not divide `k`.
 ///
-/// The same rule as `fuel_quantized::awq_repack::awq_zeros_w` (`fuel-graph`
+/// The same rule as `ml_convertant_awq::kernel_zeros_w` (`fuel-graph`
 /// cannot depend on `fuel-quantized`, so the rule is repeated and pinned by a
 /// test there).
 pub fn awq_zeros_w(k: usize, group_size: usize) -> Option<usize> {

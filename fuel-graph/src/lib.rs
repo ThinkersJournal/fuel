@@ -7379,7 +7379,7 @@ impl NodeHandle {
     /// `group_size` must be 64 or 128 and evenly divide `K`; `K` must be a
     /// multiple of 8. `split_k_iters` is a CUDA launch-tuning parameter the
     /// decompose path ignores.
-    /// `fuel_quantized::awq_repack::repack_hf_awq_for_kernel` produces the
+    /// `ml_convertant_awq::repack_for_kernel` produces the
     /// three quantized operands from a HuggingFace `*-AWQ` checkpoint.
     ///
     /// Emits `Op::Fused(FusedOps::AWQ_MATMUL, FusedOpParams::AwqMatmul

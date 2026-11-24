@@ -65,8 +65,8 @@ SOFTWARE.
   `k_quants.rs` 2162 of 2257, `utils.rs` 428 of 518, and for the since-removed `avx.rs` 613 of 752, `neon.rs` 536 of 697
   (measured 2026-10-25, before the 2026-11-01 removal of the integer dot functions from `k_quants.rs`, so its figure is NOT re-measured; `cpu.rs` 28 of 151 code lines over 25 characters against all of upstream `quantized/*.rs`).
 - Not derived from candle by the same measure: `dequant.rs` (0 of 94 such lines verbatim; it dispatches to
-  `GgmlType::to_float` and holds no block math), `awq_repack.rs` (written against AutoAWQ's layout and
-  baracuda's kernel layout), `lib.rs`. Other candle-derived files elsewhere in this repository are NOT traced
+  `GgmlType::to_float` and holds no block math), `lib.rs`. (`awq_repack.rs`, written against AutoAWQ's layout and
+  baracuda's kernel layout, was removed in row 42 slice C: that unpack and repack now come from `ml-convertant-awq`.) Other candle-derived files elsewhere in this repository are NOT traced
   by this section.
 - Upstream contributors to the traced files up to that commit, by commit count on those paths in candle's
   history: Laurent Mazare (83), ivarflakstad (10), Lukas Kreussel (8), Eric Buehler (6), Nicolas Patry (2),

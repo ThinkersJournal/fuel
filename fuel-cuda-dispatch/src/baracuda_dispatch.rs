@@ -1012,7 +1012,7 @@ pub mod qmatmul {
 // ===========================================================================
 //
 // Four inputs `[activations F16, weight U32, zeros U32, scales F16]` in the
-// kernel layout `fuel_quantized::awq_repack` produces; output `[batch*m, n]`
+// kernel layout `ml_convertant_awq::repack_for_kernel` produces; output `[batch*m, n]`
 // F16. F16 activations only: the kernel is fp16-only, and there is NO binding
 // for BF16/F32 activations. Those are served only if the caller first lowers
 // `AWQ_MATMUL` through its `decompose` (dequantise, then matmul); production

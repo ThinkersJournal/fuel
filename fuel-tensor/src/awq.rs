@@ -249,7 +249,9 @@ impl AwqHostWeight {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fuel_quantized::awq_repack::HF_AWQ_PACK_ORDER;
+    /// AutoAWQ's `order_map`: nibble `i` of an HF-packed word holds logical column `HF_AWQ_PACK_ORDER[i]` of its
+    /// group of 8 (the test helpers pack with it independently of `ml-convertant-awq`).
+    const HF_AWQ_PACK_ORDER: [usize; 8] = [0, 2, 4, 6, 1, 3, 5, 7];
     use safetensors::tensor::TensorView;
 
     /// One located layer of a synthetic safetensors checkpoint, read through `mlmf-awq` and validated by
@@ -560,7 +562,7 @@ mod tests {
     /// the logical zero minus one (GPTQ v1): trained weights are roughly
     /// zero-centred, so the mean of `q - z` in code units is ~0 for the right
     /// reading and ~-1 for a zero stored minus one. The decode here is written
-    /// independently of `awq_repack`.
+    /// independently of `ml-convertant-awq`.
     /// The checkpoint file named by `FUEL_QWEN3_AWQ_DIR`, or `None` after
     /// declaring the skip.
     fn checkpoint_file() -> Option<std::path::PathBuf> {
