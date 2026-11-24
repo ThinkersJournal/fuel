@@ -2294,6 +2294,8 @@ dependencies = [
  "fuel-quantized",
  "fuel-tensor",
  "half",
+ "mlmf-core",
+ "mlmf-safetensors",
  "rand 0.10.3",
  "rand_distr 0.6.0",
  "safetensors",

@@ -21,7 +21,7 @@
 
 use crate::optim::Var;
 use fuel_ir::error::Result;
-use safetensors::tensor::{Dtype, SafeTensors, TensorView};
+use safetensors::tensor::{Dtype, SafeTensors};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
@@ -85,21 +85,24 @@ impl VarMap {
                 (name, bytes, shape)
             })
             .collect();
-        let views: Vec<(String, TensorView<'_>)> = byte_bufs
+        let tensors: Vec<mlmf_safetensors::TensorToWrite<'_>> = byte_bufs
             .iter()
-            .map(|(name, bytes, shape)| {
-                let view =
-                    TensorView::new(Dtype::F32, shape.clone(), bytes.as_slice()).map_err(|e| {
-                        fuel_ir::error::Error::Msg(format!(
-                            "VarMap::save: TensorView for {name}: {e}"
-                        ))
-                        .bt()
-                    });
-                view.map(|v| (name.clone(), v))
+            .map(|(name, bytes, shape)| mlmf_safetensors::TensorToWrite {
+                name,
+                dtype: mlmf_core::DType::F32,
+                shape,
+                data: bytes,
             })
-            .collect::<Result<Vec<_>>>()?;
-        safetensors::tensor::serialize_to_file(views, None, path.as_ref())
+            .collect();
+        let image = mlmf_safetensors::encode_safetensors::<&str, &str>(&tensors, None)
             .map_err(|e| fuel_ir::error::Error::Msg(format!("VarMap::save: {e}")).bt())?;
+        std::fs::write(path.as_ref(), image).map_err(|e| {
+            fuel_ir::error::Error::Msg(format!(
+                "VarMap::save: write {}: {e}",
+                path.as_ref().display()
+            ))
+            .bt()
+        })?;
         Ok(())
     }
 
@@ -201,24 +204,41 @@ mod tests {
         Ok(m)
     }
 
-    /// The saved FILE, byte for byte (MLMF move, survey S1: `VarMap::save` writes through
-    /// `mlmf-safetensors`' `encode_safetensors`). The digest was recorded from the previous writer
-    /// (`safetensors::tensor::serialize_to_file`) before the swap, so the swap cannot change a byte.
+    /// The saved file's TENSOR BYTES, before and after the swap to `mlmf-safetensors`' encoder (MLMF move, survey
+    /// S1). The digest of the data region and the file length were recorded from the previous writer
+    /// (`safetensors::tensor::serialize_to_file`). The header is NOT byte-identical, and the test says so: the
+    /// two writers emit the same JSON object with the members of each tensor entry in a different order
+    /// (`dtype, shape, data_offsets` before, sorted after), which no reader depends on; so the header is
+    /// pinned by what a reader makes of it, not by its bytes.
     #[test]
-    fn save_writes_the_same_file_bytes_as_before() -> Result<()> {
+    fn save_writes_the_same_tensor_bytes_as_before() -> Result<()> {
         let dir = tempfile_dir();
         let path = dir.join("fixed.safetensors");
         fixed_map()?.save(&path)?;
         let bytes = std::fs::read(&path).unwrap();
-        println!("SAVE digest={:#018x} len={}", fnv(&bytes), bytes.len());
-        assert_eq!(fnv(&bytes), SAVED_FILE_DIGEST);
+        let header_len = u64::from_le_bytes(bytes[..8].try_into().unwrap()) as usize;
+        println!(
+            "SAVE data={:#018x} len={}",
+            fnv(&bytes[8 + header_len..]),
+            bytes.len()
+        );
+        assert_eq!(fnv(&bytes[8 + header_len..]), SAVED_DATA_DIGEST);
         assert_eq!(bytes.len(), SAVED_FILE_LEN);
-        // The file is a valid safetensors image to the reference reader, tensor by tensor.
+        // What the reference reader makes of the header and the data, tensor by tensor.
         let st = SafeTensors::deserialize(&bytes).unwrap();
         assert_eq!(st.len(), 3);
-        let a = st.tensor("w.a").unwrap();
-        assert_eq!(a.shape(), [4]);
-        assert_eq!(&a.data()[..4], &0.1_f32.to_le_bytes());
+        let expect: [(&str, &[usize], &[f32]); 3] = [
+            ("bias", &[1], &[42.0]),
+            ("w.a", &[4], &[0.1, 0.2, 0.3, f32::MIN_POSITIVE]),
+            ("w.b", &[2, 3], &[1.5, -2.0, 3.25, 0.0, -0.0, 7.0]),
+        ];
+        for (name, shape, vals) in expect {
+            let t = st.tensor(name).unwrap();
+            assert_eq!(t.dtype(), Dtype::F32, "{name}");
+            assert_eq!(t.shape(), shape, "{name}");
+            let want: Vec<u8> = vals.iter().flat_map(|v| v.to_le_bytes()).collect();
+            assert_eq!(t.data(), want.as_slice(), "{name}");
+        }
         Ok(())
     }
 
@@ -230,7 +250,9 @@ mod tests {
         let m = fixed_map()?;
         m.insert(Var::new("bias", Shape::from_dims(&[1]), vec![43.0_f32])?);
         m.save(&path)?;
-        assert_ne!(fnv(&std::fs::read(&path).unwrap()), SAVED_FILE_DIGEST);
+        let bytes = std::fs::read(&path).unwrap();
+        let h = u64::from_le_bytes(bytes[..8].try_into().unwrap()) as usize;
+        assert_ne!(fnv(&bytes[8 + h..]), SAVED_DATA_DIGEST);
         Ok(())
     }
 
@@ -244,7 +266,8 @@ mod tests {
         d
     }
 
-    const SAVED_FILE_DIGEST: u64 = 0x1635_2b98_5925_1fd8;
+    /// FNV-1a of the data region the old writer produced for `fixed_map()`.
+    const SAVED_DATA_DIGEST: u64 = 0x5ad0_e4bf_5e78_4089;
     const SAVED_FILE_LEN: usize = 228;
 
     #[test]

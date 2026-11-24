@@ -20,6 +20,9 @@ fuel-graph = { workspace = true }
 fuel-loaders = { workspace = true }
 fuel-formats = { workspace = true }
 safetensors = { workspace = true }
+# MLMF move slice F1 (survey S1): VarMap::save writes through mlmf-safetensors' encoder.
+mlmf-core = { version = "0.11.49" }
+mlmf-safetensors = { version = "0.11.49" }
 half = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }

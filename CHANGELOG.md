@@ -15,6 +15,10 @@ This documents the main changes to the `fuel` workspace.
 
 - `fuel_loaders::awq::AwqFile` (`open`, `locate`, `read_layer`), `fuel_loaders::awq::hf_buffers` (validate and decode a layer's tensors) and `fuel_formats::safetensors::MmapedSafetensors::single_file_bytes`; and the re-export `AwqLayerBytes` and the re-export `AwqLayerBytes`: a located AWQ layer's `qweight` / `qzeros` / `scales` (dtype, shape, bytes exactly as stored) read through `mlmf-awq`'s `read_layer` (survey finding F6). Additive: nothing is removed; `fuel_tensor::awq`'s own reader stays until the next slice re-points it. Pinned by `fuel-transformers/tests/qwen3_awq_mlmf_slice_c1.rs` on the real `Qwen3-0.6B-AWQ` checkpoint: 196 layers, 588 tensors byte-identical to the old reader, plus a flipped-byte sabotage sibling.
 
+
+### Changed
+
+- `fuel_nn::VarMap::save` writes through `mlmf-safetensors`' `encode_safetensors` (MLMF move slice F1, survey S1) instead of `safetensors::tensor::serialize_to_file`. The tensor data region and file length are byte-identical to the old writer's for the pinned map (`0x5ad0e4bf5e784089`, 228 bytes); the JSON header is NOT byte-identical (the members of each tensor entry are in a different order: `data_offsets, dtype, shape` sorted, not `dtype, shape, data_offsets`), which no reader depends on, so the file's bytes (a whole-file hash) change. `fuel-nn` gains `mlmf-core` and `mlmf-safetensors` 0.11.49 (already in the lock).
 ### Not verified
 
 - The survey's slice C (unpacking the HF AWQ packing in `mlmf-awq`): `mlmf-awq` 0.11.49 has no unpack API, so that slice still needs an MLMF-side change. Other checkpoints than `Qwen3-0.6B-AWQ`.
