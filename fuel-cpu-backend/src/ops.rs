@@ -13,7 +13,7 @@ use fuel_ir::{DType, Error, HostBuffer, IntDType, Layout, Result, Shape, WithDTy
 use rayon::prelude::*;
 
 /// Get the number of threads to use for parallelism.
-#[cfg(all(not(feature = "mkl"), not(feature = "accelerate")))]
+#[cfg(not(feature = "accelerate"))]
 pub(crate) fn get_num_threads() -> usize {
     match std::env::var("RAYON_NUM_THREADS") {
         Ok(s) => s.parse::<usize>().unwrap_or_else(|_| num_cpus::get()),
@@ -1437,7 +1437,7 @@ impl MatMul {
 impl Map2 for MatMul {
     const OP: &'static str = "mat_mul";
 
-    #[cfg(all(not(feature = "mkl"), not(feature = "accelerate")))]
+    #[cfg(not(feature = "accelerate"))]
     fn f<T: 'static + WithDType + num_traits::Num + Copy>(
         &self,
         lhs: &[T],
@@ -1656,124 +1656,6 @@ impl Map2 for MatMul {
         }
         Ok(dst)
     }
-
-    #[cfg(feature = "mkl")]
-    fn f<T: 'static + WithDType + num_traits::Num + Copy>(
-        &self,
-        lhs: &[T],
-        lhs_l: &Layout,
-        rhs: &[T],
-        rhs_l: &Layout,
-    ) -> Result<Vec<T>> {
-        let (b, m, n, k) = self.0;
-        let lhs = &lhs[lhs_l.start_offset()..];
-        let rhs = &rhs[rhs_l.start_offset()..];
-
-        let lhs_stride = lhs_l.stride_unsigned();
-        let rhs_stride = rhs_l.stride_unsigned();
-
-        let (a_skip, b_skip) = self.ab_skip(lhs_l, rhs_l)?;
-        let c_skip: usize = m * n;
-
-        let rhs_m1 = rhs_stride[rhs_stride.len() - 1];
-        let rhs_m2 = rhs_stride[rhs_stride.len() - 2];
-        let lhs_m1 = lhs_stride[lhs_stride.len() - 1];
-        let lhs_m2 = lhs_stride[lhs_stride.len() - 2];
-
-        let (lda, transa) = if (rhs_m1 == 1 || n == 1) && (rhs_m2 == n || k == 1) {
-            (n as i32, b'N')
-        } else if rhs_m1 == k && rhs_m2 == 1 {
-            (k as i32, b'T')
-        } else {
-            Err(self.striding_error(lhs_l, rhs_l, "non-contiguous rhs"))?
-        };
-        // The b tensor has dims batching, m, k (lhs)
-        let (ldb, transb) = if (lhs_m1 == 1 || k == 1) && (lhs_m2 == k || m == 1) {
-            (k as i32, b'N')
-        } else if lhs_m1 == m && lhs_m2 == 1 {
-            (m as i32, b'T')
-        } else {
-            Err(self.striding_error(lhs_l, rhs_l, "non-contiguous lhs"))?
-        };
-
-        let mut dst = vec![T::zero(); b * m * n];
-        match T::DTYPE {
-            DType::F16 => {
-                for step in 0..b {
-                    let lhs_p = &lhs[step * a_skip..];
-                    let rhs_p = &rhs[step * b_skip..];
-                    let dst_p = &mut dst[step * c_skip..];
-                    unsafe {
-                        let a = rhs_p.as_ptr() as *const half::f16;
-                        let b = lhs_p.as_ptr() as *const half::f16;
-                        let c = dst_p.as_mut_ptr() as *mut half::f16;
-                        let a = std::slice::from_raw_parts(a, a_skip);
-                        let b = std::slice::from_raw_parts(b, b_skip);
-                        let c = std::slice::from_raw_parts_mut(c, c_skip);
-                        crate::mkl::hgemm(
-                            transa,
-                            transb,
-                            /* m= */ n as i32,
-                            /* n= */ m as i32,
-                            /* k= */ k as i32,
-                            /* alpha= */ half::f16::ONE,
-                            /* a= */ a,
-                            /* lda= */ lda,
-                            /* b= */ b,
-                            /* ldb= */ ldb,
-                            /* beta= */ half::f16::ZERO,
-                            /* c= */ c,
-                            /* ldc= */ n as i32,
-                        )
-                    }
-                }
-            }
-            DType::F32 => {
-                for step in 0..b {
-                    let lhs_p = &lhs[step * a_skip..];
-                    let rhs_p = &rhs[step * b_skip..];
-                    let dst_p = &mut dst[step * c_skip..];
-                    unsafe {
-                        let a = rhs_p.as_ptr() as *const f32;
-                        let b = lhs_p.as_ptr() as *const f32;
-                        let c = dst_p.as_mut_ptr() as *mut f32;
-                        let a = std::slice::from_raw_parts(a, a_skip);
-                        let b = std::slice::from_raw_parts(b, b_skip);
-                        let c = std::slice::from_raw_parts_mut(c, c_skip);
-                        crate::mkl::sgemm(
-                            transa, transb, /* m= */ n as i32, /* n= */ m as i32,
-                            /* k= */ k as i32, /* alpha= */ 1., /* a= */ a,
-                            /* lda= */ lda, /* b= */ b, /* ldb= */ ldb,
-                            /* beta= */ 0., /* c= */ c, /* ldc= */ n as i32,
-                        )
-                    }
-                }
-            }
-            DType::F64 => {
-                for step in 0..b {
-                    let lhs_p = &lhs[step * a_skip..];
-                    let rhs_p = &rhs[step * b_skip..];
-                    let dst_p = &mut dst[step * c_skip..];
-                    unsafe {
-                        let a = rhs_p.as_ptr() as *const f64;
-                        let b = lhs_p.as_ptr() as *const f64;
-                        let c = dst_p.as_mut_ptr() as *mut f64;
-                        let a = std::slice::from_raw_parts(a, a_skip);
-                        let b = std::slice::from_raw_parts(b, b_skip);
-                        let c = std::slice::from_raw_parts_mut(c, c_skip);
-                        crate::mkl::dgemm(
-                            transa, transb, /* m= */ n as i32, /* n= */ m as i32,
-                            /* k= */ k as i32, /* alpha= */ 1., /* a= */ a,
-                            /* lda= */ lda, /* b= */ b, /* ldb= */ ldb,
-                            /* beta= */ 0., /* c= */ c, /* ldc= */ n as i32,
-                        )
-                    }
-                }
-            }
-            dtype => Err(Error::UnsupportedDTypeForOp(dtype, "matmul").bt())?,
-        }
-        Ok(dst)
-    }
 }
 
 pub fn elu<T: num_traits::Float>(v: T, alpha: T) -> T {
@@ -1899,5 +1781,113 @@ pub fn binary_dispatch<B: BinaryOpT>(
             op: B::NAME,
         }
         .bt()),
+    }
+}
+
+#[cfg(test)]
+mod matmul_dtype_oracle {
+    //! ROADMAP row 167 part 4: the `mkl` feature used to replace `MatMul` for f32, f64 and f16 with
+    //! `sgemm_` / `dgemm_` / `hgemm_`. With it gone these dtypes run the portable `gemm`-crate path; this
+    //! pins f64 and f16 (non-square, batched, `m == 1`) to a scalar f64 reference. Tolerances are
+    //! calibrated by the sabotage sibling below, not inherited.
+    use super::*;
+    use crate::utils::Map2;
+    use fuel_ir::{Layout, Shape};
+
+    /// `[b, m, k] x [b, k, n]` reference in f64.
+    fn reference(lhs: &[f64], rhs: &[f64], (b, m, n, k): (usize, usize, usize, usize)) -> Vec<f64> {
+        let mut out = vec![0.0; b * m * n];
+        for bi in 0..b {
+            for i in 0..m {
+                for j in 0..n {
+                    let mut acc = 0.0;
+                    for p in 0..k {
+                        acc += lhs[bi * m * k + i * k + p] * rhs[bi * k * n + p * n + j];
+                    }
+                    out[bi * m * n + i * n + j] = acc;
+                }
+            }
+        }
+        out
+    }
+
+    /// Worst `|got - want| / max(|want|, 1)`.
+    fn worst_rel(got: &[f64], want: &[f64]) -> f64 {
+        assert_eq!(got.len(), want.len());
+        got.iter()
+            .zip(want)
+            .map(|(g, w)| (g - w).abs() / w.abs().max(1.0))
+            .fold(0.0, f64::max)
+    }
+
+    fn data(n: usize, seed: f64) -> Vec<f64> {
+        // Multiples of 1/8 in [-2, 2): exactly representable in f16, so the f16 inputs equal the f64 ones.
+        (0..n)
+            .map(|i| ((((i as f64) * 7.0 + seed) % 32.0) - 16.0) / 8.0)
+            .collect()
+    }
+
+    const SHAPES: [(usize, usize, usize, usize); 4] =
+        [(1, 3, 5, 4), (2, 4, 3, 7), (3, 1, 6, 5), (1, 8, 8, 8)];
+
+    #[test]
+    fn f64_matmul_matches_the_scalar_reference() {
+        for bmnk in SHAPES {
+            let (b, m, n, k) = bmnk;
+            let (lhs, rhs) = (data(b * m * k, 1.0), data(b * k * n, 5.0));
+            let lhs_l = Layout::contiguous(Shape::from_dims(&[b, m, k]));
+            let rhs_l = Layout::contiguous(Shape::from_dims(&[b, k, n]));
+            let got = MatMul(bmnk)
+                .f(&lhs, &lhs_l, &rhs, &rhs_l)
+                .expect("f64 matmul");
+            let err = worst_rel(&got, &reference(&lhs, &rhs, bmnk));
+            assert!(err < 1e-12, "f64 {bmnk:?}: worst relative error {err:e}");
+        }
+    }
+
+    #[test]
+    fn f16_matmul_matches_the_scalar_reference() {
+        use half::f16;
+        for bmnk in SHAPES {
+            let (b, m, n, k) = bmnk;
+            let (lhs, rhs) = (data(b * m * k, 3.0), data(b * k * n, 9.0));
+            let lhs16: Vec<f16> = lhs.iter().map(|&v| f16::from_f64(v)).collect();
+            let rhs16: Vec<f16> = rhs.iter().map(|&v| f16::from_f64(v)).collect();
+            let lhs_l = Layout::contiguous(Shape::from_dims(&[b, m, k]));
+            let rhs_l = Layout::contiguous(Shape::from_dims(&[b, k, n]));
+            let got = MatMul(bmnk)
+                .f(&lhs16, &lhs_l, &rhs16, &rhs_l)
+                .expect("f16 matmul");
+            let got: Vec<f64> = got.iter().map(|v| v.to_f64()).collect();
+            let err = worst_rel(&got, &reference(&lhs, &rhs, bmnk));
+            // f16 has an 11-bit significand: the output rounding alone is ~5e-4 relative.
+            assert!(err < 8e-3, "f16 {bmnk:?}: worst relative error {err:e}");
+        }
+    }
+
+    /// Sabotage sibling: the comparison must be able to fail. A reference computed against the TRANSPOSED
+    /// right-hand side (the classic layout slip) differs from the result by far more than either tolerance.
+    #[test]
+    fn the_oracle_sees_a_transposed_operand() {
+        let bmnk = (1, 3, 5, 4);
+        let (b, m, n, k) = bmnk;
+        let (lhs, rhs) = (data(b * m * k, 1.0), data(b * k * n, 5.0));
+        let lhs_l = Layout::contiguous(Shape::from_dims(&[b, m, k]));
+        let rhs_l = Layout::contiguous(Shape::from_dims(&[b, k, n]));
+        let got = MatMul(bmnk)
+            .f(&lhs, &lhs_l, &rhs, &rhs_l)
+            .expect("f64 matmul");
+        // rhs read as [n, k] row-major instead of [k, n].
+        let mut wrong_rhs = vec![0.0; k * n];
+        for p in 0..k {
+            for j in 0..n {
+                wrong_rhs[p * n + j] = rhs[j * k + p];
+            }
+        }
+        let wrong = reference(&lhs, &wrong_rhs, bmnk);
+        assert!(
+            worst_rel(&got, &wrong) > 0.1,
+            "a transposed operand must read as a large error, or the tolerances above are vacuous"
+        );
     }
 }

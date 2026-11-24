@@ -19,9 +19,6 @@
 //! `--sentence` flags are accepted and run sequentially over a host-side
 //! loop, matching the `bert` binary's pattern.
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

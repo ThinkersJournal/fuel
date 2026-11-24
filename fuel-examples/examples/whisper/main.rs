@@ -8,9 +8,6 @@
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 use anyhow::{Error as E, Result};
 use clap::{Parser, ValueEnum};
 use hf_hub::{Repo, RepoType, api::sync::Api};
