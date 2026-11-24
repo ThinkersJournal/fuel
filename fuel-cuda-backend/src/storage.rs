@@ -3856,8 +3856,8 @@ fn gemm_config<T>(
         (ld, Op::T)
     } else {
         Err(CudaError::MatMulNonContiguous {
-            lhs_stride: lhs_l.clone(),
-            rhs_stride: rhs_l.clone(),
+            lhs_stride: Box::new(lhs_l.clone()),
+            rhs_stride: Box::new(rhs_l.clone()),
             mnk: (m, n, k),
         })?
     };
@@ -3871,8 +3871,8 @@ fn gemm_config<T>(
         (ld, Op::T)
     } else {
         Err(CudaError::MatMulNonContiguous {
-            lhs_stride: lhs_l.clone(),
-            rhs_stride: rhs_l.clone(),
+            lhs_stride: Box::new(lhs_l.clone()),
+            rhs_stride: Box::new(rhs_l.clone()),
             mnk: (m, n, k),
         })?
     };
@@ -3898,8 +3898,8 @@ fn gemm_config<T>(
         [stride] => stride,
         [] => m * k,
         _ => Err(CudaError::MatMulNonContiguous {
-            lhs_stride: lhs_l.clone(),
-            rhs_stride: rhs_l.clone(),
+            lhs_stride: Box::new(lhs_l.clone()),
+            rhs_stride: Box::new(rhs_l.clone()),
             mnk: (m, n, k),
         })?,
     };
@@ -3910,8 +3910,8 @@ fn gemm_config<T>(
         [stride] => stride,
         [] => n * k,
         _ => Err(CudaError::MatMulNonContiguous {
-            lhs_stride: lhs_l.clone(),
-            rhs_stride: rhs_l.clone(),
+            lhs_stride: Box::new(lhs_l.clone()),
+            rhs_stride: Box::new(rhs_l.clone()),
             mnk: (m, n, k),
         })?,
     };

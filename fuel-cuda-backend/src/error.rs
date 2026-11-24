@@ -74,8 +74,8 @@ pub enum CudaError {
         "matmul is only supported for contiguous tensors lstride: {lhs_stride:?} rstride: {rhs_stride:?} mnk: {mnk:?}"
     )]
     MatMulNonContiguous {
-        lhs_stride: Layout,
-        rhs_stride: Layout,
+        lhs_stride: Box<Layout>,
+        rhs_stride: Box<Layout>,
         mnk: (usize, usize, usize),
     },
 
@@ -106,5 +106,38 @@ pub trait WrapErr<O> {
 impl<O, E: Into<CudaError>> WrapErr<O> for std::result::Result<O, E> {
     fn w(self) -> std::result::Result<O, fuel_ir::Error> {
         self.map_err(|e| fuel_ir::Error::cuda(e.into()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `MatMulNonContiguous` carries two `Layout`s; held inline they made EVERY `Result<_, CudaError>` on the CUDA path
+    /// 424 bytes (row 38, `clippy::large_enum_variant`). Born red against the inline layouts; the bound keeps the lint
+    /// from coming back if a large payload is added inline again.
+    #[test]
+    fn cuda_error_stays_small() {
+        let size = std::mem::size_of::<CudaError>();
+        assert!(
+            size <= 100,
+            "CudaError is {size} bytes; box the large variant's payload"
+        );
+    }
+
+    /// Boxing the layouts must not change what the error says: the Display text is pinned byte for byte.
+    #[test]
+    fn matmul_non_contiguous_display_is_unchanged() {
+        let lhs = Layout::contiguous((2usize, 3usize));
+        let rhs = Layout::contiguous((3usize, 4usize));
+        let e = CudaError::MatMulNonContiguous {
+            lhs_stride: Box::new(lhs),
+            rhs_stride: Box::new(rhs),
+            mnk: (2, 4, 3),
+        };
+        assert_eq!(
+            e.to_string(),
+            "matmul is only supported for contiguous tensors lstride: Layout { shape: [2, 3], stride: [3, 1], start_offset: 0 } rstride: Layout { shape: [3, 4], stride: [4, 1], start_offset: 0 } mnk: (2, 4, 3)"
+        );
     }
 }
