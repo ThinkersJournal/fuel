@@ -6,9 +6,6 @@
 // we recompute over the full prefix per generated token (O(n²) but
 // correct).
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

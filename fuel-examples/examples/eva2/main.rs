@@ -2,9 +2,6 @@
 //! EVA-02: Explore the limits of Visual representation at scAle
 //! https://github.com/baaivision/EVA
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

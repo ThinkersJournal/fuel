@@ -33,4 +33,3 @@
     cudnn      = ["fuel/cudnn"]
     default    = []
     metal      = ["fuel/metal"]
-    mkl        = ["fuel/mkl"]

@@ -13,7 +13,7 @@
 //!
 //! This gate DERIVES that rule from the three manifests rather than encoding a
 //! snapshot ("5 shared, 5 fuel-tensor-only"). The snapshot is true today
-//! (fuel-transformers carries accelerate/cuda/cudnn/mkl/metal, a strict subset of
+//! (fuel-transformers carries accelerate/cuda/cudnn/metal, a strict subset of
 //! fuel-tensor's ten) but a constant assertion stays green the day fuel-transformers
 //! gains, say, `telemetry` and the facade is not updated — the models then build
 //! without it and nothing complains. Deriving from the manifests makes that RED.

@@ -15,9 +15,6 @@
 //!   `forward(&[next_token], pos)` call rebuilds the graph from
 //!   scratch per step — slow but correct.
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

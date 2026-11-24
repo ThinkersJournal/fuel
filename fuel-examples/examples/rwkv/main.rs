@@ -19,9 +19,6 @@
 //!   --variant 7 --prompt "The Eiffel tower is in the city of"
 //! ```
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

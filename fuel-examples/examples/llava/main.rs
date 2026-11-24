@@ -21,9 +21,6 @@
 //!   `<image>` somewhere in the text and replacing it with the
 //!   image features in-place is left to a v2 of this binary.
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

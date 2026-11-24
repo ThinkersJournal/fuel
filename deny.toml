@@ -6,11 +6,10 @@
 # passes on any allowed option).
 
 [graph]
-# The graph a default build sees, which is what the CI builds. Checking `all-features = true` ALSO reports
-# the optional `mkl` feature's tree: `intel-mkl-src` 0.8.1 (licence-file License.txt, no SPDX expression)
-# and its build dependency `ocipkg` 0.2.9 (RUSTSEC-2026-0449 unmaintained, RUSTSEC-2026-0450 path-traversal
-# vulnerability, no fixed version). Those need a policy decision (ROADMAP row 167, part 4), so they are
-# neither hidden nor ignored here: they are listed in the row.
+# The graph a default build sees, which is what the CI builds. Until 2026-11-22 checking `all-features = true`
+# ALSO reported the optional `mkl` feature's tree (`intel-mkl-src` 0.8.1, unlicensed, and its build dependency
+# `ocipkg` 0.2.9, RUSTSEC-2026-0449 and -0450). The feature and the crate were removed (ROADMAP row 167, part 4),
+# and `--all-features` now reports nothing the default graph does not.
 all-features = false
 
 [advisories]

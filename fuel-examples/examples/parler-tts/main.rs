@@ -16,9 +16,6 @@
 // Parler checkpoint — they are not part of this migration's scope.
 // The binary compiles and the eager API is fully removed.
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

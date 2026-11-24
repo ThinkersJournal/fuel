@@ -536,12 +536,8 @@ Undefined symbols for architecture arm64:
           ld: symbol(s) not found for architecture arm64
 ```
 
-This is likely due to a missing linker flag that was needed to enable the mkl library. You
-can try adding the following for mkl at the top of your binary:
-```rust
-extern crate intel_mkl_src;
-```
-or for accelerate:
+This is likely due to a missing linker flag that was needed to enable the accelerate library. You
+can try adding the following at the top of your binary:
 ```rust
 extern crate accelerate_src;
 ```
