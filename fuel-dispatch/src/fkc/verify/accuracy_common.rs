@@ -211,6 +211,7 @@ pub(crate) type Runner<'a> = dyn Fn(&BindingEntry, OpParams, &[HostTensor], Vec<
 
 /// The reference a kernel is compared with when no `f64` host formula exists:
 /// `(params, inputs, out_shape) -> f32 output`.
+#[cfg(feature = "vulkan")]
 pub(crate) type Reference<'a> =
     dyn Fn(OpParams, &[HostTensor], Vec<usize>) -> Result<Vec<f32>, VerifyError> + 'a;
 
@@ -271,6 +272,7 @@ pub(crate) const SOFTMAX_SHAPES: &[(usize, usize)] = &[
 ];
 
 /// `(outer, seq, head_dim)`: decode (seq 1), prefill (seq 21), and wider.
+#[cfg(feature = "vulkan")]
 pub(crate) const ROPE_SHAPES: &[(usize, usize, usize)] = &[
     (16, 1, 128),
     (8, 1, 128),
@@ -386,6 +388,7 @@ pub(crate) fn measure_softmax(
 
 /// `cos`/`sin` tables `[seq, head_dim]` with the rotate-half layout (the angle repeats over
 /// the two halves), position `p`, frequency `10000^(-2j / head_dim)`.
+#[cfg(feature = "vulkan")]
 pub(crate) fn rope_tables(seq: usize, hd: usize) -> (Vec<f32>, Vec<f32>) {
     let half = hd / 2;
     let mut cos = vec![0f32; seq * hd];
@@ -401,6 +404,7 @@ pub(crate) fn rope_tables(seq: usize, hd: usize) -> (Vec<f32>, Vec<f32>) {
     (cos, sin)
 }
 
+#[cfg(feature = "vulkan")]
 pub(crate) fn measure_rope(
     run: &Runner,
     reference: &Reference,

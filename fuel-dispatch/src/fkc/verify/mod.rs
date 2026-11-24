@@ -153,9 +153,9 @@ pub use ulp::{
 };
 // The per-op transcendental classification — the SINGLE source `jit_ingest`'s
 // advisory ULP band shares with the region-level check above so the two never
-// drift. Gated like `jit_ingest`'s consumer of it (cuda, or jit under test): an
+// drift. Gated like `jit_ingest`'s consumer of it (`jit` AND (`cuda` or test)): an
 // un-gated re-export would warn as unused elsewhere.
-#[cfg(any(feature = "cuda", all(feature = "jit", test)))]
+#[cfg(all(feature = "jit", any(feature = "cuda", test)))]
 pub(crate) use ulp::is_transcendental;
 // `CpuInvoker`: the CPU reference invoker `seed_cuda_ledger` diffs CUDA against
 // (cuda, via `super::`). `seed_cpu_ledger` reaches it by submodule path.
@@ -179,7 +179,7 @@ pub use invoker_cuda::CudaInvoker;
     reason = "GAP-236 (unpublished verify API): fkc::verify's modules are private, so nothing outside this crate can reach it. Does NOT retire itself -- the expiry lives in GAP-236 and in Unpopped's handback precondition guard, which fires on their side when the API is named."
 )]
 pub use invoker_vulkan::VulkanInvoker;
-#[cfg(any(feature = "cuda", all(feature = "jit", test)))]
+#[cfg(all(feature = "jit", any(feature = "cuda", test)))]
 pub(crate) use seed_cpu_ledger::to_bytes;
 
 /// The embedded (compile-time) verification ledger. Thin wrapper so callers

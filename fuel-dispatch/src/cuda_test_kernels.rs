@@ -51,10 +51,13 @@ binary_wrapper!(
     add_f32,
     fuel_cuda_backend::baracuda::binary::binary_add_f32_into
 );
+// `add_f64`/`mul_f32`: used only by `jit_ingest`'s tests (a `jit` module), so they exist only under `jit`.
+#[cfg(feature = "jit")]
 binary_wrapper!(
     add_f64,
     fuel_cuda_backend::baracuda::binary::binary_add_f64_into
 );
+#[cfg(feature = "jit")]
 binary_wrapper!(
     mul_f32,
     fuel_cuda_backend::baracuda::binary::binary_mul_f32_into

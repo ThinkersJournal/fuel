@@ -91,9 +91,6 @@ fn rem_python(a: f64, b: f64) -> f64 {
 fn wide(u: f32) -> f32 {
     u * 8.0
 }
-fn unit(u: f32) -> f32 {
-    u
-}
 /// `[0.01, 100)`: strictly positive, spanning four decades.
 fn positive(u: f32) -> f32 {
     0.01 + (u + 1.0) * 0.5 * 99.99
