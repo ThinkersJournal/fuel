@@ -1595,24 +1595,24 @@ fn claimed_op_structural_gate(
     // carries a submitted (elementwise-expressible) decompose. A submitted recipe
     // whose primitive base map differs from Fuel's registered recipe for
     // `claimed` is not the same op; reject before spending any GPU work.
-    if let Some(dec) = &cand.decompose {
-        if !recipe_identity_matches(claimed, dec) {
-            let detail = "submitted recipe's base map differs from Fuel's registered \
+    if let Some(dec) = &cand.decompose
+        && !recipe_identity_matches(claimed, dec)
+    {
+        let detail = "submitted recipe's base map differs from Fuel's registered \
                  recipe for the claimed op — not the same op"
-                .to_string();
-            ledger.upsert(make_record(
-                "recipe_identity",
-                "fail",
-                serde_json::json!({ "detail": detail.clone() }),
-            ));
-            return Err((
-                VerifyVerdict::Fail {
-                    claim: "recipe_identity",
-                    detail,
-                },
-                ledger.records().to_vec(),
-            ));
-        }
+            .to_string();
+        ledger.upsert(make_record(
+            "recipe_identity",
+            "fail",
+            serde_json::json!({ "detail": detail.clone() }),
+        ));
+        return Err((
+            VerifyVerdict::Fail {
+                claim: "recipe_identity",
+                detail,
+            },
+            ledger.records().to_vec(),
+        ));
     }
 
     // (ii) Probe-arity guard: the registered recipe's `decompose` indexes the
@@ -2228,7 +2228,7 @@ fn verify_candidate_on_probe(
         let transcendental = cand
             .decompose
             .as_ref()
-            .is_some_and(|r| region_contains_transcendental(r));
+            .is_some_and(region_contains_transcendental);
         let widen = |b: Bound| {
             if transcendental {
                 widen_bound_for_transcendental(b)

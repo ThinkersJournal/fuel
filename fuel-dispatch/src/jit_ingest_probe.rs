@@ -963,7 +963,7 @@ mod tests {
     ) -> (HostTensor, HostTensor, HostTensor, Vec<usize>) {
         use fuel_graph::build_rope_tables;
         let x_shape = vec![1usize, seq, head_dim];
-        let x_vals = fill_deterministic(seq * head_dim, 0x5EED_D07);
+        let x_vals = fill_deterministic(seq * head_dim, 0x05EE_DD07);
         let (cos, sin) = build_rope_tables(base, 0, seq, head_dim);
         let x = HostTensor {
             dtype: DType::F32,

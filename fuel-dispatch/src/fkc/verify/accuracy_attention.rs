@@ -211,9 +211,6 @@ pub(crate) fn measure_flash_decoding(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fkc::verify::accuracy_common::find_entry;
-    use crate::kernel::KernelBindingTable;
-    use fuel_ir::probe::BackendId;
 
     /// The default placement bound; the contract's `flash-attn` section declares the same number.
     const BOUND: Claim = Claim {

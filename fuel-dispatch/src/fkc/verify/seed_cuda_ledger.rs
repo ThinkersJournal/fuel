@@ -434,10 +434,10 @@ pub fn run_cuda_verification(
         if backend != BackendId::Cuda {
             continue;
         }
-        if let Some(set) = only {
-            if !set.contains(&op) {
-                continue;
-            }
+        if let Some(set) = only
+            && !set.contains(&op)
+        {
+            continue;
         }
         let dtypes_vec = dtypes.to_vec();
         let rev = entry.kernel_revision_hash;
@@ -545,10 +545,10 @@ pub fn run_cuda_verification(
         if backend != BackendId::Cuda {
             continue;
         }
-        if let Some(set) = only {
-            if !set.contains(&op) {
-                continue;
-            }
+        if let Some(set) = only
+            && !set.contains(&op)
+        {
+            continue;
         }
         let Some(&(_, bound)) = MAX_ULP_OPS.iter().find(|(o, _)| *o == op) else {
             continue;

@@ -1537,23 +1537,21 @@ impl PipelinedExecutor {
                     // pure OpKind -> bool predicate with no OpParams access),
                     // so reject N>2 explicitly here, BEFORE the warm pass —
                     // see op_kind_is_capture_writeinto's doc comment.
-                    if op == OpKind::Concat {
-                        if let OpParams::Concat {
+                    if op == OpKind::Concat
+                        && let OpParams::Concat {
                             input_dim_sizes, ..
                         } = &compiled.op_params
-                        {
-                            if input_dim_sizes.len() != 2 {
-                                return Err(Error::Msg(format!(
-                                    "capture_decode: Concat node {:?} has {} inputs; only \
+                        && input_dim_sizes.len() != 2
+                    {
+                        return Err(Error::Msg(format!(
+                            "capture_decode: Concat node {:?} has {} inputs; only \
                                      2-input concat (the rope rotate-half shape) has a \
                                      write-into CUDA path today — N-ary (N>2) concat would \
                                      allocate mid-capture.",
-                                    item.node_id,
-                                    input_dim_sizes.len(),
-                                ))
-                                .bt());
-                            }
-                        }
+                            item.node_id,
+                            input_dim_sizes.len(),
+                        ))
+                        .bt());
                     }
                 }
                 // View / adopt / slot kinds: no alloc, no launch — capture-safe.
@@ -8909,7 +8907,9 @@ mod tests {
             };
             c.to_cpu_bytes()
                 .unwrap()
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
                 .collect()
         };
@@ -8996,7 +8996,9 @@ mod tests {
             };
             c.to_cpu_bytes()
                 .unwrap()
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
                 .collect()
         };
@@ -9087,7 +9089,9 @@ mod tests {
             };
             c.to_cpu_bytes()
                 .unwrap()
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
                 .collect()
         };

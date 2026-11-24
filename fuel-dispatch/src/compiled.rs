@@ -464,25 +464,23 @@ fn produce_pending(
     let _ = (outputs, will_be_waited);
     #[cfg(feature = "cuda")]
     {
-        if will_be_waited {
-            if let Some(out0) = outputs.first() {
-                let guard = out0.read().map_err(|_| {
-                    Error::Msg("output storage lock poisoned recording completion".into()).bt()
-                })?;
-                if let fuel_memory::BackendStorage::Cuda(cuda_bytes) = &guard.inner {
-                    // Step E B1: this is the single CUDA async-submit site — the kernel
-                    // was just enqueued on the device stream. The completion handle's
-                    // lifetime IS the in-flight window, so `CudaCompletion::new`
-                    // increments the per-device in-flight counter here and the handle's
-                    // `Drop` decrements it (covering wait, drain, AND the eviction-drop
-                    // path uniformly — see the type docs). The device location keys the
-                    // counter.
-                    let loc = cuda_bytes.device().location();
-                    let ev = cuda_bytes.record_completion_event()?;
-                    return Ok(CompletionHandle::Pending(Box::new(CudaCompletion::new(
-                        ev, loc,
-                    ))));
-                }
+        if will_be_waited && let Some(out0) = outputs.first() {
+            let guard = out0.read().map_err(|_| {
+                Error::Msg("output storage lock poisoned recording completion".into()).bt()
+            })?;
+            if let fuel_memory::BackendStorage::Cuda(cuda_bytes) = &guard.inner {
+                // Step E B1: this is the single CUDA async-submit site — the kernel
+                // was just enqueued on the device stream. The completion handle's
+                // lifetime IS the in-flight window, so `CudaCompletion::new`
+                // increments the per-device in-flight counter here and the handle's
+                // `Drop` decrements it (covering wait, drain, AND the eviction-drop
+                // path uniformly — see the type docs). The device location keys the
+                // counter.
+                let loc = cuda_bytes.device().location();
+                let ev = cuda_bytes.record_completion_event()?;
+                return Ok(CompletionHandle::Pending(Box::new(CudaCompletion::new(
+                    ev, loc,
+                ))));
             }
         }
     }
