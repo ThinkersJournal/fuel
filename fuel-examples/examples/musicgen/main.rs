@@ -15,9 +15,6 @@
 // TODO: Add a KV cache.
 // TODO: Wire a real T5 encoder via `forward_with_encoder_states`.
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

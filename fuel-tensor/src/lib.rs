@@ -43,6 +43,8 @@
 #![allow(clippy::identity_op)]
 
 pub mod awq;
+mod const_residency;
+pub use const_residency::WeightResidencyStats;
 pub mod cpu_accel;
 pub mod cuda_backend;
 pub mod decode_shape;
@@ -95,9 +97,6 @@ pub use fuel_cuda_backend::builder_arg;
 
 #[cfg(feature = "metal")]
 pub use metal_backend::{MetalDevice, MetalError, MetalStorage};
-
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
 
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;

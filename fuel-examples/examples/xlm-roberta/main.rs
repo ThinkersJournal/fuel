@@ -15,9 +15,6 @@
 //! batch size 1, no padding inside the prompt, F32 weights, default
 //! `xlm-roberta-base` config.
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

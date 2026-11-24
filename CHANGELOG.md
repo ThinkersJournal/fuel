@@ -164,6 +164,42 @@ This documents the main changes to the `fuel` workspace.
 
 - Kernel speed (correctness only); CUDA; a real GGUF file of these types on Vulkan.
 
+## v0.50.1 - 2026-11-24 (PM-allocated; row 172, device-level weight residency; a minor-line change, not breaking)
+
+### Changed
+
+- **MEMORY BEHAVIOUR CHANGE on every non-CPU realize through `InferenceContext`, default ON.** The model's weights are now kept resident on the `Device` after the realize that uploaded them, keyed by the identity of the host `Arc` they were built from, and shared by every context on that device (a consumer that makes a context per sequence, as lightbulb does, now finds the model already uploaded). Before this a prefill built a fresh graph and re-copied and re-uploaded the whole model on every call, about 2 to 3 s of a 21-token Qwen3-0.6B Q4_K_M prefill on Vulkan. **Retained memory: about 1.19 GB per Qwen3-0.6B Q4_K_M (it has an f32 embedding table) until `Device::clear_weight_residency()` or eviction.**
+- **Bounds.** The registry holds at most 40% of the device's reported memory (Vulkan: the `VK_EXT_memory_budget` device-local budget; `FUEL_WEIGHT_RESIDENCY_BYTES=<n>` sets the cap outright), evicting least recently used first; a weight larger than the whole cap is served to the realize that uploaded it and not kept; a device that cannot report its memory gets no residency (the old behaviour). A model whose last `Arc` is dropped is evicted at the NEXT seeding on that device, not instantly. **`Device::clear_weight_residency()` is the unload call**: use it when a model is unloaded and the process goes on using the device.
+- **Opt-out:** `FUEL_WEIGHT_RESIDENCY=0` restores the old behaviour. CPU devices are untouched (test `a_cpu_realize_leaves_the_weight_residency_untouched`).
+- `fuel-graph`: the `Arc`-fed `Const` constructors (`from_f32`/`bf16`/`f16`/`u32` and their `_on` forms, `const_f32`/`bf16`/`f16`/`u32`/`u8_like`) record a weak `ConstOrigin`; new public `ConstOrigin`, `ConstOriginKey`, `Graph::set_const_origin`, `Graph::const_origins`. `fuel-tensor`: new public `Device::weight_residency_stats`, `Device::clear_weight_residency`, `WeightResidencyStats` (non-exhaustive). No signature changed.
+
+### Measured (Vulkan, RTX 4070 Laptop 8 GB, Qwen3-0.6B Q4_K_M GGUF, 21-token prompt)
+
+- Same-context second prefill 2.5 to 3.5 s with the residency off, 0.60 to 0.74 s on; first decode call 2.46 s off, 0.47 s on; steady decode 30 ms both (n = 2 processes per mode, 3 runs plus a warm-up each, 4 contexts per process).
+- VRAM (`nvidia-smi` every 25 ms, n = 2 per mode): peak 1,969 MiB off and on; with every context dropped and the device alive 524 MiB off, 1,711 MiB on, back to 524 MiB after `clear_weight_residency`.
+- Two different models back and forth (Qwen3-0.6B Q4_K_M and TinyLlama-1.1B-Chat Q4_0, 3 round trips, n = 2 processes per setting, plus 2 with a 1.6 GB cap): 54 visits over 9 runs produced exactly one logits hash list per model (FNV over every call's logits) for residency off, on and capped; peak 2,723 MiB off, 2,729 on, 2,473 and 2,729 capped; with the device alive 1,536 MiB off, 2,729 on (2.37 GB resident, cap 3.01 GB here), about 1,290 to 1,540 after clear.
+
+### Not verified
+
+- Other models or loaders (the mechanism covers every `Arc`-fed `Const`, measured on two models only), CUDA, a loaded GPU, the AMD iGPU, lightbulb's own model end to end. With a cap below one model the LRU scan thrashes (every visit re-uploads what the other evicted) and was not shown to beat the old behaviour; the swap peak did not fall under the cap (an evicted storage a running realize still holds stays alive until it ends).
+
+## v0.50.0 - 2026-11-24 (PM-allocated; BREAKING: the `mkl` feature is removed; row 167 part 4)
+
+### Removed (BREAKING)
+
+- The `mkl` Cargo feature of `fuel-cpu-backend`, `fuel-tensor`, `fuel-transformers`, `fuel-examples`, `fuel-inference`, `fuel-training` and `fuel`, and the `intel-mkl-src` dependency (workspace, `fuel-datasets`, `fuel-examples`, `fuel-tensor`, `fuel-transformers`, `fuel-cpu-backend`). Gone with it: `fuel_cpu_backend::mkl` (raw FFI to `sgemm_`, `dgemm_`, `hgemm_` and 24 VML functions that nothing in the repository called), the MKL `MatMul` implementation, `fuel_cpu_backend::has_mkl` and `fuel::utils::has_mkl`, the 93 one-line `extern crate intel_mkl_src;` in `fuel-examples`, and the CI step `Check mkl-gated cpu backend (GAP-247, EXPERIMENT)`. Anyone building with `--features mkl` must drop it; f64 and f16 matmul now run the portable `gemm`-crate path (MKL-backed f32 `MatMul` and `Conv2D` stay in `fuel-mkl-cpu-backend`, which uses the `onemkl` crate and is unchanged).
+- Why: `intel-mkl-src` 0.8.1 is unlicensed and its build dependency `ocipkg` 0.2.9 carries RUSTSEC-2026-0449 (unmaintained) and RUSTSEC-2026-0450 (path traversal, no fixed version). `cargo deny --all-features check advisories licenses bans sources`: 3 errors before, 0 after (whole output read; 39 to 27 `[duplicate]` warnings, no other kind).
+- Consumer scan before deleting: 189 git working trees, 2,961 `Cargo.toml`, 38,722 `.rs` files, no consumer outside the Fuel family (positive control on the Fuel tree: 9, 6 and 5 hits).
+
+### Added
+
+- `ops::matmul_dtype_oracle` in `fuel-cpu-backend`: f64 and f16 `MatMul` against a scalar f64 reference (non-square, batched, `m == 1`), with a sabotage sibling.
+- ARC-006 facade budget 67 -> 66 (`fuel::utils::has_mkl` is gone).
+- ROADMAP row 171 (restore f16 `hgemm` through the `onemkl` crate once it has the f16 `Scalar` impl; rows 168 and 169 were taken by the cuda-reach PR (#704) and 170 by the gate hotfix (#705), so this is 171), blocked on onemkl, not on a consumer. **Lost functionality:** MKL-backed f16 `hgemm` (and f64 `dgemm`) matmul; f16 and f64 `MatMul` now run the portable `gemm`-crate path until the row lands.
+
+### Not verified
+
+- The speed of the portable f64 and f16 matmul against the removed MKL path; builds with `accelerate` or on macOS.
 ## v0.49.14 - 2026-11-23 (PM-allocated; HOTFIX, Vulkan GGUF loader)
 
 ### Fixed

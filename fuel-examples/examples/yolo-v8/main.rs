@@ -10,9 +10,6 @@
 //! HF safetensors load will surface a "pending" runtime error from the
 //! lazy loader stub.
 
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
 #[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 

@@ -22,21 +22,6 @@ pub fn has_accelerate() -> bool {
     cfg!(feature = "accelerate")
 }
 
-/// Returns `true` if this crate was compiled with Intel MKL support.
-///
-/// Moved from `fuel_core::utils::has_mkl` (fuel-core dissolution, GAP-347
-/// PR 7) — same 1:1 feature-forwarding rationale as [`has_accelerate`].
-///
-/// # Example
-///
-/// ```rust
-/// use fuel_cpu_backend::has_mkl;
-/// let _ = has_mkl();
-/// ```
-pub fn has_mkl() -> bool {
-    cfg!(feature = "mkl")
-}
-
 type C = HostBuffer;
 pub trait Map1 {
     fn f<T: WithDType + VecOps>(&self, vs: &[T], layout: &Layout) -> Result<Vec<T>>;
@@ -457,10 +442,10 @@ pub fn unary_map_vec<T: Copy, U: Copy, F: FnMut(T) -> U, FV: FnMut(&[T], &mut [U
 
 #[cfg(test)]
 mod feature_flag_tests {
-    // Only brought in by a test below; under default features (neither
-    // accelerate nor mkl on) every test here is cfg'd out, and an
-    // unconditional `use super::*;` would then be unused.
-    #[cfg(any(feature = "accelerate", feature = "mkl"))]
+    // Only brought in by a test below; under default features (accelerate
+    // off) every test here is cfg'd out, and an unconditional `use super::*;`
+    // would then be unused.
+    #[cfg(feature = "accelerate")]
     use super::*;
 
     // Positive-control tripwires (moved from fuel-core's utils.rs, same
@@ -470,11 +455,5 @@ mod feature_flag_tests {
     #[test]
     fn has_accelerate_is_true_under_its_own_feature() {
         assert!(has_accelerate());
-    }
-
-    #[cfg(feature = "mkl")]
-    #[test]
-    fn has_mkl_is_true_under_its_own_feature() {
-        assert!(has_mkl());
     }
 }
