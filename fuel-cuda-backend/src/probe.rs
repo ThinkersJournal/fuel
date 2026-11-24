@@ -113,9 +113,9 @@ pub fn device_identities() -> Result<Vec<Option<fuel_ir::probe::DeviceIdentity>>
         })?;
         let attr = |a: i32| dev.attribute(a).ok().map(|v| v as u32);
         let pci = match (
-            attr(Attr::PCI_DOMAIN_ID as i32),
-            attr(Attr::PCI_BUS_ID as i32),
-            attr(Attr::PCI_DEVICE_ID as i32),
+            attr(Attr::PCI_DOMAIN_ID),
+            attr(Attr::PCI_BUS_ID),
+            attr(Attr::PCI_DEVICE_ID),
         ) {
             (Some(domain), Some(bus), Some(device)) => Some(fuel_ir::probe::PciAddress {
                 domain,
@@ -160,7 +160,7 @@ pub fn enumerate_devices_uncached() -> Result<Vec<DeviceDescriptor>> {
         let cc = dev.compute_capability().ok();
         let total_mem = dev.total_memory().unwrap_or(0);
         let pci_device_id = dev
-            .attribute(baracuda_cuda_sys::types::CUdevice_attribute::PCI_DEVICE_ID as i32)
+            .attribute(baracuda_cuda_sys::types::CUdevice_attribute::PCI_DEVICE_ID)
             .map(|v| v as u32)
             .unwrap_or(0);
 

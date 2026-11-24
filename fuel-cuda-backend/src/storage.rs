@@ -1041,7 +1041,7 @@ pub struct SliceGuard<'a>(std::marker::PhantomData<&'a ()>);
 
 fn slice_ptr<T: DeviceRepr>(v: &CudaSlice<T>, lo: usize) -> (u64, SliceGuard<'_>) {
     // Base pointer + byte-offset by `lo` elements.
-    let base = v.as_raw().0 as u64;
+    let base = v.as_raw().0;
     let offset_bytes = (lo * std::mem::size_of::<T>()) as u64;
     (base + offset_bytes, SliceGuard(std::marker::PhantomData))
 }
