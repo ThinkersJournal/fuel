@@ -3,6 +3,16 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## Unreleased (row 38; the number is allocated by pm-assist at gate time)
+
+### Breaking
+
+- `fuel-cuda-backend`: `CudaError::MatMulNonContiguous { lhs_stride, rhs_stride, mnk }` now holds `Box<Layout>` for `lhs_stride` and `rhs_stride` (was `Layout`), a field-type change of a public variant (pre-1.0 minor; the crate is published at 0.47.32). It shrinks every `Result<_, CudaError>` on the CUDA path from 424 to under 100 bytes (`clippy::large_enum_variant`). No other repo in the portfolio names the variant (grep of fuel, lightbulb, mlmf, ml-convertant, baracuda, kiss, fireline, vulkane, fishstringer at origin/main); the Display text is byte-identical (pinned by `error::tests::matmul_non_contiguous_display_is_unchanged`; the size by `cuda_error_stays_small`).
+
+### Changed
+
+- Row 38: `cargo clippy --locked --no-deps -p fuel-dispatch -p fuel-cuda-backend --features fuel-dispatch/cuda,fuel-dispatch/jit --all-targets -- -D warnings` exits 0 (clippy 0.1.98): the measured set (183 diagnostics in `fuel-cuda-backend` and 45 in `fuel-dispatch` at the start of slice 3) fixed or, where a consumer exists under another cfg, gated to it; `fuel-dispatch`'s verify harness and seeder carry reasoned `allow(dead_code)`; `push_scalar_arg` is kept as the `Scalar` exhaustiveness guard (GAP-049).
+
 ## v0.47.1 - 2026-11-10 (PM-allocated)
 
 ### Changed
