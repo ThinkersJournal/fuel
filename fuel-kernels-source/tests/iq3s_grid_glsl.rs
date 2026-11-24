@@ -2,11 +2,12 @@
 //! The 512-entry `iq3s_grid` in `fuel-kernels-source/kernels/qmatvec_iq3_s.glsl` must equal
 //! `fuel_quantized::iq_grids::IQ3S_GRID` entry by entry (ROADMAP row 119). The GLSL table is generated
 //! by `scripts/gen_iq3s_glsl.py` from the Rust one, which `scripts/gen_iq_grids.py check` compares to
-//! llama.cpp's `ggml-common.h` at `9d57ce456c`. This test needs no GPU.
+//! llama.cpp's `ggml-common.h` at `9d57ce456c`. This test needs no GPU. It lives in `fuel-kernels-source` (next to the GLSL, so it reads nothing outside its own
+//! package) with `fuel-quantized` as a dev-dependency (dev-dependencies add no layering edge).
 
 use fuel_quantized::iq_grids::IQ3S_GRID;
 
-const GLSL: &str = include_str!("../../fuel-kernels-source/kernels/qmatvec_iq3_s.glsl");
+const GLSL: &str = include_str!("../kernels/qmatvec_iq3_s.glsl");
 
 /// The `0x........u` entries between the `BEGIN IQ3S_GRID` and `END IQ3S_GRID` markers.
 fn glsl_grid(src: &str) -> Vec<u32> {

@@ -2093,6 +2093,9 @@ dependencies = [
 [[package]]
 name = "fuel-kernels-source"
 version = "0.50.2"
+dependencies = [
+ "fuel-quantized",
+]
 
 [[package]]
 name = "fuel-kiss-ref-backend"
