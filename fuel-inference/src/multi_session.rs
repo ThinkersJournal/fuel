@@ -1620,6 +1620,16 @@ pub struct HookContext {
 /// not in `ready`, or that is repeated, is ignored. The hook cannot admit a
 /// session that is not ready (suspended, finished) and cannot change what a
 /// session generates, only when it advances.
+///
+/// **Edge cases, all tested:** an id not in `ready` (stale, invented, suspended,
+/// finished) or repeated is ignored, so no session advances twice in one quantum
+/// or when not ready. An EMPTY answer defers everything: `step` is a single pass
+/// and returns an empty [`StepReport`] (it never loops waiting for progress, and
+/// still counts as a step); starvation is the hook's policy, not a Fuel
+/// guarantee. A hook that PANICS unwinds out of `step`; the hook runs on a
+/// snapshot before the stage mutates anything, so no session is left half
+/// advanced, the hook stays installed (it is not poisoned and will be called
+/// again), and `set_hook(None)` restores the default path.
 pub trait SchedulerHook: Send {
     fn select(&mut self, ctx: &HookContext, ready: &[HookSession]) -> Vec<SessionId>;
 }
@@ -4795,6 +4805,86 @@ mod tests {
             out.iter().all(|(_, t)| t.len() == 3),
             "nothing advanced: {out:?}"
         );
+    }
+
+    /// Edge case: an id the hook returns for a session that is not ready (here a
+    /// suspended one) is ignored: the session is not advanced and is not resumed.
+    #[test]
+    fn paged_scheduler_hook_cannot_advance_a_suspended_session() {
+        let model = tiny_model(9999);
+        let mut s =
+            PagedSessionScheduler::new(&model, paged_budget(), DType::F32, &Device::cpu()).unwrap();
+        let a = s
+            .add_session(&[1, 2, 3], SamplingStrategy::Greedy, None, 6)
+            .unwrap();
+        let b = s
+            .add_session(&[4, 5], SamplingStrategy::Greedy, None, 6)
+            .unwrap();
+        s.step();
+        s.evict_session(a).unwrap();
+        // Ask for the suspended session (and only it, then both, in order).
+        s.set_hook(Some(Box::new(FnHook(
+            move |_: &HookContext, _: &[HookSession]| vec![a, b, a],
+        ))));
+        let report = s.step();
+        assert_eq!(report.advanced, vec![b], "only the ready session advanced");
+        assert!(
+            s.is_suspended(a),
+            "the hook cannot resume a suspended session"
+        );
+    }
+
+    /// Edge case: a hook that returns an EMPTY vec every quantum. `step` is one
+    /// pass: it returns an empty report (counted as a step), advances nothing,
+    /// changes no phase, and never loops waiting for progress.
+    #[test]
+    fn paged_scheduler_hook_empty_answer_step_returns_and_advances_nothing() {
+        let model = tiny_model(9999);
+        let (_ids, adv, mut s) = hook_probe(
+            &model,
+            Box::new(FnHook(|_: &HookContext, _: &[HookSession]| Vec::new())),
+            false,
+        );
+        assert!(adv.is_empty(), "nothing advanced: {adv:?}");
+        let before = s.session_infos();
+        assert!(before.iter().all(|i| i.phase == SessionPhase::Prefill));
+        for batched in [false, true] {
+            let r = if batched { s.step_batched(8) } else { s.step() };
+            assert!(r.advanced.is_empty() && r.finished.is_empty());
+        }
+        assert_eq!(s.session_infos(), before, "no session changed");
+        assert_eq!(s.stats().steps_total, 3, "each empty quantum still counts");
+    }
+
+    /// Edge case: a hook that PANICS unwinds out of `step`, but the scheduler is
+    /// not poisoned: no session was half-advanced (the hook sees a snapshot before
+    /// the stage mutates anything), the hook stays installed, and removing it
+    /// restores the default path with byte-identical output.
+    #[test]
+    fn paged_scheduler_hook_panic_leaves_the_scheduler_usable() {
+        let model = tiny_model(9999);
+        let reference = {
+            let mut s =
+                PagedSessionScheduler::new(&model, paged_budget(), DType::F32, &Device::cpu())
+                    .unwrap();
+            s.add_session(&[1, 2, 3], SamplingStrategy::Greedy, None, 5)
+                .unwrap();
+            s.run_to_completion()
+        };
+        let mut s =
+            PagedSessionScheduler::new(&model, paged_budget(), DType::F32, &Device::cpu()).unwrap();
+        s.add_session(&[1, 2, 3], SamplingStrategy::Greedy, None, 5)
+            .unwrap();
+        s.set_hook(Some(Box::new(FnHook(
+            |_: &HookContext, _: &[HookSession]| -> Vec<SessionId> { panic!("policy bug") },
+        ))));
+        let before = s.session_infos();
+        let unwound = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| s.step()));
+        assert!(unwound.is_err(), "the hook's panic propagates out of step");
+        assert_eq!(s.session_infos(), before, "no session was half-advanced");
+        assert!(s.has_hook(), "the hook stays installed (not poisoned)");
+        s.set_hook(None);
+        assert_eq!(s.run_to_completion(), reference, "default path intact");
     }
 
     /// The pressure-valve flow end to end: evict a session to free the pool, let
