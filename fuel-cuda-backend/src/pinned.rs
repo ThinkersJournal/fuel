@@ -271,21 +271,21 @@ impl PinnedHostStorage {
 impl HostStorage for PinnedHostStorage {
     fn as_host_buffer_ref(&self) -> Result<HostBufferRef<'_>> {
         Ok(match self {
-            Self::U8(b) => HostBufferRef::U8(&**b),
-            Self::U32(b) => HostBufferRef::U32(&**b),
-            Self::I16(b) => HostBufferRef::I16(&**b),
-            Self::I32(b) => HostBufferRef::I32(&**b),
-            Self::I64(b) => HostBufferRef::I64(&**b),
-            Self::BF16(b) => HostBufferRef::BF16(&**b),
-            Self::F16(b) => HostBufferRef::F16(&**b),
-            Self::F32(b) => HostBufferRef::F32(&**b),
-            Self::F64(b) => HostBufferRef::F64(&**b),
-            Self::F8E4M3(b) => HostBufferRef::F8E4M3(&**b),
-            Self::F6E2M3(b) => HostBufferRef::F6E2M3(&**b),
-            Self::F6E3M2(b) => HostBufferRef::F6E3M2(&**b),
-            Self::F4(b) => HostBufferRef::F4(&**b),
-            Self::F8E8M0(b) => HostBufferRef::F8E8M0(&**b),
-            Self::Bool(b) => HostBufferRef::Bool(&**b),
+            Self::U8(b) => HostBufferRef::U8(b),
+            Self::U32(b) => HostBufferRef::U32(b),
+            Self::I16(b) => HostBufferRef::I16(b),
+            Self::I32(b) => HostBufferRef::I32(b),
+            Self::I64(b) => HostBufferRef::I64(b),
+            Self::BF16(b) => HostBufferRef::BF16(b),
+            Self::F16(b) => HostBufferRef::F16(b),
+            Self::F32(b) => HostBufferRef::F32(b),
+            Self::F64(b) => HostBufferRef::F64(b),
+            Self::F8E4M3(b) => HostBufferRef::F8E4M3(b),
+            Self::F6E2M3(b) => HostBufferRef::F6E2M3(b),
+            Self::F6E3M2(b) => HostBufferRef::F6E3M2(b),
+            Self::F4(b) => HostBufferRef::F4(b),
+            Self::F8E8M0(b) => HostBufferRef::F8E8M0(b),
+            Self::Bool(b) => HostBufferRef::Bool(b),
         })
     }
 
