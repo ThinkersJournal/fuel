@@ -55,7 +55,7 @@ type ContiguizeRun = unsafe extern "C" fn(
 ) -> i32;
 
 /// Materialize a contiguous `CudaStorageBytes` from a strided source
-/// + layout. Allocates a fresh device buffer of `elem_count *
+/// and layout. Allocates a fresh device buffer of `elem_count *
 /// dtype_size_bytes` and dispatches the appropriate byte-width
 /// baracuda kernel.
 ///

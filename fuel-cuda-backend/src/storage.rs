@@ -4505,7 +4505,7 @@ impl CudaStorage {
     /// Q4_0 matmul: `out = a @ dequant_q4_0(w_q_bytes)`.
     /// - `a`: F32 activations, shape `[..., m, k]`, contiguous.
     /// - `w_q_bytes`: Q4_0-packed weights stored as U32 chunks. Logical
-    ///    weight shape is `[n, k]`; blob size is `n * (k/32) * 18` bytes.
+    ///   weight shape is `[n, k]`; blob size is `n * (k/32) * 18` bytes.
     /// - Output: F32, shape `[..., m, n]`.
     ///
     /// **First-cut limitation:** only `m = 1` (the decode path) is
@@ -4557,7 +4557,7 @@ impl CudaStorage {
     /// Q4_K_M matmul: `out = a @ dequant_q4_km(w_q_bytes)`.
     /// - `a`: F32 activations, shape `[..., m, k]`, contiguous.
     /// - `w_q_bytes`: Q4_K-packed weights stored as U32. Each
-    ///    256-element super-block is 144 bytes.
+    ///   256-element super-block is 144 bytes.
     /// - Output: F32, shape `[..., m, n]`.
     ///
     /// First-cut limitation: M=1 only (decode). `k` must be a

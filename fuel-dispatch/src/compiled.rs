@@ -506,6 +506,7 @@ fn produce_pending(
 ///     waiting → still one dec (via `Drop`);
 ///   - an error (`?`) unwinding the realize loop drops the still-owned handles →
 ///     one dec each.
+///
 /// `wait` deliberately does not touch the counter, so no path double-counts.
 #[cfg(feature = "cuda")]
 struct CudaCompletion {

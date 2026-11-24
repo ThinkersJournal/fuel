@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Device enumeration for the CUDA backend.
 //!
-//! Walks `baracuda_driver::Device::count()`, queries each device's name
-//! + compute capability + total memory, and produces one
+//! Walks `baracuda_driver::Device::count()`, queries each device's name,
+//! compute capability and total memory, and produces one
 //! [`DeviceDescriptor`] per ordinal. Vendor ID is hardcoded to NVIDIA's
 //! 0x10DE since the CUDA runtime only loads on NVIDIA hardware; CUDA
 //! doesn't expose PCI vendor IDs as a device attribute anyway.
