@@ -675,10 +675,37 @@ fn main() -> anyhow::Result<()> {
 
         let start_prompt_processing = std::time::Instant::now();
         let mut next_token = if !args.split_prompt {
+            let prof = std::env::var("FUEL_PREFILL_PROFILE").is_ok();
+            if prof {
+                fuel_dispatch::compiled::op_profile::set_enabled(true);
+                fuel_dispatch::compiled::op_profile::set_trace(true);
+            }
+            let t_fwd = std::time::Instant::now();
             let logits_lazy = model
                 .forward(&prompt_tokens, 0)
                 .map_err(|e| E::msg(format!("forward: {e}")))?;
+            let build = t_fwd.elapsed();
+            let t_rl = std::time::Instant::now();
             let logits = realize_last(logits_lazy, prompt_tokens.len())?;
+            if prof {
+                eprintln!(
+                    "PROFILE tokens={} graph_build={:.3}s realize={:.3}s",
+                    prompt_tokens.len(),
+                    build.as_secs_f64(),
+                    t_rl.elapsed().as_secs_f64()
+                );
+                for (name, n, d) in fuel_dispatch::compiled::op_profile::take_phases().iter().take(14) {
+                    eprintln!("PHASE {name:<40} n={n:<7} {:.3}s", d.as_secs_f64());
+                }
+                let mut tr = fuel_dispatch::compiled::op_profile::take_trace();
+                tr.sort_by_key(|r| std::cmp::Reverse(r.dt));
+                for r in tr.iter().take(6) {
+                    eprintln!("LAUNCH {} {} in_bytes={} {:.3}s", r.op, r.backend, r.bytes, r.dt.as_secs_f64());
+                }
+                for (op, be, n, d) in fuel_dispatch::compiled::op_profile::take().iter().take(8) {
+                    eprintln!("OP {op:<24} {be:<10} n={n:<7} {:.3}s", d.as_secs_f64());
+                }
+            }
             logits_processor.sample(&logits)?
         } else {
             let mut next_token = 0;
