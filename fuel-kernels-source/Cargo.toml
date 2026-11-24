@@ -20,3 +20,7 @@ version.workspace    = true
 path = "src/lib.rs"
 
 [dependencies]
+
+[dev-dependencies]
+# tests/iq3s_grid_glsl.rs compares the GLSL grid with fuel_quantized::iq_grids::IQ3S_GRID (ROADMAP row 119).
+fuel-quantized = { path = "../fuel-quantized" }

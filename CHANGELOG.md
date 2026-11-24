@@ -144,6 +144,30 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.50.2 - 2026-11-24 (PM-allocated; row 119, five Vulkan quant gemv kernels; not breaking: the removed FUEL_GGML_KEEP_QUANTIZED opt-out was added in unpublished 0.49.14)
+
+### Added
+
+- Vulkan fused quantized gemv kernels (GLSL, `fuel-kernels-source/kernels/qmatvec_{q5_k,q3_k,iq4_nl,iq4_xs,iq3_s}.glsl`, byte-reproducible `.spv`, ggml/llama.cpp origin cited): `qmatmul_vk` now has arms for Q5_K, Q3_K, IQ4_NL, IQ4_XS and IQ3_S. The IQ3_S grid is generated from `IQ3S_GRID` by `scripts/gen_iq3s_glsl.py` and compared entry by entry in `fuel-vulkan-dispatch/tests/iq3s_grid_glsl.rs`.
+- `fuel-tensor/tests/ggml_kept_types_are_wired.rs`: exhaustive over `GgmlDType`; every type `WeightStorage::from_ggml_bytes` keeps must be in `qmatmul_wired`.
+
+### Fixed
+
+- `fuel-vulkan-backend`: a `VulkanBackend` dropped with an open recorder batch (after a failed realize) crashed the process with an access violation; `Drop` now flushes and waits for the open batch before any field is destroyed (GAP-398). Its regression test, `fuel-vulkan-dispatch/tests/vulkan_backend_drop_open_batch_live.rs`, needs a live Vulkan device, so it must be `#[ignore]`d like the crate's other live tests, and the `#[ignore]` ceiling (500, `fuel-ir`'s `suppression_ratchet`) is reached: the test is HELD OUT of this change, on `vk-qmatmul-q5k-docs`, until the ceiling is decided.
+
+### Removed
+
+- The `FUEL_GGML_KEEP_QUANTIZED` opt-out (`fuel_tensor::lazy::KEEP_QUANTIZED_ENV`), `declines_unwired_vulkan_quant()` and the process-wide decline from v0.49.14: with every kept type wired on Vulkan they have no purpose. `from_ggml_bytes` no longer has a wildcard arm: every other `GgmlDType` is declined by name.
+
+### Changed
+
+- `CLAUDE.md`: the "fuel-internal Slang" line is corrected (the older `.spv` were built by FishStringer; new kernels are GLSL in `fuel-kernels-source`).
+- The registry text (`docs/gaps.md` GAP-397 and GAP-398, ROADMAP row 119) follows in the docs PR, after this PR merges.
+
+### Not verified
+
+- Kernel speed (correctness only); CUDA; a real GGUF file of these types on Vulkan.
+
 ## v0.50.1 - 2026-11-24 (PM-allocated; row 172, device-level weight residency; a minor-line change, not breaking)
 
 ### Changed
