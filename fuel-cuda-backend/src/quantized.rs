@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-use crate::WrapErr;
-use crate::{CudaDevice, CudaStorage, Result, builder_arg as barg};
+use crate::{CudaDevice, CudaStorage, Result};
 use fuel_backend_contract::dyn_backend::DynBackendStorage;
 use fuel_backend_contract::quantized::{DynQuantizedStorage, QuantizedDeviceKernels};
 use fuel_ir::quantized::GgmlDType;
 use fuel_quantized::GgmlType;
-use half::f16;
 use std::any::Any;
 use std::borrow::Cow;
 

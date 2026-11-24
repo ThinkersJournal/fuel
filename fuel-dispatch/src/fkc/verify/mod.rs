@@ -172,8 +172,6 @@ pub use invoker_cpu::CpuInvoker;
 // reuse the exact dtype-aware float→bytes encode without duplicating it.
 // (`harness`/`seed_cuda_ledger` each carry their own private `to_bytes`.)
 #[cfg(feature = "cuda")]
-pub use harness::run_fkc_verify_harness;
-#[cfg(feature = "cuda")]
 pub use invoker_cuda::CudaInvoker;
 #[cfg(feature = "vulkan")]
 #[allow(
@@ -183,8 +181,6 @@ pub use invoker_cuda::CudaInvoker;
 pub use invoker_vulkan::VulkanInvoker;
 #[cfg(any(feature = "cuda", all(feature = "jit", test)))]
 pub(crate) use seed_cpu_ledger::to_bytes;
-#[cfg(feature = "cuda")]
-pub use seed_cuda_ledger::{CudaSeedAttempt, run_cuda_verification};
 
 /// The embedded (compile-time) verification ledger. Thin wrapper so callers
 /// outside this module can reach it as `verify::embedded()` without

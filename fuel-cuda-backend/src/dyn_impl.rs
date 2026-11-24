@@ -13,9 +13,8 @@
 //! `UnaryOp`/`BinaryOp` enum variants to kernel name strings and reuse the
 //! exact same CUDA kernel launch infrastructure.
 
-use crate::device::LaunchConfig;
 use baracuda_driver::DeviceBuffer as CudaSlice;
-use baracuda_types::{DeviceRepr, KernelArg as PushKernelArg, ValidAsZeroBits};
+use baracuda_types::{DeviceRepr, ValidAsZeroBits};
 use fuel_backend_contract::dyn_backend::{DynBackendDevice, DynBackendStorage};
 use fuel_ir::conv::{ParamsConv1D, ParamsConv2D, ParamsConvTranspose1D, ParamsConvTranspose2D};
 use fuel_ir::op::{BinaryOp, CmpOp, ReduceOp, UnaryOp};
@@ -24,7 +23,7 @@ use std::any::Any;
 use std::sync::Arc;
 
 use crate::utils::{Map1, Map2};
-use crate::{CudaDevice, CudaStorage, SlicePtrOrNull, WrapErr, kernel_name};
+use crate::{CudaDevice, CudaStorage};
 
 // ---------------------------------------------------------------------------
 // Backward-compat type aliases — downstream code can keep using these names.

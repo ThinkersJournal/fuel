@@ -30,8 +30,6 @@ use fuel_ir::dispatch::OpKind;
 use fuel_ir::probe::BackendId;
 use fuel_ir::{DType, DeviceLocation, Error, Layout, Result};
 
-#[cfg(feature = "cuda")]
-use crate::kernel::KernelCaps;
 use crate::kernel::{KernelBindingTable, MatmulM, OpParams};
 use fuel_memory::{BackendStorage, Storage};
 

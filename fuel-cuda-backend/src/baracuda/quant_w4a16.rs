@@ -33,7 +33,6 @@ use fuel_ir::Result;
 
 use crate::byte_storage::CudaStorageBytes;
 
-use super::scratch::Workspace;
 use super::status::check;
 
 // ───────────────────────────── Marlin ─────────────────────────────

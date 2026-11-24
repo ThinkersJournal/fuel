@@ -22,7 +22,7 @@ use fuel_cuda_backend::CudaDevice;
 use fuel_dispatch::pipelined::{DeviceRegistry, PipelinedExecutor, StorageCache};
 use fuel_graph::{Graph, Node, NodeId, Op, SharedGraph};
 use fuel_ir::{DType, DeviceLocation, Shape, probe::BackendId};
-use fuel_memory::{BackendStorage, Storage};
+use fuel_memory::BackendStorage;
 
 fn require_device() -> CudaDevice {
     fuel_test_support::require_gpu_run_lock();

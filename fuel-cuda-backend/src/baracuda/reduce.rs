@@ -32,7 +32,7 @@
 use std::sync::Arc;
 
 use baracuda_kernels_sys as sys;
-use fuel_ir::{DType, Layout, Result, Shape};
+use fuel_ir::{Layout, Result, Shape};
 
 use crate::byte_storage::CudaStorageBytes;
 use crate::error::CudaError;

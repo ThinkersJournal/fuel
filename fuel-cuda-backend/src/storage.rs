@@ -2,15 +2,13 @@
 //! Implementation of Backend traits for CUDA device
 //!
 
-use crate::builder_arg as barg;
 use fuel_ir::dtype::WithDType;
 use fuel_ir::op::{BinaryOpT, CmpOp, ReduceOp, UnaryOpT};
 use fuel_ir::quantized::GgmlDType;
 use fuel_ir::{DType, HostBuffer, Layout, Result};
 
-use crate::device::{LaunchArgs, LaunchConfig};
 use baracuda_driver::{DeviceBuffer as CudaSlice, DevicePtr};
-use baracuda_types::{DeviceRepr, KernelArg as PushKernelArg, ValidAsZeroBits};
+use baracuda_types::{DeviceRepr, ValidAsZeroBits};
 use half::{bf16, f16};
 
 use crate::device::CudaDevice;

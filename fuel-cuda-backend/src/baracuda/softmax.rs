@@ -18,7 +18,7 @@
 use std::sync::Arc;
 
 use baracuda_kernels_sys as sys;
-use fuel_ir::{DType, Layout, Result};
+use fuel_ir::{Layout, Result};
 
 use crate::byte_storage::CudaStorageBytes;
 
