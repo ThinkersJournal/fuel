@@ -352,7 +352,7 @@ unpopped-vocab         = { version = "0.47.0" }
 # fuel-kernel-seam. `~` pins: pre-1.0, a minor bump is breaking. (fireline-announce, the former -announce crate, is
 # not a Fuel dependency: nothing in Fuel imported it.)
 fireline-grammar       = { version = "~0.4" }
-fireline-synth         = { version = "~0.4" }
+fireline-synth         = { version = "~0.5" }
 baracuda-kernels-types = { version = "0.1.0-alpha.148" }
 baracuda-kernels-sys   = { version = "0.1.0-alpha.148", features = [
     "cudnn",

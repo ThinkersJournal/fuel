@@ -470,8 +470,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a11c84aff7e8b35feb141e00cd92b4d79722391f2f3a554757ef48c9ec4a18ad"
 dependencies = [
  "baracuda-cuda-emit",
- "fireline-grammar",
- "fireline-synth",
+ "fireline-grammar 0.4.0",
+ "fireline-synth 0.4.5",
  "unpopped",
  "unpopped-vocab",
 ]
@@ -1672,12 +1672,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e87fc6b57234cfaffcbbe96f936e044248e3f1c3a61fa5490922a62d4cc1fb27"
 
 [[package]]
-name = "fireline-synth"
-version = "0.4.0"
+name = "fireline-grammar"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8dce30edd8dbdf37d8ef494b7074368adcff595255f71d21792bf64b174676bc"
+checksum = "6b0833f3e2d9b57dd6cd52deab2d66cd5ed2406ae6cc201bf390203d918d2e56"
+
+[[package]]
+name = "fireline-synth"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f572b242b7480fb46445c88ae06ef074a8446c788efa583b5e7bad953805a8f9"
 dependencies = [
- "fireline-grammar",
+ "fireline-grammar 0.4.0",
+ "unpopped-vocab",
+]
+
+[[package]]
+name = "fireline-synth"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59c02ae1263e77f992072fc5080395d0ac6987e188fc102d259e76f15cbb0e8d"
+dependencies = [
+ "fireline-grammar 0.5.0",
  "unpopped-vocab",
 ]
 
@@ -1902,7 +1918,7 @@ dependencies = [
  "baracuda-cuda-seam",
  "baracuda-nvrtc",
  "bytemuck",
- "fireline-synth",
+ "fireline-synth 0.5.0",
  "fuel-cpu-backend",
  "fuel-cuda-backend",
  "fuel-dispatch",
@@ -1937,8 +1953,8 @@ version = "0.50.0"
 dependencies = [
  "baracuda-kernels-types",
  "bytemuck",
- "fireline-grammar",
- "fireline-synth",
+ "fireline-grammar 0.4.0",
+ "fireline-synth 0.5.0",
  "fuel-backend-contract",
  "fuel-conv",
  "fuel-cpu-backend",
@@ -2036,7 +2052,7 @@ dependencies = [
 name = "fuel-graph"
 version = "0.50.0"
 dependencies = [
- "fireline-grammar",
+ "fireline-grammar 0.4.0",
  "float8",
  "fuel-backend-contract",
  "fuel-cpu-backend",
@@ -2100,7 +2116,7 @@ version = "0.50.0"
 name = "fuel-kiss-ref-backend"
 version = "0.50.0"
 dependencies = [
- "fireline-grammar",
+ "fireline-grammar 0.4.0",
  "fuel-ir",
  "half",
  "kiss-classify-vocab",
