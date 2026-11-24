@@ -144,7 +144,7 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
-## Unreleased (row 119; the number is allocated by pm-assist at gate time)
+## v0.50.2 - 2026-11-24 (PM-allocated; row 119, five Vulkan quant gemv kernels; not breaking: the removed FUEL_GGML_KEEP_QUANTIZED opt-out was added in unpublished 0.49.14)
 
 ### Added
 
