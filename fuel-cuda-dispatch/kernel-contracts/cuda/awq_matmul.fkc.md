@@ -26,7 +26,7 @@ accumulation, split-K partial sums reduced in a fixed order. Backs `OpKind::AwqM
 (`FusedOps::AWQ_MATMUL`, `OpParams::AwqMatmul`). Output: fresh, contiguous, no aliasing.
 
 The three quantized operands are in **baracuda's kernel layout** (OC-major, `N = OC`, `K = IC`), which is
-what `fuel_quantized::awq_repack::repack_hf_awq_for_kernel` produces from a HuggingFace `*-AWQ` checkpoint:
+what `ml_convertant_awq::repack_for_kernel` (crates.io `ml-convertant-awq` 0.1.31, after `unpack_hf`) produces from a HuggingFace `*-AWQ` checkpoint:
 `weight [N, K/8]` U32 (nibble `k % 8` of word `k / 8`), `zeros [N, zeros_w]` U32 (group `g` is nibble
 `g % 8` of word `g / 8`), `scales [N, 8 * zeros_w]` F16 (entry `g`), `zeros_w = ceil(ceil(K / group_size / 8)
 / mult) * mult`, `mult = 128 / group_size`. The U32 operands are packed int4 codes, not integers: this
