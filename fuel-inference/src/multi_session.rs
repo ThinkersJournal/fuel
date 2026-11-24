@@ -4470,6 +4470,55 @@ mod tests {
         );
     }
 
+    /// ROADMAP row 33 (admission/ordering hook), pinned BEFORE the hook existed: with
+    /// no hook set, every quantum visits the live sessions in admission order, the
+    /// per-quantum `advanced` sequence is exactly that, and every session finishes on
+    /// the quantum its budget runs out (serial and batched arms). The hook change
+    /// must leave this unchanged.
+    #[test]
+    fn paged_scheduler_default_path_is_pinned_admission_order_per_quantum() {
+        for batched in [false, true] {
+            let model = tiny_model(9999);
+            let mut s =
+                PagedSessionScheduler::new(&model, paged_budget(), DType::F32, &Device::cpu())
+                    .unwrap();
+            let ids: Vec<SessionId> = (0..3)
+                .map(|_| {
+                    s.add_session(&[1, 2, 3], SamplingStrategy::Greedy, None, 4)
+                        .unwrap()
+                })
+                .collect();
+            let mut per_step = Vec::new();
+            for _ in 0..4 {
+                let r = if batched { s.step_batched(8) } else { s.step() };
+                per_step.push((r.advanced, r.finished));
+            }
+            let twice: Vec<_> = ids.iter().chain(ids.iter()).copied().collect();
+            // Quantum 1: prefill pass + decode pass (2 tokens each); quanta 2 and 3
+            // one token each (budget 4); quantum 4 has nothing left to advance.
+            assert_eq!(
+                per_step[0],
+                (twice, vec![]),
+                "quantum 1 (batched={batched})"
+            );
+            assert_eq!(
+                per_step[1],
+                (ids.clone(), vec![]),
+                "quantum 2 (batched={batched})"
+            );
+            assert_eq!(
+                per_step[2],
+                (ids.clone(), ids.clone()),
+                "quantum 3 (batched={batched})"
+            );
+            assert_eq!(
+                per_step[3],
+                (vec![], vec![]),
+                "quantum 4 (batched={batched})"
+            );
+        }
+    }
+
     /// The pressure-valve flow end to end: evict a session to free the pool, let
     /// another session run in the freed room, then restore the first and finish
     /// it. `run_to_completion` returns with a suspended session still live rather
