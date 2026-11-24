@@ -13,8 +13,9 @@
 //! nothing here does that yet.
 
 use fuel_ir::error::{Error, Result};
-use mlmf_awq::{AwqConfig, LocateReport, PackedLinearLayer, locate_layers};
-use mlmf_safetensors::{parse_header, parse_tensors};
+pub use mlmf_awq::AwqLayerBytes;
+use mlmf_awq::{AwqConfig, LocateReport, PackedLinearLayer, locate_layers, read_layer};
+use mlmf_safetensors::{SafetensorsTensors, parse_header, parse_tensors};
 
 /// What fuel's AWQ path can read: 4-bit, zero-point, GEMM-version packing.
 const BITS: u64 = 4;
@@ -98,6 +99,34 @@ fn group_size_of(cfg: &AwqConfig) -> Result<usize> {
         .filter(|g| *g > 0)
         .ok_or_else(|| refuse("quantization_config.group_size is missing or zero".to_string()))?;
     usize::try_from(group_size).map_err(|_| refuse(format!("group_size {group_size} overflows")))
+}
+
+/// One safetensors file's tensor directory, parsed once, to read located layers' tensors from.
+///
+/// MLMF move, the AWQ tensor read (survey finding F6): the lookup of a layer's `qweight` / `qzeros` /
+/// `scales`, with the stored dtype, shape and bytes, is `mlmf-awq`'s `read_layer`. The bytes are
+/// exactly as the file holds them (HF layout, little-endian, unaligned); validating them against the
+/// geometry the model config declares, and repacking them for the kernels, stay with the caller.
+pub struct AwqFile<'a> {
+    tensors: SafetensorsTensors<'a>,
+}
+
+impl<'a> AwqFile<'a> {
+    /// Parse `safetensors`' header and tensor directory.
+    pub fn open(safetensors: &'a [u8]) -> Result<Self> {
+        let header =
+            parse_header(safetensors).map_err(|e| refuse(format!("safetensors header: {e}")))?;
+        let (tensors, _report) = parse_tensors(safetensors, &header, "awq checkpoint")
+            .map_err(|e| refuse(format!("safetensors directory: {e}")))?;
+        Ok(Self { tensors })
+    }
+
+    /// The three tensors (and the bias, if any) of a located layer, as stored. A tensor the layer
+    /// names that is missing or block-encoded is an error naming it.
+    pub fn read_layer(&self, layer: &PackedLinearLayer) -> Result<AwqLayerBytes<'_>> {
+        read_layer(&self.tensors, layer)
+            .map_err(|e| refuse(format!("reading layer `{}`: {e}", layer.prefix)))
+    }
 }
 
 /// Locate every AWQ-packed linear layer in one safetensors file's bytes. A layer MLMF reports

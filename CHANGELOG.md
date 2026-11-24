@@ -3,6 +3,16 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## Unreleased (row 42, MLMF move: the AWQ tensor read; the number is allocated by pm-assist at gate time)
+
+### Added
+
+- `fuel_loaders::awq::AwqFile` (`open`, `read_layer`) and the re-export `AwqLayerBytes`: a located AWQ layer's `qweight` / `qzeros` / `scales` (dtype, shape, bytes exactly as stored) read through `mlmf-awq`'s `read_layer` (survey finding F6). Additive: nothing is removed; `fuel_tensor::awq`'s own reader stays until the next slice re-points it. Pinned by `fuel-transformers/tests/qwen3_awq_mlmf_slice_c1.rs` on the real `Qwen3-0.6B-AWQ` checkpoint: 196 layers, 588 tensors byte-identical to the old reader, plus a flipped-byte sabotage sibling.
+
+### Not verified
+
+- The survey's slice C (unpacking the HF AWQ packing in `mlmf-awq`): `mlmf-awq` 0.11.49 has no unpack API, so that slice still needs an MLMF-side change. Other checkpoints than `Qwen3-0.6B-AWQ`.
+
 ## v0.47.1 - 2026-11-10 (PM-allocated)
 
 ### Changed
