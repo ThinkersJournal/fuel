@@ -47,3 +47,7 @@ it carries no Fuel code that needs 0.47 specifically.
 ## Update 2026-11-24 (fireline 0.6.0 published)
 
 pm-kernels read the registry: `fireline-grammar`, `-synth`, `-announce`, `-contract`, `-classify` are 0.6.0; `fireline-synth` 0.6.0 requires `fireline-grammar ~0.6` and `unpopped-vocab ~0.56.0`. Fuel can move the fireline pair to `~0.6` alone, but `baracuda-types` / `baracuda-kernels-types` alpha.148 still require `unpopped-vocab ~0.47.0`, so the graph would hold two vocab copies again (the #700 E0308 class). Order: baracuda republishes types/kernels-types (and cuda-seam) on vocab `~0.56` first; then one Fuel change moves fireline `~0.6` and vocab 0.56.5 together, measured with registry versions only. The 0.5.0 / 0.56.2 targets in the sections above are superseded.
+
+## Update 2026-11-24 (fireline 0.7.0 published)
+
+All five fireline crates are 0.7.0 (BREAKING: strict DVRS reader, contract v4/v5, op_facts v1/v2); `fireline-synth` 0.7.0 requires `fireline-grammar ~0.7` and `unpopped-vocab ~0.56.0`. The target is fireline `~0.7` plus `unpopped-vocab` 0.56.5, still blocked on baracuda republishing `baracuda-types`/`-kernels-types` on `~0.56` (baracuda#424). The 0.6 target above is superseded; the order is unchanged and the Fuel side is now M (the 0.7 contract and op_facts changes are expected to need source edits).
