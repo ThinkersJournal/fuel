@@ -40,10 +40,6 @@ fn ceil_div(p: usize, q: usize) -> usize {
     p.div_ceil(q)
 }
 
-fn pad(p: usize, q: usize) -> usize {
-    ceil_div(p, q) * q
-}
-
 // `quantize_q8_1` PTX wrapper retired in Phase 4 — baracuda alpha.37's
 // batched MMVQ + MoE FFI consume fp32 activations directly, so the
 // staging quantize step is no longer needed anywhere in fuel-cuda-backend.

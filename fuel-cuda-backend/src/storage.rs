@@ -68,18 +68,6 @@ pub(crate) fn dims_strides_usize(l: &Layout) -> Vec<usize> {
     v
 }
 
-/// Like `dims_strides_usize` but for two layouts sharing one dims slice (binary-op style):
-/// `[dims, lhs.stride(), rhs.stride()]`.
-pub(crate) fn dims_strides_strides_usize(dims: &[usize], a: &Layout, b: &Layout) -> Vec<usize> {
-    let sa = a.stride_unsigned();
-    let sb = b.stride_unsigned();
-    let mut v = Vec::with_capacity(dims.len() + sa.len() + sb.len());
-    v.extend_from_slice(dims);
-    v.extend_from_slice(&sa);
-    v.extend_from_slice(&sb);
-    v
-}
-
 // `conv_dims_strides_usize` retired in Phase 5b alongside the PTX
 // Conv*/ConvTranspose* structs that consumed its packed-strides arg.
 

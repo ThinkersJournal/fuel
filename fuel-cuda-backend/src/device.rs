@@ -194,7 +194,7 @@ pub struct CudaDevice {
     // GAP-214 inc 3: last-clone-drop removes `id` from LIVE_DEVICES so a dead
     // device's JIT slots become reclaimable. Pure-Rust registry update, no CUDA
     // resource, so its position vs the Drop-order fields below is irrelevant.
-    liveness: Arc<DeviceLiveness>,
+    _liveness: Arc<DeviceLiveness>,
     seed_value: Arc<RwLock<u64>>,
     curand: Arc<Mutex<CudaRng>>,
     pub(crate) blas: Arc<CublasHandle>,
@@ -564,7 +564,7 @@ impl CudaDevice {
         live_devices().lock().unwrap().insert(id);
         Ok(Self {
             id,
-            liveness: Arc::new(DeviceLiveness { id }),
+            _liveness: Arc::new(DeviceLiveness { id }),
             context: Arc::new(context),
             stream: Arc::new(stream),
             blas: Arc::new(CublasHandle(blas)),
