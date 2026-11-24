@@ -4426,7 +4426,7 @@ impl CudaStorage {
         use baracuda_kernels_sys as sys;
         let dims = layout.shape().dims();
         if dims.is_empty() {
-            return fuel_ir::bail!("softmax_last_dim: empty shape");
+            fuel_ir::bail!("softmax_last_dim: empty shape");
         }
         let device = self.device().clone();
         let rank = dims.len();
@@ -4514,24 +4514,24 @@ impl CudaStorage {
         a_layout: &Layout,
     ) -> Result<Self> {
         if self.dtype() != DType::F32 {
-            return fuel_ir::bail!(
+            fuel_ir::bail!(
                 "CudaStorage::matmul_q4_0: A must be F32, got {:?}",
                 self.dtype()
             );
         }
         if !a_layout.is_contiguous() {
-            return fuel_ir::bail!("CudaStorage::matmul_q4_0: requires contiguous A");
+            fuel_ir::bail!("CudaStorage::matmul_q4_0: requires contiguous A");
         }
         let a_dims = a_layout.shape().dims();
         let rank = a_dims.len();
         if rank < 2 {
-            return fuel_ir::bail!("CudaStorage::matmul_q4_0: A must be rank >= 2");
+            fuel_ir::bail!("CudaStorage::matmul_q4_0: A must be rank >= 2");
         }
         let m = a_dims[rank - 2];
         let batch: usize = a_dims[..rank - 2].iter().product::<usize>().max(1);
         let total_rows = batch * m;
         if total_rows != 1 {
-            return fuel_ir::bail!(
+            fuel_ir::bail!(
                 "CudaStorage::matmul_q4_0: only M=1 supported on CUDA today; \
                  got total_rows={total_rows}. Route prefill to Vulkan."
             );
@@ -4562,24 +4562,24 @@ impl CudaStorage {
         a_layout: &Layout,
     ) -> Result<Self> {
         if self.dtype() != DType::F32 {
-            return fuel_ir::bail!(
+            fuel_ir::bail!(
                 "CudaStorage::matmul_q4_km: A must be F32, got {:?}",
                 self.dtype()
             );
         }
         if !a_layout.is_contiguous() {
-            return fuel_ir::bail!("CudaStorage::matmul_q4_km: requires contiguous A");
+            fuel_ir::bail!("CudaStorage::matmul_q4_km: requires contiguous A");
         }
         let a_dims = a_layout.shape().dims();
         let rank = a_dims.len();
         if rank < 2 {
-            return fuel_ir::bail!("CudaStorage::matmul_q4_km: A must be rank >= 2");
+            fuel_ir::bail!("CudaStorage::matmul_q4_km: A must be rank >= 2");
         }
         let m = a_dims[rank - 2];
         let batch: usize = a_dims[..rank - 2].iter().product::<usize>().max(1);
         let total_rows = batch * m;
         if total_rows != 1 {
-            return fuel_ir::bail!(
+            fuel_ir::bail!(
                 "CudaStorage::matmul_q4_km: only M=1 supported on CUDA today; \
                  got total_rows={total_rows}. Route prefill to Vulkan."
             );
@@ -4600,7 +4600,7 @@ impl CudaStorage {
         let dims = layout.shape().dims();
         let rank = dims.len();
         if rank == 0 {
-            return fuel_ir::bail!("rms_norm_last_dim: empty shape");
+            fuel_ir::bail!("rms_norm_last_dim: empty shape");
         }
         let last_dim = dims[rank - 1];
         let numel = layout.shape().elem_count();
@@ -4695,7 +4695,7 @@ impl CudaStorage {
     ) -> Result<Self> {
         use baracuda_kernels_sys as sys;
         if self.dtype() != gain.dtype() {
-            return fuel_ir::bail!(
+            fuel_ir::bail!(
                 "rms_norm_with_gain: dtype mismatch x={:?} gain={:?}",
                 self.dtype(),
                 gain.dtype()
@@ -4704,7 +4704,7 @@ impl CudaStorage {
         let dims = layout.shape().dims();
         let rank = dims.len();
         if rank == 0 {
-            return fuel_ir::bail!("rms_norm_with_gain: empty shape");
+            fuel_ir::bail!("rms_norm_with_gain: empty shape");
         }
         let last_dim = dims[rank - 1];
         let numel = layout.shape().elem_count();
@@ -4812,7 +4812,7 @@ impl CudaStorage {
     ) -> Result<Self> {
         use baracuda_kernels_sys as sys;
         if self.dtype() != gain.dtype() || self.dtype() != bias.dtype() {
-            return fuel_ir::bail!(
+            fuel_ir::bail!(
                 "layer_norm: dtype mismatch x={:?} gain={:?} bias={:?}",
                 self.dtype(),
                 gain.dtype(),
@@ -4822,7 +4822,7 @@ impl CudaStorage {
         let dims = layout.shape().dims();
         let rank = dims.len();
         if rank == 0 {
-            return fuel_ir::bail!("layer_norm: empty shape");
+            fuel_ir::bail!("layer_norm: empty shape");
         }
         let last_dim = dims[rank - 1];
         let numel = layout.shape().elem_count();
@@ -4937,7 +4937,7 @@ impl CudaStorage {
     pub fn rope(&self, cos: &Self, sin: &Self, x_layout: &Layout) -> Result<Self> {
         use baracuda_kernels_sys as sys;
         if cos.dtype() != DType::F32 || sin.dtype() != DType::F32 {
-            return fuel_ir::bail!(
+            fuel_ir::bail!(
                 "CudaStorage::rope: cos/sin tables must be F32 (baracuda ABI), got cos={:?} sin={:?}",
                 cos.dtype(),
                 sin.dtype(),
@@ -4946,15 +4946,15 @@ impl CudaStorage {
         let dims = x_layout.shape().dims();
         let rank = dims.len();
         if rank < 2 {
-            return fuel_ir::bail!("CudaStorage::rope requires rank >= 2, got {dims:?}");
+            fuel_ir::bail!("CudaStorage::rope requires rank >= 2, got {dims:?}");
         }
         if !x_layout.is_contiguous() {
-            return fuel_ir::bail!("CudaStorage::rope first-cut requires contiguous x_layout");
+            fuel_ir::bail!("CudaStorage::rope first-cut requires contiguous x_layout");
         }
         let seq = dims[rank - 2];
         let head_dim = dims[rank - 1];
         if !head_dim.is_multiple_of(2) {
-            return fuel_ir::bail!("CudaStorage::rope head_dim must be even, got {head_dim}");
+            fuel_ir::bail!("CudaStorage::rope head_dim must be even, got {head_dim}");
         }
         let outer: usize = dims[..rank - 2].iter().product::<usize>().max(1);
         let bh = outer as i32;
@@ -5052,7 +5052,7 @@ impl CudaStorage {
     ) -> Result<Self> {
         use baracuda_kernels_sys as sys;
         if cos.dtype() != DType::F32 || sin.dtype() != DType::F32 {
-            return fuel_ir::bail!(
+            fuel_ir::bail!(
                 "rope_interleaved: cos/sin must be F32 (baracuda ABI), got cos={:?} sin={:?}",
                 cos.dtype(),
                 sin.dtype(),
@@ -5147,7 +5147,7 @@ impl CudaStorage {
     ) -> Result<Self> {
         use baracuda_kernels_sys as sys;
         if cos.dtype() != DType::F32 || sin.dtype() != DType::F32 {
-            return fuel_ir::bail!(
+            fuel_ir::bail!(
                 "rope_thd: cos/sin must be F32 (baracuda ABI), got cos={:?} sin={:?}",
                 cos.dtype(),
                 sin.dtype(),
