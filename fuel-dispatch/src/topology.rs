@@ -154,6 +154,10 @@ impl SystemTopology {
         // snapshot's result over when the device list is identical, so a process probes once, not
         // once per rebuild (the cold Qwen3 prefill paid ~1 s twice). A different device list is a
         // different question and re-probes.
+        // `DeviceLocation` equality is kind + ordinal ONLY (no adapter identity), so this assumes the same
+        // ordinal is the same adapter for the life of the process; it is stale only if an adapter is swapped at
+        // an ordinal without the list changing. The cross-process cache (ROADMAP row 162) keys on a full
+        // device fingerprint instead, never on `DeviceLocation`.
         if let Some(prev) = CURRENT_TOPOLOGY.read().unwrap().as_ref()
             && prev.devices == fresh.devices
             && let Some(cal) = prev.transfer_calibration.get()
