@@ -43,3 +43,7 @@ it carries no Fuel code that needs 0.47 specifically.
 - PR day: not 11-25 to 11-28 (calendar full); **11-29 or later**, and only after the publishers below exist.
 - Depends on: the baracuda lane's release on fireline 0.5 / vocab 0.56, and the fireline lane's `fireline-synth` on vocab 0.56. Check: `cargo info baracuda-cuda-seam` (requirement of `fireline-grammar`, `unpopped-vocab`), `cargo info fireline-synth`.
 - Dependabot will reopen at the newer version; that is expected.
+
+## Update 2026-11-24 (fireline 0.6.0 published)
+
+pm-kernels read the registry: `fireline-grammar`, `-synth`, `-announce`, `-contract`, `-classify` are 0.6.0; `fireline-synth` 0.6.0 requires `fireline-grammar ~0.6` and `unpopped-vocab ~0.56.0`. Fuel can move the fireline pair to `~0.6` alone, but `baracuda-types` / `baracuda-kernels-types` alpha.148 still require `unpopped-vocab ~0.47.0`, so the graph would hold two vocab copies again (the #700 E0308 class). Order: baracuda republishes types/kernels-types (and cuda-seam) on vocab `~0.56` first; then one Fuel change moves fireline `~0.6` and vocab 0.56.5 together, measured with registry versions only. The 0.5.0 / 0.56.2 targets in the sections above are superseded.
