@@ -144,7 +144,7 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
-## Unreleased - row 172, device-level weight residency (version allocated by pm-assist; a minor-line change, not breaking)
+## v0.50.1 - 2026-11-24 (PM-allocated; row 172, device-level weight residency; a minor-line change, not breaking)
 
 ### Changed
 
