@@ -1552,6 +1552,9 @@ pub struct PagedSessionScheduler<'m, M: PagedDecodeModel> {
     /// Order in which `step` / `step_batched` visit ready sessions (default
     /// [`PagedSchedulePolicy::AdmissionOrder`]). See [`set_policy`](Self::set_policy).
     policy: PagedSchedulePolicy,
+    /// The consumer's admission/ordering hook (default `None`: no hook, behaviour
+    /// unchanged). See [`SchedulerHook`].
+    hook: Option<Box<dyn SchedulerHook>>,
 }
 
 /// The order in which a [`PagedSessionScheduler`] visits the sessions that are
@@ -1567,6 +1570,58 @@ pub enum PagedSchedulePolicy {
     /// Highest [`set_priority`](PagedSessionScheduler::set_priority) first; ties
     /// keep admission order.
     Priority,
+}
+
+/// Which pass of a quantum a [`SchedulerHook`] is being consulted for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StepStage {
+    /// The prefill pass: sessions waiting to feed their prompt.
+    Prefill,
+    /// The decode pass: sessions advancing one token.
+    Decode,
+}
+
+/// What a [`SchedulerHook`] is told about one ready session. Mechanism only: the
+/// scheduler reports what it already tracks and attaches no meaning to it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HookSession {
+    pub id: SessionId,
+    /// The consumer-assigned [`set_priority`](PagedSessionScheduler::set_priority)
+    /// value (`0` unless set). Informational: the hook decides what it means.
+    pub priority: i32,
+    /// Tokens generated so far.
+    pub generated: usize,
+    /// Token budget left.
+    pub remaining: usize,
+}
+
+/// The state of the queue at the moment a [`SchedulerHook`] is consulted.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HookContext {
+    pub stage: StepStage,
+    /// Sessions ready in this stage (the length of the `ready` slice).
+    pub queue_depth: usize,
+    /// Sessions admitted and still unfinished, suspended ones included.
+    pub live_sessions: usize,
+}
+
+/// A consumer's admission/ordering hook for [`PagedSessionScheduler::step`] and
+/// [`step_batched`](PagedSessionScheduler::step_batched) (ROADMAP row 33).
+///
+/// **Mechanism, not policy.** Fuel offers the seam; which request wins, and
+/// whether any may wait, is the consumer's rule (Lightbulb's). With no hook set
+/// ([`set_hook`](PagedSessionScheduler::set_hook), the default) the scheduler is
+/// untouched.
+///
+/// Consulted once per stage per quantum, with the sessions that stage would
+/// advance, already in the scheduler's own policy order. It returns the ids to
+/// advance, IN THE ORDER to advance them. A ready session left out is DEFERRED:
+/// it is not advanced this quantum and stays ready for the next. An id that is
+/// not in `ready`, or that is repeated, is ignored. The hook cannot admit a
+/// session that is not ready (suspended, finished) and cannot change what a
+/// session generates, only when it advances.
+pub trait SchedulerHook: Send {
+    fn select(&mut self, ctx: &HookContext, ready: &[HookSession]) -> Vec<SessionId>;
 }
 
 /// Lifetime counters of one [`PagedSessionScheduler`].
@@ -1716,6 +1771,7 @@ impl<'m, M: PagedDecodeModel> PagedSessionScheduler<'m, M> {
             plan: PagedDecodePlan::PlanOnce,
             counters: PagedCounters::default(),
             policy: PagedSchedulePolicy::default(),
+            hook: None,
         })
     }
 
@@ -1728,6 +1784,20 @@ impl<'m, M: PagedDecodeModel> PagedSessionScheduler<'m, M> {
     /// Current scheduling policy.
     pub fn policy(&self) -> PagedSchedulePolicy {
         self.policy
+    }
+
+    /// Install (`Some`) or remove (`None`) the consumer's [`SchedulerHook`].
+    /// Default none. Takes effect on the next quantum. With a hook set,
+    /// [`run_to_completion`](Self::run_to_completion) returns as soon as a quantum
+    /// advances nothing (a hook that defers every session would otherwise spin it
+    /// forever); drive such a scheduler with `step`.
+    pub fn set_hook(&mut self, hook: Option<Box<dyn SchedulerHook>>) {
+        self.hook = hook;
+    }
+
+    /// Whether a [`SchedulerHook`] is installed.
+    pub fn has_hook(&self) -> bool {
+        self.hook.is_some()
     }
 
     /// Change the decode planning mode. **The driver default is
@@ -2120,7 +2190,8 @@ impl<'m, M: PagedDecodeModel> PagedSessionScheduler<'m, M> {
         self.counters.steps += 1;
         let mut report = StepReport::default();
         self.prefill_pass(&mut report);
-        for idx in self.collect_decode_ready() {
+        let ready = self.collect_decode_ready();
+        for idx in ready {
             self.decode_one(idx, &mut report);
         }
         report
@@ -2143,7 +2214,8 @@ impl<'m, M: PagedDecodeModel> PagedSessionScheduler<'m, M> {
         // then batch each same-position group in chunks of ≤ max_batch.
         let mut by_pos: std::collections::BTreeMap<usize, Vec<usize>> =
             std::collections::BTreeMap::new();
-        for idx in self.collect_decode_ready() {
+        let ready = self.collect_decode_ready();
+        for &idx in &ready {
             let pos = self
                 .pool
                 .core()
@@ -2155,7 +2227,11 @@ impl<'m, M: PagedDecodeModel> PagedSessionScheduler<'m, M> {
         // highest-priority session goes first (stable, so position breaks ties).
         // Members of a group are already in policy order.
         let mut groups: Vec<Vec<usize>> = by_pos.into_values().collect();
-        if self.policy == PagedSchedulePolicy::Priority {
+        if self.hook.is_some() {
+            // The hook's order wins: a group goes where its earliest member sits in
+            // the hook-ordered ready list (members of a group keep that order).
+            groups.sort_by_key(|g| ready.iter().position(|&i| i == g[0]).unwrap_or(usize::MAX));
+        } else if self.policy == PagedSchedulePolicy::Priority {
             groups.sort_by_key(|g| std::cmp::Reverse(self.sessions[g[0]].priority));
         }
         for group in groups {
@@ -2176,14 +2252,13 @@ impl<'m, M: PagedDecodeModel> PagedSessionScheduler<'m, M> {
     /// prompt token-by-token, then sample its first token. Errors isolate.
     fn prefill_pass(&mut self, report: &mut StepReport) {
         let model = self.model;
-        let ready = self.in_policy_order(
-            (0..self.sessions.len())
-                .filter(|&i| {
-                    self.sessions[i].phase == SessionPhase::Prefill
-                        && self.sessions[i].suspended.is_none()
-                })
-                .collect(),
-        );
+        let candidates: Vec<usize> = (0..self.sessions.len())
+            .filter(|&i| {
+                self.sessions[i].phase == SessionPhase::Prefill
+                    && self.sessions[i].suspended.is_none()
+            })
+            .collect();
+        let ready = self.in_policy_order(candidates, StepStage::Prefill);
         for idx in ready {
             let prompt = self.sessions[idx].tokens.clone();
             let handle = self.sessions[idx].handle;
@@ -2230,25 +2305,58 @@ impl<'m, M: PagedDecodeModel> PagedSessionScheduler<'m, M> {
     }
 
     /// Indices of Decode-ready, non-suspended sessions, in policy order.
-    fn collect_decode_ready(&self) -> Vec<usize> {
-        self.in_policy_order(
-            (0..self.sessions.len())
-                .filter(|&i| {
-                    self.sessions[i].phase == SessionPhase::Decode
-                        && self.sessions[i].suspended.is_none()
-                })
-                .collect(),
-        )
+    fn collect_decode_ready(&mut self) -> Vec<usize> {
+        let candidates: Vec<usize> = (0..self.sessions.len())
+            .filter(|&i| {
+                self.sessions[i].phase == SessionPhase::Decode
+                    && self.sessions[i].suspended.is_none()
+            })
+            .collect();
+        self.in_policy_order(candidates, StepStage::Decode)
     }
 
     /// Order `idxs` (ascending admission order on entry) by the scheduler's
     /// policy. `Priority` is a STABLE sort on descending priority, so ties keep
     /// admission order.
-    fn in_policy_order(&self, mut idxs: Vec<usize>) -> Vec<usize> {
+    fn in_policy_order(&mut self, mut idxs: Vec<usize>, stage: StepStage) -> Vec<usize> {
         if self.policy == PagedSchedulePolicy::Priority {
             idxs.sort_by_key(|&i| std::cmp::Reverse(self.sessions[i].priority));
         }
-        idxs
+        let Some(hook) = self.hook.as_mut() else {
+            return idxs;
+        };
+        let ready: Vec<HookSession> = idxs
+            .iter()
+            .map(|&i| {
+                let s = &self.sessions[i];
+                HookSession {
+                    id: s.id,
+                    priority: s.priority,
+                    generated: s.new_tokens.len(),
+                    remaining: s.remaining,
+                }
+            })
+            .collect();
+        let ctx = HookContext {
+            stage,
+            queue_depth: ready.len(),
+            live_sessions: self
+                .sessions
+                .iter()
+                .filter(|s| s.phase != SessionPhase::Finished)
+                .count(),
+        };
+        let mut taken = vec![false; idxs.len()];
+        let mut out = Vec::with_capacity(idxs.len());
+        for id in hook.select(&ctx, &ready) {
+            if let Some(pos) = ready.iter().position(|r| r.id == id)
+                && !taken[pos]
+            {
+                taken[pos] = true;
+                out.push(idxs[pos]);
+            }
+        }
+        out
     }
 
     /// One serial decode-advance of session `idx` (last token → forward → sample).
@@ -2405,7 +2513,11 @@ impl<'m, M: PagedDecodeModel> PagedSessionScheduler<'m, M> {
         {
             // The report is per-quantum telemetry; this loop only drives the
             // scheduler (per-session errors are isolated into the session).
-            let _report = self.step();
+            let report = self.step();
+            // A hook may defer every ready session; nothing would ever change.
+            if self.hook.is_some() && report.advanced.is_empty() {
+                break;
+            }
         }
         self.sessions
             .iter()
@@ -4517,6 +4629,172 @@ mod tests {
                 "quantum 4 (batched={batched})"
             );
         }
+    }
+
+    /// A closure-backed [`SchedulerHook`] for the tests.
+    struct FnHook<F: FnMut(&HookContext, &[HookSession]) -> Vec<SessionId> + Send>(F);
+    impl<F: FnMut(&HookContext, &[HookSession]) -> Vec<SessionId> + Send> SchedulerHook for FnHook<F> {
+        fn select(&mut self, ctx: &HookContext, ready: &[HookSession]) -> Vec<SessionId> {
+            (self.0)(ctx, ready)
+        }
+    }
+
+    /// Admit three same-length sessions (priorities `[0, 1, 5]`), install `hook`,
+    /// and return `(ids, the first quantum's StepReport.advanced, scheduler)`.
+    fn hook_probe<'m>(
+        model: &'m LlamaModel,
+        hook: Box<dyn SchedulerHook>,
+        batched: bool,
+    ) -> (
+        Vec<SessionId>,
+        Vec<SessionId>,
+        PagedSessionScheduler<'m, LlamaModel>,
+    ) {
+        let mut s =
+            PagedSessionScheduler::new(model, paged_budget(), DType::F32, &Device::cpu()).unwrap();
+        let mut ids = Vec::new();
+        for p in [0, 1, 5] {
+            let id = s
+                .add_session(&[1, 2, 3], SamplingStrategy::Greedy, None, 6)
+                .unwrap();
+            s.set_priority(id, p).unwrap();
+            ids.push(id);
+        }
+        s.set_hook(Some(hook));
+        let report = if batched { s.step_batched(8) } else { s.step() };
+        (ids, report.advanced, s)
+    }
+
+    /// Seeded: a hook that REVERSES the ready order changes which session each
+    /// stage advances first, on the serial and the batched arm, in both the
+    /// prefill and the decode pass. (The default order is pinned by
+    /// `paged_scheduler_default_path_is_pinned_admission_order_per_quantum`.)
+    #[test]
+    fn paged_scheduler_hook_reversing_order_is_honoured() {
+        let model = tiny_model(9999);
+        for batched in [false, true] {
+            let hook = FnHook(|_: &HookContext, ready: &[HookSession]| {
+                ready.iter().rev().map(|r| r.id).collect()
+            });
+            let (ids, adv, _s) = hook_probe(&model, Box::new(hook), batched);
+            let rev = [ids[2], ids[1], ids[0]];
+            let want: Vec<_> = rev.iter().chain(rev.iter()).copied().collect();
+            assert_eq!(adv, want, "reversed by the hook (batched={batched})");
+        }
+    }
+
+    /// A hook can DEFER: leaving sessions out of its answer means a `step` advances
+    /// only the ones it returned, and the deferred ones stay ready (still in
+    /// `Prefill`), then run once the hook lets them.
+    #[test]
+    fn paged_scheduler_hook_defers_sessions_it_leaves_out() {
+        let model = tiny_model(9999);
+        for batched in [false, true] {
+            let only_first = FnHook(|_: &HookContext, ready: &[HookSession]| {
+                ready.iter().take(1).map(|r| r.id).collect()
+            });
+            let (ids, adv, mut s) = hook_probe(&model, Box::new(only_first), batched);
+            assert_eq!(adv, vec![ids[0], ids[0]], "one session per stage");
+            let phases: Vec<_> = s.session_infos().into_iter().map(|i| i.phase).collect();
+            assert_eq!(
+                phases,
+                vec![
+                    SessionPhase::Decode,
+                    SessionPhase::Prefill,
+                    SessionPhase::Prefill
+                ],
+                "deferred sessions did not prefill (batched={batched})"
+            );
+            // Lift the hook: the deferred sessions now run, nothing was lost.
+            s.set_hook(None);
+            assert!(!s.has_hook());
+            let out = s.run_to_completion();
+            assert!(
+                out.iter().all(|(_, t)| t.len() == 3 + 6),
+                "all finished: {out:?}"
+            );
+        }
+    }
+
+    /// What the hook SEES: stage, queue depth, live-session count, and per session
+    /// the id, the `set_priority` value, tokens generated and budget left. The hook
+    /// runs once per stage per quantum.
+    #[test]
+    fn paged_scheduler_hook_sees_priority_depth_and_stage() {
+        use std::sync::{Arc, Mutex};
+        let model = tiny_model(9999);
+        type Seen = Vec<(HookContext, Vec<HookSession>)>;
+        let seen: Arc<Mutex<Seen>> = Arc::default();
+        let log = Arc::clone(&seen);
+        let hook = FnHook(move |c: &HookContext, r: &[HookSession]| {
+            log.lock().unwrap().push((*c, r.to_vec()));
+            r.iter().map(|x| x.id).collect()
+        });
+        let (ids, _adv, _s) = hook_probe(&model, Box::new(hook), false);
+        let seen = seen.lock().unwrap();
+        assert_eq!(seen.len(), 2, "one consult per stage");
+        let (c0, r0) = &seen[0];
+        assert_eq!(
+            (c0.stage, c0.queue_depth, c0.live_sessions),
+            (StepStage::Prefill, 3, 3)
+        );
+        assert_eq!(
+            r0.iter()
+                .map(|r| (r.id, r.priority, r.generated, r.remaining))
+                .collect::<Vec<_>>(),
+            vec![(ids[0], 0, 0, 6), (ids[1], 1, 0, 6), (ids[2], 5, 0, 6)]
+        );
+        let (c1, r1) = &seen[1];
+        assert_eq!(
+            (c1.stage, c1.queue_depth, c1.live_sessions),
+            (StepStage::Decode, 3, 3)
+        );
+        assert!(
+            r1.iter().all(|r| r.generated == 1 && r.remaining == 5),
+            "{r1:?}"
+        );
+    }
+
+    /// Ids the hook returns that are not ready, or that repeat, are ignored; the
+    /// hook cannot make a session advance twice or invent one.
+    #[test]
+    fn paged_scheduler_hook_unknown_and_repeated_ids_are_ignored() {
+        let model = tiny_model(9999);
+        let hook = FnHook(|_: &HookContext, ready: &[HookSession]| {
+            let first = ready[0].id;
+            vec![SessionId(9999), first, first]
+        });
+        let (ids, adv, _s) = hook_probe(&model, Box::new(hook), false);
+        assert_eq!(adv, vec![ids[0], ids[0]]);
+    }
+
+    /// The hook decides WHEN a session advances, never WHAT it generates: a
+    /// reversing hook yields byte-identical per-session tokens (T1 firewall), and a
+    /// hook that defers everything makes `run_to_completion` return instead of spin.
+    #[test]
+    fn paged_scheduler_hook_does_not_change_outputs_and_defer_all_does_not_spin() {
+        let model = tiny_model(9999);
+        let run = |hook: Option<Box<dyn SchedulerHook>>| {
+            let mut s =
+                PagedSessionScheduler::new(&model, paged_budget(), DType::F32, &Device::cpu())
+                    .unwrap();
+            s.set_hook(hook);
+            for i in 0..3u32 {
+                s.add_session(&[1, 2 + i, 3], SamplingStrategy::Greedy, None, 5)
+                    .unwrap();
+            }
+            s.run_to_completion()
+        };
+        let reversed = FnHook(|_: &HookContext, ready: &[HookSession]| {
+            ready.iter().rev().map(|r| r.id).collect()
+        });
+        assert_eq!(run(None), run(Some(Box::new(reversed))));
+        let defer_all = FnHook(|_: &HookContext, _: &[HookSession]| Vec::new());
+        let out = run(Some(Box::new(defer_all)));
+        assert!(
+            out.iter().all(|(_, t)| t.len() == 3),
+            "nothing advanced: {out:?}"
+        );
     }
 
     /// The pressure-valve flow end to end: evict a session to free the pool, let
