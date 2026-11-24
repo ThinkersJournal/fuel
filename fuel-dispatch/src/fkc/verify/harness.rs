@@ -53,6 +53,16 @@
 //!   baracuda-native half-width relationship a generic solver hasn't been
 //!   taught.
 
+// Compiled under `cuda` so the `super::` re-export set (gated on `cuda`) keeps its consumers; its only caller is its
+// own live-device acceptance test (`#[ignore]`d), so a non-test build sees it unused.
+#![cfg_attr(
+    not(test),
+    allow(
+        dead_code,
+        reason = "run_fkc_verify_harness is called only by this file's own #[ignore]d acceptance test; compiled under `cuda` to keep the verify re-export gates and compile coverage"
+    )
+)]
+
 use fuel_cuda_backend::CudaDevice;
 use fuel_ir::dispatch::OpKind;
 use fuel_ir::probe::BackendId;

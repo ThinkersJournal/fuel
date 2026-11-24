@@ -30,6 +30,16 @@
 //! as skipped/failed. `#[cfg(feature = "cuda")]` throughout — needs a live
 //! `CudaDevice`; its seeding test is `#[ignore]`'d.
 
+// Compiled under `cuda` so the `super::` re-export set (gated on `cuda`) keeps its consumers and the module keeps
+// compile coverage; but the sweep is reached only from the `dev-tools` seeders, so a build without it sees it unused.
+#![cfg_attr(
+    not(feature = "dev-tools"),
+    allow(
+        dead_code,
+        reason = "the sweep (run_cuda_verification and what only it calls) is reached only from the dev-tools seeders; the module stays compiled under `cuda` so the verify re-export gates and the unit tests keep their coverage"
+    )
+)]
+
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use fuel_cuda_backend::CudaDevice;

@@ -121,16 +121,6 @@ pub enum IngestOutcome {
 // are pure so they are unit-tested without a CUDA device.
 // ---------------------------------------------------------------------------
 
-/// Determinism class of a floor op. Consumed by the wiring (Task 8) to pick the
-/// advisory diff's tolerance band (`Exact` vs 2×-widened for transcendentals);
-/// it does NOT gate the verdict (§6.6-0007: kiss-ref never verdicts, any class).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg(feature = "cuda")]
-pub enum OpClass {
-    Exact,
-    Transcendental,
-}
-
 /// Fuel-side summary of a kiss-ref differential (no kiss-ref types cross this
 /// boundary, keeping `classify_floor_verdict` cuda- and dependency-independent).
 #[derive(Debug, Clone)]

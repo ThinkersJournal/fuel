@@ -64,6 +64,13 @@ binary_wrapper!(
 /// perturbed output" siblings in `fkc/verify/accuracy_*`): they only need SOME entry value to hand to the
 /// measurement. That the real registered entries exist is pinned by the CUDA binding census in
 /// `fuel-cuda-dispatch/tests/binding_census.rs`.
+#[cfg_attr(
+    not(feature = "dev-tools"),
+    allow(
+        dead_code,
+        reason = "callers are the `accuracy_*` modules, which are `dev-tools`-gated; a plain test+cuda build has none"
+    )
+)]
 pub(crate) fn stub_entry() -> crate::kernel::BindingEntry {
     crate::kernel::BindingEntry {
         kernel: add_f32,

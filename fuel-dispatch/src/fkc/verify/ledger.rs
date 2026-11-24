@@ -267,6 +267,13 @@ fn merge_records(mut ledger: VerificationLedger, fresh: &[LedgerRecord]) -> Veri
 
 /// Summary of a ledger write, for the seeder's `--nocapture` report.
 #[cfg(any(feature = "dev-tools", all(test, feature = "cuda")))]
+#[cfg_attr(
+    not(feature = "dev-tools"),
+    allow(
+        dead_code,
+        reason = "the fields are read only by the dev-tools seeders' report; test builds only construct it"
+    )
+)]
 pub(crate) struct LedgerWriteSummary {
     /// Records in the checked-in ledger BEFORE this run.
     pub(crate) before: usize,
