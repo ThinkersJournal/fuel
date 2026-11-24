@@ -78,7 +78,7 @@ fn clamp_run(
     let lo_buf = CudaStorageBytes::from_cpu_bytes(&device, lo_bytes)?;
     let hi_buf = CudaStorageBytes::from_cpu_bytes(&device, hi_bytes)?;
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let a_ptr = src.buffer().as_raw().0 as *const std::ffi::c_void;
     let b_ptr = lo_buf.buffer().as_raw().0 as *const std::ffi::c_void;
@@ -238,7 +238,7 @@ fn clamp_inplace_run(
     let lo_buf = CudaStorageBytes::from_cpu_bytes(&device, lo_bytes)?;
     let hi_buf = CudaStorageBytes::from_cpu_bytes(&device, hi_bytes)?;
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let ptr_mut = target.buffer().as_raw().0 as *mut std::ffi::c_void;
     let ptr_const = ptr_mut as *const std::ffi::c_void;

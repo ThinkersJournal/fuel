@@ -104,7 +104,7 @@ fn softmax_last_dim_run_into(
         .bt());
     }
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     // Build rank-N shape + per-input strides from the layout.
     let mut shape_i32: Vec<i32> = Vec::with_capacity(rank);

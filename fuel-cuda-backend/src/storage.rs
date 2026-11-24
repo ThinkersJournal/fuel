@@ -185,7 +185,7 @@ impl Map1 for Affine {
         if el == 0 {
             return Ok(out);
         }
-        let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = dev.stream().as_raw();
         let x_ptr = src_slice.as_raw().0 as *const std::ffi::c_void;
         let y_ptr = out.as_raw().0 as *mut std::ffi::c_void;
         let contig = layout.is_contiguous();
@@ -378,7 +378,7 @@ fn unary_scalar_baracuda<T: DeviceRepr + WithDType + ValidAsZeroBits>(
     if el == 0 {
         return Ok(out);
     }
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     let x_ptr = src_slice.as_raw().0 as *const std::ffi::c_void;
     let y_ptr = out.as_raw().0 as *mut std::ffi::c_void;
     let status = if layout.is_contiguous() {
@@ -676,7 +676,7 @@ impl Map1Any for FastReduce<'_> {
         let in_stride_i64: Vec<i64> = layout.stride().iter().map(|&s| s as i64).collect();
         let out_shape_i32: Vec<i32> = out_dims.iter().map(|&d| d as i32).collect();
         let src_slice = src.slice(layout.start_offset()..src.len());
-        let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = dev.stream().as_raw();
 
         match self.1 {
             ReduceOp::Sum | ReduceOp::Min | ReduceOp::Max => {
@@ -980,7 +980,7 @@ pub fn unary_baracuda<T: DeviceRepr + WithDType + ValidAsZeroBits>(
     if el == 0 {
         return Ok(out);
     }
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     let x_ptr = src_slice.as_raw().0 as *const std::ffi::c_void;
     let y_ptr = out.as_raw().0 as *mut std::ffi::c_void;
     let status = if layout.is_contiguous() {
@@ -1071,7 +1071,7 @@ fn idx_ptr_for_baracuda(
             let view = s.slice(ids_l.start_offset()..s.len());
             let el = ids_l.shape().elem_count();
             let i32_buf = unsafe { dev.alloc::<i32>(el)? };
-            let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+            let stream = dev.stream().as_raw();
             let status = unsafe {
                 sys::baracuda_kernels_cast_u8_i32_run(
                     el as i64,
@@ -1238,7 +1238,7 @@ impl Map1 for IndexSelect<'_> {
             ))
             .bt()
         })?;
-        let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = dev.stream().as_raw();
         let status = unsafe {
             run(
                 dst_el as i64,
@@ -1355,7 +1355,7 @@ impl Map1 for Gather<'_> {
             ))
             .bt()
         })?;
-        let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = dev.stream().as_raw();
         let status = unsafe {
             run(
                 dst_el as i64,
@@ -1473,7 +1473,7 @@ impl Map2InPlace for IndexAdd<'_> {
             ))
             .bt()
         })?;
-        let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = dev.stream().as_raw();
         let status = unsafe {
             run(
                 src_numel as i64,
@@ -1613,7 +1613,7 @@ fn run_scatter_like<T: DeviceRepr + WithDType + ValidAsZeroBits>(
         ))
         .bt()
     })?;
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     let status = unsafe {
         run(
             upd_numel as i64,
@@ -1716,7 +1716,7 @@ fn baracuda_conv2d_fw<T: DeviceRepr + WithDType + ValidAsZeroBits>(
     let (out_h, out_w) = (params.out_h(), params.out_w());
     let dst_el = params.c_out * out_h * out_w * params.b_size;
     let out = unsafe { dev.alloc::<T>(dst_el)? };
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     let out_ptr = out.as_raw().0 as *mut std::ffi::c_void;
     let (
         batch,
@@ -1886,7 +1886,7 @@ fn baracuda_conv1d_fw<T: DeviceRepr + WithDType + ValidAsZeroBits>(
     let l_out = params.l_out();
     let dst_el = params.c_out * l_out * params.b_size;
     let out = unsafe { dev.alloc::<T>(dst_el)? };
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     let out_ptr = out.as_raw().0 as *mut std::ffi::c_void;
     let (batch, c_in, c_out, l_in, l_filt, stride_l, pad_l, dilation_l, groups) = (
         params.b_size as i32,
@@ -2037,7 +2037,7 @@ fn baracuda_conv_transpose2d_fw<T: DeviceRepr + WithDType + ValidAsZeroBits>(
     let (out_h, out_w) = (params.out_h(), params.out_w());
     let dst_el = params.c_out * out_h * out_w * params.b_size;
     let out = unsafe { dev.alloc::<T>(dst_el)? };
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     let inp_ptr = inp.as_raw().0 as *const std::ffi::c_void;
     let k_ptr = k.as_raw().0 as *const std::ffi::c_void;
     let out_ptr = out.as_raw().0 as *mut std::ffi::c_void;
@@ -2216,7 +2216,7 @@ fn baracuda_conv_transpose1d_fw<T: DeviceRepr + WithDType + ValidAsZeroBits>(
     let l_out = params.l_out();
     let dst_el = params.c_out * l_out * params.b_size;
     let out = unsafe { dev.alloc::<T>(dst_el)? };
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     let inp_ptr = inp.as_raw().0 as *const std::ffi::c_void;
     let k_ptr = k.as_raw().0 as *const std::ffi::c_void;
     let out_ptr = out.as_raw().0 as *mut std::ffi::c_void;
@@ -2472,7 +2472,7 @@ fn pool2d_baracuda<T: DeviceRepr + WithDType + ValidAsZeroBits>(
     let dst_el = batch * channels * h_out * w_out;
     // SAFETY: output written by the cuDNN kernel below.
     let out = unsafe { dev.alloc::<T>(dst_el)? };
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     let x_ptr = inp.as_raw().0 as *const std::ffi::c_void;
     let y_ptr = out.as_raw().0 as *mut std::ffi::c_void;
     let (b, c, hi, wi, ho, wo) = (
@@ -2570,7 +2570,7 @@ fn upsample_nearest2d_baracuda<T: DeviceRepr + WithDType + ValidAsZeroBits>(
     // SAFETY: filled by the kernel below.
     let out = unsafe { dev.alloc::<T>(dst_el)? };
     let scratch = crate::baracuda::scratch::Workspace::alloc(dev, 0)?;
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     let x_ptr = inp.as_raw().0 as *const std::ffi::c_void;
     let y_ptr = out.as_raw().0 as *mut std::ffi::c_void;
     let (n, c, ih, iw, oh, ow) = (
@@ -2706,7 +2706,7 @@ fn upsample_bilinear2d_baracuda<T: DeviceRepr + WithDType + ValidAsZeroBits>(
     // SAFETY: filled by the kernel below.
     let out = unsafe { dev.alloc::<T>(dst_el)? };
     let scratch = crate::baracuda::scratch::Workspace::alloc(dev, 0)?;
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     let x_ptr = inp.as_raw().0 as *const std::ffi::c_void;
     let y_ptr = out.as_raw().0 as *mut std::ffi::c_void;
     let (n, c, ih, iw, oh, ow) = (
@@ -3004,7 +3004,7 @@ impl Map2 for WhereCond<'_> {
         let t_slice = t.slice(layout_t.start_offset()..t.len());
         let f_slice = f.slice(layout_f.start_offset()..f.len());
         let out = unsafe { dev.alloc::<T>(el)? };
-        let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = dev.stream().as_raw();
         let status = unsafe {
             run(
                 el as i64,
@@ -3120,7 +3120,7 @@ fn binary_baracuda_raw(
     if el == 0 {
         return Ok(());
     }
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     let both_contig = lhs_l.is_contiguous() && rhs_l.is_contiguous();
     let status = if both_contig {
         // SAFETY: device-resident a/b/y pointers; ws null/0.
@@ -3508,7 +3508,7 @@ fn cast_baracuda(
         ))
         .bt()
     })?;
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     // SAFETY: device-resident pointers; workspace null/0.
     let status = unsafe {
         run(
@@ -3626,7 +3626,7 @@ fn matmul_q_gguf_baracuda(
     let workspace = dev.alloc_zeros::<u8>(workspace_bytes)?;
     let out = dev.alloc_zeros::<f32>(nrows)?;
 
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     let ids_ptr = sorted_token_ids_dev.as_raw().0 as *const i32;
     let off_ptr = expert_offsets_dev.as_raw().0 as *const i32;
     let dst_ptr = out.as_raw().0 as *mut std::ffi::c_void;
@@ -3980,7 +3980,7 @@ impl CudaStorage {
         }
         let shape_i32: Vec<i32> = dims.iter().map(|&d| d as i32).collect();
         let stride_y: Vec<i64> = layout.stride().iter().map(|&s| s as i64).collect();
-        let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = dev.stream().as_raw();
         let src_o = layout.start_offset();
 
         macro_rules! launch {
@@ -4452,7 +4452,7 @@ impl CudaStorage {
             }
             s
         };
-        let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = device.stream().as_raw();
         macro_rules! launch {
             ($variant:ident, $ty:ty, $run:ident, $label:expr) => {{
                 if let CudaStorageSlice::$variant(s) = &self.slice {
@@ -4638,7 +4638,7 @@ impl CudaStorage {
             s
         };
         let axes_mask: i32 = 1 << (rank as i32 - 1);
-        let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = device.stream().as_raw();
         macro_rules! launch {
             ($variant:ident, $ty:ty, $run:ident, $label:expr) => {{
                 if let CudaStorageSlice::$variant(s) = &self.slice {
@@ -4742,7 +4742,7 @@ impl CudaStorage {
             s
         };
         let axes_mask: i32 = 1 << (rank as i32 - 1);
-        let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = device.stream().as_raw();
         macro_rules! launch {
             ($variant:ident, $ty:ty, $run:ident, $label:expr) => {{
                 if let (CudaStorageSlice::$variant(s), CudaStorageSlice::$variant(g)) =
@@ -4860,7 +4860,7 @@ impl CudaStorage {
             s
         };
         let axes_mask: i32 = 1 << (rank as i32 - 1);
-        let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = device.stream().as_raw();
         macro_rules! launch {
             ($variant:ident, $ty:ty, $run:ident, $label:expr) => {{
                 if let (
@@ -4986,7 +4986,7 @@ impl CudaStorage {
         };
         let cos_ptr = cos_src.as_raw().0 as *const std::ffi::c_void;
         let sin_ptr = sin_src.as_raw().0 as *const std::ffi::c_void;
-        let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = device.stream().as_raw();
 
         macro_rules! launch {
             ($variant:ident, $ty:ty, $run:ident, $label:expr) => {{
@@ -5082,7 +5082,7 @@ impl CudaStorage {
         };
         let cos_ptr = cos_src.as_raw().0 as *const std::ffi::c_void;
         let sin_ptr = sin_src.as_raw().0 as *const std::ffi::c_void;
-        let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = device.stream().as_raw();
         macro_rules! launch {
             ($variant:ident, $ty:ty, $run:ident, $label:expr) => {{
                 if let CudaStorageSlice::$variant(s) = &self.slice {
@@ -5177,7 +5177,7 @@ impl CudaStorage {
         };
         let cos_ptr = cos_src.as_raw().0 as *const std::ffi::c_void;
         let sin_ptr = sin_src.as_raw().0 as *const std::ffi::c_void;
-        let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = device.stream().as_raw();
         macro_rules! launch {
             ($variant:ident, $ty:ty, $run:ident, $label:expr) => {{
                 if let CudaStorageSlice::$variant(s) = &self.slice {
@@ -5883,7 +5883,7 @@ fn copy_strided_baracuda(
         8 => baracuda_kernels_sys::baracuda_kernels_contiguize_b8_run,
         other => fuel_ir::bail!("copy_strided_src: unsupported byte width {other}"),
     };
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     // SAFETY: device-resident src/dst pointers; shape/stride arrays are
     // host pointers per baracuda's contiguize ABI; offset=0 because
     // slice_src_and_dst already shifted src to start_offset.

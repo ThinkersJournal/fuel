@@ -130,7 +130,7 @@ fn concat2_run(
     }
     let out_buf = device.alloc_zeros::<u8>(out_bytes)?;
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let mut output_shape_i32: Vec<i32> = Vec::with_capacity(rank);
     for (i, &d) in out_dims.iter().enumerate() {
@@ -235,7 +235,7 @@ pub fn concat2_into(
         return Ok(());
     }
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let mut output_shape_i32: Vec<i32> = Vec::with_capacity(rank);
     for (i, &d) in out_dims.iter().enumerate() {

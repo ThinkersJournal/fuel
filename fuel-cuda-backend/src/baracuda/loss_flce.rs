@@ -175,7 +175,7 @@ fn per_row_inner(
     op_label: &'static str,
 ) -> Result<()> {
     let device = logits.device().clone();
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let status = unsafe {
         kernel(
             n_rows,
@@ -355,7 +355,7 @@ pub fn count_non_ignore(
     ignore_index: i64,
 ) -> Result<()> {
     let device = target.device().clone();
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let status = unsafe {
         sys::baracuda_kernels_loss_flce_count_non_ignore_run(
             bt,

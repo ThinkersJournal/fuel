@@ -123,7 +123,7 @@ fn index_select_run_into(
         .bt());
     }
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let i32_or = |dim_index: usize, dim_value: usize| -> Result<i32> {
         i32::try_from(dim_value).map_err(|_| {
@@ -312,7 +312,7 @@ fn gather_run(
     }
     let out_buf = device.alloc_zeros::<u8>(out_bytes)?;
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let (out_shape_i32, stride_out) = shape_strides_for(output_shape, op_label)?;
     let (_src_shape_i32, stride_src) = shape_strides_for(source_shape, op_label)?;
@@ -435,7 +435,7 @@ fn masked_fill_run(
     }
     let out_buf = device.alloc_zeros::<u8>(out_bytes)?;
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let fill_bits = pack_fill_bits(fill_bytes, op_label)?;
     let src_ptr = src.buffer().as_raw().0 as *const std::ffi::c_void;
@@ -547,7 +547,7 @@ fn scatter_add_run(
 
     let upd_numel: i64 = src_shape.iter().product::<usize>() as i64;
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let (upd_shape_i32, stride_upd) = shape_strides_for(src_shape, op_label)?;
     let (_idx_shape_i32, stride_index) = shape_strides_for(src_shape, op_label)?;

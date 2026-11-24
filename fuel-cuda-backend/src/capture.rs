@@ -215,7 +215,7 @@ mod tests {
         // ---- capture the two-launch run ----
         let mut captured = dev
             .capture_run(|s| {
-                let sr = s.as_raw() as *mut c_void;
+                let sr = s.as_raw();
                 let st1 = unsafe { affine(n, xptr, yptr, 2.0, 1.0, &scratch, sr) };
                 assert_eq!(st1, 0, "affine #1 capture status");
                 let st2 = unsafe { affine(n, yptr_in, zptr, 3.0, 0.0, &scratch, sr) };
@@ -253,7 +253,7 @@ mod tests {
         let z2p = z2.as_raw().0 as *mut c_void;
         captured
             .rebind(&dev, |s| {
-                let sr = s.as_raw() as *mut c_void;
+                let sr = s.as_raw();
                 let st1 = unsafe { affine(n, x2p, y2p, 2.0, 1.0, &scratch, sr) };
                 assert_eq!(st1, 0, "rebind affine #1 status");
                 let st2 = unsafe { affine(n, y2p_in, z2p, 3.0, 0.0, &scratch, sr) };

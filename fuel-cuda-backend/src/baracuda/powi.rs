@@ -141,7 +141,7 @@ fn powi_run(
     let out_bytes = (numel as usize) * dtype_size_bytes;
     let out_buf = device.alloc_zeros::<u8>(out_bytes)?;
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let x_ptr = src.buffer().as_raw().0 as *const std::ffi::c_void;
     let y_ptr = out_buf.as_raw().0 as *mut std::ffi::c_void;
     let p0 = exp as f32;
@@ -218,7 +218,7 @@ fn powi_backward_run(
     let out_bytes = (numel as usize) * dtype_size_bytes;
     let out_buf = device.alloc_zeros::<u8>(out_bytes)?;
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let x_ptr = x.buffer().as_raw().0 as *const std::ffi::c_void;
     let dy_ptr = dy.buffer().as_raw().0 as *const std::ffi::c_void;
     let dx_ptr = out_buf.as_raw().0 as *mut std::ffi::c_void;
@@ -347,7 +347,7 @@ fn powi_inplace_run(
     }
     let device = target.device().clone();
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let ptr_mut = target.buffer().as_raw().0 as *mut std::ffi::c_void;
     let ptr_const = ptr_mut as *const std::ffi::c_void;
     let p0 = exp as f32;

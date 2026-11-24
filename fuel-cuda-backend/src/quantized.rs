@@ -91,7 +91,7 @@ fn dequantize_f32(
     dtype.check_dequant_count("dequantize_f32", elem_count, data.len)?;
     let run = pick_dequant(dtype)?;
     let dst = unsafe { dev.alloc::<f32>(elem_count)? };
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     let x_ptr = data.inner.as_raw().0 as *const std::ffi::c_void;
     let y_ptr = dst.as_raw().0 as *mut std::ffi::c_void;
     // SAFETY: device-resident pointers + live stream; workspace null/0
@@ -254,7 +254,7 @@ fn baracuda_batched_mmvq(
     let out_elems = m_total * n_rows;
     let dst = dev.alloc_zeros::<f32>(out_elems)?;
 
-    let stream = dev.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = dev.stream().as_raw();
     let w_ptr = weights.inner.as_raw().0 as *const std::ffi::c_void;
     let a_ptr = activations.as_raw().0 as *const std::ffi::c_void;
     let ids_ptr = sorted_token_ids_dev.as_raw().0 as *const i32;

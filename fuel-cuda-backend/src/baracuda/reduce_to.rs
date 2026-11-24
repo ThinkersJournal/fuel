@@ -84,7 +84,7 @@ fn reduce_to(
     }
 
     let out_buf = device.alloc_zeros::<u8>(dst_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     // SAFETY: `input_shape`, `input_stride`, `output_shape` are HOST
     // pointers per baracuda's documented ABI (the launcher reads them

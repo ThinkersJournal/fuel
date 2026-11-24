@@ -144,7 +144,7 @@ pub fn write_slice_run(
     }
 
     let device = dest.device().clone();
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let dest_ptr = dest.buffer().as_raw().0 as *mut std::ffi::c_void;
     let source_ptr = source.buffer().as_raw().0 as *const std::ffi::c_void;
 
@@ -375,7 +375,7 @@ pub unsafe fn write_slice_doff_run(
     }
 
     let device = dest.device().clone();
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let dest_ptr = dest.buffer().as_raw().0 as *mut std::ffi::c_void;
     let source_ptr = source.buffer().as_raw().0 as *const std::ffi::c_void;
 

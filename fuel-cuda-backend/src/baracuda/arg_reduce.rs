@@ -109,7 +109,7 @@ fn arg_reduce_run(
 
     let out_buf = device.alloc_zeros::<u8>(out_bytes)?;
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     // baracuda's i32 shape buffer.
     let mut shape_i32: Vec<i32> = Vec::with_capacity(out_shape.len());

@@ -198,7 +198,7 @@ fn rms_norm_last_dim_run_into(
     }
     let rms_bytes = (outer_count * dtype_size_bytes).max(1);
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let (shape_i32, stride_x, stride_y, stride_rms) =
         shape_and_strides_from_layout(src_layout, op_label)?;
@@ -274,7 +274,7 @@ fn layer_norm_last_dim_run(
     let mean_buf = device.alloc_zeros::<u8>(outer_count * dtype_size_bytes)?;
     let inv_std_buf = device.alloc_zeros::<u8>(outer_count * dtype_size_bytes)?;
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let (shape_i32, stride_x, stride_y, stride_save) =
         shape_and_strides_from_layout(src_layout, op_label)?;

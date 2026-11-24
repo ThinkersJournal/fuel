@@ -70,7 +70,7 @@ pub fn marlin_gemm_f16(
     let ws_entries = ((n + 127) / 128) * (max_par as usize);
     let ws_buf = device.alloc_zeros::<u8>(ws_entries * std::mem::size_of::<i32>())?;
     let out_buf = device.alloc_zeros::<u8>(out_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let status = unsafe {
         sys::baracuda_kernels_int4_marlin_gemm_f16_run(
@@ -184,7 +184,7 @@ pub fn awq_gemm_f16(
         .map(|b| b.as_raw().0 as *mut std::ffi::c_void)
         .unwrap_or(std::ptr::null_mut());
     let out_buf = device.alloc_zeros::<u8>(out_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let status = unsafe {
         sys::baracuda_kernels_int4_awq_gemm_f16_run(
@@ -320,7 +320,7 @@ fn nf4_dequantize_inner(
         return CudaStorageBytes::alloc(&device, 0);
     }
     let out_buf = device.alloc_zeros::<u8>(out_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let n_i32 = i32::try_from(n).map_err(|_| crate::error::CudaError::BaracudaShapeOverflow {
         op: op_label,
         dim_index: 0,
@@ -385,7 +385,7 @@ fn nf4_gemv_inner(
         return CudaStorageBytes::alloc(&device, 0);
     }
     let out_buf = device.alloc_zeros::<u8>(out_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let n_i32 = i32::try_from(n).map_err(|_| crate::error::CudaError::BaracudaShapeOverflow {
         op: op_label,
         dim_index: 0,

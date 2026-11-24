@@ -195,7 +195,7 @@ fn run_pad_mode(
         return CudaStorageBytes::alloc(input.device(), 0);
     }
     let (device, dest) = alloc_dest(input, out_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let in_ptr = input.buffer().as_raw().0 as *const std::ffi::c_void;
     let out_ptr = dest.as_raw().0 as *mut std::ffi::c_void;
     // SAFETY: pointers valid; stack arrays live for the FFI call.
@@ -237,7 +237,7 @@ fn run_pad_constant_f32(
         return CudaStorageBytes::alloc(input.device(), 0);
     }
     let (device, dest) = alloc_dest(input, out_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let in_ptr = input.buffer().as_raw().0 as *const std::ffi::c_void;
     let out_ptr = dest.as_raw().0 as *mut std::ffi::c_void;
     let status = unsafe {
@@ -277,7 +277,7 @@ fn run_pad_constant_f64(
         return CudaStorageBytes::alloc(input.device(), 0);
     }
     let (device, dest) = alloc_dest(input, out_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let in_ptr = input.buffer().as_raw().0 as *const std::ffi::c_void;
     let out_ptr = dest.as_raw().0 as *mut std::ffi::c_void;
     let status = unsafe {
@@ -317,7 +317,7 @@ fn run_pad_constant_u16(
         return CudaStorageBytes::alloc(input.device(), 0);
     }
     let (device, dest) = alloc_dest(input, out_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let in_ptr = input.buffer().as_raw().0 as *const std::ffi::c_void;
     let out_ptr = dest.as_raw().0 as *mut std::ffi::c_void;
     let status = unsafe {
@@ -522,7 +522,7 @@ fn run_pad_backward(
         return CudaStorageBytes::alloc(dy.device(), 0);
     }
     let (device, dx) = alloc_dest(dy, dx_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let dy_ptr = dy.buffer().as_raw().0 as *const std::ffi::c_void;
     let dx_ptr = dx.as_raw().0 as *mut std::ffi::c_void;
     let input_numel = dx_shape.iter().product::<usize>() as i64;

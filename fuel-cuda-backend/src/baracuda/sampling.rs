@@ -77,7 +77,7 @@ pub fn top_k_sampling_f32(
     let device = probs.device().clone();
     let (b, v) = batch_vocab_i32("flashinfer_top_k_sampling_f32", batch, vocab)?;
     let (tokens, valid) = alloc_pair(&device, batch)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let status = unsafe {
         sys::baracuda_kernels_flashinfer_top_k_sampling_f32_run(
             b,
@@ -111,7 +111,7 @@ pub fn top_p_sampling_f32(
     let device = probs.device().clone();
     let (b, v) = batch_vocab_i32("flashinfer_top_p_sampling_f32", batch, vocab)?;
     let (tokens, valid) = alloc_pair(&device, batch)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let status = unsafe {
         sys::baracuda_kernels_flashinfer_top_p_sampling_f32_run(
             b,
@@ -145,7 +145,7 @@ pub fn min_p_sampling_f32(
     let device = probs.device().clone();
     let (b, v) = batch_vocab_i32("flashinfer_min_p_sampling_f32", batch, vocab)?;
     let (tokens, valid) = alloc_pair(&device, batch)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let status = unsafe {
         sys::baracuda_kernels_flashinfer_min_p_sampling_f32_run(
             b,
@@ -181,7 +181,7 @@ pub fn top_k_top_p_sampling_f32(
     let device = probs.device().clone();
     let (b, v) = batch_vocab_i32("flashinfer_top_k_top_p_sampling_f32", batch, vocab)?;
     let (tokens, valid) = alloc_pair(&device, batch)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let status = unsafe {
         sys::baracuda_kernels_flashinfer_top_k_top_p_sampling_f32_run(
             b,

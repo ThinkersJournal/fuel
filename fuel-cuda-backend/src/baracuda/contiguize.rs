@@ -103,7 +103,7 @@ fn contiguize_with(
         let dest = device.alloc_zeros::<u8>(dest_bytes)?;
         // Treat as rank-1 shape [1] with stride [0] (the lone element
         // is at start_offset). source_offset honored by the FFI.
-        let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = device.stream().as_raw();
         let dest_ptr = dest.as_raw().0 as *mut std::ffi::c_void;
         let source_ptr = source.buffer().as_raw().0 as *const std::ffi::c_void;
         let shape_i32: [i32; 1] = [1];
@@ -164,7 +164,7 @@ fn contiguize_with(
         strides_i64[i] = strides[i] as i64;
     }
 
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let dest_ptr = dest.as_raw().0 as *mut std::ffi::c_void;
     let source_ptr = source.buffer().as_raw().0 as *const std::ffi::c_void;
 
@@ -249,7 +249,7 @@ fn contiguize_into_with(
             ))
             .bt());
         }
-        let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = device.stream().as_raw();
         let dest_ptr = dest.buffer().as_raw().0 as *mut std::ffi::c_void;
         let source_ptr = source.buffer().as_raw().0 as *const std::ffi::c_void;
         let shape_i32: [i32; 1] = [1];
@@ -313,7 +313,7 @@ fn contiguize_into_with(
         strides_i64[i] = strides[i] as i64;
     }
 
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let dest_ptr = dest.buffer().as_raw().0 as *mut std::ffi::c_void;
     let source_ptr = source.buffer().as_raw().0 as *const std::ffi::c_void;
 

@@ -180,7 +180,7 @@ fn causal_conv1d_inner(
         return CudaStorageBytes::alloc(&device, 0);
     }
     let out_buf = device.alloc_zeros::<u8>(out_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let bias_ptr = bias
         .map(|b| b.buffer().as_raw().0 as *const std::ffi::c_void)
         .unwrap_or(std::ptr::null());
@@ -604,7 +604,7 @@ fn causal_conv1d_backward_inner(
     let dx_buf = device.alloc_zeros::<u8>(dx_bytes)?;
     let dw_buf = device.alloc_zeros::<u8>(dw_bytes)?;
     let db_buf = device.alloc_zeros::<u8>(db_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let bias_ptr = bias
         .map(|b| b.buffer().as_raw().0 as *const std::ffi::c_void)
         .unwrap_or(std::ptr::null());
@@ -803,7 +803,7 @@ fn ssd_chunk_scan_inner(
         .as_ref()
         .map(|b| b.as_raw().0 as *mut std::ffi::c_void)
         .unwrap_or(std::ptr::null_mut());
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let status = unsafe {
         kernel(
             shape_i32(op_label, 0, batch)?,
@@ -1022,7 +1022,7 @@ fn selective_scan_inner(
         .as_ref()
         .map(|b| b.as_raw().0 as *mut std::ffi::c_void)
         .unwrap_or(std::ptr::null_mut());
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let d_skip_ptr = d_skip
         .map(|p| p.buffer().as_raw().0 as *const std::ffi::c_void)
         .unwrap_or(std::ptr::null());

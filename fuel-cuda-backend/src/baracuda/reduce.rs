@@ -121,7 +121,7 @@ fn reduce_multi_axis(
         let device = current_storage.device().clone();
         let out_buf = device.alloc_zeros::<u8>(out_bytes)?;
         let scratch = Workspace::alloc(&device, 0)?;
-        let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+        let stream = device.stream().as_raw();
 
         // Build the shape + stride buffers in baracuda's i32/i64 types.
         let mut shape_i32: Vec<i32> = Vec::with_capacity(out_shape.len());

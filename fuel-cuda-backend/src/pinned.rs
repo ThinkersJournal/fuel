@@ -197,7 +197,7 @@ impl PinnedHostStorage {
     /// reaches a slice constructor.
     fn as_bytes_mut(&mut self) -> Option<&mut [u8]> {
         let (ptr, bytes): (*mut u8, usize) = match self {
-            Self::U8(b) => (b.as_mut_ptr() as *mut u8, b.len()),
+            Self::U8(b) => (b.as_mut_ptr(), b.len()),
             Self::U32(b) => (b.as_mut_ptr() as *mut u8, b.len() * 4),
             Self::I16(b) => (b.as_mut_ptr() as *mut u8, b.len() * 2),
             Self::I32(b) => (b.as_mut_ptr() as *mut u8, b.len() * 4),
@@ -207,11 +207,11 @@ impl PinnedHostStorage {
             Self::F32(b) => (b.as_mut_ptr() as *mut u8, b.len() * 4),
             Self::F64(b) => (b.as_mut_ptr() as *mut u8, b.len() * 8),
             Self::F8E4M3(b) => (b.as_mut_ptr() as *mut u8, b.len()),
-            Self::F6E2M3(b) => (b.as_mut_ptr() as *mut u8, b.len()),
-            Self::F6E3M2(b) => (b.as_mut_ptr() as *mut u8, b.len()),
-            Self::F4(b) => (b.as_mut_ptr() as *mut u8, b.len()),
-            Self::F8E8M0(b) => (b.as_mut_ptr() as *mut u8, b.len()),
-            Self::Bool(b) => (b.as_mut_ptr() as *mut u8, b.len()),
+            Self::F6E2M3(b) => (b.as_mut_ptr(), b.len()),
+            Self::F6E3M2(b) => (b.as_mut_ptr(), b.len()),
+            Self::F4(b) => (b.as_mut_ptr(), b.len()),
+            Self::F8E8M0(b) => (b.as_mut_ptr(), b.len()),
+            Self::Bool(b) => (b.as_mut_ptr(), b.len()),
         };
         if bytes == 0 || ptr.is_null() {
             return None;

@@ -263,7 +263,7 @@ pub(crate) fn launch(
     // alibi_slopes_batch_stride = 0 default).
     let alibi_batch_stride: i32 = 0;
 
-    let stream_raw = stream.as_raw() as *mut core::ffi::c_void;
+    let stream_raw = stream.as_raw();
     let status = unsafe {
         if is_bf16 {
             sys::baracuda_kernels_fa2_sdpa_bf16_run_v2(

@@ -157,7 +157,7 @@ fn gemm_int8_run(
     // through Workspace::alloc which short-circuits on zero bytes.
     let workspace_bytes = unsafe { workspace_size(m_i32, n_i32, k_i32) };
     let scratch = Workspace::alloc(&device, workspace_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let a_ptr = lhs.buffer().as_raw().0 as *const std::ffi::c_void;
     let b_ptr = rhs.buffer().as_raw().0 as *const std::ffi::c_void;

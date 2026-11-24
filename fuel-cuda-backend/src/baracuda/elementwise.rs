@@ -167,7 +167,7 @@ fn unary_run_into(
         None => 0,
     };
     let scratch = Workspace::alloc(&device, workspace_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let x_ptr = src.buffer().as_raw().0 as *const std::ffi::c_void;
     let y_ptr = out.buffer().as_raw().0 as *mut std::ffi::c_void;
 
@@ -241,7 +241,7 @@ fn unary_inplace_run(
     }
     let device = target.device().clone();
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let ptr_mut = target.buffer().as_raw().0 as *mut std::ffi::c_void;
     let ptr_const = ptr_mut as *const std::ffi::c_void;
     // SAFETY: same buffer for x + y is safe for elementwise unary

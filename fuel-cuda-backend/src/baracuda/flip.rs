@@ -76,7 +76,7 @@ fn flip_run(
         })
     };
     let out = device.alloc_zeros::<u8>(out_bytes)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let in_ptr = input.buffer().as_raw().0 as *const std::ffi::c_void;
     let out_ptr = out.as_raw().0 as *mut std::ffi::c_void;
 

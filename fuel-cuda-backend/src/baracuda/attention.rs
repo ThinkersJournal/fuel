@@ -208,7 +208,7 @@ fn rope_run_into(
         .bt());
     }
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let x_ptr = src.buffer().as_raw().0 as *const std::ffi::c_void;
     let y_ptr = out.buffer().as_raw().0 as *mut std::ffi::c_void;
 
@@ -360,7 +360,7 @@ fn flash_sdpa_run(
     let lse_bytes = batch * heads * q_len * std::mem::size_of::<f32>();
     let lse_buf = device.alloc_zeros::<u8>(lse_bytes)?;
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let q_ptr = q.buffer().as_raw().0 as *const std::ffi::c_void;
     let k_ptr = k.buffer().as_raw().0 as *const std::ffi::c_void;
@@ -615,7 +615,7 @@ fn rope_apply_run_into(
     let stride_b: i32 = 0; // single shared cos/sin table across every outer row
 
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let x_ptr = x.buffer().as_raw().0 as *const std::ffi::c_void;
     let cos_ptr = cos.buffer().as_raw().0 as *const std::ffi::c_void;
     let sin_ptr = sin.buffer().as_raw().0 as *const std::ffi::c_void;
@@ -936,7 +936,7 @@ fn sdpa_arbmask_run(
     let lse_bytes = batch * heads * q_len * std::mem::size_of::<f32>();
     let lse_buf = device.alloc_zeros::<u8>(lse_bytes)?;
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
 
     let q_ptr = q.buffer().as_raw().0 as *const std::ffi::c_void;
     let k_ptr = k.buffer().as_raw().0 as *const std::ffi::c_void;
@@ -1291,7 +1291,7 @@ fn flash_decoding_run(
     // SAFETY: pure host-side size query.
     let ws_need = unsafe { ws_bytes(batch_i, heads_i, sk_i, d_i) };
 
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let q_ptr = q.buffer().as_raw().0 as *const std::ffi::c_void;
     let k_ptr = k.buffer().as_raw().0 as *const std::ffi::c_void;
     let v_ptr = v.buffer().as_raw().0 as *const std::ffi::c_void;

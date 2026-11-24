@@ -222,7 +222,7 @@ fn binary_run_into(
         .bt());
     }
     let scratch = Workspace::alloc(&device, 0)?;
-    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let stream = device.stream().as_raw();
     let a_ptr = lhs.buffer().as_raw().0 as *const std::ffi::c_void;
     let b_ptr = rhs.buffer().as_raw().0 as *const std::ffi::c_void;
     let y_ptr = out.buffer().as_raw().0 as *mut std::ffi::c_void;
