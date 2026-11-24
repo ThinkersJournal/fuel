@@ -387,6 +387,9 @@ baracuda-kernels-sys   = { version = "0.1.0-alpha.148", features = [
     "fa2",
 ] }
 gemm = { version = "0.19.0" }
+# MLMF move slice C (survey F7): the HF-AWQ unpack and the kernel repack are conversions, so they come from
+# ml-convertant (crates.io), not from fuel or MLMF.
+ml-convertant-awq = { version = "0.1.31" }
 hf-hub = "0.5.0"
 half = { version = "2.5.0", features = [
     "num-traits",

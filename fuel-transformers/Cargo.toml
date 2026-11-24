@@ -77,6 +77,7 @@ fuel-transformers = { path = ".", features = ["dev-tools"] }
 fuel-hardware = { path = "../fuel-hardware" }
 fuel-test-support = { path = "../fuel-test-support" }
 fuel-nn = { path = "../fuel-nn" }
+ml-convertant-awq = { workspace = true }
 # M0 of the joint GPU milestone plan (unpopped#39): the Qwen3 CPU yardstick
 # test (tests/qwen3_cpu_yardstick.rs) needs `anyhow::{anyhow, bail}` for its
 # GGUF-metadata loading path, mirroring fuel-examples/examples/quantized-qwen3.

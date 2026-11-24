@@ -6,7 +6,7 @@
 //! quantized operands in baracuda's W4A16 kernel layout; a HuggingFace
 //! checkpoint stores the transpose with AutoAWQ's interleaved nibble order.
 //! [`load_awq_layer`] reads the three tensors of one `WQLinear_GEMM` layer and
-//! converts them with [`fuel_quantized::awq_repack::repack_hf_awq_for_kernel`].
+//! converts them with `ml-convertant-awq` (`unpack_hf` then `repack_for_kernel`).
 //!
 //! ## On-disk layout (per linear layer, `prefix` = e.g.
 //! `model.layers.0.self_attn.q_proj`)
@@ -25,8 +25,8 @@
 use crate::Device;
 use crate::lazy::Tensor;
 use fuel_ir::{Result, Shape};
-use fuel_quantized::awq_repack::repack_hf_awq_for_kernel;
 use half::f16;
+use ml_convertant_awq::{AwqError, HfAwq, KernelAwq, repack_for_kernel, unpack_hf};
 use std::sync::Arc;
 
 /// An AWQ-quantized linear weight, materialized as the three `Tensor` inputs
@@ -77,6 +77,27 @@ impl AwqWeight {
     }
 }
 
+/// HF-layout buffers -> the kernel layout, through `ml-convertant-awq` (MLMF move slice C, survey F7: the
+/// unpack of the HF packing and the repack are conversions, which live there).
+fn repack(
+    qweight: &[u32],
+    qzeros: &[u32],
+    scales: &[f16],
+    ic: usize,
+    oc: usize,
+    group_size: usize,
+) -> std::result::Result<KernelAwq, AwqError> {
+    let hf = HfAwq {
+        ic,
+        oc,
+        group_size,
+        qweight: qweight.to_vec(),
+        qzeros: qzeros.to_vec(),
+        scales: scales.to_vec(),
+    };
+    repack_for_kernel(&unpack_hf(&hf)?)
+}
+
 /// Build an [`AwqWeight`] from HF-layout buffers (`qweight [IC, OC/8]`,
 /// `qzeros [IC/g, OC/8]`, `scales [IC/g, OC]`), repacking to the kernel layout.
 pub fn awq_from_hf_buffers(
@@ -88,7 +109,7 @@ pub fn awq_from_hf_buffers(
     group_size: usize,
     device: &Device,
 ) -> Result<AwqWeight> {
-    let b = repack_hf_awq_for_kernel(qweight, qzeros, scales, ic, oc, group_size)
+    let b = repack(qweight, qzeros, scales, ic, oc, group_size)
         .map_err(|e| fuel_ir::Error::Msg(format!("awq_from_hf_buffers: {e}")).bt())?;
     let anchor = Tensor::from_f32(vec![0.0_f32], Shape::from_dims(&[1]), device)?;
     let g = anchor.graph_tensor();
@@ -165,10 +186,9 @@ impl AwqHostWeight {
         oc: usize,
         group_size: usize,
     ) -> Result<Self> {
-        let b =
-            repack_hf_awq_for_kernel(qweight, qzeros, scales, ic, oc, group_size).map_err(|e| {
-                fuel_ir::Error::Msg(format!("AwqHostWeight::from_hf_buffers: {e}")).bt()
-            })?;
+        let b = repack(qweight, qzeros, scales, ic, oc, group_size).map_err(|e| {
+            fuel_ir::Error::Msg(format!("AwqHostWeight::from_hf_buffers: {e}")).bt()
+        })?;
         Ok(Self {
             weight: Arc::from(b.weight),
             zeros: Arc::from(b.zeros),

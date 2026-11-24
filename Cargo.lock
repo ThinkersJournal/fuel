@@ -2389,6 +2389,7 @@ dependencies = [
  "libc",
  "libm",
  "memmap2",
+ "ml-convertant-awq",
  "num-traits",
  "num_cpus",
  "objc2-foundation",
@@ -2465,6 +2466,7 @@ dependencies = [
  "half",
  "hf-hub",
  "image",
+ "ml-convertant-awq",
  "num-traits",
  "rand 0.10.3",
  "rand_distr 0.6.0",
@@ -3570,6 +3572,22 @@ dependencies = [
  "wasi",
  "windows-sys 0.61.2",
 ]
+
+[[package]]
+name = "ml-convertant-awq"
+version = "0.1.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6260ca4fb36ed79574786081f09f273d86bb3e4e6063a50f2aab0b506d6f8e05"
+dependencies = [
+ "half",
+ "ml-convertant-core",
+]
+
+[[package]]
+name = "ml-convertant-core"
+version = "0.1.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed2418f8bf124020bdc6a9dec336d76888799dd6462e151c16c20056b1e5c2b3"
 
 [[package]]
 name = "mlmf-awq"
