@@ -15,7 +15,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 863 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 864 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1303 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 5% of 294 lines verbatim
@@ -1681,7 +1681,7 @@ fuel-vulkan-backend/examples/recycler_pool_probe.rs	own		no lineage; 0 of 25 lin
 fuel-vulkan-backend/src/byte_storage.rs	own		no lineage; 2 of 118 lines verbatim in candle (2%)
 fuel-vulkan-backend/src/capture.rs	own		no lineage; 0 of 136 lines verbatim in candle (0%)
 fuel-vulkan-backend/src/dyn_impl.rs	own		no lineage; 2 of 103 lines verbatim in candle (2%)
-fuel-vulkan-backend/src/lib.rs	own		no lineage; 11 of 5617 lines verbatim in candle (0%)
+fuel-vulkan-backend/src/lib.rs	own		no lineage; 11 of 5619 lines verbatim in candle (0%)
 fuel-vulkan-backend/src/mapped_meter.rs	own		no lineage; 1 of 193 lines verbatim in candle (1%)
 fuel-vulkan-backend/src/pipelines.rs	own		no lineage; 0 of 359 lines verbatim in candle (0%)
 fuel-vulkan-backend/src/probe.rs	own		no lineage; 2 of 525 lines verbatim in candle (0%)
@@ -1730,7 +1730,6 @@ fuel-vulkan-dispatch/tests/binding_census.rs	own		no lineage; 0 of 38 lines verb
 fuel-vulkan-dispatch/tests/golden/vulkan_binding_census.txt	own		no lineage; 0 of 275 lines verbatim in candle (0%)
 fuel-vulkan-dispatch/tests/install_global.rs	own		no lineage; 0 of 28 lines verbatim in candle (0%)
 fuel-vulkan-dispatch/tests/topology_vulkan.rs	own		no lineage; 0 of 30 lines verbatim in candle (0%)
-fuel-vulkan-dispatch/tests/vulkan_backend_drop_open_batch_live.rs	own		no lineage; 1 of 62 lines verbatim in candle (2%)
 fuel-vulkan-dispatch/tests/vulkan_claims_match_contracts.rs	own		no lineage; 0 of 52 lines verbatim in candle (0%)
 fuel-vulkan-dispatch/tests/vulkan_cross_vendor_masked_fill.rs	own		no lineage; 0 of 71 lines verbatim in candle (0%)
 fuel-vulkan-dispatch/tests/vulkan_deferred_eviction_live.rs	own		no lineage; 1 of 198 lines verbatim in candle (1%)

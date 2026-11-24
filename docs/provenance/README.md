@@ -93,8 +93,8 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-training` | 9 |  |  |  |  | 6 |  | 3 |
 | `fuel-transformers` | 201 | 2 | 4 | 154 |  | 35 | 3 | 3 |
 | `fuel-vulkan-backend` | 27 |  |  |  |  | 24 |  | 3 |
-| `fuel-vulkan-dispatch` | 44 |  |  |  |  | 41 |  | 3 |
+| `fuel-vulkan-dispatch` | 43 |  |  |  |  | 40 |  | 3 |
 | `fuel-vulkan-kernels` | 192 |  |  |  |  | 4 | 185 | 3 |
 | `scripts` | 81 |  |  | 1 |  | 80 |  |  |
-| **all** | **2023** | **111** | **215** | **260** | **4** | **1123** | **190** | **120** |
+| **all** | **2022** | **111** | **215** | **260** | **4** | **1122** | **190** | **120** |
 <!-- provenance-summary:end -->
