@@ -24,6 +24,7 @@ pub mod host_storage;
 pub mod ops;
 pub mod probe;
 pub mod quantized;
+pub mod shared_storage;
 pub mod system_memory;
 pub mod utils;
 
@@ -50,4 +51,5 @@ pub use byte_storage::{CPU_ALIGN_BYTES, CpuStorageBytes};
 pub use dyn_impl::CpuStorage;
 pub use ops::*;
 pub use quantized::CpuQStorage;
+pub use shared_storage::SharedHostStorage;
 pub use utils::*;

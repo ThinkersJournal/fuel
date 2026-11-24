@@ -3897,8 +3897,7 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f32]> = data.into();
-        let buf = fuel_ir::HostBuffer::F32(v.to_vec());
-        Self::from_host_buffer(buf, DType::F32, shape, device)
+        Self::from_shared(fuel_ir::SharedHostData::F32(v), DType::F32, shape, device)
     }
 
     /// Build a `Const` tensor from an `f64` slice and shape on a fresh graph.
@@ -3909,8 +3908,7 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f64]> = data.into();
-        let buf = fuel_ir::HostBuffer::F64(v.to_vec());
-        Self::from_host_buffer(buf, DType::F64, shape, device)
+        Self::from_shared(fuel_ir::SharedHostData::F64(v), DType::F64, shape, device)
     }
 
     /// Build a `Const` tensor from a `bf16` slice and shape on a fresh graph.
@@ -3921,8 +3919,7 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[bf16]> = data.into();
-        let buf = fuel_ir::HostBuffer::BF16(v.to_vec());
-        Self::from_host_buffer(buf, DType::BF16, shape, device)
+        Self::from_shared(fuel_ir::SharedHostData::BF16(v), DType::BF16, shape, device)
     }
 
     /// Build a `Const` tensor from an `f16` slice and shape on a fresh graph.
@@ -3933,8 +3930,7 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f16]> = data.into();
-        let buf = fuel_ir::HostBuffer::F16(v.to_vec());
-        Self::from_host_buffer(buf, DType::F16, shape, device)
+        Self::from_shared(fuel_ir::SharedHostData::F16(v), DType::F16, shape, device)
     }
 
     /// Build a `Const` tensor from a `u32` slice and shape on a fresh
@@ -3950,55 +3946,53 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[u32]> = data.into();
-        let buf = fuel_ir::HostBuffer::U32(v.to_vec());
-        Self::from_host_buffer(buf, DType::U32, shape, device)
+        Self::from_shared(fuel_ir::SharedHostData::U32(v), DType::U32, shape, device)
     }
 
-    /// G2 internal funnel: allocate Storage on `device` from `buf`,
-    /// register the slot, emit `Op::Const`. Per-dtype `from_*` methods
-    /// delegate here.
-    fn from_host_buffer(
-        buf: fuel_ir::HostBuffer,
+    /// G2 internal funnel (row 173 (d): the data is SHARED). The device may keep the `Arc`
+    /// (CPU does; every other backend takes the trait default, a deep copy).
+    fn from_shared(
+        data: fuel_ir::SharedHostData,
         dtype: DType,
         shape: impl Into<Shape>,
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let graph = Arc::new(RwLock::new(Graph::new()));
-        Self::from_host_buffer_on(&graph, buf, dtype, shape, device)
+        Self::from_shared_on(&graph, data, dtype, shape, device)
     }
 
-    /// `from_host_buffer` against an **existing** graph — the shared body of the
-    /// `from_*_on` family. Identical to `from_host_buffer` except that the caller
-    /// supplies the graph instead of one being minted.
-    fn from_host_buffer_on(
+    /// `from_shared` against an **existing** graph: the shared body of the `from_*_on` family. The
+    /// length check and its message are verbatim what `docs/gaps.md` and `CLAUDE.md` anchor on.
+    fn from_shared_on(
         graph: &SharedGraph,
-        buf: fuel_ir::HostBuffer,
+        data: fuel_ir::SharedHostData,
         dtype: DType,
         shape: impl Into<Shape>,
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let shape = shape.into();
-        let n = host_buffer_elem_count(&buf);
-        // GAP-003: was `assert_eq!`. The message is preserved VERBATIM because
-        // `docs/gaps.md` and `CLAUDE.md` both anchor on it -- a prose anchor is
-        // rename-proof, so changing the words here would orphan two citations
-        // that no identifier rename could have touched.
+        let n = data.len();
         if n != shape.elem_count() {
             return Err(fuel_ir::Error::Msg(format!(
                 "NodeHandle::from_*: data length {n} does not match shape element count {}",
                 shape.elem_count(),
             )));
         }
-        // GAP-003: was `.expect(...)`. This is the sibling panic the row's
-        // anchor could not see -- it carries a DIFFERENT message, and a
-        // message-specific anchor is blind to exactly that.
-        let backend_storage = device
-            .storage_from_host_buffer_owned_dyn(buf)
-            .map_err(|e| {
-                fuel_ir::Error::Msg(format!(
-                    "NodeHandle::from_*: device.storage_from_host_buffer_owned_dyn failed: {e}"
-                ))
-            })?;
+        let backend_storage = device.storage_from_shared_host_dyn(data).map_err(|e| {
+            fuel_ir::Error::Msg(format!(
+                "NodeHandle::from_*: device.storage_from_shared_host_dyn failed: {e}"
+            ))
+        })?;
+        Ok(Self::register_const(graph, backend_storage, dtype, shape))
+    }
+
+    /// Register `backend_storage` as the slot of a new `Op::Const` leaf on `graph`.
+    fn register_const(
+        graph: &SharedGraph,
+        backend_storage: Box<dyn fuel_backend_contract::DynBackendStorage>,
+        dtype: DType,
+        shape: Shape,
+    ) -> Self {
         let storage_arc = Arc::new(RwLock::new(Storage::from_dyn(backend_storage)));
         let id = {
             let mut g = graph.write().unwrap();
@@ -4011,10 +4005,10 @@ impl NodeHandle {
             g.set_storage(id, storage_arc);
             id
         };
-        Ok(Self {
+        Self {
             graph: Arc::clone(graph),
             id,
-        })
+        }
     }
 
     /// Build an `f32` `Const` leaf **on the graph you pass in**, rather than on a
@@ -4039,8 +4033,13 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f32]> = data.into();
-        let buf = fuel_ir::HostBuffer::F32(v.to_vec());
-        Self::from_host_buffer_on(graph, buf, DType::F32, shape, device)
+        Self::from_shared_on(
+            graph,
+            fuel_ir::SharedHostData::F32(v),
+            DType::F32,
+            shape,
+            device,
+        )
     }
 
     /// `f64` sibling of [`from_f32_on`](Self::from_f32_on) — builds on the given
@@ -4052,8 +4051,13 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f64]> = data.into();
-        let buf = fuel_ir::HostBuffer::F64(v.to_vec());
-        Self::from_host_buffer_on(graph, buf, DType::F64, shape, device)
+        Self::from_shared_on(
+            graph,
+            fuel_ir::SharedHostData::F64(v),
+            DType::F64,
+            shape,
+            device,
+        )
     }
 
     /// `bf16` sibling of [`from_f32_on`](Self::from_f32_on). The common
@@ -4066,8 +4070,13 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[half::bf16]> = data.into();
-        let buf = fuel_ir::HostBuffer::BF16(v.to_vec());
-        Self::from_host_buffer_on(graph, buf, DType::BF16, shape, device)
+        Self::from_shared_on(
+            graph,
+            fuel_ir::SharedHostData::BF16(v),
+            DType::BF16,
+            shape,
+            device,
+        )
     }
 
     /// `f16` sibling of [`from_f32_on`](Self::from_f32_on).
@@ -4078,8 +4087,13 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[half::f16]> = data.into();
-        let buf = fuel_ir::HostBuffer::F16(v.to_vec());
-        Self::from_host_buffer_on(graph, buf, DType::F16, shape, device)
+        Self::from_shared_on(
+            graph,
+            fuel_ir::SharedHostData::F16(v),
+            DType::F16,
+            shape,
+            device,
+        )
     }
 
     /// `u32` sibling of [`from_f32_on`](Self::from_f32_on) — index tensors for
@@ -4091,8 +4105,13 @@ impl NodeHandle {
         device: &Arc<dyn fuel_backend_contract::DynBackendDevice>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[u32]> = data.into();
-        let buf = fuel_ir::HostBuffer::U32(v.to_vec());
-        Self::from_host_buffer_on(graph, buf, DType::U32, shape, device)
+        Self::from_shared_on(
+            graph,
+            fuel_ir::SharedHostData::U32(v),
+            DType::U32,
+            shape,
+            device,
+        )
     }
 
     /// Phase 7.5 work item G2: build a `Const` leaf on a fresh graph
@@ -4237,7 +4256,7 @@ impl NodeHandle {
         }
         let device = pick_device_from_graph(&self.graph);
         // GAP-003: the sibling panic, converted with it -- the same pair
-        // `from_host_buffer_on` had, and the second anchor the row named.
+        // `from_shared_on` has, and the second anchor the row named.
         let backend_storage = device
             .storage_from_host_buffer_owned_dyn(buf)
             .map_err(|e| {
@@ -16194,7 +16213,7 @@ mod tests {
     /// GAP-003 STEP 1: the panic IS reachable from the public API today.
     ///
     /// `NodeHandle::from_f32` returns `Self`, so a length/shape mismatch has
-    /// nowhere to go but `assert_eq!` inside `from_host_buffer_on`. This test
+    /// nowhere to go but `assert_eq!` inside `from_shared_on` (then `from_host_buffer_on`). This test
     /// PASSES today and is deleted by the fix -- it exists to prove the defect
     /// is live from a caller's seat, not merely present in the source.
     /// GAP-003: a length/shape mismatch DECLINES instead of panicking.
@@ -16208,8 +16227,8 @@ mod tests {
     ///
     /// It now asserts the `Err` DIRECTLY, with no `unwrap`, and matches on the
     /// LENGTH-MISMATCH message specifically -- not merely on `is_err()`. That
-    /// distinction is load-bearing: `from_host_buffer_on` has a second failure
-    /// path (`storage_from_host_buffer_owned_dyn`), so a bare `is_err()` could
+    /// distinction is load-bearing: `from_shared_on` has a second failure
+    /// path (`storage_from_shared_host_dyn`), so a bare `is_err()` could
     /// not tell this decline from that one.
     #[test]
     fn gap003_from_f32_declines_a_length_mismatch() {

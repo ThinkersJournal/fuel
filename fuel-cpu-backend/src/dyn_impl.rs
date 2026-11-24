@@ -1493,6 +1493,16 @@ impl DynBackendDevice for CpuBackendDevice {
         Ok(Box::new(CpuStorage(buf)))
     }
 
+    fn storage_from_shared_host_dyn(
+        &self,
+        data: fuel_ir::SharedHostData,
+    ) -> Result<Box<dyn DynBackendStorage>> {
+        // Row 173 (d): keep the `Arc`, copy-on-write (see `shared_storage`).
+        Ok(Box::new(crate::shared_storage::SharedHostStorage::new(
+            data,
+        )))
+    }
+
     fn rand_uniform_dyn(
         &self,
         shape: &Shape,

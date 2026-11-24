@@ -331,6 +331,19 @@ pub trait DynBackendDevice: Send + Sync + std::fmt::Debug {
         buf: HostBuffer,
     ) -> Result<Box<dyn DynBackendStorage>>;
 
+    /// Create storage from SHARED host data (an `Arc<[T]>`), row 173 (d).
+    ///
+    /// The default is the pre-row-173 behaviour: a deep copy into an owned
+    /// `HostBuffer`. A host-memory backend may override it to keep the `Arc` instead
+    /// of copying, provided the storage never mutates the shared data in place
+    /// (copy-on-write at every `&mut` entry point).
+    fn storage_from_shared_host_dyn(
+        &self,
+        data: fuel_ir::SharedHostData,
+    ) -> Result<Box<dyn DynBackendStorage>> {
+        self.storage_from_host_buffer_owned_dyn(data.to_host_buffer())
+    }
+
     /// Deprecated alias for `storage_from_host_buffer_dyn`.
     fn storage_from_cpu_storage_dyn(&self, cpu: &HostBuffer) -> Result<Box<dyn DynBackendStorage>> {
         self.storage_from_host_buffer_dyn(cpu)
