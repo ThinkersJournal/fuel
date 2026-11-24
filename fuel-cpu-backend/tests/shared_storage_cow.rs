@@ -96,13 +96,18 @@ fn copy2d_into_a_shared_destination_does_not_write_through_the_arc() {
     assert_cow(&a, &before, &dst, &[5.0; N], "copy2d_dyn");
 }
 
-#[test]
-fn scatter_set_and_scatter_add_set_do_not_write_through_the_arc() {
+fn scatter_fixture() -> (CpuStorage, CpuStorage, Layout) {
     // These two `&mut self` writers are NOT in the design note's list of four; found by reading the trait.
-    let ids = CpuStorage(HostBuffer::U32(vec![1, 3]));
-    let src = CpuStorage(HostBuffer::F32(vec![50.0, 60.0]));
-    let il = Layout::contiguous(Shape::from_dims(&[2]));
+    (
+        CpuStorage(HostBuffer::U32(vec![1, 3])),
+        CpuStorage(HostBuffer::F32(vec![50.0, 60.0])),
+        Layout::contiguous(Shape::from_dims(&[2])),
+    )
+}
 
+#[test]
+fn scatter_set_does_not_write_through_the_arc() {
+    let (ids, src, il) = scatter_fixture();
     let a = src_arc();
     let before = bits(&a);
     let mut s = shared(&a);
@@ -111,7 +116,11 @@ fn scatter_set_and_scatter_add_set_do_not_write_through_the_arc() {
     want[1] = 50.0;
     want[3] = 60.0;
     assert_cow(&a, &before, &s, &want, "scatter_set_dyn");
+}
 
+#[test]
+fn scatter_add_set_does_not_write_through_the_arc() {
+    let (ids, src, il) = scatter_fixture();
     let a = src_arc();
     let before = bits(&a);
     let mut s = shared(&a);
