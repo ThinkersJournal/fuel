@@ -1728,7 +1728,7 @@ A git-checked-in JSON verification ledger + an import-time gate that downgrades 
 
 ### Task 4.1 — Ledger file + `VerificationLedger` type + `embedded()` loader + `has_pass`
 
-- [ ] **Step 1: Preconditions** — create `docs/kernel-contracts/.fkc-verified-ledger.json` containing exactly `[]`. Confirm it is NOT gitignored: `git check-ignore docs/kernel-contracts/.fkc-verified-ledger.json` (Expected: no output = not ignored; if ignored, add a negation rule to `.gitignore` and `git add -f`). In `fuel-dispatch/Cargo.toml`: change line 47 `serde_json = { workspace = true, optional = true }` → `serde_json = { workspace = true }`, and drop `"dep:serde_json"` from the `telemetry` feature list (line 79).
+- [x] **Step 1: Preconditions** *(done; the ledger now lives at `fuel-dispatch/kernel-contracts/fkc-verified-ledger.json`, not at the path below)* — create `docs/kernel-contracts/.fkc-verified-ledger.json` containing exactly `[]`. Confirm it is NOT gitignored: `git check-ignore docs/kernel-contracts/.fkc-verified-ledger.json` (Expected: no output = not ignored; if ignored, add a negation rule to `.gitignore` and `git add -f`). In `fuel-dispatch/Cargo.toml`: change line 47 `serde_json = { workspace = true, optional = true }` → `serde_json = { workspace = true }`, and drop `"dep:serde_json"` from the `telemetry` feature list (line 79).
 
 - [ ] **Step 2: Write the failing test** — in `fuel-dispatch/src/fkc/verify/ledger.rs`:
 

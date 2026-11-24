@@ -533,6 +533,27 @@ pub struct VulkanBackend {
     matvec_cols_enabled: std::sync::atomic::AtomicBool,
 }
 
+impl Drop for VulkanBackend {
+    /// GAP-398: flush and wait for the recorder's open batch BEFORE any field is destroyed. A realize that
+    /// fails part-way (an op the backend refuses, `qmatmul_vk` "not wired on Vulkan") returns with
+    /// dispatches recorded into the open command buffer and never submitted; destroying the device with
+    /// that batch still open made the NVIDIA driver call a null pointer (access violation at process exit,
+    /// 70 of 70 runs of the pre-row-119 probe; 0 of 10 with this flush). Never panics: a poisoned recorder
+    /// or a failed flush is logged and the teardown continues.
+    fn drop(&mut self) {
+        let flushed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.force_flush()));
+        match flushed {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => {
+                tracing::error!(error = ?e, "VulkanBackend dropped with an open batch; flush failed")
+            }
+            Err(_) => tracing::error!(
+                "VulkanBackend dropped with a poisoned recorder; open batch not flushed"
+            ),
+        }
+    }
+}
+
 impl VulkanBackend {
     /// Snapshot of per-op-kind timing accumulated since init or since
     /// the last `reset_op_stats()` call. Sorted by total time
@@ -5926,14 +5947,39 @@ impl VulkanBackend {
             blocks_per_row: (k / block_elems) as u32,
             _pad: 0,
         };
-        let (pipe_slot, layout) = match kind {
+        // Q8_0 and Q6_K are `gated` rows (an `Option` pipeline, absent when the device lacks a feature their
+        // SPIR-V needs); the five GLSL kernels of row 119 need no optional feature, so they are `required` rows
+        // (a plain pipeline). The spirv_caps test pins that split against each module's own capabilities.
+        let (pipeline, layout) = match kind {
             QmvKind::Q8_0 => (
-                &self.pipelines.qmatvec_q8_0_pipeline,
+                self.pipelines
+                    .pipeline(&self.pipelines.qmatvec_q8_0_pipeline, name)?,
                 &self.pipelines.qmatvec_q8_0_layout,
             ),
             QmvKind::Q6K => (
-                &self.pipelines.qmatvec_q6_k_pipeline,
+                self.pipelines
+                    .pipeline(&self.pipelines.qmatvec_q6_k_pipeline, name)?,
                 &self.pipelines.qmatvec_q6_k_layout,
+            ),
+            QmvKind::Q5K => (
+                &self.pipelines.qmatvec_q5_k_pipeline,
+                &self.pipelines.qmatvec_q5_k_layout,
+            ),
+            QmvKind::Q3K => (
+                &self.pipelines.qmatvec_q3_k_pipeline,
+                &self.pipelines.qmatvec_q3_k_layout,
+            ),
+            QmvKind::Iq4Nl => (
+                &self.pipelines.qmatvec_iq4_nl_pipeline,
+                &self.pipelines.qmatvec_iq4_nl_layout,
+            ),
+            QmvKind::Iq4Xs => (
+                &self.pipelines.qmatvec_iq4_xs_pipeline,
+                &self.pipelines.qmatvec_iq4_xs_layout,
+            ),
+            QmvKind::Iq3S => (
+                &self.pipelines.qmatvec_iq3_s_pipeline,
+                &self.pipelines.qmatvec_iq3_s_layout,
             ),
         };
         for b in 0..rows {
@@ -5949,7 +5995,11 @@ impl VulkanBackend {
                 (b * k * 4) as u64,
                 (k * 4) as u64,
             );
-            desc.write_buffer(1, DescriptorType::STORAGE_BUFFER, w_buf, 0, need_w as u64);
+            // The shaders read the weight as u32 words; a block size that is not a multiple of 4 (Q3_K,
+            // 110 B) can leave the last word straddling `need_w`, so round the range up to whole words
+            // (the weight storage is U32-padded, so the buffer is at least that long).
+            let w_range = need_w.next_multiple_of(4).min(w_q.len_bytes());
+            desc.write_buffer(1, DescriptorType::STORAGE_BUFFER, w_buf, 0, w_range as u64);
             desc.write_buffer(
                 2,
                 DescriptorType::STORAGE_BUFFER,
@@ -5968,7 +6018,7 @@ impl VulkanBackend {
             let wb = [out_buf.raw()];
             self.record_dispatch_batched(
                 name,
-                self.pipelines.pipeline(pipe_slot, name)?,
+                pipeline,
                 layout,
                 desc,
                 (n as u32, 1, 1),
@@ -5995,6 +6045,77 @@ impl VulkanBackend {
         n: usize,
     ) -> fuel_ir::Result<()> {
         self.qmatvec_bytes(QmvKind::Q6K, a_f32, w_q6_k, out, batch.max(1) * m, k, n)
+    }
+
+    /// Q5_K × F32 matmul over byte-storage (ROADMAP row 119). Like Q6_K, every row goes through the
+    /// fused gemv (`qmatvec_q5_k`); a prefill with `m > 1` re-reads the weight once per row.
+    pub fn matmul_q5_k_bytes(
+        &self,
+        a_f32: &VulkanStorageBytes,
+        w_q5_k: &VulkanStorageBytes,
+        out: &mut VulkanStorageBytes,
+        batch: usize,
+        m: usize,
+        k: usize,
+        n: usize,
+    ) -> fuel_ir::Result<()> {
+        self.qmatvec_bytes(QmvKind::Q5K, a_f32, w_q5_k, out, batch.max(1) * m, k, n)
+    }
+
+    /// Q3_K × F32 matmul over byte-storage (ROADMAP row 119). Fused gemv (`qmatvec_q3_k`) for every row.
+    pub fn matmul_q3_k_bytes(
+        &self,
+        a_f32: &VulkanStorageBytes,
+        w_q3_k: &VulkanStorageBytes,
+        out: &mut VulkanStorageBytes,
+        batch: usize,
+        m: usize,
+        k: usize,
+        n: usize,
+    ) -> fuel_ir::Result<()> {
+        self.qmatvec_bytes(QmvKind::Q3K, a_f32, w_q3_k, out, batch.max(1) * m, k, n)
+    }
+
+    /// IQ4_NL × F32 matmul over byte-storage (ROADMAP row 119). Fused gemv (`qmatvec_iq4_nl`) for every row.
+    pub fn matmul_iq4_nl_bytes(
+        &self,
+        a_f32: &VulkanStorageBytes,
+        w_iq4_nl: &VulkanStorageBytes,
+        out: &mut VulkanStorageBytes,
+        batch: usize,
+        m: usize,
+        k: usize,
+        n: usize,
+    ) -> fuel_ir::Result<()> {
+        self.qmatvec_bytes(QmvKind::Iq4Nl, a_f32, w_iq4_nl, out, batch.max(1) * m, k, n)
+    }
+
+    /// IQ4_XS × F32 matmul over byte-storage (ROADMAP row 119). Fused gemv (`qmatvec_iq4_xs`) for every row.
+    pub fn matmul_iq4_xs_bytes(
+        &self,
+        a_f32: &VulkanStorageBytes,
+        w_iq4_xs: &VulkanStorageBytes,
+        out: &mut VulkanStorageBytes,
+        batch: usize,
+        m: usize,
+        k: usize,
+        n: usize,
+    ) -> fuel_ir::Result<()> {
+        self.qmatvec_bytes(QmvKind::Iq4Xs, a_f32, w_iq4_xs, out, batch.max(1) * m, k, n)
+    }
+
+    /// IQ3_S × F32 matmul over byte-storage (ROADMAP row 119). Fused gemv (`qmatvec_iq3_s`) for every row.
+    pub fn matmul_iq3_s_bytes(
+        &self,
+        a_f32: &VulkanStorageBytes,
+        w_iq3_s: &VulkanStorageBytes,
+        out: &mut VulkanStorageBytes,
+        batch: usize,
+        m: usize,
+        k: usize,
+        n: usize,
+    ) -> fuel_ir::Result<()> {
+        self.qmatvec_bytes(QmvKind::Iq3S, a_f32, w_iq3_s, out, batch.max(1) * m, k, n)
     }
 
     /// Q8_0 × F32 matmul over byte-storage. Same dequant-then-matmul path
@@ -15088,6 +15209,11 @@ mod recycler_depth_tests {
 enum QmvKind {
     Q8_0,
     Q6K,
+    Q5K,
+    Q3K,
+    Iq4Nl,
+    Iq4Xs,
+    Iq3S,
 }
 
 impl QmvKind {
@@ -15096,6 +15222,11 @@ impl QmvKind {
         match self {
             QmvKind::Q8_0 => ("qmatvec_q8_0", 32, 34),
             QmvKind::Q6K => ("qmatvec_q6_k", 256, 210),
+            QmvKind::Q5K => ("qmatvec_q5_k", 256, 176),
+            QmvKind::Q3K => ("qmatvec_q3_k", 256, 110),
+            QmvKind::Iq4Nl => ("qmatvec_iq4_nl", 32, 18),
+            QmvKind::Iq4Xs => ("qmatvec_iq4_xs", 256, 136),
+            QmvKind::Iq3S => ("qmatvec_iq3_s", 256, 110),
         }
     }
 }

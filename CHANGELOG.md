@@ -13,6 +13,16 @@ This documents the main changes to the `fuel` workspace.
 
 - Row 38: `cargo clippy --locked --no-deps -p fuel-dispatch -p fuel-cuda-backend --features fuel-dispatch/cuda,fuel-dispatch/jit --all-targets -- -D warnings` exits 0 (clippy 0.1.98): the measured set (183 diagnostics in `fuel-cuda-backend` and 45 in `fuel-dispatch` at the start of slice 3) fixed or, where a consumer exists under another cfg, gated to it; `fuel-dispatch`'s verify harness and seeder carry reasoned `allow(dead_code)`; `push_scalar_arg` is kept as the `Scalar` exhaustiveness guard (GAP-049).
 
+## v0.50.3 - 2026-11-24 (PM-allocated; docs, the GAP-398 regression test and Gate B ticks; not breaking)
+
+### Added
+
+- `fuel-vulkan-dispatch/tests/vulkan_backend_drop_open_batch_live.rs`: the GAP-398 regression test (a `VulkanBackend` dropped with an open recorder batch must not crash; the fix is in v0.50.2). Not `#[ignore]`d: `.github/workflows/rust-ci.yml` skips `dropping_a_backend_with_an_open_batch_does_not_crash` BY NAME on the three hosted `cargo test --workspace` steps (as it already does `shipped_vulkan_spv_nan_behaviour_is_pinned`), and `device-tests.yml` runs it under `gpu-run`, where a missing adapter or lock fails (CireSnave 2026-10-16). The `#[ignore]` ceiling (500, `fuel-ir`'s `suppression_ratchet`) is unchanged.
+
+### Changed
+
+- Docs: ROADMAP row 119 and `docs/gaps.md` GAP-397 (closed) and GAP-398 now say what v0.50.2 landed; `docs/design-notes/2026-11-23-gap398-teardown-evidence.md` (the evidence for GAP-398); Gate B drift-check answers for ten fuel rows (ROADMAP rows 10, 14; the FKC gap-closure plan step 1; the op-scan phase 1 steps 1 and 2; the op-scan phase 2 early-exit step ticked or repointed; rows 12, 15 left open; the dlpack checklist is normative, unticked by design).
+
 ## v0.47.1 - 2026-11-10 (PM-allocated)
 
 ### Changed
@@ -153,6 +163,49 @@ This documents the main changes to the `fuel` workspace.
 ### Measured
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
+
+## v0.50.2 - 2026-11-24 (PM-allocated; row 119, five Vulkan quant gemv kernels; not breaking: the removed FUEL_GGML_KEEP_QUANTIZED opt-out was added in unpublished 0.49.14)
+
+### Added
+
+- Vulkan fused quantized gemv kernels (GLSL, `fuel-kernels-source/kernels/qmatvec_{q5_k,q3_k,iq4_nl,iq4_xs,iq3_s}.glsl`, byte-reproducible `.spv`, ggml/llama.cpp origin cited): `qmatmul_vk` now has arms for Q5_K, Q3_K, IQ4_NL, IQ4_XS and IQ3_S. The IQ3_S grid is generated from `IQ3S_GRID` by `scripts/gen_iq3s_glsl.py` and compared entry by entry in `fuel-vulkan-dispatch/tests/iq3s_grid_glsl.rs`.
+- `fuel-tensor/tests/ggml_kept_types_are_wired.rs`: exhaustive over `GgmlDType`; every type `WeightStorage::from_ggml_bytes` keeps must be in `qmatmul_wired`.
+
+### Fixed
+
+- `fuel-vulkan-backend`: a `VulkanBackend` dropped with an open recorder batch (after a failed realize) crashed the process with an access violation; `Drop` now flushes and waits for the open batch before any field is destroyed (GAP-398). Its regression test, `fuel-vulkan-dispatch/tests/vulkan_backend_drop_open_batch_live.rs`, is NOT in this change (the next change adds it; it needs a live Vulkan device and the machine-wide gpu-run lock, so it is skipped by name on the hosted test steps and run by `device-tests.yml`, never `#[ignore]`d).
+
+### Removed
+
+- The `FUEL_GGML_KEEP_QUANTIZED` opt-out (`fuel_tensor::lazy::KEEP_QUANTIZED_ENV`), `declines_unwired_vulkan_quant()` and the process-wide decline from v0.49.14: with every kept type wired on Vulkan they have no purpose. `from_ggml_bytes` no longer has a wildcard arm: every other `GgmlDType` is declined by name.
+
+### Changed
+
+- `CLAUDE.md`: the "fuel-internal Slang" line is corrected (the older `.spv` were built by FishStringer; new kernels are GLSL in `fuel-kernels-source`).
+- The registry text (`docs/gaps.md` GAP-397 and GAP-398, ROADMAP row 119) follows in the docs PR, after this PR merges.
+
+### Not verified
+
+- Kernel speed (correctness only); CUDA; a real GGUF file of these types on Vulkan.
+
+## v0.50.1 - 2026-11-24 (PM-allocated; row 172, device-level weight residency; a minor-line change, not breaking)
+
+### Changed
+
+- **MEMORY BEHAVIOUR CHANGE on every non-CPU realize through `InferenceContext`, default ON.** The model's weights are now kept resident on the `Device` after the realize that uploaded them, keyed by the identity of the host `Arc` they were built from, and shared by every context on that device (a consumer that makes a context per sequence, as lightbulb does, now finds the model already uploaded). Before this a prefill built a fresh graph and re-copied and re-uploaded the whole model on every call, about 2 to 3 s of a 21-token Qwen3-0.6B Q4_K_M prefill on Vulkan. **Retained memory: about 1.19 GB per Qwen3-0.6B Q4_K_M (it has an f32 embedding table) until `Device::clear_weight_residency()` or eviction.**
+- **Bounds.** The registry holds at most 40% of the device's reported memory (Vulkan: the `VK_EXT_memory_budget` device-local budget; `FUEL_WEIGHT_RESIDENCY_BYTES=<n>` sets the cap outright), evicting least recently used first; a weight larger than the whole cap is served to the realize that uploaded it and not kept; a device that cannot report its memory gets no residency (the old behaviour). A model whose last `Arc` is dropped is evicted at the NEXT seeding on that device, not instantly. **`Device::clear_weight_residency()` is the unload call**: use it when a model is unloaded and the process goes on using the device.
+- **Opt-out:** `FUEL_WEIGHT_RESIDENCY=0` restores the old behaviour. CPU devices are untouched (test `a_cpu_realize_leaves_the_weight_residency_untouched`).
+- `fuel-graph`: the `Arc`-fed `Const` constructors (`from_f32`/`bf16`/`f16`/`u32` and their `_on` forms, `const_f32`/`bf16`/`f16`/`u32`/`u8_like`) record a weak `ConstOrigin`; new public `ConstOrigin`, `ConstOriginKey`, `Graph::set_const_origin`, `Graph::const_origins`. `fuel-tensor`: new public `Device::weight_residency_stats`, `Device::clear_weight_residency`, `WeightResidencyStats` (non-exhaustive). No signature changed.
+
+### Measured (Vulkan, RTX 4070 Laptop 8 GB, Qwen3-0.6B Q4_K_M GGUF, 21-token prompt)
+
+- Same-context second prefill 2.5 to 3.5 s with the residency off, 0.60 to 0.74 s on; first decode call 2.46 s off, 0.47 s on; steady decode 30 ms both (n = 2 processes per mode, 3 runs plus a warm-up each, 4 contexts per process).
+- VRAM (`nvidia-smi` every 25 ms, n = 2 per mode): peak 1,969 MiB off and on; with every context dropped and the device alive 524 MiB off, 1,711 MiB on, back to 524 MiB after `clear_weight_residency`.
+- Two different models back and forth (Qwen3-0.6B Q4_K_M and TinyLlama-1.1B-Chat Q4_0, 3 round trips, n = 2 processes per setting, plus 2 with a 1.6 GB cap): 54 visits over 9 runs produced exactly one logits hash list per model (FNV over every call's logits) for residency off, on and capped; peak 2,723 MiB off, 2,729 on, 2,473 and 2,729 capped; with the device alive 1,536 MiB off, 2,729 on (2.37 GB resident, cap 3.01 GB here), about 1,290 to 1,540 after clear.
+
+### Not verified
+
+- Other models or loaders (the mechanism covers every `Arc`-fed `Const`, measured on two models only), CUDA, a loaded GPU, the AMD iGPU, lightbulb's own model end to end. With a cap below one model the LRU scan thrashes (every visit re-uploads what the other evicted) and was not shown to beat the old behaviour; the swap peak did not fall under the cap (an evicted storage a running realize still holds stays alive until it ends).
 
 ## v0.50.0 - 2026-11-24 (PM-allocated; BREAKING: the `mkl` feature is removed; row 167 part 4)
 
