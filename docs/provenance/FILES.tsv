@@ -1071,7 +1071,7 @@ fuel-ir/tests/roadmap_item_citations.rs	own		no lineage; 1 of 138 lines verbatim
 fuel-ir/tests/spdx_header_ratchet.rs	own		judged: names candle only to describe the fork and its licences
 fuel-ir/tests/spec_status_fields_do_not_claim_unbuilt.rs	own		no lineage; 1 of 184 lines verbatim in candle (1%)
 fuel-ir/tests/suppression_ratchet.rs	own		no lineage; 3 of 116 lines verbatim in candle (3%)
-fuel-kernels-source/Cargo.toml	own		no lineage; 2 of 15 lines verbatim in candle (13%)
+fuel-kernels-source/Cargo.toml	own		no lineage; 2 of 17 lines verbatim in candle (12%)
 fuel-kernels-source/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-kernels-source/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-kernels-source/README.md	own		no lineage; 0 of 10 lines verbatim in candle (0%)
@@ -1111,6 +1111,7 @@ fuel-kernels-source/kernels/qmatvec_q3_k.glsl	not-traced		names candle in its te
 fuel-kernels-source/kernels/qmatvec_q5_k.glsl	not-traced		names candle in its text; not judged
 fuel-kernels-source/kernels/templates/qmatvec_iq3_s.glsl.in	own		no lineage; 0 of 48 lines verbatim in candle (0%)
 fuel-kernels-source/src/lib.rs	own		no lineage; 0 of 25 lines verbatim in candle (0%)
+fuel-kernels-source/tests/iq3s_grid_glsl.rs	own		no lineage; 0 of 27 lines verbatim in candle (0%)
 fuel-kiss-ref-backend/Cargo.toml	own		no lineage; 3 of 24 lines verbatim in candle (12%)
 fuel-kiss-ref-backend/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
 fuel-kiss-ref-backend/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
@@ -1728,7 +1729,6 @@ fuel-vulkan-dispatch/src/vulkan_dispatch.rs	own		no lineage; 4 of 4345 lines ver
 fuel-vulkan-dispatch/tests/binding_census.rs	own		no lineage; 0 of 38 lines verbatim in candle (0%)
 fuel-vulkan-dispatch/tests/golden/vulkan_binding_census.txt	own		no lineage; 0 of 275 lines verbatim in candle (0%)
 fuel-vulkan-dispatch/tests/install_global.rs	own		no lineage; 0 of 28 lines verbatim in candle (0%)
-fuel-vulkan-dispatch/tests/iq3s_grid_glsl.rs	own		no lineage; 0 of 26 lines verbatim in candle (0%)
 fuel-vulkan-dispatch/tests/topology_vulkan.rs	own		no lineage; 0 of 30 lines verbatim in candle (0%)
 fuel-vulkan-dispatch/tests/vulkan_backend_drop_open_batch_live.rs	own		no lineage; 1 of 62 lines verbatim in candle (2%)
 fuel-vulkan-dispatch/tests/vulkan_claims_match_contracts.rs	own		no lineage; 0 of 52 lines verbatim in candle (0%)
