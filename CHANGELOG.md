@@ -158,7 +158,7 @@ This documents the main changes to the `fuel` workspace.
 ### Changed
 
 - `CLAUDE.md`: the "fuel-internal Slang" line is corrected (the older `.spv` were built by FishStringer; new kernels are GLSL in `fuel-kernels-source`).
-- `docs/gaps.md` GAP-397 CLOSED; ROADMAP row 119 updated.
+- The registry text (`docs/gaps.md` GAP-397 and GAP-398, ROADMAP row 119) follows in the docs PR, after this PR merges.
 
 ### Not verified
 
