@@ -33,6 +33,9 @@ pub use fuel_ir::DeviceLocation;
 #[derive(Clone, Debug)]
 pub struct Device {
     pub(crate) inner: Arc<dyn DynBackendDevice>,
+    /// Weight storages uploaded to this device, keyed by the identity of their host array and shared by
+    /// every clone of the `Device` (ROADMAP row 172; see [`crate::const_residency`]).
+    pub(crate) weights: Arc<crate::const_residency::DeviceWeights>,
 }
 
 /// Trait for host array-like values that describe their shape and yield CPU storage.
@@ -278,6 +281,7 @@ impl Device {
     pub fn cpu() -> Self {
         Device {
             inner: Arc::new(CpuBackendDevice),
+            weights: Arc::new(crate::const_residency::DeviceWeights::new()),
         }
     }
 
@@ -286,7 +290,35 @@ impl Device {
     /// The device uses dynamic dispatch for all operations, enabling
     /// third-party backends without modifying `fuel-core`.
     pub fn custom(device: Arc<dyn DynBackendDevice>) -> Self {
-        Device { inner: device }
+        Device {
+            inner: device,
+            weights: Arc::new(crate::const_residency::DeviceWeights::new()),
+        }
+    }
+
+    /// Counters of this device's weight residency: how many weight `Const`s were served from an
+    /// earlier upload, how many were uploaded, how many were evicted and how many are resident now.
+    /// Shared by every clone of this `Device`; always zero on a CPU device.
+    pub fn weight_residency_stats(&self) -> crate::const_residency::WeightResidencyStats {
+        self.weights
+            .0
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .stats()
+    }
+
+    /// **The unload call.** Drop every resident weight upload of this device, so the card gets the
+    /// model's memory back at once. Call it when a model is unloaded or replaced and the process goes on
+    /// using the device: without it a dropped model's weights are only evicted at the next seeding on
+    /// this device (see [`crate::const_residency`]), and one that is still loaded is only evicted when
+    /// the byte cap forces it out. The next realize that needs a weight uploads it again. Storages a
+    /// running realize (or a held decode session) still holds stay alive until it ends.
+    pub fn clear_weight_residency(&self) {
+        self.weights
+            .0
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clear();
     }
 
     /// Borrow the underlying `Arc<dyn DynBackendDevice>`.
