@@ -142,8 +142,6 @@ where
         plan.run(stream, Workspace::None, args)
             .map_err(|e| Error::Msg(format!("cutlass run ({dtype_label} Rrr): {e}")).bt())?;
     }
-    drop(out_view);
-
     device.synchronize()?;
     Ok(CudaStorageBytes::from_parts(
         std::sync::Arc::new(out),

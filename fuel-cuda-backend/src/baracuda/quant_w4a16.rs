@@ -67,7 +67,7 @@ pub fn marlin_gemm_f16(
     }
     // Marlin requires a zero-initialised int32 workspace with
     // `>= (N / 128) * max_par` entries.
-    let ws_entries = ((n + 127) / 128) * (max_par as usize);
+    let ws_entries = n.div_ceil(128) * (max_par as usize);
     let ws_buf = device.alloc_zeros::<u8>(ws_entries * std::mem::size_of::<i32>())?;
     let out_buf = device.alloc_zeros::<u8>(out_bytes)?;
     let stream = device.stream().as_raw();
@@ -415,7 +415,6 @@ fn nf4_gemv_inner(
         )
     };
     check(status, op_label)?;
-    drop(m); // silence unused (kept for documentation purposes)
     Ok(CudaStorageBytes::from_parts(
         Arc::new(out_buf),
         device,

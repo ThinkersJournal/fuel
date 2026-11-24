@@ -37,10 +37,13 @@ use super::status::check;
 /// the same shape; baracuda always writes the output contig) and
 /// `stride_aux` — the rank-N stride for an `[outer_count]` aux buffer
 /// where the normalized (last) axis carries stride 0.
+/// `(shape, stride, stride_aux, ..)`: the four `i32`/`i64` vectors the norm kernels take.
+type ShapeAndStrides = (Vec<i32>, Vec<i64>, Vec<i64>, Vec<i64>);
+
 fn shape_and_strides_from_layout(
     layout: &Layout,
     op_label: &'static str,
-) -> Result<(Vec<i32>, Vec<i64>, Vec<i64>, Vec<i64>)> {
+) -> Result<ShapeAndStrides> {
     let dims = layout.shape().dims();
     let rank = dims.len();
     if rank == 0 {

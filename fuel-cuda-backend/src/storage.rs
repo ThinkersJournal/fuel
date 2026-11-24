@@ -71,6 +71,10 @@ pub(crate) fn dims_strides_usize(l: &Layout) -> Vec<usize> {
 // `conv_dims_strides_usize` retired in Phase 5b alongside the PTX
 // Conv*/ConvTranspose* structs that consumed its packed-strides arg.
 
+#[allow(
+    dead_code,
+    reason = "never called by design: it is the compile-time exhaustiveness guard on `Scalar` (every variant needs a launch-arg arm, GAP-049); deleting it deletes the guard"
+)]
 fn push_scalar_arg<'a>(
     scalar: &'a fuel_ir::scalar::Scalar,
     builder: &mut crate::device::LaunchArgs<'a>,

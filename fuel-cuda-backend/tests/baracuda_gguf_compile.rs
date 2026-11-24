@@ -33,14 +33,15 @@ fn gguf_function_signatures_compile() {
         gguf::dequant_q6_k,
         gguf::dequant_q8_k,
     ];
-    let _mmvqs: [fn(
+    type MmvqFn = fn(
         &fuel_cuda_backend::CudaStorageBytes,
         &fuel_cuda_backend::CudaStorageBytes,
         Option<&fuel_ir::Layout>,
         i64,
         usize,
         usize,
-    ) -> fuel_ir::Result<fuel_cuda_backend::CudaStorageBytes>; 11] = [
+    ) -> fuel_ir::Result<fuel_cuda_backend::CudaStorageBytes>;
+    let _mmvqs: [MmvqFn; 11] = [
         gguf::mmvq_q4_0,
         gguf::mmvq_q4_1,
         gguf::mmvq_q5_0,

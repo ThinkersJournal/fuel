@@ -257,7 +257,7 @@ impl CudaDevice {
     ) -> Result<()> {
         use baracuda_cuda_sys::{CUresult, driver};
         assert_eq!(src.len(), dst.len());
-        let bytes = src.len() * std::mem::size_of::<T>();
+        let bytes = std::mem::size_of_val(src);
         let d = driver()
             .map_err(|_| CudaError::InternalError("cuda driver load"))
             .w()?;
@@ -556,7 +556,7 @@ impl CudaDevice {
     ) -> Result<Self> {
         let blas = baracuda_cublas::Handle::new().w()?;
         blas.set_stream(&stream).w()?;
-        let mut curand = baracuda_curand::Generator::new(RngKind::Default).w()?;
+        let curand = baracuda_curand::Generator::new(RngKind::Default).w()?;
         curand.seed(299792458).w()?;
         let id = DeviceId::new();
         // GAP-214 inc 3: register liveness at construction; DeviceLiveness::drop
@@ -579,7 +579,7 @@ impl CudaDevice {
     pub fn set_seed(&self, seed: u64) -> Result<()> {
         // Baracuda's Generator has a direct `set_seed` — no need to
         // rebuild the generator the way cudarc required.
-        let mut curand = self.curand.lock().unwrap();
+        let curand = self.curand.lock().unwrap();
         curand.0.seed(seed).w()?;
         *self.seed_value.write().unwrap() = seed;
         Ok(())
@@ -802,6 +802,12 @@ impl CudaDevice {
         })
     }
 
+    /// Allocates a storage of `shape` and `dtype` WITHOUT initialising it.
+    ///
+    /// # Safety
+    ///
+    /// The device memory is uninitialised: the caller must write every element before anything reads it
+    /// (a kernel, a device-to-host copy, a clone), or the read observes arbitrary bytes.
     pub unsafe fn alloc_uninit(&self, shape: &Shape, dtype: DType) -> Result<CudaStorage> {
         let elem_count = shape.elem_count();
         let slice = match dtype {
