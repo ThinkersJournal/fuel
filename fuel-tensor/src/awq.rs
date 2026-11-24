@@ -27,7 +27,6 @@ use crate::lazy::Tensor;
 use fuel_ir::{Result, Shape};
 use fuel_quantized::awq_repack::repack_hf_awq_for_kernel;
 use half::f16;
-use safetensors::tensor::TensorView;
 use std::sync::Arc;
 
 /// An AWQ-quantized linear weight, materialized as the three `Tensor` inputs
@@ -106,120 +105,31 @@ pub fn awq_from_hf_buffers(
     })
 }
 
-fn read_u32_words(view: TensorView<'_>, key: &str, rows: usize, cols: usize) -> Result<Vec<u32>> {
-    if !matches!(
-        view.dtype(),
-        safetensors::Dtype::I32 | safetensors::Dtype::U32
-    ) {
-        return Err(fuel_ir::Error::Msg(format!(
-            "load_awq_layer: {key:?} dtype={:?}, expected I32 or U32",
-            view.dtype()
-        ))
-        .bt());
-    }
-    if view.shape() != [rows, cols] {
-        return Err(fuel_ir::Error::Msg(format!(
-            "load_awq_layer: {key:?} shape={:?}, expected [{rows}, {cols}]",
-            view.shape()
-        ))
-        .bt());
-    }
-    // I32 and U32 words are the same bits; the nibbles are read as unsigned.
-    Ok(view
-        .data()
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .map(|c| u32::from_le_bytes(*c))
-        .collect())
-}
-
-fn read_f16_scales(view: TensorView<'_>, key: &str, groups: usize, oc: usize) -> Result<Vec<f16>> {
-    if view.dtype() != safetensors::Dtype::F16 {
-        return Err(fuel_ir::Error::Msg(format!(
-            "load_awq_layer: {key:?} dtype={:?}, expected F16",
-            view.dtype()
-        ))
-        .bt());
-    }
-    if view.shape() != [groups, oc] {
-        return Err(fuel_ir::Error::Msg(format!(
-            "load_awq_layer: {key:?} shape={:?}, expected [{groups}, {oc}]",
-            view.shape()
-        ))
-        .bt());
-    }
-    Ok(view
-        .data()
-        .as_chunks::<2>()
-        .0
-        .iter()
-        .map(|c| f16::from_bits(u16::from_le_bytes(*c)))
-        .collect())
-}
-
-/// Load one `WQLinear_GEMM` layer from a parsed safetensors view. `ic`/`oc` are
-/// the layer's logical input/output features (from the model config);
-/// `group_size` is `quantization_config.group_size`. Every tensor's dtype and
-/// shape is checked against them, so a mismatched geometry errors here rather
-/// than reading a plausible-looking wrong layer.
+/// Build an [`AwqWeight`] from one located layer's stored tensors (`mlmf-awq`'s `AwqLayerBytes`; MLMF move,
+/// survey finding F6). `ic`/`oc` are the layer's logical input/output features (from the model config);
+/// `group_size` is `quantization_config.group_size`. Every tensor's dtype and shape is checked against them,
+/// so a mismatched geometry errors here rather than reading a plausible-looking wrong layer.
 pub fn load_awq_layer(
-    st: &safetensors::SafeTensors,
-    prefix: &str,
+    layer: &fuel_loaders::awq::AwqLayerBytes<'_>,
     ic: usize,
     oc: usize,
     group_size: usize,
     device: &Device,
 ) -> Result<AwqWeight> {
-    let (qweight, qzeros, scales) = read_hf_layer(
-        |key| {
-            st.tensor(key).map_err(|e| {
-                fuel_ir::Error::Msg(format!(
-                    "load_awq_layer: tensor {key:?} not found in safetensors: {e}"
-                ))
-                .bt()
-            })
-        },
-        prefix,
-        ic,
-        oc,
-        group_size,
-    )?;
+    let (qweight, qzeros, scales) = hf_layer(layer, ic, oc, group_size)?;
     awq_from_hf_buffers(&qweight, &qzeros, &scales, ic, oc, group_size, device)
 }
 
-fn check_geometry(ic: usize, oc: usize, group_size: usize) -> Result<()> {
-    if group_size == 0 || !ic.is_multiple_of(group_size) || !oc.is_multiple_of(8) {
-        return Err(fuel_ir::Error::Msg(format!(
-            "load_awq_layer: ic={ic} must be a multiple of group_size={group_size} \
-             and oc={oc} a multiple of 8"
-        ))
-        .bt());
-    }
-    Ok(())
-}
-
-/// Fetch and validate the three tensors of one `WQLinear_GEMM` layer through
-/// `get`, which resolves a full tensor key to its view (a parsed
-/// `SafeTensors`, or a memory-mapped file). Returns the HF-layout buffers.
-fn read_hf_layer<'a>(
-    get: impl Fn(&str) -> Result<TensorView<'a>>,
-    prefix: &str,
+/// The HF-layout buffers of one layer, validated against the declared geometry.
+fn hf_layer(
+    layer: &fuel_loaders::awq::AwqLayerBytes<'_>,
     ic: usize,
     oc: usize,
     group_size: usize,
 ) -> Result<(Vec<u32>, Vec<u32>, Vec<f16>)> {
-    check_geometry(ic, oc, group_size)?;
-    let groups = ic / group_size;
-    let (kw, kz, ks) = (
-        format!("{prefix}.qweight"),
-        format!("{prefix}.qzeros"),
-        format!("{prefix}.scales"),
-    );
-    let qweight = read_u32_words(get(&kw)?, &kw, ic, oc / 8)?;
-    let qzeros = read_u32_words(get(&kz)?, &kz, groups, oc / 8)?;
-    let scales = read_f16_scales(get(&ks)?, &ks, groups, oc)?;
-    Ok((qweight, qzeros, scales))
+    let b = fuel_loaders::awq::hf_buffers(layer, ic, oc, group_size)?;
+    let scales = b.scale_bits.into_iter().map(f16::from_bits).collect();
+    Ok((b.qweight, b.qzeros, scales))
 }
 
 /// An AWQ linear weight as host buffers in the kernel layout, bound to no
@@ -270,16 +180,15 @@ impl AwqHostWeight {
         })
     }
 
-    /// Read one `WQLinear_GEMM` layer (`{prefix}.qweight/.qzeros/.scales`)
-    /// through `get`, validating every dtype and shape against the geometry.
-    pub fn load<'a>(
-        get: impl Fn(&str) -> Result<TensorView<'a>>,
-        prefix: &str,
+    /// Build from one located layer's stored tensors (`mlmf-awq`'s `AwqLayerBytes`), validating every dtype
+    /// and shape against the geometry, then repacking to the kernel layout.
+    pub fn from_layer_bytes(
+        layer: &fuel_loaders::awq::AwqLayerBytes<'_>,
         ic: usize,
         oc: usize,
         group_size: usize,
     ) -> Result<Self> {
-        let (qweight, qzeros, scales) = read_hf_layer(get, prefix, ic, oc, group_size)?;
+        let (qweight, qzeros, scales) = hf_layer(layer, ic, oc, group_size)?;
         Self::from_hf_buffers(&qweight, &qzeros, &scales, ic, oc, group_size)
     }
 
@@ -322,6 +231,25 @@ mod tests {
     use super::*;
     use fuel_quantized::awq_repack::HF_AWQ_PACK_ORDER;
     use safetensors::tensor::TensorView;
+
+    /// One located layer of a synthetic safetensors checkpoint, read through `mlmf-awq` and validated by
+    /// `load_awq_layer`: every stage's refusal is an `Err`, as the old `SafeTensors` reader's were.
+    fn load_layer(
+        bytes: &[u8],
+        prefix: &str,
+        ic: usize,
+        oc: usize,
+        group: usize,
+    ) -> Result<AwqWeight> {
+        let file = fuel_loaders::awq::AwqFile::open(bytes)?;
+        let layers = file.locate(group)?;
+        let layer = layers
+            .iter()
+            .find(|l| l.prefix == prefix)
+            .ok_or_else(|| fuel_ir::Error::Msg(format!("no layer {prefix:?}")).bt())?;
+        load_awq_layer(&file.read_layer(layer)?, ic, oc, group, &Device::cpu())
+    }
+
     use std::collections::HashMap;
 
     const IC: usize = 128;
@@ -398,8 +326,7 @@ mod tests {
     }
 
     fn run(bytes: &[u8], x: &[f32], m: usize) -> Vec<f32> {
-        let st = safetensors::SafeTensors::deserialize(bytes).unwrap();
-        let w = load_awq_layer(&st, "l", IC, OC, GROUP, &Device::cpu()).unwrap();
+        let w = load_layer(bytes, "l", IC, OC, GROUP).unwrap();
         assert_eq!((w.oc, w.ic, w.group_size), (OC, IC, GROUP));
         let act = Tensor::from_graph_tensor(
             w.weight
@@ -418,18 +345,10 @@ mod tests {
     }
 
     fn host_weight(bytes: &[u8]) -> AwqHostWeight {
-        let st = safetensors::SafeTensors::deserialize(bytes).unwrap();
-        AwqHostWeight::load(
-            |k| {
-                st.tensor(k)
-                    .map_err(|e| fuel_ir::Error::Msg(format!("{k}: {e}")).bt())
-            },
-            "l",
-            IC,
-            OC,
-            GROUP,
-        )
-        .unwrap()
+        let file = fuel_loaders::awq::AwqFile::open(bytes).unwrap();
+        let layers = file.locate(GROUP).unwrap();
+        let layer = layers.iter().find(|l| l.prefix == "l").unwrap();
+        AwqHostWeight::from_layer_bytes(&file.read_layer(layer).unwrap(), IC, OC, GROUP).unwrap()
     }
 
     fn realize_lowered(y: &Tensor) -> Vec<f32> {
@@ -574,26 +493,23 @@ mod tests {
     fn wrong_dtype_shape_and_missing_tensor_are_refused() {
         let l = logical();
         let ok = checkpoint(&l, safetensors::Dtype::I32, safetensors::Dtype::F16);
-        let st = safetensors::SafeTensors::deserialize(&ok).unwrap();
         // Geometry that disagrees with the file.
-        assert!(load_awq_layer(&st, "l", IC, OC * 2, GROUP, &Device::cpu()).is_err());
-        assert!(load_awq_layer(&st, "l", IC, OC, 128, &Device::cpu()).is_err());
+        assert!(load_layer(&ok, "l", IC, OC * 2, GROUP).is_err());
+        assert!(load_layer(&ok, "l", IC, OC, 128).is_err());
         // Missing prefix.
-        assert!(load_awq_layer(&st, "nope", IC, OC, GROUP, &Device::cpu()).is_err());
+        assert!(load_layer(&ok, "nope", IC, OC, GROUP).is_err());
         // Bad group size.
-        assert!(load_awq_layer(&st, "l", IC, OC, 0, &Device::cpu()).is_err());
+        assert!(load_layer(&ok, "l", IC, OC, 0).is_err());
         // Wrong scales dtype.
         let bad = checkpoint(&l, safetensors::Dtype::I32, safetensors::Dtype::BF16);
-        let st = safetensors::SafeTensors::deserialize(&bad).unwrap();
-        let e = load_awq_layer(&st, "l", IC, OC, GROUP, &Device::cpu()).err();
+        let e = load_layer(&bad, "l", IC, OC, GROUP).err();
         assert!(e.is_some_and(|e| format!("{e}").contains("expected F16")));
     }
     #[test]
     fn non_positive_split_k_iters_is_a_typed_error() {
         let l = logical();
         let bytes = checkpoint(&l, safetensors::Dtype::I32, safetensors::Dtype::F16);
-        let st = safetensors::SafeTensors::deserialize(&bytes).unwrap();
-        let w = load_awq_layer(&st, "l", IC, OC, GROUP, &Device::cpu()).unwrap();
+        let w = load_layer(&bytes, "l", IC, OC, GROUP).unwrap();
         let act = Tensor::from_graph_tensor(
             w.weight
                 .graph_tensor()
@@ -759,8 +675,7 @@ mod tests {
             return;
         };
         let bytes = real_slice_bytes().expect("the slice was available a line ago");
-        let st = safetensors::SafeTensors::deserialize(&bytes).unwrap();
-        let w = load_awq_layer(&st, "l", 256, 64, 128, &Device::cpu()).unwrap();
+        let w = load_layer(&bytes, "l", 256, 64, 128).unwrap();
         let x: Vec<f32> = (0..256)
             .map(|i| ((i * 5) % 17) as f32 * 0.1 - 0.8)
             .collect();

@@ -827,15 +827,32 @@ impl Qwen3Weights {
         cfg: &Qwen3Config,
         group_size: usize,
     ) -> Result<Self> {
+        // MLMF move (survey F6): the layers are located and their three tensors read through `mlmf-awq`.
+        // One safetensors file only, as `fuel_loaders::awq` documents.
+        let bytes = st.single_file_bytes().ok_or_else(|| {
+            fuel_ir::Error::Msg(
+                "load_awq_from_mmapped: a sharded AWQ checkpoint is not supported (one safetensors file only)"
+                    .to_string(),
+            )
+            .bt()
+        })?;
+        let file = fuel_loaders::awq::AwqFile::open(bytes)?;
+        let layers: std::collections::HashMap<String, _> = file
+            .locate(group_size)?
+            .into_iter()
+            .map(|l| (l.prefix.clone(), l))
+            .collect();
         Self::load_with(st, cfg, |name, rows, cols| {
             // `rows`/`cols` are the dense loader's (out, in) pair.
-            let w = fuel_tensor::awq::AwqHostWeight::load(
-                |key| st.get(key),
-                name,
-                cols,
-                rows,
-                group_size,
-            )?;
+            let layer = layers.get(name).ok_or_else(|| {
+                fuel_ir::Error::Msg(format!(
+                    "load_awq_from_mmapped: no AWQ layer `{name}` located in the checkpoint"
+                ))
+                .bt()
+            })?;
+            let bytes = file.read_layer(layer)?;
+            let w =
+                fuel_tensor::awq::AwqHostWeight::from_layer_bytes(&bytes, cols, rows, group_size)?;
             Ok(WeightStorage::Awq(Arc::new(w)))
         })
     }

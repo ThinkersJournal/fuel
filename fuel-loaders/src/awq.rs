@@ -14,7 +14,9 @@
 
 use fuel_ir::error::{Error, Result};
 pub use mlmf_awq::AwqLayerBytes;
-use mlmf_awq::{AwqConfig, LocateReport, PackedLinearLayer, locate_layers, read_layer};
+use mlmf_awq::{
+    AwqConfig, AwqTensorBytes, LocateReport, PackedLinearLayer, locate_layers, read_layer,
+};
 use mlmf_safetensors::{SafetensorsTensors, parse_header, parse_tensors};
 
 /// What fuel's AWQ path can read: 4-bit, zero-point, GEMM-version packing.
@@ -121,6 +123,15 @@ impl<'a> AwqFile<'a> {
         Ok(Self { tensors })
     }
 
+    /// Every fully located, geometrically consistent packed layer of this file for `group_size`, sorted by
+    /// prefix. A layer MLMF reports as incomplete or inconsistent is an error naming every offender.
+    pub fn locate(&self, group_size: usize) -> Result<Vec<PackedLinearLayer>> {
+        let report = locate_layers(&self.tensors, BITS, group_size as u64)
+            .map_err(|e| refuse(format!("locating layers: {e}")))?;
+        reject_unusable(&report)?;
+        Ok(report.layers)
+    }
+
     /// The three tensors (and the bias, if any) of a located layer, as stored. A tensor the layer
     /// names that is missing or block-encoded is an error naming it.
     pub fn read_layer(&self, layer: &PackedLinearLayer) -> Result<AwqLayerBytes<'_>> {
@@ -138,13 +149,8 @@ pub fn locate_awq_layers(config_json: &[u8], safetensors: &[u8]) -> Result<AwqLa
         parse_header(safetensors).map_err(|e| refuse(format!("safetensors header: {e}")))?;
     let (tensors, _report) = parse_tensors(safetensors, &header, "awq checkpoint")
         .map_err(|e| refuse(format!("safetensors directory: {e}")))?;
-    let report = locate_layers(&tensors, BITS, group_size as u64)
-        .map_err(|e| refuse(format!("locating layers: {e}")))?;
-    reject_unusable(&report)?;
-    Ok(AwqLayout {
-        group_size,
-        layers: report.layers,
-    })
+    let layers = AwqFile { tensors }.locate(group_size)?;
+    Ok(AwqLayout { group_size, layers })
 }
 
 fn reject_unusable(report: &LocateReport) -> Result<()> {
@@ -214,4 +220,82 @@ mod tests {
         assert!(awq_group_size(b"{}").is_err(), "no quantization_config");
         assert!(awq_group_size(b"not json").is_err());
     }
+}
+
+/// A layer's three tensors in the HF layout, validated against the geometry the model config declares
+/// and decoded from the stored little-endian bytes. Scales are raw IEEE half bits.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HfAwqBuffers {
+    /// `[ic, oc / 8]` packed weights (an `I32` or `U32` tensor; the nibbles are read unsigned).
+    pub qweight: Vec<u32>,
+    /// `[ic / group_size, oc / 8]` packed zero points.
+    pub qzeros: Vec<u32>,
+    /// `[ic / group_size, oc]` scales as `f16` bit patterns.
+    pub scale_bits: Vec<u16>,
+}
+
+fn words(t: &AwqTensorBytes<'_>, rows: usize, cols: usize) -> Result<Vec<u32>> {
+    let key = &t.name;
+    let dtype = format!("{:?}", t.dtype);
+    if dtype != "I32" && dtype != "U32" {
+        return Err(refuse(format!(
+            "load_awq_layer: {key:?} dtype={dtype}, expected I32 or U32"
+        )));
+    }
+    if t.shape != [rows, cols] {
+        return Err(refuse(format!(
+            "load_awq_layer: {key:?} shape={:?}, expected [{rows}, {cols}]",
+            t.shape
+        )));
+    }
+    Ok(t.bytes
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|c| u32::from_le_bytes(*c))
+        .collect())
+}
+
+fn half_bits(t: &AwqTensorBytes<'_>, groups: usize, oc: usize) -> Result<Vec<u16>> {
+    let key = &t.name;
+    let dtype = format!("{:?}", t.dtype);
+    if dtype != "F16" {
+        return Err(refuse(format!(
+            "load_awq_layer: {key:?} dtype={dtype}, expected F16"
+        )));
+    }
+    if t.shape != [groups, oc] {
+        return Err(refuse(format!(
+            "load_awq_layer: {key:?} shape={:?}, expected [{groups}, {oc}]",
+            t.shape
+        )));
+    }
+    Ok(t.bytes
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|c| u16::from_le_bytes(*c))
+        .collect())
+}
+
+/// Validate one layer's stored tensors against `ic` / `oc` / `group_size` (from the model config) and
+/// decode them. A mismatched geometry, dtype or shape errors here rather than reading a
+/// plausible-looking wrong layer.
+pub fn hf_buffers(
+    layer: &AwqLayerBytes<'_>,
+    ic: usize,
+    oc: usize,
+    group_size: usize,
+) -> Result<HfAwqBuffers> {
+    if group_size == 0 || !ic.is_multiple_of(group_size) || !oc.is_multiple_of(8) {
+        return Err(refuse(format!(
+            "load_awq_layer: ic={ic} must be a multiple of group_size={group_size} and oc={oc} a multiple of 8"
+        )));
+    }
+    let groups = ic / group_size;
+    Ok(HfAwqBuffers {
+        qweight: words(&layer.qweight, ic, oc / 8)?,
+        qzeros: words(&layer.qzeros, groups, oc / 8)?,
+        scale_bits: half_bits(&layer.scales, groups, oc)?,
+    })
 }

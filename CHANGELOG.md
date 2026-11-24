@@ -5,9 +5,13 @@ This documents the main changes to the `fuel` workspace.
 
 ## Unreleased (row 42, MLMF move: the AWQ tensor read; the number is allocated by pm-assist at gate time)
 
+### Breaking
+
+- `fuel-tensor`: the AWQ read is re-pointed onto `mlmf-awq`'s `AwqLayerBytes` (MLMF move, survey finding F6) and fuel's own `TensorView` reader is deleted. `fuel_tensor::awq::AwqHostWeight::load(get, prefix, ic, oc, group_size)` is REMOVED (use `AwqHostWeight::from_layer_bytes(&AwqLayerBytes, ic, oc, group_size)`), and `fuel_tensor::awq::load_awq_layer` now takes `(&AwqLayerBytes, ic, oc, group_size, &Device)` instead of `(&SafeTensors, prefix, ic, oc, group_size, &Device)`. One caller in the portfolio (`Qwen3Weights::load_awq_from_mmapped`, updated here; it now refuses a sharded AWQ checkpoint with a typed error instead of reading across shards). Byte-identity: the kernel-layout host buffers of all 196 projections of the real `Qwen3-0.6B-AWQ` hash to the digest the old reader produced (`0x37b87f801efc3fb6`, 58,920,960 words), pinned by `fuel-transformers/tests/qwen3_awq_mlmf_slice_2.rs` with a flipped-byte sabotage sibling.
+
 ### Added
 
-- `fuel_loaders::awq::AwqFile` (`open`, `read_layer`) and the re-export `AwqLayerBytes`: a located AWQ layer's `qweight` / `qzeros` / `scales` (dtype, shape, bytes exactly as stored) read through `mlmf-awq`'s `read_layer` (survey finding F6). Additive: nothing is removed; `fuel_tensor::awq`'s own reader stays until the next slice re-points it. Pinned by `fuel-transformers/tests/qwen3_awq_mlmf_slice_c1.rs` on the real `Qwen3-0.6B-AWQ` checkpoint: 196 layers, 588 tensors byte-identical to the old reader, plus a flipped-byte sabotage sibling.
+- `fuel_loaders::awq::AwqFile` (`open`, `locate`, `read_layer`), `fuel_loaders::awq::hf_buffers` (validate and decode a layer's tensors) and `fuel_formats::safetensors::MmapedSafetensors::single_file_bytes`; and the re-export `AwqLayerBytes` and the re-export `AwqLayerBytes`: a located AWQ layer's `qweight` / `qzeros` / `scales` (dtype, shape, bytes exactly as stored) read through `mlmf-awq`'s `read_layer` (survey finding F6). Additive: nothing is removed; `fuel_tensor::awq`'s own reader stays until the next slice re-points it. Pinned by `fuel-transformers/tests/qwen3_awq_mlmf_slice_c1.rs` on the real `Qwen3-0.6B-AWQ` checkpoint: 196 layers, 588 tensors byte-identical to the old reader, plus a flipped-byte sabotage sibling.
 
 ### Not verified
 

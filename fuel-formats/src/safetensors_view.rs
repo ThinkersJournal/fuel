@@ -204,6 +204,15 @@ impl MmapedSafetensors {
         })
     }
 
+    /// The whole file's bytes when exactly ONE file is mapped (`None` for a multi-file set, where there is no
+    /// single container). For readers that parse the directory themselves, such as `mlmf-awq`.
+    pub fn single_file_bytes(&self) -> Option<&[u8]> {
+        match self.safetensors.as_slice() {
+            [one] => Some(&one.backing_cart()[..]),
+            _ => None,
+        }
+    }
+
     /// Return metadata (name, dtype, shape) for every tensor across all mapped files.
     pub fn tensors(&self) -> Vec<(String, st::TensorView<'_>)> {
         let mut tensors = vec![];
