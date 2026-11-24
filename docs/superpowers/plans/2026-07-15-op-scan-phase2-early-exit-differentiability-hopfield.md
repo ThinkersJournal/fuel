@@ -64,7 +64,7 @@ Opens the Phase‑2 seam: `unroll_scan` must parse the 3‑trailing layout and p
 
 **Steps:**
 
-- [ ] **Write the failing test.** Replace the `unroll_scan_rejects_early_exit_some` test (`scan.rs:259‑264`) with:
+- [x] **Write the failing test.** *(Done: `unroll_scan_rejects_early_exit_some` is gone; `fuel-graph/src/scan.rs` now has `unroll_scan_early_exit_some_peels_predicate_and_unrolls`.)* Replace the `unroll_scan_rejects_early_exit_some` test (`scan.rs:259‑264`) with:
 ```rust
 #[test]
 fn unroll_scan_early_exit_some_peels_predicate_and_unrolls() {

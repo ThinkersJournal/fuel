@@ -3,6 +3,16 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## Unreleased (docs, the GAP-398 regression test and Gate B ticks; the number is allocated by pm-assist at gate time)
+
+### Added
+
+- `fuel-vulkan-dispatch/tests/vulkan_backend_drop_open_batch_live.rs`: the GAP-398 regression test (a `VulkanBackend` dropped with an open recorder batch must not crash; the fix is in v0.50.2). Not `#[ignore]`d: `.github/workflows/rust-ci.yml` skips `dropping_a_backend_with_an_open_batch_does_not_crash` BY NAME on the three hosted `cargo test --workspace` steps (as it already does `shipped_vulkan_spv_nan_behaviour_is_pinned`), and `device-tests.yml` runs it under `gpu-run`, where a missing adapter or lock fails (CireSnave 2026-10-16). The `#[ignore]` ceiling (500, `fuel-ir`'s `suppression_ratchet`) is unchanged.
+
+### Changed
+
+- Docs: ROADMAP row 119 and `docs/gaps.md` GAP-397 (closed) and GAP-398 now say what v0.50.2 landed; `docs/design-notes/2026-11-23-gap398-teardown-evidence.md` (the evidence for GAP-398); Gate B drift-check answers for ten fuel rows (ROADMAP rows 10, 14; the FKC gap-closure plan step 1; the op-scan phase 1 steps 1 and 2; the op-scan phase 2 early-exit step ticked or repointed; rows 12, 15 left open; the dlpack checklist is normative, unticked by design).
+
 ## v0.47.1 - 2026-11-10 (PM-allocated)
 
 ### Changed
@@ -153,7 +163,7 @@ This documents the main changes to the `fuel` workspace.
 
 ### Fixed
 
-- `fuel-vulkan-backend`: a `VulkanBackend` dropped with an open recorder batch (after a failed realize) crashed the process with an access violation; `Drop` now flushes and waits for the open batch before any field is destroyed (GAP-398). Its regression test, `fuel-vulkan-dispatch/tests/vulkan_backend_drop_open_batch_live.rs`, needs a live Vulkan device, so it must be `#[ignore]`d like the crate's other live tests, and the `#[ignore]` ceiling (500, `fuel-ir`'s `suppression_ratchet`) is reached: the test is HELD OUT of this change, on `vk-qmatmul-q5k-docs`, until the ceiling is decided.
+- `fuel-vulkan-backend`: a `VulkanBackend` dropped with an open recorder batch (after a failed realize) crashed the process with an access violation; `Drop` now flushes and waits for the open batch before any field is destroyed (GAP-398). Its regression test, `fuel-vulkan-dispatch/tests/vulkan_backend_drop_open_batch_live.rs`, is NOT in this change (the next change adds it; it needs a live Vulkan device and the machine-wide gpu-run lock, so it is skipped by name on the hosted test steps and run by `device-tests.yml`, never `#[ignore]`d).
 
 ### Removed
 
