@@ -1992,9 +1992,14 @@ dependencies = [
  "fuel-cpu-backend",
  "fuel-cuda-backend",
  "fuel-datasets",
+ "fuel-dispatch",
  "fuel-inference",
+ "fuel-ir",
+ "fuel-kv-pool",
+ "fuel-loaders",
  "fuel-model-llama",
  "fuel-onnx",
+ "fuel-tensor",
  "fuel-training",
  "fuel-transformers",
  "half",
@@ -2298,6 +2303,7 @@ dependencies = [
 name = "fuel-model-phi"
 version = "0.26.5"
 dependencies = [
+ "fuel-dispatch",
  "fuel-graph",
  "fuel-ir",
  "fuel-loaders",

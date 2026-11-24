@@ -13,6 +13,11 @@ readme = "README.md"
 accelerate-src = { workspace = true, optional = true }
 fuel = { workspace = true }
 fuel-cpu-backend = { workspace = true }
+fuel-kv-pool = { workspace = true }
+fuel-tensor = { workspace = true }
+fuel-ir = { workspace = true }
+fuel-loaders = { workspace = true }
+fuel-dispatch = { workspace = true }
 fuel-cuda-backend = { workspace = true, optional = true }
 fuel-datasets = { workspace = true, optional = true }
 fuel-inference = { workspace = true }
