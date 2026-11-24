@@ -133,7 +133,7 @@ fn rope_run(
     op_label: &'static str,
     dtype_size_bytes: usize,
 ) -> Result<CudaStorageBytes> {
-    if head_dim % 2 != 0 {
+    if !head_dim.is_multiple_of(2) {
         return Err(Error::Msg(format!(
             "{op_label}: head_dim must be even (got {head_dim})",
         ))
@@ -187,7 +187,7 @@ fn rope_run_into(
     op_label: &'static str,
     dtype_size_bytes: usize,
 ) -> Result<()> {
-    if head_dim % 2 != 0 {
+    if !head_dim.is_multiple_of(2) {
         return Err(Error::Msg(format!(
             "{op_label}: head_dim must be even (got {head_dim})",
         ))
@@ -555,7 +555,7 @@ fn rope_apply_run_into(
     op_label: &'static str,
     dtype_size_bytes: usize,
 ) -> Result<()> {
-    if head_dim % 2 != 0 {
+    if !head_dim.is_multiple_of(2) {
         return Err(Error::Msg(format!(
             "{op_label}: head_dim must be even (got {head_dim})",
         ))
@@ -1240,7 +1240,7 @@ fn flash_decoding_run(
         ))
         .bt());
     }
-    if hkv == 0 || hq % hkv != 0 {
+    if hkv == 0 || !hq.is_multiple_of(hkv) {
         return Err(Error::Msg(format!(
             "{op_label}: Hq={hq} must be a positive multiple of Hkv={hkv} (GQA)",
         ))

@@ -58,7 +58,7 @@ const MAX_ULP_OPS: &[(OpKind, u32)] = &[
 /// (mirrors `verify_precision_bound`'s `MaxUlp` arm). `Err` on a length/align
 /// mismatch rather than a panic.
 fn max_ulp_ok(cand: &[u8], refr: &[u8], bound: u32) -> std::result::Result<bool, String> {
-    if cand.len() % 4 != 0 || refr.len() != cand.len() {
+    if !cand.len().is_multiple_of(4) || refr.len() != cand.len() {
         return Err(format!(
             "output length/align mismatch (cand {} ref {})",
             cand.len(),

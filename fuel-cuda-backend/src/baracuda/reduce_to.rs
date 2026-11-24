@@ -54,7 +54,7 @@ fn reduce_to(
     elem: usize,
     label: &'static str,
 ) -> Result<CudaStorageBytes> {
-    if src.len_bytes() % elem != 0 {
+    if !src.len_bytes().is_multiple_of(elem) {
         return Err(fuel_ir::Error::Msg(format!(
             "{label}: src.len_bytes={} not a multiple of element size {elem}",
             src.len_bytes(),

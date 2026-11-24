@@ -77,7 +77,7 @@ fn cast_run(
         ))
         .bt());
     }
-    if src.len_bytes() % src_size_bytes != 0 {
+    if !src.len_bytes().is_multiple_of(src_size_bytes) {
         return Err(Error::Msg(format!(
             "{op_label}: src.len_bytes={} not a multiple of src elem size {}",
             src.len_bytes(),

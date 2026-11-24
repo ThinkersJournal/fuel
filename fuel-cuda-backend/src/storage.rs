@@ -4965,7 +4965,7 @@ impl CudaStorage {
         }
         let seq = dims[rank - 2];
         let head_dim = dims[rank - 1];
-        if head_dim % 2 != 0 {
+        if !head_dim.is_multiple_of(2) {
             return fuel_ir::bail!("CudaStorage::rope head_dim must be even, got {head_dim}");
         }
         let outer: usize = dims[..rank - 2].iter().product::<usize>().max(1);

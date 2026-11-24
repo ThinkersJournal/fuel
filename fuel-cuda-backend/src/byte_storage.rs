@@ -107,7 +107,7 @@ impl CudaStorageBytes {
     /// any `DeviceRepr` we ship.
     pub fn view_as<T: DeviceRepr>(&self) -> Result<DeviceSlice<'_, T>> {
         let elem = std::mem::size_of::<T>();
-        if elem != 0 && self.len_bytes % elem != 0 {
+        if elem != 0 && !self.len_bytes.is_multiple_of(elem) {
             return Err(CudaError::InvalidDtypeBoundary {
                 byte_len: self.len_bytes,
                 dtype_size: elem,
