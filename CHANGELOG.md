@@ -144,6 +144,17 @@ This documents the main changes to the `fuel` workspace.
 
 - `test-gpu-run-interleave.ps1` PASS under `pwsh` (7.x) and Windows PowerShell 5.1 (hold order ABABABAB; whole-run control AAAABBBB); `test-gpu-run-mutex-acl.ps1` PASS under `pwsh`.
 
+## v0.50.1 - 2026-11-24 (tentative; the PM allocates; row 33)
+
+### Added
+
+- `fuel-inference`: `SchedulerHook`, an opt-in admission/ordering hook for `PagedSessionScheduler::step` and `step_batched` (`set_hook`, `has_hook`; types `HookContext`, `HookSession`, `StepStage`). Mechanism only: the hook is told, per stage (prefill, decode), the ready sessions in the scheduler's own order (id, `set_priority` value, tokens generated, budget left) plus queue depth and live-session count, and returns the ids to advance in the order to advance them; a ready session it leaves out is deferred to the next quantum. No priority or fairness rule lives in Fuel; Lightbulb supplies the policy (ROADMAP row 33).
+- Default is no hook, and that path is unchanged: `paged_scheduler_default_path_is_pinned_admission_order_per_quantum` was written and run against the pre-hook scheduler and passes before and after. Hook tests: a reversing hook changes which session each stage advances first (serial and batched), a hook that leaves sessions out defers them, what the hook sees, unknown and repeated ids are ignored, outputs are byte-identical, and a hook that defers everything makes `run_to_completion` return instead of spinning.
+
+### Not verified
+
+- Lightbulb has not consumed the hook; no serving host drives it yet.
+
 ## v0.50.0 - 2026-11-24 (PM-allocated; BREAKING: the `mkl` feature is removed; row 167 part 4)
 
 ### Removed (BREAKING)
