@@ -1229,6 +1229,7 @@ variant_table!(
     Nf4Matmul => None,
     AwqMatmul => None,
     RowScaledMatMul => None,
+    TopKLastDim => None,
     FlashAttnBackward => None,
     SelectiveScan => None,
     CausalConv1d => None,

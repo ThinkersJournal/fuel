@@ -57,6 +57,7 @@ pub mod selective_scan;
 pub mod softmax_last_dim;
 pub mod softmax_last_dim_backward;
 pub mod ssd_chunk_scan;
+pub mod top_k_last_dim;
 
 /// Stable identifier for a registered fused op. Indexes into
 /// `FusedOpRegistry::entries`. Newtype over `u16` (~65K capacity is
@@ -351,6 +352,8 @@ pub enum FusedOpParams {
     /// RowScaledMatMul: `(a @ b) * row_scale`, no per-instance parameters
     /// (the shapes are implicit in the three inputs).
     RowScaledMatMul,
+    /// TopKLastDim: the `k` largest values along the last axis (`k` static).
+    TopKLastDim { k: usize },
     /// FlashAttnBackward — shared params for the Q/K/V backward
     /// variants. Carries the same shape parameters as the forward
     /// `FlashAttn` so the recompute pass produces identical scores.
@@ -674,6 +677,11 @@ impl FusedOpParams {
                 tag: 24,
                 bits: Vec::new(),
                 ints: Vec::new(),
+            },
+            FusedOpParams::TopKLastDim { k } => FusedOpParamsKey {
+                tag: 25,
+                bits: Vec::new(),
+                ints: vec![*k as i64],
             },
             FusedOpParams::FlashAttnBackward {
                 softmax_scale,
@@ -1243,6 +1251,10 @@ impl FusedOps {
     /// RowScaledMatMul: `(a @ b) * row_scale` with `row_scale [..batch, M, 1]`
     /// (a per-row / per-token scale; ROADMAP row 172 item 1).
     pub const ROW_SCALED_MATMUL: FusedOpId = FusedOpId(26);
+
+    /// TopKLastDim: the `k` largest values along the last axis and their
+    /// indices (multi-output; ROADMAP row 172 item 2 step A).
+    pub const TOP_K_LAST_DIM: FusedOpId = FusedOpId(27);
 }
 
 /// Process-wide default registry: the union of every fused op's
