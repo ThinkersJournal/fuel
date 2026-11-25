@@ -3,6 +3,22 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## Unreleased (row 172 items 1 and 6a; the number is allocated by pm-assist at gate time)
+
+### Breaking
+
+- `fuel-graph`: `FusedOpParams` gains the variant `RowScaledMatMul` (the enum is not `#[non_exhaustive]`), so a downstream exhaustive `match` on it stops compiling.
+
+### Added
+
+- `RowScaledMatMul` (`FusedOps::ROW_SCALED_MATMUL`, id 26): `(a @ b) * row_scale`, `row_scale` shaped `[..., M, 1]`, a per-row / per-token scale epilogue. Recipe, canonical pattern, `OpKind::RowScaledMatMul`, CPU kernels for f32/f64/bf16/f16, FKC contracts, 8 verification-ledger records. Design: `docs/design-notes/2026-11-25-row172-item1-row-scaled-matmul.md`.
+- `fuel-dispatch` (telemetry feature): `Op::MatMul` declares its M/N/K/batch roles (`telemetry/contraction_facts.rs`) and Fuel's own `sk8` derivation runs at the plan telemetry call, the first production caller of `derive_structure_key_token`; the derived tokens go to a separate `TelemetrySink` ledger and the wire `structure_key` is unchanged.
+- Tests pinning the rank-3/4 batched and column-major contraction keys (characterisation tests).
+
+### Changed
+
+- ROADMAP row 172 (provisional number) and `docs/gaps.md` GAP-399 (the topology-generation flake); `docs/design-notes` for row 172 item 1.
+
 ## v0.50.4 - 2026-11-25 (PM-allocated; row 174 step 2: baracuda 0.1.0-alpha.185 and the FireLine/Unpopped 0.56.12 line in the manifest and lock, rust-ci.yml; not breaking)
 
 - Manifest and lock only (catch-up release 1): the baracuda crates move to alpha.185 (emitters on Unpopped 0.56.12), so one `unpopped-vocab` copy remains in the graph.
