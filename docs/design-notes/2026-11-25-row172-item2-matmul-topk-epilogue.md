@@ -56,9 +56,18 @@ stays inside the attention kernel). Companion to
    recipe: `cpu/` contract, `fused/` contract, `OpKind`, wrappers, pins moved by PREDICTED deltas).
 4. Step B pattern, entry, registration. 5. CUDA binding after the Baracuda read.
 
-## Open questions
+## Resolved questions (2026-11-25, before the red tests)
 
-- Output order for equal values across a NaN: pin by reading the NaN-conventions memory and the
-  `ArgMaxDim` kernels before step 1 (blocks the red tests, not this note).
-- Is `k` ever data-dependent for Unpopped (U-rows)? Assumed static; confirm with Unpopped.
-- Index dtype `U32` vs `I64` for downstream gather consumers: `ArgMaxDim`'s `U32` assumed.
+- **NaN order.** The 2026-07-08 NaN pin (`docs/architecture/10-decisions-log.md`, entry "Relu, Maximum and
+  Minimum are NaN-propagating", and the memory `nan-conventions-pinned`) is ELEMENTWISE ONLY: it states
+  that reductions and softmax internals are "explicitly untouched". So no Fuel pin covers TopK. Decision
+  by the standing norm "match external convention (PyTorch/CUDA)": follow `torch.topk`, **NaN sorts as
+  the largest value** (NaNs come first in the descending output, lowest index first among NaNs). This is
+  a NEW decision for this op, recorded in the decisions log with the op's commit, not an inherited pin.
+  Ties between equal non-NaN values: lower index first (deterministic; torch leaves it unspecified).
+- **`k` is static.** A node's output shape is `[.., k]`, and Fuel plans once over static shapes; a
+  data-dependent `k` is a data-dependent output shape (the shapes keystone, `Op::NonZeroIndices`
+  territory) and is out of scope. `k` lives in `FusedOpParams::TopKLastDim { k }`, so it is part of the
+  node's CSE/recipe identity.
+- **Index dtype `U32`**, as `ArgMaxDim` yields. An `I64` consumer casts.
+- Still to confirm with Unpopped (does not block): whether their IR ever needs a dynamic `k`.
