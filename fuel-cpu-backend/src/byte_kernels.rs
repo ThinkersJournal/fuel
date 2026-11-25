@@ -6633,6 +6633,102 @@ row_scaled_matmul_half_kernel!(row_scaled_matmul_bf16, half::bf16);
 row_scaled_matmul_half_kernel!(row_scaled_matmul_f16, half::f16);
 
 // =============================================================================
+// TopKLastDim: the k largest values along the last axis + their indices
+// (ROADMAP row 172 item 2 step A)
+// =============================================================================
+//
+// Input: x [rows, n] (leading dims flattened). Output: ONE bundled buffer
+// `[values (rows*k of T) ; pad to 4 ; indices (rows*k of u32)]`, the layout
+// `compose_bundle` computes for slots `(T, [.., k])`, `(U32, [.., k])`.
+//
+// Order per row: descending by value, NaN sorts as the LARGEST (torch.topk),
+// ties take the LOWER index first (deterministic). Selection is a full stable
+// sort of the row's indices (a reference implementation: O(n log n)).
+
+/// Bytes of the values slot, then the 4-aligned offset of the indices slot.
+fn top_k_bundle_layout(elem: usize, rows: usize, k: usize) -> (usize, usize) {
+    let values_bytes = rows.saturating_mul(k).saturating_mul(elem);
+    let idx_off = values_bytes.div_ceil(4) * 4;
+    (values_bytes, idx_off)
+}
+
+/// The row's `k` best indices under the TopK order, given each element as f64
+/// (every float dtype widens to f64 exactly, so the order is dtype-faithful).
+fn top_k_indices(row: &[f64], k: usize) -> Vec<usize> {
+    let mut idx: Vec<usize> = (0..row.len()).collect();
+    idx.sort_by(|&a, &b| {
+        let (x, y) = (row[a], row[b]);
+        match (x.is_nan(), y.is_nan()) {
+            (true, true) => a.cmp(&b),
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            (false, false) => y
+                .partial_cmp(&x)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(a.cmp(&b)),
+        }
+    });
+    idx.truncate(k);
+    idx
+}
+
+macro_rules! top_k_last_dim_kernel {
+    ($name:ident, $T:ty, $widen:expr) => {
+        pub fn $name(
+            input: &CpuStorageBytes,
+            out: &mut CpuStorageBytes,
+            rows: usize,
+            n: usize,
+            k: usize,
+        ) -> Result<()> {
+            if k == 0 || k > n {
+                return Err(Error::Msg(format!(
+                    "{}: k = {k} must be in 1..={n}",
+                    stringify!($name)
+                ))
+                .bt());
+            }
+            let elem = std::mem::size_of::<$T>();
+            let (values_bytes, idx_off) = top_k_bundle_layout(elem, rows, k);
+            let need = idx_off + rows.saturating_mul(k).saturating_mul(4);
+            if input.len_bytes() != rows.saturating_mul(n).saturating_mul(elem)
+                || out.len_bytes() != need
+            {
+                return Err(Error::Msg(format!("{}: bytes mismatch", stringify!($name))).bt());
+            }
+            let x: &[$T] = input.as_slice()?;
+            let bytes = out.bytes_mut();
+            let (vbytes, rest) = bytes.split_at_mut(values_bytes);
+            let ibytes = &mut rest[idx_off - values_bytes..];
+            let values: &mut [$T] = bytemuck::try_cast_slice_mut(vbytes).map_err(|e| {
+                Error::Msg(format!("{}: values cast {e:?}", stringify!($name))).bt()
+            })?;
+            let indices: &mut [u32] = bytemuck::try_cast_slice_mut(ibytes).map_err(|e| {
+                Error::Msg(format!("{}: indices cast {e:?}", stringify!($name))).bt()
+            })?;
+            let widen = $widen;
+            let mut row64 = vec![0.0_f64; n];
+            for r in 0..rows {
+                let row = &x[r * n..(r + 1) * n];
+                for (d, s) in row64.iter_mut().zip(row) {
+                    *d = widen(*s);
+                }
+                for (slot, i) in top_k_indices(&row64, k).into_iter().enumerate() {
+                    values[r * k + slot] = row[i];
+                    indices[r * k + slot] = i as u32;
+                }
+            }
+            Ok(())
+        }
+    };
+}
+
+top_k_last_dim_kernel!(top_k_last_dim_f32, f32, |v: f32| v as f64);
+top_k_last_dim_kernel!(top_k_last_dim_f64, f64, |v: f64| v);
+top_k_last_dim_kernel!(top_k_last_dim_bf16, half::bf16, |v: half::bf16| v.to_f64());
+top_k_last_dim_kernel!(top_k_last_dim_f16, half::f16, |v: half::f16| v.to_f64());
+
+// =============================================================================
 // FusedSoftmaxCrossEntropy — fused softmax + NLL + reduction
 // =============================================================================
 //
@@ -10844,6 +10940,92 @@ mod tests {
             }
         }
         assert_eq!(got, &want[..]);
+    }
+
+    fn pod_vec<T: bytemuck::Pod>(bytes: &[u8]) -> Vec<T> {
+        bytes
+            .chunks_exact(std::mem::size_of::<T>())
+            .map(bytemuck::pod_read_unaligned)
+            .collect()
+    }
+
+    /// Decode a TopK bundle for f32: (values, indices).
+    fn top_k_decode_f32(out: &CpuStorageBytes, rows: usize, k: usize) -> (Vec<f32>, Vec<u32>) {
+        let (vb, io) = top_k_bundle_layout(4, rows, k);
+        let b = out.bytes();
+        let v: Vec<f32> = pod_vec(&b[..vb]);
+        let i: Vec<u32> = pod_vec(&b[io..io + rows * k * 4]);
+        (v, i)
+    }
+
+    /// TopK f32: descending, NaN largest, ties lower-index-first, two rows.
+    #[test]
+    fn top_k_last_dim_f32_orders_nan_largest_and_ties_by_index() {
+        let x = [
+            1.0_f32,
+            5.0,
+            f32::NAN,
+            5.0,
+            2.0,
+            /* row 2 */ 3.0,
+            3.0,
+            3.0,
+            -1.0,
+            9.0,
+        ];
+        let mut out = CpuStorageBytes::from_zero_bytes(2 * 3 * 4 * 2);
+        top_k_last_dim_f32(&CpuStorageBytes::from_slice(&x), &mut out, 2, 5, 3).expect("kernel");
+        let (v, i) = top_k_decode_f32(&out, 2, 3);
+        // row 0: NaN (idx 2) first, then the two 5.0s lower index first (1, 3).
+        assert_eq!(i[..3], [2, 1, 3]);
+        assert!(v[0].is_nan() && v[1] == 5.0 && v[2] == 5.0);
+        // row 1: 9.0 (idx 4), then the 3.0s by index (0, 1).
+        assert_eq!(i[3..], [4, 0, 1]);
+        assert_eq!(v[3..], [9.0, 3.0, 3.0]);
+    }
+
+    /// k out of range is a typed error, not a panic (the kernel-side twin of
+    /// the build-time validation).
+    #[test]
+    fn top_k_last_dim_rejects_k_zero_and_k_over_n() {
+        for k in [0usize, 6] {
+            let mut out = CpuStorageBytes::from_zero_bytes(64);
+            let r = top_k_last_dim_f32(
+                &CpuStorageBytes::from_slice(&[0.0_f32; 5]),
+                &mut out,
+                1,
+                5,
+                k,
+            );
+            assert!(r.is_err(), "k = {k}");
+        }
+    }
+
+    /// bf16 values are carried exactly and the indices slot is 4-aligned even
+    /// when the values slot is an odd number of bf16 (3 values = 6 bytes).
+    #[test]
+    fn top_k_last_dim_bf16_pads_the_indices_slot_to_four_bytes() {
+        use half::bf16;
+        let x: Vec<bf16> = [0.5_f32, 4.0, 2.0, 1.0]
+            .iter()
+            .map(|v| bf16::from_f32(*v))
+            .collect();
+        let (vb, io) = top_k_bundle_layout(2, 1, 3);
+        assert_eq!(
+            (vb, io),
+            (6, 8),
+            "6 value bytes pad to an 8-byte index offset"
+        );
+        let mut out = CpuStorageBytes::from_zero_bytes(io + 3 * 4);
+        top_k_last_dim_bf16(&CpuStorageBytes::from_slice(&x), &mut out, 1, 4, 3).expect("kernel");
+        let b = out.bytes();
+        let v: Vec<bf16> = pod_vec(&b[..vb]);
+        let i: Vec<u32> = pod_vec(&b[io..io + 12]);
+        assert_eq!(
+            v.iter().map(|x| x.to_f32()).collect::<Vec<_>>(),
+            [4.0, 2.0, 1.0]
+        );
+        assert_eq!(i, [1, 2, 3]);
     }
 
     /// Smoke: add two f32 storages elementwise.
