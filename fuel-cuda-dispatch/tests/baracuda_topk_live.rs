@@ -126,19 +126,37 @@ fn cuda_topk_over_cap_shapes_are_a_typed_error() {
     assert!(fuel_cuda_backend::baracuda::topk::check_caps(1, 200, 65).is_err());
 }
 
-/// Ties and NaN: OBSERVATION. The CPU kernel pins NaN-largest and ties-lower-index;
-/// baracuda's comparator network documents neither. This test prints both results
-/// so the first live run records the difference; it asserts only that both return
-/// the same VALUE multiset for the tie case.
+/// Ties and NaN: CHARACTERISATION of baracuda's comparator at `0.1.0-alpha.186`
+/// (recorded by the first live run on an RTX 4070, 2026-11-25), pinned so a baracuda
+/// change reddens this test instead of silently moving the CUDA path. It DIVERGES
+/// from the CPU kernel (and from `torch.topk`) in two ways, both documented in the
+/// CUDA contract and GAP-402:
+///
+/// * ties: values agree, INDICES do not take the lower-index-first rule
+///   (input `[3,5,5,1,5,2,4,5]`, k = 3: CUDA picks indices `[1, 2, 7]`, CPU `[1, 2, 4]`);
+/// * NaN: a NaN in the row CORRUPTS the selection (input `[1, NaN, 9, 2]`, k = 2: CUDA
+///   returns `([2.0, NaN], [3, 1])` and loses the 9.0; CPU returns `([NaN, 9.0], [1, 2])`).
+///   A NaN-bearing row must not be sent to the CUDA kernel.
 #[test]
-fn cuda_topk_f32_ties_and_nan_observation() {
+fn cuda_topk_f32_ties_and_nan_diverge_from_the_cpu_kernel_at_alpha_186() {
     let x = [3.0_f32, 5.0, 5.0, 1.0, 5.0, 2.0, 4.0, 5.0];
     let got = run_cuda_f32(&x, 1, 8, 3);
     let want = run_cpu_f32(&x, 1, 8, 3);
-    eprintln!("ties   cuda={got:?} cpu={want:?}");
-    assert_eq!(got.0, want.0, "tie VALUES agree (indices may differ)");
+    assert_eq!(got.0, want.0, "tie VALUES agree");
+    assert_eq!(
+        want.1,
+        vec![1, 2, 4],
+        "the CPU kernel takes the lowest tied indices"
+    );
+    assert_eq!(
+        got.1,
+        vec![1, 2, 7],
+        "baracuda alpha.186 tie indices (recorded)"
+    );
     let nanx = [1.0_f32, f32::NAN, 9.0, 2.0];
     let got = run_cuda_f32(&nanx, 1, 4, 2);
     let want = run_cpu_f32(&nanx, 1, 4, 2);
-    eprintln!("nan    cuda={got:?} cpu={want:?}");
+    assert!(want.0[0].is_nan() && want.0[1] == 9.0 && want.1 == vec![1, 2]);
+    assert!(got.0[0] == 2.0 && got.0[1].is_nan(), "recorded: {got:?}");
+    assert_eq!(got.1, vec![3, 1], "recorded: the 9.0 at index 2 is lost");
 }
