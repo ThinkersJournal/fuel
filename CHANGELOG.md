@@ -3,6 +3,10 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.50.4 - 2026-11-25 (PM-allocated; row 174 step 2: baracuda 0.1.0-alpha.185 and the FireLine/Unpopped 0.56.12 line in the manifest and lock, rust-ci.yml; not breaking)
+
+- Manifest and lock only (catch-up release 1): the baracuda crates move to alpha.185 (emitters on Unpopped 0.56.12), so one `unpopped-vocab` copy remains in the graph.
+
 ## v0.50.3 - 2026-11-24 (PM-allocated; docs, the GAP-398 regression test and Gate B ticks; not breaking)
 
 ### Added
