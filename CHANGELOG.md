@@ -13,6 +13,10 @@ This documents the main changes to the `fuel` workspace.
 
 - Row 38: `cargo clippy --locked --no-deps -p fuel-dispatch -p fuel-cuda-backend --features fuel-dispatch/cuda,fuel-dispatch/jit --all-targets -- -D warnings` exits 0 (clippy 0.1.98): the measured set (183 diagnostics in `fuel-cuda-backend` and 45 in `fuel-dispatch` at the start of slice 3) fixed or, where a consumer exists under another cfg, gated to it; `fuel-dispatch`'s verify harness and seeder carry reasoned `allow(dead_code)`; `push_scalar_arg` is kept as the `Scalar` exhaustiveness guard (GAP-049).
 
+## v0.50.4 - 2026-11-25 (PM-allocated; row 174 step 2: baracuda 0.1.0-alpha.185 and the FireLine/Unpopped 0.56.12 line in the manifest and lock, rust-ci.yml; not breaking)
+
+- Manifest and lock only (catch-up release 1): the baracuda crates move to alpha.185 (emitters on Unpopped 0.56.12), so one `unpopped-vocab` copy remains in the graph.
+
 ## v0.50.3 - 2026-11-24 (PM-allocated; docs, the GAP-398 regression test and Gate B ticks; not breaking)
 
 ### Added
