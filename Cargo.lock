@@ -411,15 +411,15 @@ dependencies = [
 
 [[package]]
 name = "baracuda-build"
-version = "0.1.0-alpha.185"
+version = "0.1.0-alpha.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "312becbc0bb2759237d09013d1f8addf29f88c3c304a8be1540b813c40bcfb8e"
+checksum = "b63a3fbb6a0677f66ef9a7dae1794493b47a9173f9af75f38bf0f6ce198da3cd"
 
 [[package]]
 name = "baracuda-core"
-version = "0.1.0-alpha.185"
+version = "0.1.0-alpha.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a28f6940652b19c5e5feb70c7d754e49ca630b27f9193f54853476b9c54ca671"
+checksum = "8986d3ac8d4eaf53703da600af2a071a8c5ad64fa4488a53d8e380fb962c3429"
 dependencies = [
  "baracuda-types",
  "libloading 0.9.0",
@@ -454,9 +454,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cuda-emit"
-version = "0.56.12"
+version = "0.56.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "781d72dbcbee3646483cc53749557d5a0d645448a823d0aca205622840909b4f"
+checksum = "2c878fb6eebf467323baa700442269bcf25efa5d65a0afdbeef7527cc4c96f34"
 dependencies = [
  "baracuda-nvrtc",
  "unpopped",
@@ -659,9 +659,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-nvrtc"
-version = "0.1.0-alpha.185"
+version = "0.1.0-alpha.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e1e8fb35a4d3f794ad0ed001730ac335bb1c0c39917570a51d6669fc64ce2d1"
+checksum = "3c6fdccdf54e54a2b7dc583431d40fee59e0461c36e18a83ec6bbc90f24cf658"
 dependencies = [
  "baracuda-core",
  "baracuda-nvrtc-sys",
@@ -671,9 +671,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-nvrtc-sys"
-version = "0.1.0-alpha.185"
+version = "0.1.0-alpha.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0217e45ade8522b863fc306e04c6057fe849d134ae50cd28a21a61016dc5e5d"
+checksum = "c0176cf143c36fb4f21308b18b086f9542ea4ff92df97df7ebb9061320060e32"
 dependencies = [
  "baracuda-build",
  "baracuda-core",
@@ -682,9 +682,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-types"
-version = "0.1.0-alpha.185"
+version = "0.1.0-alpha.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e98f52cbb3c883b913ba69c6cb8d321389db57efc78c917963563d954ebc1111"
+checksum = "271962ed93ac9361ba79dae0941cc3bf55b5093379b40b8880d14fcc9289c726"
 dependencies = [
  "float8",
  "half",
