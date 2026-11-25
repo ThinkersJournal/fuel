@@ -1418,7 +1418,7 @@ fuel-tensor/tests/cuda_multidevice_realize_live.rs	own		no lineage; 0 of 103 lin
 fuel-tensor/tests/cuda_two_device_instances_live.rs	own		no lineage; 1 of 71 lines verbatim in candle (1%)
 fuel-tensor/tests/cuda_vulkan_multidevice_realize_live.rs	own		no lineage; 0 of 156 lines verbatim in candle (0%)
 fuel-tensor/tests/cuda_vulkan_overlap_bench_live.rs	own		no lineage; 0 of 544 lines verbatim in candle (0%)
-fuel-tensor/tests/epilogue_activation_recipes.rs	own		no lineage; 0 of 110 lines verbatim in candle (0%)
+fuel-tensor/tests/epilogue_activation_recipes.rs	own		no lineage; 0 of 124 lines verbatim in candle (0%)
 fuel-tensor/tests/fixture_capture_roundtrip.rs	own		no lineage; 0 of 133 lines verbatim in candle (0%)
 fuel-tensor/tests/fixtures/bnb_double_quant/LICENSE-Qwen3-0.6B-Apache-2.0.txt	candle	LICENSE-APACHE	rename/copy 99%; 99% of 164 lines verbatim
 fuel-tensor/tests/fixtures/bnb_double_quant/PROVENANCE.md	own		no lineage; 0 of 22 lines verbatim in candle (0%)
