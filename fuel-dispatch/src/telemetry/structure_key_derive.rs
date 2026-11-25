@@ -1782,6 +1782,8 @@ mod tests {
     /// with the same M/N/K/batch roles key to the SAME contraction field, and the
     /// operand sub-keys differ only in rank (`r3`/`r4`); K is one axis. KISS
     /// measured this with its reference deriver; this pins Fuel's derivation to it.
+    ///
+    /// A characterisation test, not born red: the derivation already accepted this.
     #[test]
     fn ctr_rank3_and_rank4_batched_share_the_contraction_field() {
         let cell = GemCell {
@@ -1808,6 +1810,8 @@ mod tests {
 
     /// Union row item 6a (CUTLASS 5): per-operand major-ness is already distinct
     /// in the key: a column-major operand differs from the row-major twin.
+    ///
+    /// A characterisation test, not born red: the derivation already accepted this.
     #[test]
     fn ctr_column_major_operand_keys_differently_from_row_major() {
         let row = f32c(&[64, 64]);
