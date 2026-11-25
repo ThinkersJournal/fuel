@@ -2,7 +2,8 @@
 //! FlashAttn on NaN rows through the SHIPPED Vulkan kernel, on every non-CPU adapter (f32): the
 //! masked/NaN-row contract (ruling 2026-11-25): a NaN in Q, or in K/V at a position the query
 //! ATTENDS, makes that output NaN (never swallowed); a NaN in a V row whose key is MASKED OUT for
-//! the query (causal) is ignored by the fused kernels; normal rows are unaffected.
+//! the query (causal) is UNSPECIFIED (may be ignored or propagated; the row must not crash and, if it is
+//! not NaN, must equal the NaN-free reference); normal rows are unaffected.
 //!
 //! **NOT MEASURABLE HERE: the FULLY-MASKED-row vector.** The Vulkan flash kernel rejects windows and
 //! softcap (`wl.is_some() || wr.is_some() || softcap.is_some()` is an error), and a causal band
@@ -22,6 +23,17 @@ use fuel_vulkan_dispatch::vulkan_dispatch::register_vulkan_kernels;
 
 const NAN: f32 = f32::NAN;
 
+#[derive(Debug, Clone, Copy)]
+enum Want {
+    /// Must be NaN.
+    Nan,
+    /// Must equal this value within 1e-3.
+    Val(f32),
+    /// UNSPECIFIED (contract (3), a NaN in a V row masked out for the query): NaN is allowed;
+    /// otherwise it must equal this NaN-free reference.
+    NanOrVal(f32),
+}
+
 struct Case {
     name: &'static str,
     q: Vec<f32>,
@@ -30,15 +42,15 @@ struct Case {
     sq: usize,
     sk: usize,
     causal: bool,
-    /// `None` = NaN, `Some(x)` = that value within 1e-3.
-    want: Vec<Option<f32>>,
+    /// What each output element must be.
+    want: Vec<Want>,
 }
 
 fn cases() -> Vec<Case> {
     let bq = vec![0.5f32, -0.25, 0.1, 0.9];
     let bk = vec![0.3f32, 0.2, -0.1, 0.6];
     let bv = vec![1.0f32, 2.0, 3.0, 4.0];
-    let s = Some;
+    use Want::{Nan as n, NanOrVal as o, Val as s};
     vec![
         Case {
             name: "control",
@@ -58,7 +70,7 @@ fn cases() -> Vec<Case> {
             sq: 2,
             sk: 2,
             causal: false,
-            want: vec![s(1.8943309), s(2.894331), None, None],
+            want: vec![s(1.8943309), s(2.894331), n, n],
         },
         Case {
             name: "nan-k-row1",
@@ -68,7 +80,7 @@ fn cases() -> Vec<Case> {
             sq: 2,
             sk: 2,
             causal: false,
-            want: vec![None, None, None, None],
+            want: vec![n, n, n, n],
         },
         Case {
             name: "nan-v-row1",
@@ -78,7 +90,7 @@ fn cases() -> Vec<Case> {
             sq: 2,
             sk: 2,
             causal: false,
-            want: vec![None, s(2.894331), None, s(3.1126556)],
+            want: vec![n, s(2.894331), n, s(3.1126556)],
         },
         Case {
             name: "nan-v-masked-key",
@@ -88,7 +100,7 @@ fn cases() -> Vec<Case> {
             sq: 2,
             sk: 2,
             causal: true,
-            want: vec![s(1.0), s(2.0), None, s(3.1126556)],
+            want: vec![o(1.0), o(2.0), n, s(3.1126556)],
         },
     ]
 }
@@ -97,6 +109,9 @@ fn f32_bytes(v: &[f32]) -> Vec<u8> {
     v.iter().flat_map(|x| x.to_le_bytes()).collect()
 }
 
+// 4-digit test scale (~1/sqrt(2)), deliberately NOT FRAC_1_SQRT_2: the expected values in `cases` were
+// computed with exactly 0.7071 (same posture as the CPU `flash_decompose_vs_reference`).
+#[allow(clippy::approx_constant)]
 fn run(be: &Arc<VulkanBackend>, c: &Case) -> Result<Vec<f32>, String> {
     let mut table = KernelBindingTable::new();
     register_vulkan_kernels(&mut table);
@@ -146,17 +161,19 @@ fn run(be: &Arc<VulkanBackend>, c: &Case) -> Result<Vec<f32>, String> {
         _ => return Err("not vulkan".into()),
     };
     Ok(bytes
-        .chunks_exact(4)
-        .map(|b| f32::from_le_bytes(b.try_into().unwrap()))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|b| f32::from_le_bytes(*b))
         .collect())
 }
 
 /// Vectors on which the shipped Vulkan kernel DIVERGES from the contract today (name prefixes),
-/// measured 2026-11-25: `nan-q-row1`: a NaN Q row returns ZEROS (swallowed: the row max stays -inf, the
-/// row is skipped, as the old CPU kernel did); `nan-v-masked-key`: a NaN in a V row whose key is masked
-/// out for the query still PROPAGATES (row 0 is NaN; the contract says the fused kernels ignore it).
-/// The test reddens when either is fixed: delete the entry then.
-const KNOWN_DIVERGENT: &[&str] = &["nan-q-row1", "nan-v-masked-key"];
+/// measured 2026-11-25: `nan-q-row1`: a NaN Q row returns ZEROS (swallowed: the row max stays -inf,
+/// the row is skipped, as the old CPU kernel did): contract (2) requires NaN. (The masked-out-V NaN,
+/// which Vulkan propagates, is UNSPECIFIED by the contract (3) and is not a divergence.) The test
+/// reddens when the Q-swallow is fixed: delete the entry then.
+const KNOWN_DIVERGENT: &[&str] = &["nan-q-row1"];
 
 #[test]
 fn vulkan_flash_attn_nan_row_contract() {
@@ -176,8 +193,9 @@ fn vulkan_flash_attn_nan_row_contract() {
             let got =
                 run(&be, &c).unwrap_or_else(|e| panic!("{name}/{}: dispatch failed: {e}", c.name));
             let agree = got.iter().zip(&c.want).all(|(g, w)| match w {
-                None => g.is_nan(),
-                Some(x) => !g.is_nan() && (g - x).abs() < 1e-3,
+                Want::Nan => g.is_nan(),
+                Want::Val(x) => !g.is_nan() && (g - x).abs() < 1e-3,
+                Want::NanOrVal(x) => g.is_nan() || (g - x).abs() < 1e-3,
             });
             println!(
                 "FLASHNAN {name} | {}: got {got:?} want {:?} {}",

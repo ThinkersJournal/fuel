@@ -2618,9 +2618,10 @@ mod tests {
     // ---- FlashAttn on masked and NaN rows (ruling 2026-11-25; every path) ----
     // (1) a FULLY MASKED row (no key admitted by causal/window) is ZEROS; (2) a NaN in Q, or in
     // K/V at a position the query ATTENDS, makes that output NaN (never swallowed); (3) a NaN in a
-    // V row whose key is MASKED OUT for a query is ignored by the FUSED kernel (documented flash
-    // convention; the dense-matmul decomposition reproduces torch's 0*NaN = NaN and the contract
-    // names that difference); (4) normal rows are unaffected in a mixed batch.
+    // V row whose key is MASKED OUT for a query is UNSPECIFIED: an implementation MAY ignore it (the
+    // fused CPU kernel) or propagate it (the dense decomposition, Vulkan); the result depends on tile
+    // geometry, so NO test pins either: the row must not crash and, if it is not NaN, must equal the
+    // NaN-free reference; (4) normal rows are unaffected in a mixed batch.
 
     struct AttnCase {
         name: &'static str,
@@ -2713,37 +2714,42 @@ mod tests {
         ]
     }
 
-    /// Expected output for each case: `None` = NaN, `Some(x)` = that value within 1e-4.
-    /// `fused` selects the masked-V-NaN convention (fused ignores it, the decomposition does not).
-    fn attn_expected(name: &str, fused: bool) -> Vec<Option<f32>> {
-        let n = None;
-        let s = |x: f32| Some(x);
+    /// What one output element must be.
+    #[derive(Debug, Clone, Copy)]
+    enum Want {
+        /// Must be NaN.
+        Nan,
+        /// Must equal this value within 1e-4.
+        Val(f32),
+        /// UNSPECIFIED (contract (3)): NaN is allowed; otherwise it must equal this NaN-free reference.
+        NanOrVal(f32),
+    }
+
+    fn attn_expected(name: &str) -> Vec<Want> {
+        use Want::{Nan as n, NanOrVal as o, Val as s};
         match name {
             "control" => vec![s(1.8943309), s(2.894331), s(2.1126559), s(3.1126556)],
             "fully-masked-row-mixed" => vec![s(1.0), s(2.0), s(3.0), s(4.0), s(0.0), s(0.0)],
             "nan-q-row1" => vec![s(1.8943309), s(2.894331), n, n],
             "nan-k-row1" => vec![n, n, n, n],
             "nan-v-row1" => vec![n, s(2.894331), n, s(3.1126556)],
-            "nan-v-masked-key" => {
-                if fused {
-                    vec![s(1.0), s(2.0), n, s(3.1126556)]
-                } else {
-                    vec![n, s(2.0), n, s(3.1126556)]
-                }
-            }
+            // Row 0 attends only key 0 (the NaN V row is masked out for it): UNSPECIFIED; the
+            // NaN-free reference is [1, 2]. Row 1 attends the NaN V row: column 0 must be NaN.
+            "nan-v-masked-key" => vec![o(1.0), o(2.0), n, s(3.1126556)],
             other => panic!("no expectation for {other}"),
         }
     }
 
-    fn attn_check(name: &str, path: &str, got: &[f32], want: &[Option<f32>]) -> Option<String> {
+    fn attn_check(name: &str, path: &str, got: &[f32], want: &[Want]) -> Option<String> {
         assert_eq!(got.len(), want.len(), "{name}/{path}");
         let bad: Vec<String> = got
             .iter()
             .zip(want)
             .enumerate()
             .filter(|(_, (g, w))| match w {
-                None => !g.is_nan(),
-                Some(x) => g.is_nan() || (**g - *x).abs() > 1e-4,
+                Want::Nan => !g.is_nan(),
+                Want::Val(x) => g.is_nan() || (**g - *x).abs() > 1e-4,
+                Want::NanOrVal(x) => !g.is_nan() && (**g - *x).abs() > 1e-4,
             })
             .map(|(i, (g, w))| format!("[{i}] got {g} want {w:?}"))
             .collect();
@@ -2771,12 +2777,7 @@ mod tests {
         let mut bad = Vec::new();
         for c in attn_cases() {
             let got = attn_tensor(&c).realize_f32();
-            bad.extend(attn_check(
-                c.name,
-                "fused",
-                &got,
-                &attn_expected(c.name, true),
-            ));
+            bad.extend(attn_check(c.name, "fused", &got, &attn_expected(c.name)));
         }
         assert!(bad.is_empty(), "{bad:#?}");
     }
@@ -2797,7 +2798,7 @@ mod tests {
                 c.name,
                 "decomposed",
                 &got,
-                &attn_expected(c.name, false),
+                &attn_expected(c.name),
             ));
         }
         assert!(bad.is_empty(), "{bad:#?}");
