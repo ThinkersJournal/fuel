@@ -432,6 +432,11 @@ pipelines! {
     qmatvec_q4_0_pipeline, qmatvec_q4_0_layout, QMATVEC_Q4_0, layout_3s1u, gated;
     qmatvec_q8_0_pipeline, qmatvec_q8_0_layout, QMATVEC_Q8_0, layout_3s1u, gated;
     qmatvec_q6_k_pipeline, qmatvec_q6_k_layout, QMATVEC_Q6_K, layout_3s1u, gated;
+    qmatvec_q5_k_pipeline, qmatvec_q5_k_layout, QMATVEC_Q5_K, layout_3s1u, required;
+    qmatvec_q3_k_pipeline, qmatvec_q3_k_layout, QMATVEC_Q3_K, layout_3s1u, required;
+    qmatvec_iq4_nl_pipeline, qmatvec_iq4_nl_layout, QMATVEC_IQ4_NL, layout_3s1u, required;
+    qmatvec_iq4_xs_pipeline, qmatvec_iq4_xs_layout, QMATVEC_IQ4_XS, layout_3s1u, required;
+    qmatvec_iq3_s_pipeline, qmatvec_iq3_s_layout, QMATVEC_IQ3_S, layout_3s1u, required;
     matmul_q4_0_tiled_pipeline, matmul_q4_0_tiled_layout, MATMUL_Q4_0_TILED, layout_3s1u, gated;
     quantize_q8_0_pipeline, quantize_q8_0_layout, QUANTIZE_Q8_0, layout_2s1u, gated;
 }

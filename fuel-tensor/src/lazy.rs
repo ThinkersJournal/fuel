@@ -8421,105 +8421,21 @@ pub enum WeightStorage {
     },
 }
 
-/// The environment variable that opts out of the decline (see [`WeightStorage::from_ggml_bytes`]): the
-/// value `1` keeps the GGUF types the Vulkan `QMatMul` has no kernel for quantized in a `vulkan` build.
-/// For CPU runs of large files (a 27B-class model) in such a build; a Vulkan realize of those weights
-/// errors with "not wired on Vulkan". Removed when the Vulkan kernels land (ROADMAP row 119).
-pub const KEEP_QUANTIZED_ENV: &str = "FUEL_GGML_KEEP_QUANTIZED";
-
-/// Only the value `1` opts out (an unset, empty, `0` or any other value declines).
-#[cfg(feature = "vulkan")]
-fn keep_from_env(v: Option<&std::ffi::OsStr>) -> bool {
-    v == Some(std::ffi::OsStr::new("1"))
-}
-
-/// The opt-out, read ONCE per process at the first decision: a later change of the variable does not
-/// flip behaviour mid-process.
-#[cfg(feature = "vulkan")]
-fn keep_unwired_quantized() -> bool {
-    static KEEP: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *KEEP.get_or_init(|| keep_from_env(std::env::var_os(KEEP_QUANTIZED_ENV).as_deref()))
-}
-
-/// The decision: decline a type the Vulkan `QMatMul` has no arm for, unless the opt-out is set.
-#[cfg(feature = "vulkan")]
-fn unwired_declined(wired: bool, keep: bool) -> bool {
-    !wired && !keep
-}
-
-/// Whether this process's [`WeightStorage::from_ggml_bytes`] declines the GGUF types the Vulkan `QMatMul`
-/// has no kernel for: true in a build with the `vulkan` feature of `fuel-tensor` unless
-/// [`KEEP_QUANTIZED_ENV`] is `1`. The environment is read once per process.
-pub fn declines_unwired_vulkan_quant() -> bool {
-    #[cfg(feature = "vulkan")]
-    {
-        !keep_unwired_quantized()
-    }
-    #[cfg(not(feature = "vulkan"))]
-    {
-        false
-    }
-}
-
-#[cfg(all(test, feature = "vulkan"))]
-mod unwired_decision_tests {
-    use super::{keep_from_env, unwired_declined};
-    use std::ffi::OsStr;
-
-    /// The decision table; each row is the other rows' mutant (a flipped default turns row 1 or 2, an
-    /// ignored opt-out turns row 3, a decline of a wired type turns row 4).
-    #[test]
-    fn the_decision_table() {
-        assert!(
-            unwired_declined(false, false),
-            "default declines an unwired type"
-        );
-        assert!(
-            !unwired_declined(true, false),
-            "a wired type is never declined"
-        );
-        assert!(
-            !unwired_declined(false, true),
-            "the opt-out keeps an unwired type"
-        );
-        assert!(!unwired_declined(true, true));
-    }
-
-    #[test]
-    fn only_the_value_one_opts_out() {
-        assert!(keep_from_env(Some(OsStr::new("1"))));
-        for v in [
-            None,
-            Some(""),
-            Some("0"),
-            Some("true"),
-            Some("11"),
-            Some(" 1"),
-        ] {
-            assert!(!keep_from_env(v.map(OsStr::new)), "{v:?}");
-        }
-    }
-}
-
 impl WeightStorage {
     /// Keep a GGUF weight tensor quantized (ROADMAP row 124): `bytes` is the tensor's block
     /// stream in GGUF's native `[out_features, in_features]` order. Returns `None` when the
     /// tensor must take the dequantize-to-f32 path instead: the format has no `QMatMul` kernel
     /// here (Q8_0, Q3_K, Q4_K, Q5_K, Q6_K, IQ4_NL, IQ4_XS and IQ3_S are admitted; `Q4_0` has its
-    /// own variant), or
+    /// own variant; every other `GgmlDType` is declined BY NAME in the match below, so a new dtype is a
+    /// compile error until someone decides), or
     /// `in_features` is not a whole number of blocks (32 for Q8_0, 256 for the K-quants), or the
     /// byte count is not `out_features * in_features / block * bytes_per_block`. A caller that
     /// gets `None` for a quantized dtype is taking the f32 path (4x the bytes for Q8_0, 5.8x to 9.3x for Q5_K down to Q3_K) and should say so.
     ///
-    /// **In a build with the `vulkan` feature, a type `fuel_vulkan_dispatch::vulkan_dispatch::qmatmul::
-    /// qmatmul_wired` rejects (today Q3_K, Q5_K, IQ4_NL, IQ4_XS, IQ3_S) also returns `None`**, whatever
-    /// device later runs the model: the loader sees no device, the Vulkan `QMatMul` has no arm for the
-    /// type and errors at realize ("not wired on Vulkan"), so keeping it quantized would make the model
-    /// unrealizable on Vulkan. The cost is that a CPU-only user of such a build holds those weights as
-    /// f32 (5.8x for Q5_K to 9.3x for Q3_K and IQ3_S the block bytes, n = 1, Vulkan) until the kernels are
-    /// wired. **Opt-out:** the environment variable [`KEEP_QUANTIZED_ENV`] set to `1` keeps them quantized
-    /// (read once per process, at the first decision); a Vulkan realize of such a weight then errors again.
-    /// See [`declines_unwired_vulkan_quant`].
+    ///
+    /// Every admitted type has a `QMatMul` arm on CPU and on Vulkan (ROADMAP row 119 wired Q3_K, Q5_K,
+    /// IQ4_NL, IQ4_XS and IQ3_S there); the test `ggml_kept_types_are_wired` fails if a kept type is not
+    /// listed by `fuel_vulkan_dispatch::vulkan_dispatch::qmatmul::qmatmul_wired`.
     pub fn from_ggml_bytes(
         dtype: fuel_ir::quantized::GgmlDType,
         bytes: &[u8],
@@ -8536,15 +8452,29 @@ impl WeightStorage {
             GgmlDType::Iq4Nl => fuel_graph::QuantType::Iq4Nl,
             GgmlDType::Iq4Xs => fuel_graph::QuantType::Iq4Xs,
             GgmlDType::Iq3S => fuel_graph::QuantType::Iq3S,
-            _ => return None,
+            // Declined, each by name: no `QMatMul` kernel on any backend, or (Q4_0) a variant of its own.
+            // No wildcard: a new `GgmlDType` must be admitted or declined here before this compiles.
+            GgmlDType::F32
+            | GgmlDType::F16
+            | GgmlDType::BF16
+            | GgmlDType::Q4_0
+            | GgmlDType::Q4_1
+            | GgmlDType::Q5_0
+            | GgmlDType::Q5_1
+            | GgmlDType::Q8_1
+            | GgmlDType::Q2K
+            | GgmlDType::Q8K
+            | GgmlDType::Iq2Xxs
+            | GgmlDType::Iq2Xs
+            | GgmlDType::Iq3Xxs
+            | GgmlDType::Iq1S
+            | GgmlDType::Iq2S
+            | GgmlDType::Iq1M
+            | GgmlDType::Tq1_0
+            | GgmlDType::Tq2_0
+            | GgmlDType::Mxfp4
+            | GgmlDType::Nvfp4 => return None,
         };
-        #[cfg(feature = "vulkan")]
-        {
-            let wired = fuel_vulkan_dispatch::vulkan_dispatch::qmatmul::qmatmul_wired(qtype);
-            if unwired_declined(wired, keep_unwired_quantized()) {
-                return None;
-            }
-        }
         let block = qtype.elements_per_block();
         if in_features == 0 || !in_features.is_multiple_of(block) {
             return None;
