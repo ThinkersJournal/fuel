@@ -126,37 +126,104 @@ fn cuda_topk_over_cap_shapes_are_a_typed_error() {
     assert!(fuel_cuda_backend::baracuda::topk::check_caps(1, 200, 65).is_err());
 }
 
-/// Ties and NaN: CHARACTERISATION of baracuda's comparator at `0.1.0-alpha.186`
-/// (recorded by the first live run on an RTX 4070, 2026-11-25), pinned so a baracuda
-/// change reddens this test instead of silently moving the CUDA path. It DIVERGES
-/// from the CPU kernel (and from `torch.topk`) in two ways, both documented in the
-/// CUDA contract and GAP-402:
-///
-/// * ties: values agree, INDICES do not take the lower-index-first rule
-///   (input `[3,5,5,1,5,2,4,5]`, k = 3: CUDA picks indices `[1, 2, 7]`, CPU `[1, 2, 4]`);
-/// * NaN: a NaN in the row CORRUPTS the selection (input `[1, NaN, 9, 2]`, k = 2: CUDA
-///   returns `([2.0, NaN], [3, 1])` and loses the 9.0; CPU returns `([NaN, 9.0], [1, 2])`).
-///   A NaN-bearing row must not be sent to the CUDA kernel.
+/// Ties and NaN at baracuda `0.1.0-alpha.188` (the top-k NaN/ties fix, baracuda #429).
+/// At alpha.186 these two vectors DIVERGED from the CPU kernel (GAP-402); this test now
+/// requires AGREEMENT with the CPU kernel (NaN largest, ties lower index first).
 #[test]
-fn cuda_topk_f32_ties_and_nan_diverge_from_the_cpu_kernel_at_alpha_186() {
+fn cuda_topk_f32_pinned_vectors_match_the_cpu_kernel() {
     let x = [3.0_f32, 5.0, 5.0, 1.0, 5.0, 2.0, 4.0, 5.0];
     let got = run_cuda_f32(&x, 1, 8, 3);
     let want = run_cpu_f32(&x, 1, 8, 3);
-    assert_eq!(got.0, want.0, "tie VALUES agree");
     assert_eq!(
         want.1,
         vec![1, 2, 4],
         "the CPU kernel takes the lowest tied indices"
     );
-    assert_eq!(
-        got.1,
-        vec![1, 2, 7],
-        "baracuda alpha.186 tie indices (recorded)"
-    );
+    assert_eq!(got, want, "ties");
     let nanx = [1.0_f32, f32::NAN, 9.0, 2.0];
     let got = run_cuda_f32(&nanx, 1, 4, 2);
     let want = run_cpu_f32(&nanx, 1, 4, 2);
     assert!(want.0[0].is_nan() && want.0[1] == 9.0 && want.1 == vec![1, 2]);
-    assert!(got.0[0] == 2.0 && got.0[1].is_nan(), "recorded: {got:?}");
-    assert_eq!(got.1, vec![3, 1], "recorded: the 9.0 at index 2 is lost");
+    assert!(got.0[0].is_nan() && got.0[1] == 9.0, "NaN row: {got:?}");
+    assert_eq!(got.1, want.1, "NaN row indices");
+}
+
+/// Property test: random rows over a SMALL alphabet (so ties are everywhere) with NaN
+/// injected at 1 in 8, across row lengths up to the 1024 cap and k up to the 64 cap,
+/// CUDA against the CPU kernel, values by `is_nan`-or-equal and indices exactly.
+/// Rows tested are counted and printed (the population is stated, not implied).
+#[test]
+fn cuda_topk_f32_random_nan_and_tie_rows_match_the_cpu_kernel() {
+    let mut s: u64 = 0x9E37_79B9_7F4A_7C15;
+    let mut next = move || {
+        s ^= s << 13;
+        s ^= s >> 7;
+        s ^= s << 17;
+        s
+    };
+    let mut rows_total = 0usize;
+    let mut bad: Vec<String> = Vec::new();
+    for &(n, k) in &[
+        (8usize, 3usize),
+        (33, 1),
+        (64, 8),
+        (100, 7),
+        (257, 32),
+        (512, 64),
+        (1000, 17),
+        (1024, 64),
+        (1024, 1),
+        (65, 64),
+    ] {
+        for case in 0..12 {
+            let rows = 32usize;
+            let x: Vec<f32> = (0..rows * n)
+                .map(|_| {
+                    let r = next();
+                    if r % 8 == 0 {
+                        f32::NAN
+                    } else {
+                        ((r >> 8) % 6) as f32 - 2.0
+                    }
+                })
+                .collect();
+            let got = run_cuda_f32(&x, rows, n, k);
+            let want = run_cpu_f32(&x, rows, n, k);
+            rows_total += rows;
+            let vals_ok = got
+                .0
+                .iter()
+                .zip(&want.0)
+                .all(|(a, b)| (a.is_nan() && b.is_nan()) || a == b);
+            if !vals_ok || got.1 != want.1 {
+                let first = (0..rows)
+                    .find(|r| {
+                        got.1[r * k..(r + 1) * k] != want.1[r * k..(r + 1) * k]
+                            || got.0[r * k..(r + 1) * k]
+                                .iter()
+                                .zip(&want.0[r * k..(r + 1) * k])
+                                .any(|(a, b)| !((a.is_nan() && b.is_nan()) || a == b))
+                    })
+                    .unwrap();
+                bad.push(format!(
+                    "n={n} k={k} case={case} row={first}: cuda {:?}/{:?} cpu {:?}/{:?} input {:?}",
+                    &got.0[first * k..(first + 1) * k],
+                    &got.1[first * k..(first + 1) * k],
+                    &want.0[first * k..(first + 1) * k],
+                    &want.1[first * k..(first + 1) * k],
+                    &x[first * n..(first * n + n).min(first * n + 40)]
+                ));
+            }
+        }
+    }
+    println!(
+        "topk property: {rows_total} rows, {} failing cases",
+        bad.len()
+    );
+    assert!(
+        bad.is_empty(),
+        "{} failing cases; first: {}",
+        bad.len(),
+        bad[0]
+    );
 }
