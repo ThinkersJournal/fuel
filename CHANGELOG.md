@@ -3,6 +3,24 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.52.0 - 2026-11-25 (PM-allocated; BREAKING: `FusedOpParams` gained two variants and the enum is not `non_exhaustive`; row 172 item 2)
+
+### Breaking
+
+- `fuel-graph`: `FusedOpParams` gains the variants `TopKLastDim { k }` and `MatMulTopK { k }` (the enum is not `#[non_exhaustive]`), so a downstream exhaustive `match` on it stops compiling.
+
+### Added
+
+- `TopKLastDim` (`FusedOps::TOP_K_LAST_DIM`, id 27): the `k` largest values along the last axis and their `U32` indices, a two-slot bundle; NaN sorts largest (`torch.topk`), ties take the lower index. Builder `NodeHandle::top_k_last_dim(k)` returning `Result<(values, indices)>`; CPU kernels for f32/f64/bf16/f16, FKC contracts, `OpKind::TopKLastDim`.
+- `MatMulTopK` (`FusedOps::MATMUL_TOP_K`, id 28): `TopKLastDim(a @ b)` as one node (the TopK epilogue), recognized from `TopKLastDim(MatMul)` by the fusion rule (single-consumer matmul, equal batch dims), builder `NodeHandle::matmul_top_k`, CPU reference kernels, `OpKind::MatMulTopK`.
+- The generic `FusionRule` now carries a multi-output root's bundle contract onto the replacement node.
+- **CPU only.** `TopKLastDim` and `MatMulTopK` have NO CUDA binding in this release: baracuda 0.1.0-alpha.186's standalone `topk` returns a WRONG selection when the row holds a NaN and does not take the lowest tied index (measured live; GAP-402), and a NaN is data, so no plan-time decline can keep such rows off the kernel. The binding returns once baracuda fixes or documents it.
+- `docs/gaps.md` GAP-400 (provisional): multi-output fused ops have no primitive decompose (no bundle-composer op); design notes for row 172 items 1 and 2.
+
+### Changed
+
+- Dependencies (Cargo.lock only): `baracuda-cuda-emit` 0.56.12 -> 0.56.13 (the named-barrier miscompile fix) and the baracuda family 0.1.0-alpha.185 -> alpha.186.
+
 ## v0.51.0 - 2026-11-25 (PM-allocated; BREAKING: `FusedOpParams` gained a variant and the enum is not `non_exhaustive`; row 172 items 1 and 6a)
 
 ### Breaking

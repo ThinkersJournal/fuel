@@ -1149,6 +1149,47 @@ pub(crate) fn build_primitive_probe(op: OpKind, dtypes: &[DType], seed: u64) -> 
             })
         }
 
+        // MatMulTopK (row 172 item 2 step B): 2 inputs, bundled [values ; indices] output.
+        OpKind::MatMulTopK => {
+            if dtypes.len() != 3 {
+                return None;
+            }
+            let (batch, m, n, k, top_k) = (2usize, 2usize, 4usize, 3usize, 2usize);
+            let lhs = ht(dt, vec![batch * m * k], &fill_deterministic(batch * m * k, seed))?;
+            let rhs = ht(dt, vec![batch * k * n], &fill_deterministic(batch * k * n, seed ^ 0x1234))?;
+            let rows = batch * m;
+            let esz = dt.size_in_bytes();
+            let values_bytes = rows * top_k * esz;
+            let total = values_bytes.div_ceil(4) * 4 + rows * top_k * 4;
+            Some(Probe {
+                inputs: vec![lhs, rhs],
+                params: OpParams::MatMulTopK { batch, m, n, k, top_k },
+                out_dtype: dt,
+                out_shape: vec![total / esz],
+                out_seed: None,
+            })
+        }
+
+        // TopKLastDim (row 172 item 2): 1 input, bundled [values ; indices] output.
+        OpKind::TopKLastDim => {
+            if dtypes.len() != 2 {
+                return None;
+            }
+            let (rows, n, k) = (2usize, 4usize, 2usize);
+            let x = ht(dt, vec![rows * n], &fill_deterministic(rows * n, seed))?;
+            // The bundle is [values (rows*k) ; pad to 4 ; indices (rows*k of u32)].
+            let esz = dt.size_in_bytes();
+            let values_bytes = rows * k * esz;
+            let total = values_bytes.div_ceil(4) * 4 + rows * k * 4;
+            Some(Probe {
+                inputs: vec![x],
+                params: OpParams::TopKLastDim { rows, n, k },
+                out_dtype: dt,
+                out_shape: vec![total / esz],
+                out_seed: None,
+            })
+        }
+
         // RowScaledMatMul (row 172 item 1): `(a @ b) * row_scale`, scale `[m, 1]`.
         OpKind::RowScaledMatMul => {
             if dtypes.len() != 4 {

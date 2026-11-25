@@ -259,6 +259,126 @@ determinism: same_hardware_bitwise
 ```
 ---
 
+## top_k_last_dim  (top-k values + U32 indices along the last axis)
+
+One-line: The `k` largest values along the last axis and their `U32` indices, bundled `[values ; indices]`; NaN largest, ties lower index.
+
+`FusedOps::TOP_K_LAST_DIM` (id 27; `fuel-graph/src/registry/top_k_last_dim.rs`, ROADMAP row 172 item 2 step A). One input `x [.., n]`; a two-slot bundle: slot 0 `values [.., k]` (the input dtype), slot 1 `indices [.., k]` (`U32`). `k` rides in `FusedOpParams::TopKLastDim { k }`. Selection only, so bit-stable. No primitive decompose (the multi-output Phase-1 limitation, as SelectiveScan); the kernel is the executed path.
+
+```fkc
+kernel: top_k_last_dim
+fused_op: TOP_K_LAST_DIM
+blurb: "Top-k values + U32 indices along the last axis over float dtypes; bundled output [values; indices]; NaN largest, ties lower index."
+backend: Cpu
+kernel_source: "portable-cpu"
+entry_point: "fuel_dispatch::dispatch::top_k_last_dim_cpu"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: x
+      dtypes: [F32, F64, BF16, F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: "1.."
+  op_params:
+    variant: TopKLastDim                   # FusedOpParams::TopKLastDim (fused namespace; §3.7)
+    fields:
+      k: { kind: usize, note: "1 <= k <= last axis length; static" }
+
+return:
+  bundle:
+    - { name: values,  dtype_rule: passthrough(x), shape_rule: from_params(values),  layout_guarantee: contiguous }
+    - { name: indices, dtype_rule: fixed(U32),     shape_rule: from_params(indices), layout_guarantee: contiguous }
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  fast_paths: []
+  in_place: false
+  alignment_bytes: 64
+  access_granularity_bits: 32
+
+cost:
+  provenance: judge_measured
+  class: reduction
+  flops: "x.dim[0] * log2(x.dim[0])"
+  bytes_moved: "x.dim[0] * dtype_bytes"
+
+precision:
+  bit_stable_on_same_hardware: true
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "TOP_K_LAST_DIM_CPU_PRECISION: selection only, values copied exactly, indices a stable total order. Deterministic on same hardware."
+
+determinism: same_hardware_bitwise
+```
+
+---
+
+## matmul_top_k  (matmul + top-k epilogue, `TopKLastDim(a @ b)`)
+
+One-line: `TopKLastDim(a @ b)` as one node over float dtypes; equal batch dims; contiguous; bundled `[values ; U32 indices]`.
+
+`FusedOps::MATMUL_TOP_K` (id 28; `fuel-graph/src/registry/matmul_top_k.rs`, ROADMAP row 172 item 2 step B). Inputs `a [.., M, K]`, `b [.., K, N]` (equal batch dims); the matmul output never materializes. Two-slot bundle over `N`: slot 0 `values [.., M, k]` (the input dtype), slot 1 `indices [.., M, k]` (`U32`). `k` rides in `FusedOpParams::MatMulTopK { k }`. `decompose` lowers to `TopKLastDim(MatMul(a, b))` and keeps the bundle contract. The CPU kernel is the reference of the epilogue-fused GPU path (CUTLASS 38); it is NOT bit-equal to the unfused blocked-gemm matmul.
+
+```fkc
+kernel: matmul_top_k
+fused_op: MATMUL_TOP_K
+blurb: "Matmul then top-k along N over float dtypes; bundled output [values; U32 indices]; equal batch dims; contiguous."
+backend: Cpu
+kernel_source: "portable-cpu"
+entry_point: "fuel_dispatch::dispatch::matmul_top_k_cpu"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: a
+      dtypes: [F32, F64, BF16, F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: "2.."
+      shape_constraint: "dim[-1]=k"
+    - name: b
+      dtypes: [F32, F64, BF16, F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: "2.."
+      shape_constraint: "dim[-2]=k; same_rank=a"
+  op_params:
+    variant: MatMulTopK                    # FusedOpParams::MatMulTopK (fused namespace; §3.7)
+    fields:
+      k: { kind: usize, note: "1 <= k <= N; static" }
+
+return:
+  bundle:
+    - { name: values,  dtype_rule: passthrough(a), shape_rule: from_params(values),  layout_guarantee: contiguous }
+    - { name: indices, dtype_rule: fixed(U32),     shape_rule: from_params(indices), layout_guarantee: contiguous }
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  fast_paths: []
+  in_place: false
+  alignment_bytes: 64
+  access_granularity_bits: 32
+
+cost:
+  provenance: judge_measured
+  class: gemm_like
+  flops: "2 * batch * m * n * k + batch * m * n"
+  bytes_moved: "(batch * m * k + k * n + batch * m * n) * dtype_bytes"
+
+precision:
+  bit_stable_on_same_hardware: true
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "MATMUL_TOP_K_CPU_PRECISION: fixed (i,k,j) accumulation, narrowed to the element dtype, then stable total-order selection. Deterministic on same hardware; not bit-equal to the unfused blocked-gemm matmul."
+
+determinism: same_hardware_bitwise
+```
+
+---
+
 ## qmatmul  (quantized matmul `C = A @ dequant(W_Q)`, GGUF/llama.cpp block stream)
 
 One-line: Quantized matmul of dense F32 activations against a GGUF/llama.cpp block-quant weight stream; dequant on the fly, f32 accumulate, F32 output.

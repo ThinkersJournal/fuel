@@ -1197,6 +1197,8 @@ variant_table!(
     SsdChunkScan => None,
     Nf4Matmul => None,
     AwqMatmul => None,
+    TopKLastDim => None,
+    MatMulTopK => None,
     // A JIT-synthesized runtime op's live scalar args. `kernel.rs` pins the
     // producer: "Only produced by `compile_one`'s `is_runtime` arm" — the
     // kernel is synthesized at run time, so there is no checked-in source
@@ -1229,6 +1231,8 @@ variant_table!(
     Nf4Matmul => None,
     AwqMatmul => None,
     RowScaledMatMul => None,
+    TopKLastDim => None,
+    MatMulTopK => None,
     FlashAttnBackward => None,
     SelectiveScan => None,
     CausalConv1d => None,

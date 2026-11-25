@@ -759,12 +759,22 @@ impl Rule for FusionRule {
         let params = pattern_match.params;
         let dtype = graph.node(id).dtype;
         let shape = graph.node(id).shape.clone();
+        // A multi-output root keeps its bundle contract on the replacement node
+        // (the fused node produces the SAME slots), so `View` consumers remapped
+        // onto it stay valid. Row 172 item 2 step B (TopKLastDim(MatMul) ->
+        // MatMulTopK) is the first rule whose root is multi-output.
+        let views = graph.output_views_arc(id);
         let new_id = graph.push(Node {
             op: Op::Fused(self.id, params),
             inputs,
             shape,
             dtype,
         });
+        if let Some(v) = views {
+            graph
+                .set_output_views(new_id, v)
+                .expect("a fused node reproducing the root's slots keeps its bundle contract");
+        }
         remap.insert(id, new_id);
     }
 }

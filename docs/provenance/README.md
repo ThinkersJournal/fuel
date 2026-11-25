@@ -64,7 +64,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-dispatch` | 211 |  |  | 1 |  | 207 |  | 3 |
 | `fuel-examples` | 247 | 56 | 161 | 20 |  | 10 |  |  |
 | `fuel-formats` | 12 |  | 2 | 3 |  | 4 |  | 3 |
-| `fuel-graph` | 40 |  |  | 3 |  | 34 |  | 3 |
+| `fuel-graph` | 42 |  |  | 3 |  | 36 |  | 3 |
 | `fuel-hardware` | 11 |  | 1 |  |  | 7 |  | 3 |
 | `fuel-inference` | 26 |  |  | 2 |  | 21 |  | 3 |
 | `fuel-ir` | 66 |  | 6 | 8 |  | 49 |  | 3 |
@@ -96,5 +96,5 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-vulkan-dispatch` | 44 |  |  |  |  | 41 |  | 3 |
 | `fuel-vulkan-kernels` | 192 |  |  |  |  | 4 | 185 | 3 |
 | `scripts` | 81 |  |  | 1 |  | 80 |  |  |
-| **all** | **2027** | **111** | **215** | **260** | **4** | **1127** | **190** | **120** |
+| **all** | **2029** | **111** | **215** | **260** | **4** | **1129** | **190** | **120** |
 <!-- provenance-summary:end -->

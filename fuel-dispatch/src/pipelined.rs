@@ -3967,6 +3967,12 @@ pub(crate) fn op_to_op_kind(op: &Op) -> Option<OpKind> {
         Op::Fused(fid, _) if *fid == fuel_graph::registry::FusedOps::ROW_SCALED_MATMUL => {
             Some(OpKind::RowScaledMatMul)
         }
+        Op::Fused(fid, _) if *fid == fuel_graph::registry::FusedOps::TOP_K_LAST_DIM => {
+            Some(OpKind::TopKLastDim)
+        }
+        Op::Fused(fid, _) if *fid == fuel_graph::registry::FusedOps::MATMUL_TOP_K => {
+            Some(OpKind::MatMulTopK)
+        }
         Op::Fused(fid, _) if *fid == fuel_graph::registry::FusedOps::RMS_NORM_LAST_DIM => {
             Some(OpKind::RmsNormLastDim)
         }
@@ -4631,6 +4637,81 @@ fn op_to_op_params(
                 n,
                 k,
                 block_size: *block_size,
+            }
+        }
+        // TopKLastDim (row 172 item 2): `rows` = product of the leading dims,
+        // `n` = the last axis, `k` from the node's params (validated at build time).
+        Op::Fused(fid, fp) if *fid == fuel_graph::registry::FusedOps::TOP_K_LAST_DIM => {
+            let fuel_graph::registry::FusedOpParams::TopKLastDim { k } = fp else {
+                return Err(Error::Msg(format!(
+                    "TopKLastDim: expected FusedOpParams::TopKLastDim, got {fp:?}"
+                ))
+                .bt());
+            };
+            if node.inputs.len() != 1 {
+                return Err(Error::Msg(format!(
+                    "TopKLastDim expects 1 input, got {}",
+                    node.inputs.len()
+                ))
+                .bt());
+            }
+            let x = input_layout(node.inputs[0]);
+            let dims = x.shape().dims();
+            let Some((&n, lead)) = dims.split_last() else {
+                return Err(Error::Msg("TopKLastDim: input must be rank >= 1".to_string()).bt());
+            };
+            if *k == 0 || *k > n {
+                return Err(Error::Msg(format!("TopKLastDim: k = {k} must be in 1..={n}")).bt());
+            }
+            OpParams::TopKLastDim {
+                rows: lead.iter().product::<usize>().max(1),
+                n,
+                k: *k,
+            }
+        }
+        // MatMulTopK (row 172 item 2 step B): a [.., m, k] @ b [.., k, n], equal
+        // batch dims, then top_k over n.
+        Op::Fused(fid, fp) if *fid == fuel_graph::registry::FusedOps::MATMUL_TOP_K => {
+            let fuel_graph::registry::FusedOpParams::MatMulTopK { k: top_k } = fp else {
+                return Err(Error::Msg(format!(
+                    "MatMulTopK: expected FusedOpParams::MatMulTopK, got {fp:?}"
+                ))
+                .bt());
+            };
+            if node.inputs.len() != 2 {
+                return Err(Error::Msg(format!(
+                    "MatMulTopK expects 2 inputs (a, b), got {}",
+                    node.inputs.len()
+                ))
+                .bt());
+            }
+            let a = input_layout(node.inputs[0]);
+            let b = input_layout(node.inputs[1]);
+            let (ad, bd) = (a.shape().dims(), b.shape().dims());
+            if ad.len() < 2 || ad.len() != bd.len() || ad[..ad.len() - 2] != bd[..bd.len() - 2] {
+                return Err(Error::Msg(format!(
+                    "MatMulTopK: a {ad:?} and b {bd:?} need equal rank >= 2 and equal batch dims"
+                ))
+                .bt());
+            }
+            let r = ad.len();
+            let (m, k) = (ad[r - 2], ad[r - 1]);
+            let (k2, n) = (bd[r - 2], bd[r - 1]);
+            if k != k2 {
+                return Err(Error::Msg(format!(
+                    "MatMulTopK: contracting dims disagree (a trailing [{m}, {k}], b trailing [{k2}, {n}])"
+                ))
+                .bt());
+            }
+            if *top_k == 0 || *top_k > n {
+                return Err(Error::Msg(format!("MatMulTopK: k = {top_k} must be in 1..={n}")).bt());
+            }
+            OpParams::MatMulTopK {
+                batch: ad[..r - 2].iter().product::<usize>().max(1),
+                m,
+                n,
+                k,
+                top_k: *top_k,
             }
         }
         // AwqMatmul: (batch, m, n, k) from activations [..., m, k] and the
@@ -17362,6 +17443,114 @@ mod tests {
             (ls_value - 6.0).abs() < 1e-5,
             "last_state expected 6.0 got {ls_value}"
         );
+    }
+
+    /// E2E (row 172 item 2): TopKLastDim f32 on CPU through the bundled
+    /// two-slot output. Row 0 has a NaN and tied values, row 1 distinct values;
+    /// k = 3. The `values` View reads slot 0 and the `indices` View slot 1 of the
+    /// SAME bundled storage (the indices slot starts 4-byte aligned).
+    #[test]
+    fn pipelined_realize_top_k_last_dim_bundled_values_and_indices() {
+        let graph: Arc<RwLock<Graph>> = Arc::new(RwLock::new(Graph::new()));
+        let mut cache = StorageCache::new();
+        let x_id = cpu_const_f32(
+            &graph,
+            &mut cache,
+            &[1.0, 5.0, f32::NAN, 5.0, 2.0, 3.0, 3.0, 3.0, -1.0, 9.0],
+            &[2, 5],
+        );
+        let (v_id, i_id) = {
+            let x = fuel_graph::NodeHandle::from_existing(Arc::clone(&graph), x_id);
+            let (v, i) = x.top_k_last_dim(3).expect("top_k_last_dim");
+            (v.id(), i.id())
+        };
+        {
+            let mut g = graph.write().unwrap();
+            let producer = g.node(v_id).inputs[0];
+            g.set_target_backend(producer, BackendId::Cpu);
+        }
+        let outputs = PipelinedExecutor::realize_many(Arc::clone(&graph), &[v_id, i_id], cache)
+            .expect("realize_many");
+        let (arc, v_layout) = outputs[0].clone();
+        let (_, i_layout) = outputs[1].clone();
+        let guard = arc.read().unwrap();
+        let fuel_memory::BackendStorage::Cpu(c) = &guard.inner else {
+            panic!("expected Cpu storage");
+        };
+        let bytes = c.bytes();
+        let vo = v_layout.start_offset() * 4;
+        let io = i_layout.start_offset() * 4;
+        let vals: Vec<f32> = bytes[vo..vo + 24]
+            .chunks(4)
+            .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            .collect();
+        let idx: Vec<u32> = bytes[io..io + 24]
+            .chunks(4)
+            .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            .collect();
+        assert_eq!(idx, vec![2, 1, 3, 4, 0, 1], "NaN first, ties by index");
+        assert!(vals[0].is_nan());
+        assert_eq!(&vals[1..], &[5.0, 5.0, 9.0, 3.0, 3.0]);
+    }
+
+    /// E2E (row 172 item 2 step B): MatMulTopK f32 on CPU. Distinct matmul
+    /// results, so the selection does not depend on accumulation order; the
+    /// values and indices equal a hand matmul + top-2.
+    #[test]
+    fn pipelined_realize_matmul_top_k_f32() {
+        // a [1, 2, 3], b [1, 3, 4]; row r of the result = a[r] @ b.
+        let a = [1.0_f32, 2.0, 3.0, -1.0, 0.5, 2.0];
+        let b = [
+            1.0_f32, 0.0, 2.0, 1.0, 0.0, 1.0, 1.0, -1.0, 2.0, 1.0, 0.0, 3.0,
+        ];
+        let mut want_v = Vec::new();
+        let mut want_i = Vec::new();
+        for r in 0..2 {
+            let row: Vec<f32> = (0..4)
+                .map(|j| (0..3).map(|q| a[r * 3 + q] * b[q * 4 + j]).sum())
+                .collect();
+            let mut idx: Vec<usize> = (0..4).collect();
+            idx.sort_by(|&x, &y| row[y].partial_cmp(&row[x]).unwrap());
+            for &i in &idx[..2] {
+                want_v.push(row[i]);
+                want_i.push(i as u32);
+            }
+        }
+        let graph: Arc<RwLock<Graph>> = Arc::new(RwLock::new(Graph::new()));
+        let mut cache = StorageCache::new();
+        let a_id = cpu_const_f32(&graph, &mut cache, &a, &[1, 2, 3]);
+        let b_id = cpu_const_f32(&graph, &mut cache, &b, &[1, 3, 4]);
+        let (v_id, i_id) = {
+            let at = fuel_graph::NodeHandle::from_existing(Arc::clone(&graph), a_id);
+            let bt = fuel_graph::NodeHandle::from_existing(Arc::clone(&graph), b_id);
+            let (v, i) = at.matmul_top_k(&bt, 2).expect("matmul_top_k");
+            (v.id(), i.id())
+        };
+        {
+            let mut g = graph.write().unwrap();
+            let producer = g.node(v_id).inputs[0];
+            g.set_target_backend(producer, BackendId::Cpu);
+        }
+        let outputs = PipelinedExecutor::realize_many(Arc::clone(&graph), &[v_id, i_id], cache)
+            .expect("realize_many");
+        let (arc, v_layout) = outputs[0].clone();
+        let (_, i_layout) = outputs[1].clone();
+        let guard = arc.read().unwrap();
+        let fuel_memory::BackendStorage::Cpu(c) = &guard.inner else {
+            panic!("expected Cpu storage");
+        };
+        let bytes = c.bytes();
+        let (vo, io) = (v_layout.start_offset() * 4, i_layout.start_offset() * 4);
+        let vals: Vec<f32> = bytes[vo..vo + 16]
+            .chunks(4)
+            .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            .collect();
+        let idx: Vec<u32> = bytes[io..io + 16]
+            .chunks(4)
+            .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            .collect();
+        assert_eq!(idx, want_i);
+        assert_eq!(vals, want_v);
     }
 
     // ---- Ordering-defect repros (MLA decode multi-round WriteSlice) -----
