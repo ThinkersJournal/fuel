@@ -6437,8 +6437,12 @@ impl Tensor {
     /// Bessel's correction to be an EXPLICIT attribute, not an implicit
     /// torch-style default silently baked into the divisor — this
     /// parameter exists so a caller cannot get Bessel's correction by
-    /// omission. `correction >= n` produces a non-finite result (same
-    /// shape as any other degenerate reduction — never a panic).
+    /// omission. The divisor is clamped at zero, `max(0, n - correction)`
+    /// (the torch rule), so the result is never negative and never a panic:
+    /// `correction == n` is `0/0 = NaN`; `correction > n` is `x/0 = inf`
+    /// (`NaN` if the sum of squared deviations is 0, e.g. a single element).
+    /// Before 2026-11-25 only `correction == n` was non-finite and
+    /// `correction > n` returned a finite, possibly NEGATIVE variance.
     pub fn var_keepdim<D: Dim>(
         &self,
         dim: D,
@@ -6453,7 +6457,7 @@ impl Tensor {
         let squares = deviation.sqr();
         // sum_keepdim then divide by (n - correction); leaves the reduced dim as 1.
         let summed = squares.sum_keepdim(dim)?;
-        let divisor = n as f64 - correction;
+        let divisor = (n as f64 - correction).max(0.0);
         Ok(summed.mul_scalar(1.0 / divisor))
     }
 
