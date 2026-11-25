@@ -35,8 +35,6 @@ fn tensor(x: &[f32]) -> Tensor {
     .unwrap()
 }
 
-type Recipe = fn(&Tensor) -> Tensor;
-
 fn sigmoid_r(x: &Tensor) -> Tensor {
     // 1 / (1 + exp(-x)), from Exp / Neg / Recip / AddScalar only.
     x.neg().exp().add_scalar(1.0).recip()
