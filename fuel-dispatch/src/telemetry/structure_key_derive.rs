@@ -1778,6 +1778,63 @@ mod tests {
         assert_eq!(plain, token.replace("/bm/", "/"));
     }
 
+    /// Union row item 6a (CuTe 39): a rank-3 and a rank-4 batched contraction
+    /// with the same M/N/K/batch roles key to the SAME contraction field, and the
+    /// operand sub-keys differ only in rank (`r3`/`r4`); K is one axis. KISS
+    /// measured this with its reference deriver; this pins Fuel's derivation to it.
+    #[test]
+    fn ctr_rank3_and_rank4_batched_share_the_contraction_field() {
+        let cell = GemCell {
+            batch: Some(6),
+            ..gem_f32(64, 64, 64)
+        };
+        let r3 = [f32c(&[6, 64, 64]), f32c(&[6, 64, 64]), f32c(&[6, 64, 64])];
+        let r4 = [
+            f32c(&[2, 3, 64, 64]),
+            f32c(&[2, 3, 64, 64]),
+            f32c(&[2, 3, 64, 64]),
+        ];
+        let t3 = derive(DeclaredFacts::contraction(cell), &r3, "cuda:sm90").expect("rank 3");
+        let t4 = derive(DeclaredFacts::contraction(cell), &r4, "cuda:sm90").expect("rank 4");
+        assert!(t3.contains("|r3|") && t4.contains("|r4|"), "{t3} / {t4}");
+        let field = |t: &str| t.rsplit('|').next().unwrap().to_string();
+        assert_eq!(field(&t3), field(&t4));
+        assert!(field(&t3).starts_with("csss/"), "{}", field(&t3));
+        // Sabotage sibling: a different K class must move the field.
+        let big = GemCell { k: 4096, ..cell };
+        let t3b = derive(DeclaredFacts::contraction(big), &r3, "cuda:sm90").expect("rank 3");
+        assert_ne!(field(&t3), field(&t3b));
+    }
+
+    /// Union row item 6a (CUTLASS 5): per-operand major-ness is already distinct
+    /// in the key: a column-major operand differs from the row-major twin.
+    #[test]
+    fn ctr_column_major_operand_keys_differently_from_row_major() {
+        let row = f32c(&[64, 64]);
+        let col = FdxOperandDesc::from_layout(
+            &Layout::new(
+                Shape::from_dims(&[64, 64]),
+                StrideVec::from_slice(&[1, 64]),
+                0,
+            ),
+            DType::F32,
+        );
+        let cell = gem_f32(64, 64, 64);
+        let a = derive(
+            DeclaredFacts::contraction(cell),
+            &[row.clone(), row.clone(), row.clone()],
+            "cuda:sm90",
+        )
+        .expect("row-major");
+        let b = derive(
+            DeclaredFacts::contraction(cell),
+            &[col, row.clone(), row],
+            "cuda:sm90",
+        )
+        .expect("column-major lhs");
+        assert_ne!(a, b);
+    }
+
     /// SIMT-f32 (`st`) and TF32 (`rm`) are the same shape but distinct cells:
     /// the `<mp>` coordinate distinguishes them (the spec-forbidden `f32s`
     /// dtype hack is retired). Byte-for-byte the staged
