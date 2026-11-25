@@ -3,6 +3,12 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.52.1 - 2026-11-25 (PM-allocated; docs only: row 172 design notes for items 2 and 3, GAP-399..406 provisional; not breaking)
+
+### Changed
+
+- Docs: design notes `docs/design-notes/2026-11-25-row172-item2-matmul-topk-epilogue.md` and `2026-11-25-row172-item3-conv-epilogue.md`; `docs/gaps.md` GAP-399 to GAP-406 (provisional); the ROADMAP row 172 line; provenance index lines. No code change.
+
 ## v0.52.0 - 2026-11-25 (PM-allocated; BREAKING: `FusedOpParams` gained two variants and the enum is not `non_exhaustive`; row 172 item 2)
 
 ### Breaking
