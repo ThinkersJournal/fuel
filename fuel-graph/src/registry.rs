@@ -36,6 +36,7 @@ use std::collections::HashMap;
 pub mod awq_matmul;
 pub mod causal_conv1d;
 pub mod conv2d;
+pub mod conv2d_epilogue;
 pub mod conv_transpose_2d;
 pub mod flash_attn;
 pub mod flash_attn_backward;

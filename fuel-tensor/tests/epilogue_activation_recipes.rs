@@ -272,3 +272,38 @@ fn the_erf_reference_is_accurate_far_below_the_tolerance() {
         "Simpson has converged at 4.25"
     );
 }
+
+/// The planner half's first obligation (row 172 item 3): every one of the 17 forms,
+/// applied to a conv output, is read back by `extract_epilogue` as ONE recipe over the
+/// conv (no extra operand, the conv found, at least one elementwise node): no activation
+/// is special-cased and none needs a new op.
+#[test]
+fn every_named_activation_extracts_as_a_recipe_over_a_conv() {
+    use fuel_graph::registry::conv2d_epilogue::extract_epilogue;
+    let all = cases();
+    assert_eq!(
+        all.len(),
+        17,
+        "the activation set changed: update the census"
+    );
+    for case in &all {
+        let x = Tensor::from_f32(
+            vec![0.1; 2 * 6 * 6],
+            Shape::from_dims(&[1, 2, 6, 6]),
+            &fuel_tensor::Device::cpu(),
+        )
+        .unwrap();
+        let w = x
+            .const_f32_like(vec![0.2; 3 * 2 * 3 * 3], Shape::from_dims(&[3, 2, 3, 3]))
+            .unwrap();
+        let conv = x.conv2d(&w, None, (1, 1), (1, 1), 1).unwrap();
+        let out = (case.recipe)(&conv);
+        let handle = out.graph_tensor();
+        let graph = handle.graph();
+        let g = graph.read().unwrap();
+        let e = extract_epilogue(&g, handle.id())
+            .unwrap_or_else(|| panic!("{}: no epilogue extracted", case.name));
+        assert!(e.extras.is_empty(), "{}: extras {:?}", case.name, e.extras);
+        assert_eq!(e.conv, conv.graph_tensor().id(), "{}: the conv", case.name);
+    }
+}
