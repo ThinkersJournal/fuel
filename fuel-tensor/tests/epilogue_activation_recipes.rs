@@ -88,11 +88,17 @@ fn sigmoid_f(x: f64) -> f64 {
 fn softplus_f(x: f64) -> f64 {
     x.max(0.0) + (1.0 + (-x.abs()).exp()).ln()
 }
+/// `erf` by composite Simpson's rule over `[0, x]` (2000 panels). Accuracy bound: the
+/// Simpson error is `(x * h^4 / 180) * max|f4|` with `h = x / 2000`, `f(t) = exp(-t^2)` and
+/// `max|f4| = 12` (the fourth derivative at `t = 0`); for the largest argument used here
+/// (`|x| <= 6 / sqrt(2)` = 4.25) that is about `4e-12`, six orders below the `2e-5`
+/// comparison tolerance, so the tolerance is set by the f32 recipe, not by this reference
+/// (checked against known values by `the_erf_reference_is_accurate_far_below_the_tolerance`).
 fn erf_f(x: f64) -> f64 {
-    // Abramowitz-Stegun 7.1.26 is too coarse for a 1e-5 check; use a series/continued
-    // fraction free path: the high-precision rational from W. J. Cody is overkill, so
-    // integrate numerically with Simpson's rule (smooth integrand, 2000 panels).
-    let n = 2000usize;
+    erf_n(x, 2000)
+}
+
+fn erf_n(x: f64, n: usize) -> f64 {
     let h = x / n as f64;
     let f = |t: f64| (-t * t).exp();
     let mut s = f(0.0) + f(x);
@@ -245,5 +251,24 @@ fn a_wrong_recipe_is_caught_at_the_stated_tolerance() {
     assert!(
         flagged > 10,
         "the wrong slope must be visible; flagged {flagged}"
+    );
+}
+
+/// The gelu reference's own error is far below the tolerance: `erf_f` against values
+/// known to 16 digits (`erf(0.5)`, `erf(1)`, `erf(3)`) and its oddness; at the largest
+/// argument (4.25) it is checked by SELF-CONVERGENCE (2000 panels vs 16000 agree to 1e-10).
+#[test]
+fn the_erf_reference_is_accurate_far_below_the_tolerance() {
+    for (x, want) in [
+        (0.5_f64, 0.520_499_877_813_046_5),
+        (1.0, 0.842_700_792_949_714_9),
+        (3.0, 0.999_977_909_503_001_4),
+    ] {
+        assert!((erf_f(x) - want).abs() < 1e-10, "erf({x}) = {}", erf_f(x));
+        assert!((erf_f(-x) + want).abs() < 1e-10, "erf(-{x}) odd");
+    }
+    assert!(
+        (erf_f(4.25) - erf_n(4.25, 16_000)).abs() < 1e-10,
+        "Simpson has converged at 4.25"
     );
 }
