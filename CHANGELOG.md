@@ -8,6 +8,7 @@ This documents the main changes to the `fuel` workspace.
 ### Breaking
 
 - `fuel-cpu-backend`: `argmax_dim_*` / `argmin_dim_*` (f32/f64/bf16/f16) now follow the torch NaN convention: a NaN WINS, for argmax and argmin alike, and the FIRST NaN's index is returned (an all-NaN row is index 0). Before, a NaN was ignored unless it sat at index 0 (`new > best` with element 0 as the initial best), so the result depended on where the NaN sat: `[1,NaN,0,5]` was (argmax 3, argmin 2), now (1, 1); `[1,5,NaN]` was (1, 0), now (2, 2). With no NaN nothing changes: ties take the first index and `-0.0 == +0.0`.
+- `fuel-transformers`: greedy decoding (`LogitsProcessor` with `Sampling::ArgMax`, `sample_argmax`) now returns a typed error when the logit row contains a NaN (the model produced NaN: no token is picked silently), and ties take the FIRST index. Before: `max_by(total_cmp)` returned the LAST tied index and the last NaN, and skipped a sign-bit NaN. Consumers that sample greedily (lightbulb) must handle the new `Err`. Other strategies (multinomial, top-k/top-p, Gumbel) are unchanged and do not check for NaN.
 - Downstream effect: any caller that took the argmax of NaN-bearing logits (greedy sampling, top-1 paths) now gets the NaN's index instead of the best finite one. That is torch's behaviour; it makes a NaN visible instead of masking it.
 
 ### Fixed
