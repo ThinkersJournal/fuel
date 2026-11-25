@@ -37,3 +37,12 @@ matmul_tiled_bf16_b.spv
 matvec.spv
 matvec_bf16_b.spv
 matvec_cols.spv
+
+REBUILT 2026-11-25 (row 172, flash-attention NaN poison flag): these 9 of the 27 GLSL-derived files were rebuilt from the
+patched fuel-kernels-source/kernels/*.glsl with glslangValidator 16.2.0 (Vulkan SDK 1.4.350.0), spirv-val ok, using the flags that
+reproduce each file's PREVIOUS bytes (positive control: the unmodified sources rebuilt byte-identically with these flags):
+  flash_attn_{f32,f16,bf16}.spv           glslangValidator -V -S comp --target-env vulkan1.1   (what compile.sh runs)
+  flash_attn_split_{f32,f16,bf16}.spv     glslangValidator -V -S comp                          (NOT what compile.sh runs: GAP-407)
+  flash_attn_combine_{f32,f16,bf16}.spv   glslangValidator -V -S comp                          (NOT what compile.sh runs: GAP-407)
+Device result: tests/vulkan_flash_attn_nan_rows_live.rs on the RTX 4070 and the Radeon 610M, f32/f16/bf16, single-pass and split-KV:
+60 of 60 cases agree with the contract after (before, on the Radeon 610M: the 6 Q-NaN cases, 3 dtypes x single-pass/split, returned zeros).
