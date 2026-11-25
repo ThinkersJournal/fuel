@@ -3,7 +3,7 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
-## Unreleased (version allocated by pm-assist; BREAKING: CPU argmax/argmin numerics)
+## Unreleased (version allocated by pm-assist; BREAKING numerics: CPU/Metal argmax-argmin NaN, FlashAttn masked/NaN rows, var correction, greedy sampling on NaN)
 
 ### Breaking
 
@@ -12,12 +12,11 @@ This documents the main changes to the `fuel` workspace.
 - `fuel-tensor`: `Tensor::var` / `var_keepdim` divide by `max(0, n - correction)` (the torch rule). Before, `correction > n` gave a finite, possibly NEGATIVE variance (`[1,3]` with `correction = 3` was `-2.0`; `[5]` with `correction = 2` was `0.0`). Now: `correction == n` is NaN (0/0), `correction > n` is `inf` (NaN when the sum of squared deviations is 0), never negative. `correction < n` is unchanged. Every backend inherits the rule through the recipe (mean/sub/sqr/sum/mul_scalar); only CPU is measured. The `var_keepdim` doc comment's claim that `correction >= n` is non-finite was true only for `==`.
 - `fuel-transformers`: greedy decoding (`LogitsProcessor` with `Sampling::ArgMax`, `sample_argmax`) now returns a typed error when the logit row contains a NaN (the model produced NaN: no token is picked silently), and ties take the FIRST index. Before: `max_by(total_cmp)` returned the LAST tied index and the last NaN, and skipped a sign-bit NaN. Consumers that sample greedily (lightbulb) must handle the new `Err`. Other strategies (multinomial, top-k/top-p, Gumbel) are unchanged and do not check for NaN.
 - Downstream effect: any caller that took the argmax of NaN-bearing logits (greedy sampling, top-1 paths) now gets the NaN's index instead of the best finite one. That is torch's behaviour; it makes a NaN visible instead of masking it.
+- Metal `argmax`/`argmin` (`fuel-metal-kernels` `reduce.metal`, the `indexed<T>` comparator): a NaN now wins and the first NaN's index is returned, the spec rule (before: a NaN was ignored). **Measured on the hosted macOS runner's `Apple Paravirtual device` (2026-11-25, GitHub Actions, fast math at the runtime default): the 10 spec vectors x f32/f16/bf16 x argmax/argmin = 60 of 60 agree with the spec; the SAME vectors on the old comparator diverge in 30 of 60 (control).** A paravirtual GPU is not a physical Apple GPU, so it is not claimed for hardware; a text-level test in `fuel-ir` pins the comparator source and `fuel-metal-kernels` `argmax_argmin_nan_spec_vectors` runs the vectors wherever a device exists. The NaN test is by bit pattern because the shaders compile with fast math on.
 
 ### Fixed
 
-- Metal `argmax`/`argmin` (`fuel-metal-kernels` `reduce.metal`, the `indexed<T>` comparator): a NaN now wins and the first NaN's index is returned, the spec rule (before: a NaN was ignored). **Measured on the hosted macOS runner's `Apple Paravirtual device` (2026-11-25, GitHub Actions, fast math at the runtime default): the 10 spec vectors x f32/f16/bf16 x argmax/argmin = 60 of 60 agree with the spec; the SAME vectors on the old comparator diverge in 30 of 60 (control).** A paravirtual GPU is not a physical Apple GPU, so it is not claimed for hardware; a text-level test in `fuel-ir` pins the comparator source and `fuel-metal-kernels` `argmax_argmin_nan_spec_vectors` runs the vectors wherever a device exists. The NaN test is by bit pattern because the shaders compile with fast math on.
 - Known divergences left open, measured: Vulkan `argmax`/`argmin` ignore a NaN (36 cases per adapter on the 4070 and the Radeon 610M; `fuel-vulkan-dispatch/tests/vulkan_arg_nan_vectors_live.rs` pins it both ways); CUDA `arg_reduce` ignores a NaN (baracuda probe).
-
 - `argmax_dim_f64` / `argmin_dim_f64` (and bf16/f16) compared after widening to f32, so f64 values closer than f32 resolution tied falsely (`[1, 1+1e-12, 1-1e-12]` argmax was 0). They now compare in f64 (exact for every input dtype).
 
 ### Notes
