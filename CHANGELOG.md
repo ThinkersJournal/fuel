@@ -23,6 +23,12 @@ This documents the main changes to the `fuel` workspace.
 
 - CPU `max_reduce`/`min_reduce`/`reduce_max_to` already propagate a NaN (KISS-Ops 6.11-0002) and are unchanged; tests now pin that, plus `-0.0`/`+0.0` (the first-seen zero is kept) and that an empty reduction is an error. CUDA `arg_reduce` and `reduce` max/min still ignore NaN (baracuda probe) until baracuda matches; CPU and CUDA disagree on NaN rows until then.
 
+## v0.52.1 - 2026-11-25 (PM-allocated; docs only: row 172 design notes for items 2 and 3, GAP-399..406 provisional; not breaking)
+
+### Changed
+
+- Docs: design notes `docs/design-notes/2026-11-25-row172-item2-matmul-topk-epilogue.md` and `2026-11-25-row172-item3-conv-epilogue.md`; `docs/gaps.md` GAP-399 to GAP-406 (provisional); the ROADMAP row 172 line; provenance index lines. No code change.
+
 ## v0.52.0 - 2026-11-25 (PM-allocated; BREAKING: `FusedOpParams` gained two variants and the enum is not `non_exhaustive`; row 172 item 2)
 
 ### Breaking
