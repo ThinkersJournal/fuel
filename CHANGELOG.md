@@ -14,6 +14,7 @@ This documents the main changes to the `fuel` workspace.
 - `TopKLastDim` (`FusedOps::TOP_K_LAST_DIM`, id 27): the `k` largest values along the last axis and their `U32` indices, a two-slot bundle; NaN sorts largest (`torch.topk`), ties take the lower index. Builder `NodeHandle::top_k_last_dim(k)` returning `Result<(values, indices)>`; CPU kernels for f32/f64/bf16/f16, FKC contracts, `OpKind::TopKLastDim`.
 - `MatMulTopK` (`FusedOps::MATMUL_TOP_K`, id 28): `TopKLastDim(a @ b)` as one node (the TopK epilogue), recognized from `TopKLastDim(MatMul)` by the fusion rule (single-consumer matmul, equal batch dims), builder `NodeHandle::matmul_top_k`, CPU reference kernels, `OpKind::MatMulTopK`.
 - The generic `FusionRule` now carries a multi-output root's bundle contract onto the replacement node.
+- **CPU only.** `TopKLastDim` and `MatMulTopK` have NO CUDA binding in this release: baracuda 0.1.0-alpha.186's standalone `topk` returns a WRONG selection when the row holds a NaN and does not take the lowest tied index (measured live; GAP-402), and a NaN is data, so no plan-time decline can keep such rows off the kernel. The binding returns once baracuda fixes or documents it.
 - `docs/gaps.md` GAP-400 (provisional): multi-output fused ops have no primitive decompose (no bundle-composer op); design notes for row 172 items 1 and 2.
 
 ### Changed
