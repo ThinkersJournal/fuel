@@ -80,7 +80,7 @@ kernel family backs six logical ops selected by the host kernel name: the value-
 input dtype — the **Mul** reduction is MSL-level only and has **no backing OpKind today**
 [consumer-ahead]) and the index-returning **ArgMax / ArgMin**
 (`OpKind::ArgMaxDim` / `ArgMinDim`, `impl_arg_reduce`, output = **U32** index;
-`storer<indexed<T>>` writes the `.i` field). The reduced region is indexed **linearly**
+`storer<indexed<T>>` writes the `.i` field). **NaN rule (spec, torch convention; STATIC change, UNMEASURED: no Metal device has run it):** the `indexed<T>` comparator lets a NaN WIN for argmax and argmin alike, the first NaN's index wins between NaNs, and with no NaN ties take the lowest index; the NaN test is a bit-pattern test (`arg_is_nan`) because the shaders compile with fast math on. Before this change a NaN was ignored. Parity with the CPU rule is NOT claimed until the spec vectors run on a device. The reduced region is indexed **linearly**
 (`indexer_t<uint,false>`); one threadgroup folds one group via a simd-shuffle tree reduce and emits
 one output element. Output shape = the source with the reduced dims removed (one element per
 threadgroup). Min/Max use `fast::min`/`fast::max` for floats; arg ops break ties to the **lowest

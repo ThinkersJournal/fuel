@@ -12,6 +12,9 @@ This documents the main changes to the `fuel` workspace.
 
 ### Fixed
 
+- Metal `argmax`/`argmin` (`fuel-metal-kernels` `reduce.metal`, the `indexed<T>` comparator): a NaN now wins and the first NaN's index is returned, the spec rule (before: a NaN was ignored). **UNMEASURED: a static change; no Metal device has run it** (a text-level test in `fuel-ir` pins the comparator source; parity with CPU is not claimed). The NaN test is by bit pattern because the shaders compile with fast math on.
+- Known divergences left open, measured: Vulkan `argmax`/`argmin` ignore a NaN (36 cases per adapter on the 4070 and the Radeon 610M; `fuel-vulkan-dispatch/tests/vulkan_arg_nan_vectors_live.rs` pins it both ways); CUDA `arg_reduce` ignores a NaN (baracuda probe).
+
 - `argmax_dim_f64` / `argmin_dim_f64` (and bf16/f16) compared after widening to f32, so f64 values closer than f32 resolution tied falsely (`[1, 1+1e-12, 1-1e-12]` argmax was 0). They now compare in f64 (exact for every input dtype).
 
 ### Notes
