@@ -2,11 +2,11 @@
 //! The Metal `argmax`/`argmin` comparator is spelled the way the CPU rule is (a NaN WINS, the
 //! FIRST NaN's index is returned; no NaN: ties take the first index; `-0.0 == +0.0`).
 //!
-//! **UNMEASURED.** This is a TEXT-level test: there is no Metal device on this box, so the
-//! kernel has never run against the spec vectors. It pins that the comparator source says the
-//! rule, so a later edit cannot silently drop it; it does NOT claim Metal parity. The measurement
-//! is the row "measure Metal arg_reduce on a Mac" (the Vulkan counterpart,
-//! `fuel-vulkan-dispatch/tests/vulkan_arg_nan_vectors_live.rs`, IS measured).
+//! This is a TEXT-level test (this box has no Metal device): it pins that the comparator source
+//! says the rule, so a later edit cannot silently drop it. The numerics are measured separately:
+//! `fuel-metal-kernels` `argmax_argmin_nan_spec_vectors` ran the spec vectors on a hosted macOS
+//! runner's `Apple Paravirtual device` (60/60 agree; the old comparator diverged in 30/60), not on
+//! physical Apple hardware.
 //!
 //! The NaN test is a BIT-PATTERN test (`arg_is_nan`), because the shaders compile with fast math
 //! ON by default (`FUEL_METAL_ENABLE_FAST_MATH`), under which `x != x` may be folded to false; the

@@ -202,7 +202,7 @@ constexpr METAL_FUNC bool operator<(indexed<T> lhs, indexed<T> rhs) {
     // Spec rule (torch convention, shared with the CPU kernel): a NaN WINS for argmax AND argmin,
     // and between two NaNs the lower index wins; with no NaN, ties take the lower index.
     // `arg_is_nan` tests the bit pattern (fast math may fold `x != x`) and is false for integers.
-    // UNMEASURED: no Metal device has run this against the spec vectors.
+    // Measured on a hosted macOS Apple Paravirtual device (tests.rs argmax_argmin_nan_spec_vectors).
     bool ln = arg_is_nan(lhs.val);
     bool rn = arg_is_nan(rhs.val);
     if (ln || rn) return ln && (!rn || lhs.i < rhs.i);
@@ -214,7 +214,7 @@ constexpr METAL_FUNC bool operator>(indexed<T> lhs, indexed<T> rhs) {
     // Spec rule (torch convention, shared with the CPU kernel): a NaN WINS for argmax AND argmin,
     // and between two NaNs the lower index wins; with no NaN, ties take the lower index.
     // `arg_is_nan` tests the bit pattern (fast math may fold `x != x`) and is false for integers.
-    // UNMEASURED: no Metal device has run this against the spec vectors.
+    // Measured on a hosted macOS Apple Paravirtual device (tests.rs argmax_argmin_nan_spec_vectors).
     bool ln = arg_is_nan(lhs.val);
     bool rn = arg_is_nan(rhs.val);
     if (ln || rn) return ln && (!rn || lhs.i < rhs.i);
