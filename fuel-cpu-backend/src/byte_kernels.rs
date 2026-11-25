@@ -8088,6 +8088,7 @@ macro_rules! flash_attn_native_kernel {
                         let mut scores = vec![$T_zero; k_len];
                         let mut admissible = vec![false; k_len];
                         let mut max_score: $T = <$T>::NEG_INFINITY;
+                        let mut has_nan = false;
                         for kj in 0..k_len {
                             if !flash_attn_admissible(aq, kj, causal, window_left, window_right) {
                                 continue;
@@ -8109,9 +8110,22 @@ macro_rules! flash_attn_native_kernel {
                                 s += slope * delta;
                             }
                             scores[kj] = s;
+                            if s.is_nan() {
+                                has_nan = true;
+                            }
                             if s > max_score {
                                 max_score = s;
                             }
+                        }
+                        // A NaN score (a NaN in Q, or in a K row this query attends) makes the
+                        // row NaN: it must never be swallowed by the "row max not finite" skip
+                        // below, which is for a FULLY MASKED row (no admissible key) and leaves
+                        // it zero (the flash/inference convention).
+                        if has_nan {
+                            for slot in out_view[o_off + qi * d..o_off + (qi + 1) * d].iter_mut() {
+                                *slot = <$T>::NAN;
+                            }
+                            continue;
                         }
                         if !max_score.is_finite() {
                             continue;
@@ -8245,6 +8259,7 @@ macro_rules! flash_attn_half_kernel {
                         let mut scores = vec![0.0_f32; k_len];
                         let mut admissible = vec![false; k_len];
                         let mut max_score = f32::NEG_INFINITY;
+                        let mut has_nan = false;
                         for kj in 0..k_len {
                             if !flash_attn_admissible(aq, kj, causal, window_left, window_right) {
                                 continue;
@@ -8265,9 +8280,22 @@ macro_rules! flash_attn_half_kernel {
                                 s += slope * delta;
                             }
                             scores[kj] = s;
+                            if s.is_nan() {
+                                has_nan = true;
+                            }
                             if s > max_score {
                                 max_score = s;
                             }
+                        }
+                        // A NaN score (a NaN in Q, or in a K row this query attends) makes the
+                        // row NaN: it must never be swallowed by the "row max not finite" skip
+                        // below, which is for a FULLY MASKED row (no admissible key) and leaves
+                        // it zero (the flash/inference convention).
+                        if has_nan {
+                            for slot in out_view[o_off + qi * d..o_off + (qi + 1) * d].iter_mut() {
+                                *slot = <$T>::NAN;
+                            }
+                            continue;
                         }
                         if !max_score.is_finite() {
                             continue;

@@ -2750,6 +2750,9 @@ mod tests {
         (!bad.is_empty()).then(|| format!("{name}/{path}: {}", bad.join("; ")))
     }
 
+    // 4-digit test scale (~1/sqrt(2)), deliberately NOT FRAC_1_SQRT_2: the expected values in
+    // `attn_expected` were computed with exactly 0.7071 (same posture as `flash_decompose_vs_reference`).
+    #[allow(clippy::approx_constant)]
     fn attn_tensor(c: &AttnCase) -> Tensor {
         let dev = Device::cpu();
         let q = Tensor::from_f32(c.q.clone(), Shape::from_dims(&[1, 1, c.sq, 2]), &dev).unwrap();
