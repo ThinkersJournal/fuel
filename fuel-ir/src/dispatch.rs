@@ -568,6 +568,11 @@ pub enum OpKind {
     /// `[values .. k ; indices .. k]`; geometry rides in `OpParams::TopKLastDim`.
     /// See `FusedOps::TOP_K_LAST_DIM`.
     TopKLastDim,
+    /// `TopKLastDim(a @ b)` as one node (ROADMAP row 172 item 2 step B). Inputs
+    /// `[a, b]` (equal batch dims), the bundled TopK output over the matmul's
+    /// last axis; geometry rides in `OpParams::MatMulTopK`. See
+    /// `FusedOps::MATMUL_TOP_K`.
+    MatMulTopK,
     /// A **runtime-registered** (Tier-2, JIT-synthesized / import-time) fused
     /// op. Carries no static kernel family: the concrete op is named by the
     /// runtime `FusedOpId` on the graph node, and its kernel resolves from the
@@ -705,6 +710,7 @@ impl OpKind {
             OpKind::AwqMatmul => "awq_matmul",
             OpKind::RowScaledMatMul => "row_scaled_matmul",
             OpKind::TopKLastDim => "top_k_last_dim",
+            OpKind::MatMulTopK => "matmul_top_k",
             OpKind::RuntimeFused => "runtime_fused",
             OpKind::NonZeroIndices => "nonzero_indices",
         }

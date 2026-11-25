@@ -44,6 +44,7 @@ pub mod fused_softmax_cross_entropy;
 pub mod inplace_affine;
 pub mod layer_norm_last_dim;
 pub mod layer_norm_last_dim_backward;
+pub mod matmul_top_k;
 pub mod nf4_matmul;
 pub mod paged_attn;
 pub mod powi_backward;
@@ -354,6 +355,8 @@ pub enum FusedOpParams {
     RowScaledMatMul,
     /// TopKLastDim: the `k` largest values along the last axis (`k` static).
     TopKLastDim { k: usize },
+    /// MatMulTopK: `TopKLastDim(a @ b)` fused (`k` static).
+    MatMulTopK { k: usize },
     /// FlashAttnBackward — shared params for the Q/K/V backward
     /// variants. Carries the same shape parameters as the forward
     /// `FlashAttn` so the recompute pass produces identical scores.
@@ -680,6 +683,11 @@ impl FusedOpParams {
             },
             FusedOpParams::TopKLastDim { k } => FusedOpParamsKey {
                 tag: 25,
+                bits: Vec::new(),
+                ints: vec![*k as i64],
+            },
+            FusedOpParams::MatMulTopK { k } => FusedOpParamsKey {
+                tag: 26,
                 bits: Vec::new(),
                 ints: vec![*k as i64],
             },
@@ -1255,6 +1263,10 @@ impl FusedOps {
     /// TopKLastDim: the `k` largest values along the last axis and their
     /// indices (multi-output; ROADMAP row 172 item 2 step A).
     pub const TOP_K_LAST_DIM: FusedOpId = FusedOpId(27);
+
+    /// MatMulTopK: `TopKLastDim(a @ b)` as one fused node (the TopK epilogue on
+    /// the matmul; ROADMAP row 172 item 2 step B).
+    pub const MATMUL_TOP_K: FusedOpId = FusedOpId(28);
 }
 
 /// Process-wide default registry: the union of every fused op's
@@ -1296,6 +1308,7 @@ pub fn default_registry() -> &'static FusedOpRegistry {
             .with_entry(awq_matmul::entry())
             .with_entry(row_scaled_matmul::entry())
             .with_entry(top_k_last_dim::entry())
+            .with_entry(matmul_top_k::entry())
     })
 }
 

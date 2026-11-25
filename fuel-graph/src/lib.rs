@@ -7915,6 +7915,70 @@ impl NodeHandle {
         Ok((values, indices))
     }
 
+    /// MatMulTopK (ROADMAP row 172 item 2 step B): `TopKLastDim(self @ b)` as one
+    /// fused node. `self [.., M, K]` and `b [.., K, N]` need equal rank >= 2 and
+    /// equal batch dims, one float dtype; returns `(values, indices)`, each
+    /// `[.., M, k]`. An `Err`, never a panic, on any violation.
+    pub fn matmul_top_k(
+        &self,
+        b: &NodeHandle,
+        k: usize,
+    ) -> std::result::Result<(NodeHandle, NodeHandle), fuel_ir::Error> {
+        self.require_same_graph(b, "matmul_top_k", "b")?;
+        let dtype = self.dtype();
+        if !matches!(dtype, DType::F32 | DType::F64 | DType::BF16 | DType::F16)
+            || b.dtype() != dtype
+        {
+            return Err(fuel_ir::Error::Msg(format!(
+                "matmul_top_k: a and b must share one float dtype, got {dtype:?} and {:?}",
+                b.dtype()
+            ))
+            .bt());
+        }
+        let (a_shape, b_shape) = (self.shape(), b.shape());
+        let (ad, bd) = (a_shape.dims(), b_shape.dims());
+        if ad.len() < 2 || ad.len() != bd.len() || ad[..ad.len() - 2] != bd[..bd.len() - 2] {
+            return Err(fuel_ir::Error::Msg(format!(
+                "matmul_top_k: a {ad:?} and b {bd:?} need equal rank >= 2 and equal batch dims"
+            ))
+            .bt());
+        }
+        if ad[ad.len() - 1] != bd[bd.len() - 2] {
+            return Err(fuel_ir::Error::Msg(format!(
+                "matmul_top_k: contracting dims disagree: a {ad:?}, b {bd:?}"
+            ))
+            .bt());
+        }
+        crate::registry::top_k_last_dim::validate_k(k, bd[bd.len() - 1])
+            .map_err(|m| fuel_ir::Error::Msg(m).bt())?;
+        let params = crate::registry::FusedOpParams::MatMulTopK { k };
+        let entry = crate::registry::default_registry()
+            .entry(crate::registry::FusedOps::MATMUL_TOP_K)
+            .ok_or_else(|| {
+                fuel_ir::Error::Msg("matmul_top_k: MATMUL_TOP_K is not registered".into()).bt()
+            })?;
+        let ins = [a_shape.clone(), b_shape.clone()];
+        let specs = (entry.output_views.ok_or_else(|| {
+            fuel_ir::Error::Msg("matmul_top_k: entry has no output_views".into()).bt()
+        })?)(&ins, &[dtype, dtype], &params);
+        let (_total_bytes, views) = fuel_ir::storage::compose_bundle(&specs)?;
+        let slot0 = specs[0].shape.clone();
+        let mut g = self.graph.write().unwrap();
+        let id = g.push(Node {
+            op: Op::Fused(crate::registry::FusedOps::MATMUL_TOP_K, params),
+            inputs: vec![self.id, b.id],
+            shape: slot0,
+            dtype,
+        });
+        g.set_output_views(id, Arc::from(views.into_boxed_slice()))?;
+        drop(g);
+        let producer = Self {
+            graph: self.graph.clone(),
+            id,
+        };
+        Ok((producer.view(0)?, producer.view(1)?))
+    }
+
     /// Append an [`Op::NonZeroIndices`] producer node — the keystone
     /// primitive for **data-dependent dynamic shapes**. Returns the
     /// bundled producer `NodeHandle` (a `[capacity]` U32 tensor); callers
@@ -15573,7 +15637,7 @@ mod tests {
         multi_out_names.sort();
         assert_eq!(
             multi_out_names,
-            vec!["SelectiveScan", "SsdChunkScan", "TopKLastDim"],
+            vec!["MatMulTopK", "SelectiveScan", "SsdChunkScan", "TopKLastDim"],
             "the multi-output registry set should match the item-3 \
              migrations (SelectiveScan + SsdChunkScan); add new \
              multi-output ops to this list as they migrate",
@@ -15637,8 +15701,17 @@ mod tests {
             }
         }
 
+        fn matmul_top_k_fixture() -> Fixture {
+            Fixture {
+                shapes: vec![Shape::from_dims(&[2, 4, 8]), Shape::from_dims(&[2, 8, 16])],
+                dtypes: vec![DType::F32; 2],
+                params: FusedOpParams::MatMulTopK { k: 3 },
+            }
+        }
+
         for entry in reg.entries_iter().filter(|e| e.output_views.is_some()) {
             let fx = match entry.name {
+                "MatMulTopK" => matmul_top_k_fixture(),
                 "TopKLastDim" => top_k_fixture(),
                 "SelectiveScan" => selective_scan_fixture(),
                 "SsdChunkScan" => ssd_chunk_scan_fixture(),

@@ -768,6 +768,17 @@ pub enum OpParams {
     /// bundled `[values (rows*k, input dtype) ; indices (rows*k, U32)]`.
     TopKLastDim { rows: usize, n: usize, k: usize },
 
+    /// MatMulTopK execution parameters (row 172 item 2 step B). `a [batch, m, k]`,
+    /// `b [batch, k, n]` (equal batch counts); the output is the TopK bundle over
+    /// the `batch*m` rows of the (unmaterialized) `[.., n]` matmul result.
+    MatMulTopK {
+        batch: usize,
+        m: usize,
+        n: usize,
+        k: usize,
+        top_k: usize,
+    },
+
     /// A **runtime fused op's** live scalar args (the `extract:` values from
     /// `FusedOpParams::Runtime { scalars }`), in the region's pattern
     /// pre-order — the same canonical slot order the synthesized kernel's

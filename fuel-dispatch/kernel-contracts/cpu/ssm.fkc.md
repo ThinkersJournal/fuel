@@ -1614,3 +1614,259 @@ precision:
 
 determinism: same_hardware_bitwise
 ```
+
+---
+
+## matmul_top_k_f32  (matmul then top-k along N, f32 native)
+
+MatMulTopK (ROADMAP row 172 item 2 step B; `fuel_cpu_backend::byte_kernels::matmul_top_k_f32`): `TopKLastDim(a @ b)` in one kernel, the CPU reference of the epilogue-fused GPU path. Inputs `a [batch, m, k]`, `b [batch, k, n]` (equal batch counts, contiguous); ONE bundled output `[values [.., m, top_k] ; pad to 4 bytes ; indices [.., m, top_k] U32]`. The dot products are accumulated k-ascending from zero, narrowed to the element dtype, then selected (NaN largest, ties lower index). NOT bit-equal to the unfused CPU matmul (a blocked gemm with another accumulation order): a near-tie within matmul rounding can pick a different index; the ordering rules are identical.
+
+```fkc
+kernel: matmul_top_k_f32
+op_kind: MatMulTopK
+blurb: "Matmul then top-k along N (f32 native); bundled output [values; U32 indices]; equal batch dims; contiguous."
+backend: Cpu
+kernel_source: "portable-cpu"
+entry_point: "fuel_cpu_backend::byte_kernels::matmul_top_k_f32"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: a
+      dtypes: [F32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: "2.."
+      shape_constraint: "dim[-1]=k"
+    - name: b
+      dtypes: [F32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: "2.."
+      shape_constraint: "dim[-2]=k; same_rank=a"
+  op_params:
+    variant: MatMulTopK
+    fields:
+      batch: { kind: usize, constraint: "== product of a.dims[..-2] == product of b.dims[..-2]" }
+      m:     { kind: usize, constraint: "== a.dim[-2]" }
+      n:     { kind: usize, constraint: "== b.dim[-1]" }
+      k:     { kind: usize, constraint: "== a.dim[-1] == b.dim[-2]" }
+      top_k: { kind: usize, constraint: "1 <= top_k <= n" }
+
+return:
+  bundle:
+    - { name: values,  dtype_rule: passthrough(a), shape_rule: from_params(values),  layout_guarantee: contiguous }
+    - { name: indices, dtype_rule: fixed(U32),     shape_rule: from_params(indices), layout_guarantee: contiguous }
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  in_place: false
+  alignment_bytes: 64
+  access_granularity_bits: 32
+
+cost:
+  provenance: judge_measured
+  class: gemm_like
+  flops: "2 * batch * m * n * k + batch * m * n * log2(n)"
+  bytes_moved: "(batch * m * k + batch * k * n + 2 * batch * m * top_k) * dtype_bytes"
+
+precision:
+  bit_stable_on_same_hardware: true
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Fixed (i,k,j) accumulation order, narrowed to the element dtype, then a stable total-order selection. Deterministic on same hardware; not bit-equal to the unfused blocked-gemm matmul."
+
+determinism: same_hardware_bitwise
+```
+
+---
+
+## matmul_top_k_f64  (matmul then top-k along N, f64 native)
+
+MatMulTopK (ROADMAP row 172 item 2 step B; `fuel_cpu_backend::byte_kernels::matmul_top_k_f64`): `TopKLastDim(a @ b)` in one kernel, the CPU reference of the epilogue-fused GPU path. Inputs `a [batch, m, k]`, `b [batch, k, n]` (equal batch counts, contiguous); ONE bundled output `[values [.., m, top_k] ; pad to 4 bytes ; indices [.., m, top_k] U32]`. The dot products are accumulated k-ascending from zero, narrowed to the element dtype, then selected (NaN largest, ties lower index). NOT bit-equal to the unfused CPU matmul (a blocked gemm with another accumulation order): a near-tie within matmul rounding can pick a different index; the ordering rules are identical.
+
+```fkc
+kernel: matmul_top_k_f64
+op_kind: MatMulTopK
+blurb: "Matmul then top-k along N (f64 native); bundled output [values; U32 indices]; equal batch dims; contiguous."
+backend: Cpu
+kernel_source: "portable-cpu"
+entry_point: "fuel_cpu_backend::byte_kernels::matmul_top_k_f64"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: a
+      dtypes: [F64]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: "2.."
+      shape_constraint: "dim[-1]=k"
+    - name: b
+      dtypes: [F64]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: "2.."
+      shape_constraint: "dim[-2]=k; same_rank=a"
+  op_params:
+    variant: MatMulTopK
+    fields:
+      batch: { kind: usize, constraint: "== product of a.dims[..-2] == product of b.dims[..-2]" }
+      m:     { kind: usize, constraint: "== a.dim[-2]" }
+      n:     { kind: usize, constraint: "== b.dim[-1]" }
+      k:     { kind: usize, constraint: "== a.dim[-1] == b.dim[-2]" }
+      top_k: { kind: usize, constraint: "1 <= top_k <= n" }
+
+return:
+  bundle:
+    - { name: values,  dtype_rule: passthrough(a), shape_rule: from_params(values),  layout_guarantee: contiguous }
+    - { name: indices, dtype_rule: fixed(U32),     shape_rule: from_params(indices), layout_guarantee: contiguous }
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  in_place: false
+  alignment_bytes: 64
+  access_granularity_bits: 32
+
+cost:
+  provenance: judge_measured
+  class: gemm_like
+  flops: "2 * batch * m * n * k + batch * m * n * log2(n)"
+  bytes_moved: "(batch * m * k + batch * k * n + 2 * batch * m * top_k) * dtype_bytes"
+
+precision:
+  bit_stable_on_same_hardware: true
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Fixed (i,k,j) accumulation order, narrowed to the element dtype, then a stable total-order selection. Deterministic on same hardware; not bit-equal to the unfused blocked-gemm matmul."
+
+determinism: same_hardware_bitwise
+```
+
+---
+
+## matmul_top_k_bf16  (matmul then top-k along N, bf16 with f32 accumulator)
+
+MatMulTopK (ROADMAP row 172 item 2 step B; `fuel_cpu_backend::byte_kernels::matmul_top_k_bf16`): `TopKLastDim(a @ b)` in one kernel, the CPU reference of the epilogue-fused GPU path. Inputs `a [batch, m, k]`, `b [batch, k, n]` (equal batch counts, contiguous); ONE bundled output `[values [.., m, top_k] ; pad to 4 bytes ; indices [.., m, top_k] U32]`. The dot products are accumulated k-ascending from zero, narrowed to the element dtype, then selected (NaN largest, ties lower index). NOT bit-equal to the unfused CPU matmul (a blocked gemm with another accumulation order): a near-tie within matmul rounding can pick a different index; the ordering rules are identical.
+
+```fkc
+kernel: matmul_top_k_bf16
+op_kind: MatMulTopK
+blurb: "Matmul then top-k along N (bf16 with f32 accumulator); bundled output [values; U32 indices]; equal batch dims; contiguous."
+backend: Cpu
+kernel_source: "portable-cpu"
+entry_point: "fuel_cpu_backend::byte_kernels::matmul_top_k_bf16"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: a
+      dtypes: [BF16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: "2.."
+      shape_constraint: "dim[-1]=k"
+    - name: b
+      dtypes: [BF16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: "2.."
+      shape_constraint: "dim[-2]=k; same_rank=a"
+  op_params:
+    variant: MatMulTopK
+    fields:
+      batch: { kind: usize, constraint: "== product of a.dims[..-2] == product of b.dims[..-2]" }
+      m:     { kind: usize, constraint: "== a.dim[-2]" }
+      n:     { kind: usize, constraint: "== b.dim[-1]" }
+      k:     { kind: usize, constraint: "== a.dim[-1] == b.dim[-2]" }
+      top_k: { kind: usize, constraint: "1 <= top_k <= n" }
+
+return:
+  bundle:
+    - { name: values,  dtype_rule: passthrough(a), shape_rule: from_params(values),  layout_guarantee: contiguous }
+    - { name: indices, dtype_rule: fixed(U32),     shape_rule: from_params(indices), layout_guarantee: contiguous }
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  in_place: false
+  alignment_bytes: 64
+  access_granularity_bits: 32
+
+cost:
+  provenance: judge_measured
+  class: gemm_like
+  flops: "2 * batch * m * n * k + batch * m * n * log2(n)"
+  bytes_moved: "(batch * m * k + batch * k * n + 2 * batch * m * top_k) * dtype_bytes"
+
+precision:
+  bit_stable_on_same_hardware: true
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Fixed (i,k,j) accumulation order, narrowed to the element dtype, then a stable total-order selection. Deterministic on same hardware; not bit-equal to the unfused blocked-gemm matmul."
+
+determinism: same_hardware_bitwise
+```
+
+---
+
+## matmul_top_k_f16  (matmul then top-k along N, f16 with f32 accumulator)
+
+MatMulTopK (ROADMAP row 172 item 2 step B; `fuel_cpu_backend::byte_kernels::matmul_top_k_f16`): `TopKLastDim(a @ b)` in one kernel, the CPU reference of the epilogue-fused GPU path. Inputs `a [batch, m, k]`, `b [batch, k, n]` (equal batch counts, contiguous); ONE bundled output `[values [.., m, top_k] ; pad to 4 bytes ; indices [.., m, top_k] U32]`. The dot products are accumulated k-ascending from zero, narrowed to the element dtype, then selected (NaN largest, ties lower index). NOT bit-equal to the unfused CPU matmul (a blocked gemm with another accumulation order): a near-tie within matmul rounding can pick a different index; the ordering rules are identical.
+
+```fkc
+kernel: matmul_top_k_f16
+op_kind: MatMulTopK
+blurb: "Matmul then top-k along N (f16 with f32 accumulator); bundled output [values; U32 indices]; equal batch dims; contiguous."
+backend: Cpu
+kernel_source: "portable-cpu"
+entry_point: "fuel_cpu_backend::byte_kernels::matmul_top_k_f16"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: a
+      dtypes: [F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: "2.."
+      shape_constraint: "dim[-1]=k"
+    - name: b
+      dtypes: [F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: "2.."
+      shape_constraint: "dim[-2]=k; same_rank=a"
+  op_params:
+    variant: MatMulTopK
+    fields:
+      batch: { kind: usize, constraint: "== product of a.dims[..-2] == product of b.dims[..-2]" }
+      m:     { kind: usize, constraint: "== a.dim[-2]" }
+      n:     { kind: usize, constraint: "== b.dim[-1]" }
+      k:     { kind: usize, constraint: "== a.dim[-1] == b.dim[-2]" }
+      top_k: { kind: usize, constraint: "1 <= top_k <= n" }
+
+return:
+  bundle:
+    - { name: values,  dtype_rule: passthrough(a), shape_rule: from_params(values),  layout_guarantee: contiguous }
+    - { name: indices, dtype_rule: fixed(U32),     shape_rule: from_params(indices), layout_guarantee: contiguous }
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  in_place: false
+  alignment_bytes: 64
+  access_granularity_bits: 32
+
+cost:
+  provenance: judge_measured
+  class: gemm_like
+  flops: "2 * batch * m * n * k + batch * m * n * log2(n)"
+  bytes_moved: "(batch * m * k + batch * k * n + 2 * batch * m * top_k) * dtype_bytes"
+
+precision:
+  bit_stable_on_same_hardware: true
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Fixed (i,k,j) accumulation order, narrowed to the element dtype, then a stable total-order selection. Deterministic on same hardware; not bit-equal to the unfused blocked-gemm matmul."
+
+determinism: same_hardware_bitwise
+```
