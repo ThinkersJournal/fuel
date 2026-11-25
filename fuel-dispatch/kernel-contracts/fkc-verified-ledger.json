@@ -41838,5 +41838,165 @@
       "op": "QMatMul",
       "reference": "f64 product of the f32 activations and the dequantized weights"
     }
+  },
+  {
+    "kernel_ref": "row_scaled_matmul",
+    "backend": "Cpu",
+    "dtypes": [
+      "F32",
+      "F32",
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 15334450906411309846,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1795588155",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "task-4.5b/seed_cpu_ledger",
+      "output_seeded": false,
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "row_scaled_matmul",
+    "backend": "Cpu",
+    "dtypes": [
+      "F64",
+      "F64",
+      "F64",
+      "F64"
+    ],
+    "kernel_revision_hash": 15334450906411309846,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1795588155",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "task-4.5b/seed_cpu_ledger",
+      "output_seeded": false,
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "row_scaled_matmul",
+    "backend": "Cpu",
+    "dtypes": [
+      "BF16",
+      "BF16",
+      "BF16",
+      "BF16"
+    ],
+    "kernel_revision_hash": 15334450906411309846,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1795588155",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "task-4.5b/seed_cpu_ledger",
+      "output_seeded": false,
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "row_scaled_matmul",
+    "backend": "Cpu",
+    "dtypes": [
+      "F16",
+      "F16",
+      "F16",
+      "F16"
+    ],
+    "kernel_revision_hash": 15334450906411309846,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1795588155",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "task-4.5b/seed_cpu_ledger",
+      "output_seeded": false,
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "RowScaledMatMul",
+    "backend": "Cpu",
+    "dtypes": [
+      "BF16",
+      "BF16",
+      "BF16",
+      "BF16"
+    ],
+    "kernel_revision_hash": 16168040684700842195,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1795588155",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "gap-207/seed_cpu_ledger::primitive",
+      "output_seeded": false,
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "RowScaledMatMul",
+    "backend": "Cpu",
+    "dtypes": [
+      "F32",
+      "F32",
+      "F32",
+      "F32"
+    ],
+    "kernel_revision_hash": 13277243196517693139,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1795588155",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "gap-207/seed_cpu_ledger::primitive",
+      "output_seeded": false,
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "RowScaledMatMul",
+    "backend": "Cpu",
+    "dtypes": [
+      "F64",
+      "F64",
+      "F64",
+      "F64"
+    ],
+    "kernel_revision_hash": 6853052466742686950,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1795588155",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "gap-207/seed_cpu_ledger::primitive",
+      "output_seeded": false,
+      "repeat_calls": 16
+    }
+  },
+  {
+    "kernel_ref": "RowScaledMatMul",
+    "backend": "Cpu",
+    "dtypes": [
+      "F16",
+      "F16",
+      "F16",
+      "F16"
+    ],
+    "kernel_revision_hash": 14287979597980740433,
+    "claim": "bit_stable_on_same_hardware",
+    "result": "pass",
+    "verified_at": "epoch:1795588155",
+    "protocol_version": 1,
+    "evidence": {
+      "harness": "gap-207/seed_cpu_ledger::primitive",
+      "output_seeded": false,
+      "repeat_calls": 16
+    }
   }
 ]

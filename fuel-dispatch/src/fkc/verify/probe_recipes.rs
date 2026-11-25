@@ -1149,6 +1149,31 @@ pub(crate) fn build_primitive_probe(op: OpKind, dtypes: &[DType], seed: u64) -> 
             })
         }
 
+        // RowScaledMatMul (row 172 item 1): `(a @ b) * row_scale`, scale `[m, 1]`.
+        OpKind::RowScaledMatMul => {
+            if dtypes.len() != 4 {
+                return None;
+            }
+            let (m, n, k) = (2usize, 2usize, 2usize);
+            let lhs = ht(dt, vec![m * k], &fill_deterministic(m * k, seed))?;
+            let rhs = ht(dt, vec![k * n], &fill_deterministic(k * n, seed ^ 0x1234))?;
+            let scale = ht(dt, vec![m], &fill_deterministic(m, seed ^ 0x5678))?;
+            Some(Probe {
+                inputs: vec![lhs, rhs, scale],
+                params: OpParams::Matmul {
+                    lhs_batch_dims: vec![],
+                    rhs_batch_dims: vec![],
+                    m,
+                    n,
+                    k,
+                    m_compute: MatmulM::All,
+                },
+                out_dtype: dt,
+                out_shape: vec![m * n],
+                out_seed: None,
+            })
+        }
+
         // Targets are a literal `[1, 3]` rather than a generated fill: they are
         // INDICES into the vocab, and a fill that produced 4 or -7 would be an
         // out-of-range target rather than a harder test. The LOGITS carry the

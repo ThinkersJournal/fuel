@@ -98,6 +98,10 @@ pub struct TelemetrySink {
     /// Aggregated dispatch observations: cell → (summed count, latest
     /// candidates).
     dispatches: HashMap<DispatchKey, DispatchAgg>,
+    /// Fuel-derived `sk8` tokens of contraction cells (union row 172): token →
+    /// count. A SEPARATE ledger from `dispatches`, never flushed to the wire:
+    /// the wire's `structure_key` stays Baracuda's opaque token.
+    derived_contraction_keys: HashMap<String, u64>,
 }
 
 impl TelemetrySink {
@@ -142,6 +146,22 @@ impl TelemetrySink {
         if !rec.candidates.is_empty() {
             agg.candidates = rec.candidates;
         }
+    }
+
+    /// Record one Fuel-derived contraction `sk8` token (never fails).
+    pub fn record_derived_contraction_key(&mut self, token: String) {
+        *self.derived_contraction_keys.entry(token).or_insert(0) += 1;
+    }
+
+    /// The Fuel-derived contraction tokens and their counts, sorted by token.
+    pub fn derived_contraction_keys(&self) -> Vec<(String, u64)> {
+        let mut v: Vec<(String, u64)> = self
+            .derived_contraction_keys
+            .iter()
+            .map(|(k, c)| (k.clone(), *c))
+            .collect();
+        v.sort();
+        v
     }
 
     /// Number of distinct aggregated dispatch cells (observability / test).

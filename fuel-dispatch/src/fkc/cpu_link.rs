@@ -927,6 +927,27 @@ pub static CPU_MATMUL_ENTRY_POINTS: &[(&str, KernelRef)] = &[
     ep!("fused_linear", "f64", fused_linear_f64_cpu_wrapper),
     ep!("fused_linear", "bf16", fused_linear_bf16_cpu_wrapper),
     ep!("fused_linear", "f16", fused_linear_f16_cpu_wrapper),
+    // Matmul with a per-row scale epilogue (row 172 item 1) - key [T, T, T, T].
+    ep!(
+        "row_scaled_matmul",
+        "f32",
+        row_scaled_matmul_f32_cpu_wrapper
+    ),
+    ep!(
+        "row_scaled_matmul",
+        "f64",
+        row_scaled_matmul_f64_cpu_wrapper
+    ),
+    ep!(
+        "row_scaled_matmul",
+        "bf16",
+        row_scaled_matmul_bf16_cpu_wrapper
+    ),
+    ep!(
+        "row_scaled_matmul",
+        "f16",
+        row_scaled_matmul_f16_cpu_wrapper
+    ),
 ];
 
 /// The CPU **attention** family's `symbol → production wrapper` map — the
@@ -1492,6 +1513,23 @@ pub static CPU_FUSED_LINEAR_QUANT_ENTRY_POINTS: &[(&str, KernelRef)] = &[
     fep!("fused_linear_cpu_f64", fused_linear_f64_cpu_wrapper),
     fep!("fused_linear_cpu_bf16", fused_linear_bf16_cpu_wrapper),
     fep!("fused_linear_cpu_f16", fused_linear_f16_cpu_wrapper),
+    // ROW_SCALED_MATMUL (row 172 item 1) - key [T, T, T, T]; fan over {F32, F64, BF16, F16}.
+    fep!(
+        "row_scaled_matmul_cpu_f32",
+        row_scaled_matmul_f32_cpu_wrapper
+    ),
+    fep!(
+        "row_scaled_matmul_cpu_f64",
+        row_scaled_matmul_f64_cpu_wrapper
+    ),
+    fep!(
+        "row_scaled_matmul_cpu_bf16",
+        row_scaled_matmul_bf16_cpu_wrapper
+    ),
+    fep!(
+        "row_scaled_matmul_cpu_f16",
+        row_scaled_matmul_f16_cpu_wrapper
+    ),
     // QMATMUL — key [F32, U32, F32]; NON-fanning, BASE symbol resolved AS-IS.
     fep!("qmatmul_cpu", qmatmul_f32_cpu_wrapper),
     // INPLACE_AFFINE — key [T, T]; multi-dtype fan. Symbol `inplace_affine_cpu_<dt>`

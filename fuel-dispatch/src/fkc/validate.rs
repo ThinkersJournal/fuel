@@ -1228,6 +1228,7 @@ variant_table!(
     SsdChunkScan => None,
     Nf4Matmul => None,
     AwqMatmul => None,
+    RowScaledMatMul => None,
     FlashAttnBackward => None,
     SelectiveScan => None,
     CausalConv1d => None,

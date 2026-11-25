@@ -78,6 +78,8 @@ enum Family {
     ReduceMaxToBwd,
     PowiBwd,
     FusedLinear,
+    /// RowScaledMatMul (row 172 item 1): 3 inputs (a, b, row_scale `[m]`), `OpParams::Matmul`.
+    RowScaledMatMul,
     QMatMul,
     InplaceAffine,
     Fsce,
@@ -162,6 +164,11 @@ const TARGETS: &[(FusedOpId, Family, &str)] = &[
     ),
     (FusedOps::POWI_BACKWARD, Family::PowiBwd, "powi_backward"),
     (FusedOps::FUSED_LINEAR, Family::FusedLinear, "fused_linear"),
+    (
+        FusedOps::ROW_SCALED_MATMUL,
+        Family::RowScaledMatMul,
+        "row_scaled_matmul",
+    ),
     (FusedOps::QMATMUL, Family::QMatMul, "qmatmul"),
     (
         FusedOps::INPLACE_AFFINE,
@@ -387,6 +394,30 @@ fn build_probe(family: Family, dtypes: &[DType], seed: u64) -> Option<Probe> {
             let bias = ht(dt, vec![n], &fill_deterministic(n, seed ^ 0x5678))?;
             Some(Probe {
                 inputs: vec![lhs, rhs, bias],
+                params: OpParams::Matmul {
+                    lhs_batch_dims: vec![],
+                    rhs_batch_dims: vec![],
+                    m,
+                    n,
+                    k,
+                    m_compute: MatmulM::All,
+                },
+                out_dtype: dt,
+                out_shape: vec![m * n],
+                out_seed: None,
+            })
+        }
+        Family::RowScaledMatMul => {
+            if dtypes.len() != 4 {
+                return None;
+            }
+            let dt = dtypes[0];
+            let (m, n, k) = (2usize, 2usize, 2usize);
+            let lhs = ht(dt, vec![m * k], &fill_deterministic(m * k, seed))?;
+            let rhs = ht(dt, vec![k * n], &fill_deterministic(k * n, seed ^ 0x1234))?;
+            let scale = ht(dt, vec![m], &fill_deterministic(m, seed ^ 0x5678))?;
+            Some(Probe {
+                inputs: vec![lhs, rhs, scale],
                 params: OpParams::Matmul {
                     lhs_batch_dims: vec![],
                     rhs_batch_dims: vec![],
@@ -2017,7 +2048,7 @@ mod tests {
     /// ## Result, measured 2026-08-26
     ///
     /// ```text
-    /// contract-derived CPU entries : 625
+    /// contract-derived CPU entries : 629
     /// production CPU entries       : 659
     /// production-only (orphans)    : 36
     /// contract-only (missing)      : 0
@@ -2029,7 +2060,7 @@ mod tests {
     /// QMatMul 1, Tril 6, Triu 6.
     ///
     /// **So `fill_unset_cpu_precision` is NOT redundant, and its scope is now
-    /// exactly bounded: it supplies NOTHING for the 625 entries a contract
+    /// exactly bounded: it supplies NOTHING for the 629 entries a contract
     /// covers (0 disagreements), and it fabricates a
     /// `PRIMITIVE_DETERMINISTIC_CPU` claim for 36 registrations that have NO
     /// CONTRACT AT ALL.** Retiring it is therefore a contract-authoring
@@ -2264,7 +2295,9 @@ mod tests {
         // entries' worth of sections, (b) conv's 20, (c) the four small non-conv
         // surfaces' 20, (d) FlashAttn's 8, (e) the three backwards' 24 and
         // (f) PagedAttn's 8, `nothing` must be ZERO and the backed count the
-        // full 625.
+        // full 629.
+        // (625 -> 629 is row 172 item 1: the 4 RowScaledMatMul primitive CPU
+        // sections, +4 PREDICTED before the run.)
         //
         // ⚠️ THIS PIN IS NOW A RATCHET RATHER THAN A PROGRESS MARKER, and it
         // still discriminates: a new registration lands in `nothing` until a
@@ -2302,8 +2335,8 @@ mod tests {
         );
         assert_eq!(
             total - nothing,
-            625,
-            "expected all 625 contract-derived entries backed WITHOUT the fill. This table              is built by `register_into`, which does not apply              `fill_unset_cpu_precision` — so this count IS the post-fill-retirement              number for these entries, and a drop means the backing did not actually              move from the fill to contract + record."
+            629,
+            "expected all 629 contract-derived entries backed WITHOUT the fill. This table              is built by `register_into`, which does not apply              `fill_unset_cpu_precision` — so this count IS the post-fill-retirement              number for these entries, and a drop means the backing did not actually              move from the fill to contract + record."
         );
         assert_eq!(
             neither, nothing,
