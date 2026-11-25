@@ -2517,3 +2517,62 @@ fn commands_concurrent_acquisition() {
 
     commands.wait_until_completed().unwrap();
 }
+
+/// The argmax/argmin NaN SPEC VECTORS (torch convention, the CPU rule): a NaN WINS for both, the
+/// FIRST NaN's index is returned, ties take the first index, `-0.0 == +0.0`. Shared with the CPU
+/// test mods `arg_nan_*` and the Vulkan test `vulkan_arg_nan_vectors_live`. Runs on whatever Metal
+/// device the host has (a hosted macOS runner exposes an "Apple Paravirtual device").
+#[test]
+fn argmax_argmin_nan_spec_vectors() {
+    const NAN: f64 = f64::NAN;
+    let mut long: Vec<f64> = (0..1024).map(|i| (i % 7) as f64).collect();
+    long[700] = NAN;
+    let long_ties: Vec<f64> = (0..1024).map(|i| (i % 7) as f64).collect();
+    let vectors: Vec<(&str, Vec<f64>, u32, u32)> = vec![
+        ("nan-mid", vec![1.0, NAN, 0.0, 5.0], 1, 1),
+        ("nan-last", vec![1.0, 5.0, NAN], 2, 2),
+        ("nan-first", vec![NAN, 1.0, 5.0], 0, 0),
+        ("two-nans", vec![3.0, NAN, NAN, 1.0], 1, 1),
+        ("all-nan", vec![NAN, NAN, NAN], 0, 0),
+        ("ties", vec![5.0, 5.0, 2.0, 2.0], 0, 2),
+        ("zeros-a", vec![-0.0, 0.0, 0.0], 0, 0),
+        ("zeros-b", vec![0.0, -0.0, -0.0], 0, 0),
+        ("long-nan-700", long, 700, 700),
+        ("long-ties", long_ties, 6, 0),
+    ];
+    let mut diverging: Vec<String> = Vec::new();
+    for (dt, conv) in [("f32", 0u8), ("f16", 1u8), ("bf16", 2u8)] {
+        for (vname, row, want_max, want_min) in &vectors {
+            for (op, want) in [("argmax", *want_max), ("argmin", *want_min)] {
+                let name: &'static str = Box::leak(format!("fast_{op}_{dt}").into_boxed_str());
+                let got: u32 = match conv {
+                    0 => {
+                        let v: Vec<f32> = row.iter().map(|&x| x as f32).collect();
+                        run_reduce::<f32, u32>(&v, v.len(), 1, name)[0]
+                    }
+                    1 => {
+                        let v: Vec<f16> = row.iter().map(|&x| f16::from_f64(x)).collect();
+                        run_reduce::<f16, u32>(&v, v.len(), 1, name)[0]
+                    }
+                    _ => {
+                        let v: Vec<bf16> = row.iter().map(|&x| bf16::from_f64(x)).collect();
+                        run_reduce::<bf16, u32>(&v, v.len(), 1, name)[0]
+                    }
+                };
+                let ok = got == want;
+                println!(
+                    "METALARG {op}/{dt}/{vname}: got {got} want {want} {}",
+                    if ok { "OK" } else { "DIVERGES" }
+                );
+                if !ok {
+                    diverging.push(format!("{op}/{dt}/{vname}: got {got} want {want}"));
+                }
+            }
+        }
+    }
+    assert!(
+        diverging.is_empty(),
+        "{} Metal arg-reduce case(s) diverge from the NaN spec: {diverging:?}",
+        diverging.len()
+    );
+}
