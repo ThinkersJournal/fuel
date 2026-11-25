@@ -12120,6 +12120,152 @@ mod tests {
         assert_eq!(out.as_slice::<u32>().unwrap(), &[0u32]);
     }
 
+    // ---- NaN convention (CireSnave/cluster-PM ruling, torch convention) ----
+    // A NaN WINS: argmax and argmin both return the FIRST NaN's index. With no NaN, ties
+    // return the first index and -0.0 == +0.0. The old rule (`new > best`, init = element 0)
+    // ignored a NaN unless it sat at index 0, so the answer depended on NaN's position.
+
+    /// Closed-form reference over f64 rows: first NaN, else first index of the extremum.
+    fn arg_reference(row: &[f64], max: bool) -> u32 {
+        if let Some(i) = row.iter().position(|v| v.is_nan()) {
+            return i as u32;
+        }
+        let mut best = 0usize;
+        for (i, &v) in row.iter().enumerate() {
+            if (max && v > row[best]) || (!max && v < row[best]) {
+                best = i;
+            }
+        }
+        best as u32
+    }
+
+    macro_rules! arg_nan_tests {
+        ($modname:ident, $T:ty, $max:ident, $min:ident, $conv:expr) => {
+            mod $modname {
+                use super::*;
+                fn run(
+                    f: fn(&CpuStorageBytes, &mut CpuStorageBytes, &[usize], usize) -> Result<()>,
+                    x: &[f64],
+                    shape: &[usize],
+                    dim: usize,
+                ) -> Vec<u32> {
+                    let conv: fn(f64) -> $T = $conv;
+                    let v: Vec<$T> = x.iter().map(|&a| conv(a)).collect();
+                    let input = CpuStorageBytes::from_slice(&v);
+                    let outn: usize = shape.iter().product::<usize>() / shape[dim];
+                    let mut out = CpuStorageBytes::from_zero_bytes(outn * 4);
+                    f(&input, &mut out, shape, dim).expect("arg kernel");
+                    out.as_slice::<u32>().unwrap().to_vec()
+                }
+                fn both(x: &[f64]) -> (u32, u32) {
+                    let n = x.len();
+                    (run($max, x, &[n], 0)[0], run($min, x, &[n], 0)[0])
+                }
+                const NAN: f64 = f64::NAN;
+                #[test]
+                fn the_spec_vectors() {
+                    assert_eq!(both(&[1.0, NAN, 0.0, 5.0]), (1, 1));
+                    assert_eq!(both(&[1.0, 5.0, NAN]), (2, 2));
+                    assert_eq!(both(&[NAN, 1.0, 5.0]), (0, 0));
+                    assert_eq!(both(&[3.0, NAN, NAN, 1.0]), (1, 1));
+                    // no NaN: ties are the first index
+                    assert_eq!(both(&[5.0, 5.0, 2.0, 2.0]), (0, 2));
+                    // -0.0 == +0.0: the first index of the tie
+                    assert_eq!(both(&[-0.0, 0.0, 0.0]), (0, 0));
+                    assert_eq!(both(&[0.0, -0.0, -0.0]), (0, 0));
+                    // an all-NaN row is index 0
+                    assert_eq!(both(&[NAN, NAN, NAN]), (0, 0));
+                }
+                #[test]
+                fn random_rows_with_nan_and_ties_match_the_closed_form() {
+                    let mut s: u64 = 0x2545_F491_4F6C_DD1D;
+                    let mut next = move || {
+                        s ^= s << 13;
+                        s ^= s >> 7;
+                        s ^= s << 17;
+                        s
+                    };
+                    let (rows, n) = (400usize, 37usize);
+                    let mut x = Vec::with_capacity(rows * n);
+                    for r in 0..rows {
+                        // every 3rd row has no NaN so the tie path is exercised too
+                        for _ in 0..n {
+                            let q = next();
+                            x.push(if r % 3 != 0 && q % 9 == 0 {
+                                NAN
+                            } else {
+                                ((q >> 8) % 5) as f64 - 2.0
+                            });
+                        }
+                    }
+                    let got_max = run($max, &x, &[rows, n], 1);
+                    let got_min = run($min, &x, &[rows, n], 1);
+                    let mut with_nan = 0;
+                    for r in 0..rows {
+                        let row = &x[r * n..(r + 1) * n];
+                        with_nan += row.iter().any(|v| v.is_nan()) as usize;
+                        assert_eq!(got_max[r], arg_reference(row, true), "max row {r}: {row:?}");
+                        assert_eq!(
+                            got_min[r],
+                            arg_reference(row, false),
+                            "min row {r}: {row:?}"
+                        );
+                    }
+                    assert!(
+                        with_nan > rows / 4,
+                        "the fixture must contain NaN rows: {with_nan}"
+                    );
+                }
+                #[test]
+                fn the_reduction_axis_variant_agrees() {
+                    // [3, 4] reduced over dim 0: columns are rows of the 1-D case.
+                    let x = [
+                        1.0, NAN, 0.0, 5.0, //
+                        2.0, 7.0, NAN, 5.0, //
+                        2.0, 7.0, 3.0, 1.0,
+                    ];
+                    let max = run($max, &x, &[3, 4], 0);
+                    let min = run($min, &x, &[3, 4], 0);
+                    let col = |c: usize| [x[c], x[4 + c], x[8 + c]];
+                    for c in 0..4 {
+                        assert_eq!(max[c], arg_reference(&col(c), true), "col {c}");
+                        assert_eq!(min[c], arg_reference(&col(c), false), "col {c}");
+                    }
+                    assert_eq!((max[1], max[2]), (0, 1));
+                }
+            }
+        };
+    }
+    arg_nan_tests!(arg_nan_f32, f32, argmax_dim_f32, argmin_dim_f32, |a| a
+        as f32);
+    arg_nan_tests!(arg_nan_f64, f64, argmax_dim_f64, argmin_dim_f64, |a| a);
+    arg_nan_tests!(
+        arg_nan_bf16,
+        half::bf16,
+        argmax_dim_bf16,
+        argmin_dim_bf16,
+        |a| { half::bf16::from_f64(a) }
+    );
+    arg_nan_tests!(
+        arg_nan_f16,
+        half::f16,
+        argmax_dim_f16,
+        argmin_dim_f16,
+        |a| { half::f16::from_f64(a) }
+    );
+
+    /// f64 must compare in f64: two values 1e-12 apart are not a tie.
+    #[test]
+    fn argmax_dim_f64_compares_at_f64_precision() {
+        let x = [1.0_f64, 1.0 + 1e-12, 1.0 - 1e-12];
+        let input = CpuStorageBytes::from_slice(&x);
+        let mut out = CpuStorageBytes::from_zero_bytes(4);
+        argmax_dim_f64(&input, &mut out, &[3], 0).unwrap();
+        assert_eq!(out.as_slice::<u32>().unwrap(), &[1u32]);
+        argmin_dim_f64(&input, &mut out, &[3], 0).unwrap();
+        assert_eq!(out.as_slice::<u32>().unwrap(), &[2u32]);
+    }
+
     #[test]
     fn argmax_dim_f32_rejects_zero_dim() {
         let input = CpuStorageBytes::from_zero_bytes(0);
