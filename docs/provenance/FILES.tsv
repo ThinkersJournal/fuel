@@ -76,7 +76,7 @@ docs/design-notes/2026-11-23-gap398-teardown-evidence.md	own		no lineage; 0 of 6
 docs/design-notes/2026-11-23-row124-nine-loader-audit.md	own		no lineage; 0 of 81 lines verbatim in candle (0%)
 docs/design-notes/2026-11-25-row172-item1-row-scaled-matmul.md	own		no lineage; 0 of 46 lines verbatim in candle (0%)
 docs/design-notes/2026-11-25-row172-item2-matmul-topk-epilogue.md	own		no lineage; 0 of 59 lines verbatim in candle (0%)
-docs/design-notes/2026-11-25-row172-item3-conv-epilogue.md	own		no lineage; 0 of 49 lines verbatim in candle (0%)
+docs/design-notes/2026-11-25-row172-item3-conv-epilogue.md	own		no lineage; 0 of 78 lines verbatim in candle (0%)
 docs/design/facade-inversion-recipe.md	own		no lineage; 0 of 216 lines verbatim in candle (0%)
 docs/design/gaps-status-conversion-table.md	own		no lineage; 0 of 80 lines verbatim in candle (0%)
 docs/design/gaps-status-vocabulary.md	own		no lineage; 0 of 213 lines verbatim in candle (0%)
