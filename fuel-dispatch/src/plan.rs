@@ -1058,6 +1058,21 @@ fn emit_plan_telemetry(
         operands.push(FdxOperandDesc::from_layout(&graph.layout(id), node.dtype));
         let op_class = format!("{op_kind:?}");
 
+        // Union row 172: `Op::MatMul` declares its M/N/K/batch roles, so Fuel's
+        // own `sk8` derivation runs here, the first production caller of
+        // `derive_structure_key_token`. Recorded in a separate ledger; the
+        // wire `structure_key` below stays Baracuda's token. A node that is not
+        // a plain matmul, a non-CUDA arch, or a decline records nothing.
+        if matches!(node.op, fuel_graph::Op::MatMul)
+            && let [a, b, out] = operands.as_slice()
+            && let Some(target) = arch.strip_prefix("sm_").map(|cc| format!("cuda:sm{cc}"))
+            && let Ok(Some(token)) =
+                crate::telemetry::contraction_facts::matmul_structure_key(a, b, out, &target)
+            && let Ok(mut sink) = hooks.sink.lock()
+        {
+            sink.record_derived_contraction_key(token);
+        }
+
         // The structure key for the LIVE operands (Fuel CALLS the provider,
         // never derives). `None` when the callable is unlinked (the v1
         // NullProvider) — the record then omits the key, and no miss forms.
@@ -4721,6 +4736,74 @@ mod tests {
                 hardware_sku: "test-cpu".into(),
                 driver_version: "n/a".into(),
             }
+        }
+
+        /// BORN-RED (union row 172): before this wire-in no production path
+        /// built a contraction fact, so planning a `MatMul` left the sink's
+        /// derived-contraction ledger empty. `Op::MatMul` now declares its
+        /// roles and Fuel's own `sk8` derivation runs at the telemetry call.
+        #[test]
+        fn a_matmul_node_reaches_the_contraction_derivation() {
+            let mut table = KernelBindingTable::new();
+            table.register_full_with_source_generic(
+                OpKind::MatMul,
+                &[DType::F32, DType::F32, DType::F32],
+                BackendId::Cpu,
+                noop_kernel,
+                KernelCaps::strided_input(),
+                PrecisionGuarantee::PRIMITIVE_DETERMINISTIC_CPU,
+                unknown_cost,
+                "test-matmul",
+                false,
+                0,
+                None,
+            );
+            let mut g = Graph::new();
+            let mut konst = |dims: &[usize]| {
+                g.push(Node {
+                    op: Op::Const,
+                    inputs: vec![],
+                    shape: Shape::from_dims(dims),
+                    dtype: DType::F32,
+                })
+            };
+            let (lhs, rhs) = (konst(&[8, 64]), konst(&[64, 16]));
+            let mm = g.push(Node {
+                op: Op::MatMul,
+                inputs: vec![lhs, rhs],
+                shape: Shape::from_dims(&[8, 16]),
+                dtype: DType::F32,
+            });
+            let order = topo_order(&g, mm);
+            let sink = Mutex::new(TelemetrySink::new());
+            let provider = StubProvider;
+            let config = TelemetryConfig {
+                mode: TelemetryMode::Coarse,
+                out_path: None,
+            };
+            let hw = HwStamp {
+                compute_capability: Some((8, 9)),
+                hardware_sku: "test-cuda".into(),
+                driver_version: "n/a".into(),
+            };
+            let hooks = TelemetryHooks {
+                config: &config,
+                sink: &sink,
+                provider: &provider,
+                hw,
+            };
+            let opts = PlanOptions::new()
+                .without_cost_population()
+                .with_pinned_device(DeviceLocation::Cpu)
+                .with_telemetry(&hooks);
+            let _plan = compile_plan(&g, &order, &table, &opts).expect("compile");
+            let keys = sink
+                .into_inner()
+                .expect("sink lock")
+                .derived_contraction_keys();
+            assert_eq!(keys.len(), 1, "{keys:?}");
+            assert!(keys[0].0.starts_with("sk8|ctr|f32|cuda:sm89|"), "{keys:?}");
+            assert_eq!(keys[0].1, 1);
         }
 
         /// A table with ONLY a generic-fallback Add binding at

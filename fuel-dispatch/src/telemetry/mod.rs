@@ -49,6 +49,7 @@
 #[cfg(feature = "baracuda-types")]
 pub mod baracuda_provider;
 pub mod config;
+pub mod contraction_facts;
 pub mod hooks;
 pub mod impl_id;
 #[cfg(feature = "telemetry")]
