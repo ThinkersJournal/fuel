@@ -22,7 +22,7 @@ on:
       - "fuel-metal-kernels/src/metal_src/**"
       - ".github/workflows/metal-shader-check.yml"
   push:
-    branches: [main]
+    branches: [main, ci-metal-shader-check] # TEMPORARY: the ci-metal-shader-check entry is removed before the PR opens
     paths:
       - "fuel-metal-kernels/src/metal_src/**"
       - ".github/workflows/metal-shader-check.yml"
