@@ -2615,6 +2615,191 @@ mod tests {
         }
     }
 
+    // ---- FlashAttn on masked and NaN rows (ruling 2026-11-25; every path) ----
+    // (1) a FULLY MASKED row (no key admitted by causal/window) is ZEROS; (2) a NaN in Q, or in
+    // K/V at a position the query ATTENDS, makes that output NaN (never swallowed); (3) a NaN in a
+    // V row whose key is MASKED OUT for a query is ignored by the FUSED kernel (documented flash
+    // convention; the dense-matmul decomposition reproduces torch's 0*NaN = NaN and the contract
+    // names that difference); (4) normal rows are unaffected in a mixed batch.
+
+    struct AttnCase {
+        name: &'static str,
+        q: Vec<f32>,
+        k: Vec<f32>,
+        v: Vec<f32>,
+        sq: usize,
+        sk: usize,
+        causal: bool,
+        wl: Option<usize>,
+    }
+
+    fn attn_cases() -> Vec<AttnCase> {
+        let nan = f32::NAN;
+        let bq = vec![0.5f32, -0.25, 0.1, 0.9, -0.4, 0.3];
+        let bk = vec![0.3f32, 0.2, -0.1, 0.6];
+        let bv = vec![1.0f32, 2.0, 3.0, 4.0];
+        let c = |name, q: Vec<f32>, k: Vec<f32>, v: Vec<f32>, sq, sk, causal, wl| AttnCase {
+            name,
+            q,
+            k,
+            v,
+            sq,
+            sk,
+            causal,
+            wl,
+        };
+        vec![
+            c(
+                "control",
+                bq[..4].to_vec(),
+                bk.clone(),
+                bv.clone(),
+                2,
+                2,
+                false,
+                None,
+            ),
+            // sq=3 > sk=2, causal, window_left=0: row 2 attends nothing.
+            c(
+                "fully-masked-row-mixed",
+                bq.clone(),
+                bk.clone(),
+                bv.clone(),
+                3,
+                2,
+                true,
+                Some(0),
+            ),
+            c(
+                "nan-q-row1",
+                vec![0.5, -0.25, nan, 0.9],
+                bk.clone(),
+                bv.clone(),
+                2,
+                2,
+                false,
+                None,
+            ),
+            c(
+                "nan-k-row1",
+                bq[..4].to_vec(),
+                vec![0.3, 0.2, nan, 0.6],
+                bv.clone(),
+                2,
+                2,
+                false,
+                None,
+            ),
+            c(
+                "nan-v-row1",
+                bq[..4].to_vec(),
+                bk.clone(),
+                vec![1.0, 2.0, nan, 4.0],
+                2,
+                2,
+                false,
+                None,
+            ),
+            c(
+                "nan-v-masked-key",
+                bq[..4].to_vec(),
+                bk.clone(),
+                vec![1.0, 2.0, nan, 4.0],
+                2,
+                2,
+                true,
+                None,
+            ),
+        ]
+    }
+
+    /// Expected output for each case: `None` = NaN, `Some(x)` = that value within 1e-4.
+    /// `fused` selects the masked-V-NaN convention (fused ignores it, the decomposition does not).
+    fn attn_expected(name: &str, fused: bool) -> Vec<Option<f32>> {
+        let n = None;
+        let s = |x: f32| Some(x);
+        match name {
+            "control" => vec![s(1.8943309), s(2.894331), s(2.1126559), s(3.1126556)],
+            "fully-masked-row-mixed" => vec![s(1.0), s(2.0), s(3.0), s(4.0), s(0.0), s(0.0)],
+            "nan-q-row1" => vec![s(1.8943309), s(2.894331), n, n],
+            "nan-k-row1" => vec![n, n, n, n],
+            "nan-v-row1" => vec![n, s(2.894331), n, s(3.1126556)],
+            "nan-v-masked-key" => {
+                if fused {
+                    vec![s(1.0), s(2.0), n, s(3.1126556)]
+                } else {
+                    vec![n, s(2.0), n, s(3.1126556)]
+                }
+            }
+            other => panic!("no expectation for {other}"),
+        }
+    }
+
+    fn attn_check(name: &str, path: &str, got: &[f32], want: &[Option<f32>]) -> Option<String> {
+        assert_eq!(got.len(), want.len(), "{name}/{path}");
+        let bad: Vec<String> = got
+            .iter()
+            .zip(want)
+            .enumerate()
+            .filter(|(_, (g, w))| match w {
+                None => !g.is_nan(),
+                Some(x) => g.is_nan() || (**g - *x).abs() > 1e-4,
+            })
+            .map(|(i, (g, w))| format!("[{i}] got {g} want {w:?}"))
+            .collect();
+        (!bad.is_empty()).then(|| format!("{name}/{path}: {}", bad.join("; ")))
+    }
+
+    fn attn_tensor(c: &AttnCase) -> Tensor {
+        let dev = Device::cpu();
+        let q = Tensor::from_f32(c.q.clone(), Shape::from_dims(&[1, 1, c.sq, 2]), &dev).unwrap();
+        let k = q
+            .const_f32_like(c.k.clone(), Shape::from_dims(&[1, 1, c.sk, 2]))
+            .unwrap();
+        let v = q
+            .const_f32_like(c.v.clone(), Shape::from_dims(&[1, 1, c.sk, 2]))
+            .unwrap();
+        q.flash_attn(&k, &v, None, 0.7071, c.causal, c.wl, None, None)
+            .unwrap()
+    }
+
+    #[test]
+    fn flash_attn_fused_cpu_follows_the_masked_and_nan_row_contract() {
+        let mut bad = Vec::new();
+        for c in attn_cases() {
+            let got = attn_tensor(&c).realize_f32();
+            bad.extend(attn_check(
+                c.name,
+                "fused",
+                &got,
+                &attn_expected(c.name, true),
+            ));
+        }
+        assert!(bad.is_empty(), "{bad:#?}");
+    }
+
+    #[test]
+    fn flash_attn_decomposed_cpu_follows_the_masked_and_nan_row_contract() {
+        let mut bad = Vec::new();
+        for c in attn_cases() {
+            let attn = attn_tensor(&c);
+            let graph = attn.inner.graph().clone();
+            let id = attn.inner.id();
+            let roots =
+                fuel_graph::opt::RuleRegistry::lowering_only().optimize_to_fixpoint(&graph, &[id]);
+            let got =
+                crate::pipelined_bridge::realize_one_as::<f32>(&graph, roots[0], &Device::cpu())
+                    .expect("realize decomposed FlashAttn on CPU");
+            bad.extend(attn_check(
+                c.name,
+                "decomposed",
+                &got,
+                &attn_expected(c.name, false),
+            ));
+        }
+        assert!(bad.is_empty(), "{bad:#?}");
+    }
+
     #[test]
     fn flash_attn_decompose_vanilla() {
         flash_decompose_vs_reference(1, 1, false, None, false);
