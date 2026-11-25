@@ -15,7 +15,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 870 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 4% of 872 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1303 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 5% of 294 lines verbatim
