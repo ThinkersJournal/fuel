@@ -558,6 +558,11 @@ pub enum OpKind {
     /// `[..., M, N]` matches the activations' dtype. Geometry, `group_size` and
     /// `split_k_iters` flow through `OpParams::AwqMatmul`.
     AwqMatmul,
+    /// Matmul with a per-row scale epilogue (ROADMAP row 172 item 1). Inputs
+    /// `[a, b, row_scale]`, `row_scale` shaped `[..., M, 1]`; output
+    /// `[..., M, N] = (a @ b) * row_scale`. Reuses `OpParams::Matmul` for shape.
+    /// See `FusedOps::ROW_SCALED_MATMUL`.
+    RowScaledMatMul,
     /// A **runtime-registered** (Tier-2, JIT-synthesized / import-time) fused
     /// op. Carries no static kernel family: the concrete op is named by the
     /// runtime `FusedOpId` on the graph node, and its kernel resolves from the
@@ -693,6 +698,7 @@ impl OpKind {
             OpKind::SsdChunkScan => "ssd_chunk_scan",
             OpKind::Nf4Matmul => "nf4_matmul",
             OpKind::AwqMatmul => "awq_matmul",
+            OpKind::RowScaledMatMul => "row_scaled_matmul",
             OpKind::RuntimeFused => "runtime_fused",
             OpKind::NonZeroIndices => "nonzero_indices",
         }

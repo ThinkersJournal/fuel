@@ -4369,6 +4369,25 @@ cpu_fused_linear_wrapper!(
     fuel_cpu_backend::byte_kernels::fused_linear_f16
 );
 
+// RowScaledMatMul (row 172 item 1): same `(a, b, third, out)` + `OpParams::Matmul`
+// shape as FusedLinear; the third input is the `[..., M, 1]` row scale.
+cpu_fused_linear_wrapper!(
+    row_scaled_matmul_f32_cpu_wrapper,
+    fuel_cpu_backend::byte_kernels::row_scaled_matmul_f32
+);
+cpu_fused_linear_wrapper!(
+    row_scaled_matmul_f64_cpu_wrapper,
+    fuel_cpu_backend::byte_kernels::row_scaled_matmul_f64
+);
+cpu_fused_linear_wrapper!(
+    row_scaled_matmul_bf16_cpu_wrapper,
+    fuel_cpu_backend::byte_kernels::row_scaled_matmul_bf16
+);
+cpu_fused_linear_wrapper!(
+    row_scaled_matmul_f16_cpu_wrapper,
+    fuel_cpu_backend::byte_kernels::row_scaled_matmul_f16
+);
+
 /// Per-dtype FusedSoftmaxCrossEntropy dispatch wrapper. Two inputs
 /// (logits T, targets I64) → one F32 output (the FSCE declared dtype,
 /// regardless of logits dtype — losses accumulate in f64, narrow to

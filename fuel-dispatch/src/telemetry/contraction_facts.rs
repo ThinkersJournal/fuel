@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The contraction facts `Op::MatMul` declares, built from its live operands
 //! (union row 172, first slice).
 //!

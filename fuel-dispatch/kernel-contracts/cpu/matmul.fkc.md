@@ -928,3 +928,296 @@ precision:
 
 determinism: same_hardware_bitwise
 ```
+
+
+---
+
+## row_scaled_matmul_f32  (matmul * per-row scale, f32)
+
+Matmul with a per-row scale epilogue `out[..b.., i, j] = (Σ_k a[..b.., i, k] * b[..b.., k, j]) * row_scale[..b.., i]` over f32 (ROADMAP row 172 item 1; `fuel_cpu_backend::byte_kernels::row_scaled_matmul_f32`). Three inputs: `a`, `b`, and `row_scale` shaped `[..., M, 1]` (the lhs batch prefix ++ `[M, 1]`). Reuses `OpParams::Matmul` for shape. The dot product is accumulated, stored in the element dtype, then scaled (the decompose's rounding order, so the fused node and its lowering agree). Same GQA-divisible batch contract and contiguous-only layout as `matmul_f32`; planner contiguizes awkward operands first.
+
+```fkc
+kernel: row_scaled_matmul_f32
+op_kind: RowScaledMatMul
+blurb: "Matmul with a per-row scale epilogue (f32); row_scale [..., M, 1]; contiguous; GQA-divisible batch."
+backend: Cpu
+kernel_source: "portable-cpu"
+entry_point: "fuel_cpu_backend::byte_kernels::row_scaled_matmul_f32"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: a
+      dtypes: [F32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "dim[-1]=k"
+    - name: b
+      dtypes: [F32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "dim[-2]=k"
+    - name: row_scale
+      dtypes: [F32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any                           # [..., M, 1]: one scale per output row
+      shape_constraint: "dim[-1]=1; dim[-2]=m; leading dims == lhs_batch_dims"
+  op_params:
+    variant: Matmul                       # RowScaledMatMul reuses OpParams::Matmul (dispatch.rs:139-143)
+    fields:
+      lhs_batch_dims: { kind: "Vec<usize>" }
+      rhs_batch_dims: { kind: "Vec<usize>", constraint: "per-axis == lhs_batch_dims OR GQA-divisible (lhs > rhs && lhs % rhs == 0)" }
+      m: { kind: usize, constraint: "== a.dim[-2]" }
+      n: { kind: usize, constraint: "== b.dim[-1]" }
+      k: { kind: usize, constraint: "== a.dim[-1] == b.dim[-2]" }
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(a)
+      shape_rule: matmul(a, b)            # a_batch ++ [m, n]
+      layout_guarantee: contiguous
+      aliasing: none                      # output zeroed, accumulated, then scaled in place; full overwrite, not RMW of prior out
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  fast_paths:
+    - { when: "all_inputs_contiguous", class: gemm_like }
+  in_place: false
+  alignment_bytes: 64
+  access_granularity_bits: 32
+
+cost:
+  provenance: judge_measured
+  class: gemm_like
+  flops: "2 * batch * m * n * k + batch * m * n"   # GEMM flops + the row scale (one mul per output element)
+
+precision:
+  bit_stable_on_same_hardware: true
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Dot product accumulated k-ascending from zero (f32 accumulator for bf16/f16, native otherwise), stored in the element dtype, THEN multiplied by the row scale: the recipe Mul(MatMul, BroadcastTo(scale)) rounding order. Deterministic on the same hardware; the empirical-repeat evidence is recorded by the verification ledger, not asserted here."
+
+determinism: same_hardware_bitwise
+```
+
+---
+
+## row_scaled_matmul_f64  (matmul * per-row scale, f64)
+
+Matmul with a per-row scale epilogue `out[..b.., i, j] = (Σ_k a[..b.., i, k] * b[..b.., k, j]) * row_scale[..b.., i]` over f64 (ROADMAP row 172 item 1; `fuel_cpu_backend::byte_kernels::row_scaled_matmul_f64`). Three inputs: `a`, `b`, and `row_scale` shaped `[..., M, 1]` (the lhs batch prefix ++ `[M, 1]`). Reuses `OpParams::Matmul` for shape. The dot product is accumulated, stored in the element dtype, then scaled (the decompose's rounding order, so the fused node and its lowering agree). Same GQA-divisible batch contract and contiguous-only layout as `matmul_f64`; planner contiguizes awkward operands first.
+
+```fkc
+kernel: row_scaled_matmul_f64
+op_kind: RowScaledMatMul
+blurb: "Matmul with a per-row scale epilogue (f64); row_scale [..., M, 1]; contiguous; GQA-divisible batch."
+backend: Cpu
+kernel_source: "portable-cpu"
+entry_point: "fuel_cpu_backend::byte_kernels::row_scaled_matmul_f64"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: a
+      dtypes: [F64]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "dim[-1]=k"
+    - name: b
+      dtypes: [F64]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "dim[-2]=k"
+    - name: row_scale
+      dtypes: [F64]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any                           # [..., M, 1]: one scale per output row
+      shape_constraint: "dim[-1]=1; dim[-2]=m; leading dims == lhs_batch_dims"
+  op_params:
+    variant: Matmul
+    fields:
+      lhs_batch_dims: { kind: "Vec<usize>" }
+      rhs_batch_dims: { kind: "Vec<usize>", constraint: "per-axis == lhs_batch_dims OR GQA-divisible (lhs > rhs && lhs % rhs == 0)" }
+      m: { kind: usize, constraint: "== a.dim[-2]" }
+      n: { kind: usize, constraint: "== b.dim[-1]" }
+      k: { kind: usize, constraint: "== a.dim[-1] == b.dim[-2]" }
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(a)
+      shape_rule: matmul(a, b)
+      layout_guarantee: contiguous
+      aliasing: none
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  fast_paths:
+    - { when: "all_inputs_contiguous", class: gemm_like }
+  in_place: false
+  alignment_bytes: 64
+  access_granularity_bits: 64
+
+cost:
+  provenance: judge_measured
+  class: gemm_like
+  flops: "2 * batch * m * n * k + batch * m * n"
+
+precision:
+  bit_stable_on_same_hardware: true
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Dot product accumulated k-ascending from zero (f32 accumulator for bf16/f16, native otherwise), stored in the element dtype, THEN multiplied by the row scale: the recipe Mul(MatMul, BroadcastTo(scale)) rounding order. Deterministic on the same hardware; the empirical-repeat evidence is recorded by the verification ledger, not asserted here."
+
+determinism: same_hardware_bitwise
+```
+
+---
+
+## row_scaled_matmul_bf16  (matmul * per-row scale, bf16)
+
+Matmul with a per-row scale epilogue `out[..b.., i, j] = (Σ_k a[..b.., i, k] * b[..b.., k, j]) * row_scale[..b.., i]` over bf16 (ROADMAP row 172 item 1; `fuel_cpu_backend::byte_kernels::row_scaled_matmul_bf16`). Three inputs: `a`, `b`, and `row_scale` shaped `[..., M, 1]` (the lhs batch prefix ++ `[M, 1]`). Reuses `OpParams::Matmul` for shape. The dot product is accumulated, stored in the element dtype, then scaled (the decompose's rounding order, so the fused node and its lowering agree). Same GQA-divisible batch contract and contiguous-only layout as `matmul_bf16`; planner contiguizes awkward operands first.
+
+```fkc
+kernel: row_scaled_matmul_bf16
+op_kind: RowScaledMatMul
+blurb: "Matmul with a per-row scale epilogue (bf16); row_scale [..., M, 1]; contiguous; GQA-divisible batch."
+backend: Cpu
+kernel_source: "portable-cpu"
+entry_point: "fuel_cpu_backend::byte_kernels::row_scaled_matmul_bf16"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: a
+      dtypes: [BF16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "dim[-1]=k"
+    - name: b
+      dtypes: [BF16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "dim[-2]=k"
+    - name: row_scale
+      dtypes: [BF16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any                           # [..., M, 1]: one scale per output row
+      shape_constraint: "dim[-1]=1; dim[-2]=m; leading dims == lhs_batch_dims"
+  op_params:
+    variant: Matmul
+    fields:
+      lhs_batch_dims: { kind: "Vec<usize>" }
+      rhs_batch_dims: { kind: "Vec<usize>", constraint: "per-axis == lhs_batch_dims OR GQA-divisible (lhs > rhs && lhs % rhs == 0)" }
+      m: { kind: usize, constraint: "== a.dim[-2]" }
+      n: { kind: usize, constraint: "== b.dim[-1]" }
+      k: { kind: usize, constraint: "== a.dim[-1] == b.dim[-2]" }
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(a)
+      shape_rule: matmul(a, b)
+      layout_guarantee: contiguous
+      aliasing: none
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  fast_paths:
+    - { when: "all_inputs_contiguous", class: gemm_like }
+  in_place: false
+  alignment_bytes: 64
+  access_granularity_bits: 16
+
+cost:
+  provenance: judge_measured
+  class: gemm_like
+  flops: "2 * batch * m * n * k + batch * m * n"
+
+precision:
+  bit_stable_on_same_hardware: true     # f32 accumulator, fixed (i,k,j) order
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Dot product accumulated k-ascending from zero (f32 accumulator for bf16/f16, native otherwise), stored in the element dtype, THEN multiplied by the row scale: the recipe Mul(MatMul, BroadcastTo(scale)) rounding order. Deterministic on the same hardware; the empirical-repeat evidence is recorded by the verification ledger, not asserted here."
+
+determinism: same_hardware_bitwise
+```
+
+---
+
+## row_scaled_matmul_f16  (matmul * per-row scale, f16)
+
+Matmul with a per-row scale epilogue `out[..b.., i, j] = (Σ_k a[..b.., i, k] * b[..b.., k, j]) * row_scale[..b.., i]` over f16 (ROADMAP row 172 item 1; `fuel_cpu_backend::byte_kernels::row_scaled_matmul_f16`). Three inputs: `a`, `b`, and `row_scale` shaped `[..., M, 1]` (the lhs batch prefix ++ `[M, 1]`). Reuses `OpParams::Matmul` for shape. The dot product is accumulated, stored in the element dtype, then scaled (the decompose's rounding order, so the fused node and its lowering agree). Same GQA-divisible batch contract and contiguous-only layout as `matmul_f16`; planner contiguizes awkward operands first.
+
+```fkc
+kernel: row_scaled_matmul_f16
+op_kind: RowScaledMatMul
+blurb: "Matmul with a per-row scale epilogue (f16); row_scale [..., M, 1]; contiguous; GQA-divisible batch."
+backend: Cpu
+kernel_source: "portable-cpu"
+entry_point: "fuel_cpu_backend::byte_kernels::row_scaled_matmul_f16"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: a
+      dtypes: [F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "dim[-1]=k"
+    - name: b
+      dtypes: [F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "dim[-2]=k"
+    - name: row_scale
+      dtypes: [F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any                           # [..., M, 1]: one scale per output row
+      shape_constraint: "dim[-1]=1; dim[-2]=m; leading dims == lhs_batch_dims"
+  op_params:
+    variant: Matmul
+    fields:
+      lhs_batch_dims: { kind: "Vec<usize>" }
+      rhs_batch_dims: { kind: "Vec<usize>", constraint: "per-axis == lhs_batch_dims OR GQA-divisible (lhs > rhs && lhs % rhs == 0)" }
+      m: { kind: usize, constraint: "== a.dim[-2]" }
+      n: { kind: usize, constraint: "== b.dim[-1]" }
+      k: { kind: usize, constraint: "== a.dim[-1] == b.dim[-2]" }
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(a)
+      shape_rule: matmul(a, b)
+      layout_guarantee: contiguous
+      aliasing: none
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  fast_paths:
+    - { when: "all_inputs_contiguous", class: gemm_like }
+  in_place: false
+  alignment_bytes: 64
+  access_granularity_bits: 16
+
+cost:
+  provenance: judge_measured
+  class: gemm_like
+  flops: "2 * batch * m * n * k + batch * m * n"
+
+precision:
+  bit_stable_on_same_hardware: true
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Dot product accumulated k-ascending from zero (f32 accumulator for bf16/f16, native otherwise), stored in the element dtype, THEN multiplied by the row scale: the recipe Mul(MatMul, BroadcastTo(scale)) rounding order. Deterministic on the same hardware; the empirical-repeat evidence is recorded by the verification ledger, not asserted here."
+
+determinism: same_hardware_bitwise
+```

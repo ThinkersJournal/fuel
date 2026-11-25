@@ -1282,10 +1282,7 @@ pub fn default_registry() -> &'static FusedOpRegistry {
             .with_entry(ssd_chunk_scan::entry())
             .with_entry(nf4_matmul::entry())
             .with_entry(awq_matmul::entry())
-        // NOT registered yet (row 172 item 1): registering makes the pattern
-        // live and the architecture lint requires a bit-stable CPU kernel per
-        // registered fused op (an unbound fused op does not realize, GAP-367).
-        // `row_scaled_matmul::entry()` joins the registry WITH its CPU kernel.
+            .with_entry(row_scaled_matmul::entry())
     })
 }
 

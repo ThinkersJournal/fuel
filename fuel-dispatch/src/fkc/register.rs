@@ -1640,7 +1640,7 @@ determinism: same_hardware_bitwise
         // matmul output at every probe → hard reject (proves the check FIRES).
         let mutated = mutate_once(
             FUSED_LINEAR_QUANT,
-            "shape_rule: matmul(a, b)",
+            "shape_rule: matmul(a, b)        # a_batch ++ [m, n]",
             "shape_rule: same_as(bias)",
         );
         let err = import_bundle_str(&mutated, &crate::fkc::CpuLinkRegistry).expect_err(

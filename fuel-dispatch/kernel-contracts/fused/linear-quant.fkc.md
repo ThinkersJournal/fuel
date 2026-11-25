@@ -186,6 +186,79 @@ determinism: same_hardware_bitwise
 
 ---
 
+## row_scaled_matmul  (GEMM + per-row scale epilogue, `(a @ b) * row_scale`)
+
+One-line: Matmul with a per-row scale epilogue `(a @ b) * row_scale` over float dtypes; contiguous row-major; rank-matched ranks >= 2; half via f32 accumulate.
+
+`FusedOps::ROW_SCALED_MATMUL` (id 26; `fuel-graph/src/registry/row_scaled_matmul.rs`, ROADMAP row 172 item 1). Three inputs: `a` `[..., M, K]`, `b` `[..., K, N]` and `row_scale` `[..., M, 1]` (a per-row / per-token scale, the lhs batch prefix ++ `[M, 1]`). All three share one dtype. `decompose` lowers to `MatMul -> BroadcastTo(scale) -> Mul`. Numerics: the dot product is accumulated from zero (f32 for half dtypes), stored in the element dtype, then multiplied by the row scale, which is the decompose's own rounding order.
+
+Dispatch key: `(RowScaledMatMul, [a, b, row_scale, out] dtypes, Cpu, "portable-cpu")`.
+
+```fkc
+kernel: row_scaled_matmul
+fused_op: ROW_SCALED_MATMUL
+blurb: "Matmul with a per-row scale epilogue (a @ b) * row_scale over float dtypes; row_scale [..., M, 1]; contiguous; half via f32 accumulate."
+backend: Cpu
+kernel_source: "portable-cpu"
+entry_point: "fuel_dispatch::dispatch::row_scaled_matmul_cpu"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: a
+      dtypes: [F32, F64, BF16, F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: "2.."                     # [..., M, K]; rank >= 2
+      shape_constraint: "dim[-1]=k; same_rank=b"
+    - name: b
+      dtypes: [F32, F64, BF16, F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: "2.."                     # [..., K, N]; rank >= 2
+      shape_constraint: "dim[-2]=k; same_rank=a"
+    - name: row_scale
+      dtypes: [F32, F64, BF16, F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: "2.."                     # [..., M, 1]: one scale per output row
+      shape_constraint: "dim[-1]=1; dim[-2]=m"
+  op_params:
+    variant: RowScaledMatMul              # FusedOpParams::RowScaledMatMul (fused namespace; §3.7) — no fields (geometry from shapes)
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(a)      # = a (all three operands agree)
+      shape_rule: matmul(a, b)        # the scaled matmul output: a_batch ++ [m, n]
+      layout_guarantee: contiguous
+      aliasing: none                  # output accumulated then scaled in place; full overwrite, not RMW of prior out
+
+caps:
+  awkward_layout_strategy: requires_contiguous   # ← planner inserts Op::Contiguize (itself an FKC kernel) + sums its cost
+  fast_paths: []
+  in_place: false
+  alignment_bytes: 64
+  access_granularity_bits: 32
+
+cost:
+  provenance: judge_measured          # derivable formula hints below; the Judge bootstraps the launch overhead
+  class: gemm_like
+  # Derivable FLOP/bandwidth shape (the Judge refines coefficients): GEMM MACs + the row scale (one mul/output).
+  flops: "2 * batch * m * n * k + batch * m * n"     # GEMM MACs + the row scale (one mul per output element)
+  bytes_moved: "(batch * m * k + k * n + batch * m + batch * m * n) * dtype_bytes"   # read a, b, row_scale; write out
+  overhead_ns: ~                      # launch overhead is a non-derivable absolute; Judge measures it
+  memory: { device_bytes: 0, host_bytes: "batch * m * n * dtype_bytes", disk_bytes: 0 }   # output alloc
+
+precision:
+  bit_stable_on_same_hardware: true   # fixed accumulation order; f32 (f64 for F64) accumulator
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "ROW_SCALED_MATMUL_CPU_PRECISION: native f32/f64 accumulate from zero then scale; bf16/f16 widen to f32, accumulate in f32, narrow, then scale (the recipe rounding order). Deterministic on same hardware."
+
+determinism: same_hardware_bitwise
+```
+---
+
 ## qmatmul  (quantized matmul `C = A @ dequant(W_Q)`, GGUF/llama.cpp block stream)
 
 One-line: Quantized matmul of dense F32 activations against a GGUF/llama.cpp block-quant weight stream; dequant on the fly, f32 accumulate, F32 output.
