@@ -202,6 +202,7 @@ pub(crate) fn lower_op_kind(s: &str, section: &str) -> Result<OpKind, FkcError> 
         "ReduceMaxTo" => Some(OpKind::ReduceMaxTo),
         "FusedLinear" => Some(OpKind::FusedLinear),
         "RowScaledMatMul" => Some(OpKind::RowScaledMatMul),
+        "TopKLastDim" => Some(OpKind::TopKLastDim),
         "FlashAttn" => Some(OpKind::FlashAttn),
         "FlashAttnBackwardQ" => Some(OpKind::FlashAttnBackwardQ),
         "FlashAttnBackwardK" => Some(OpKind::FlashAttnBackwardK),
@@ -364,6 +365,7 @@ pub(crate) fn fused_op_id_for_const_name(s: &str) -> Option<FusedOpId> {
         "FLASH_ATTN_BACKWARD_V" => FusedOps::FLASH_ATTN_BACKWARD_V,
         "AWQ_MATMUL" => FusedOps::AWQ_MATMUL,
         "ROW_SCALED_MATMUL" => FusedOps::ROW_SCALED_MATMUL,
+        "TOP_K_LAST_DIM" => FusedOps::TOP_K_LAST_DIM,
         _ => return None,
     };
     Some(id)
@@ -2086,6 +2088,7 @@ return:
             "FLASH_ATTN_BACKWARD_V",
             "AWQ_MATMUL",
             "ROW_SCALED_MATMUL",
+            "TOP_K_LAST_DIM",
         ]
         .iter()
         .map(|n| super::fused_op_id_for_const_name(n).expect("table arm exists"))

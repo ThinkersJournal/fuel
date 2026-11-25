@@ -8,9 +8,45 @@
 //! the largest (`torch.topk`); ties take the lower index first. `k` is static
 //! (it is part of the node's identity) and is validated at graph-build time.
 
-use crate::registry::FusedOpParams;
+use crate::registry::{
+    BackwardKind, FusedOpEntry, FusedOpFamily, FusedOpParams, FusedOps, PatternMatch,
+    SubgraphPattern,
+};
+use crate::{Graph, NodeId};
 use fuel_ir::storage::OutputViewSpec;
 use fuel_ir::{DType, Shape};
+
+/// Metadata-side registry entry for TopKLastDim (multi-output: slot 0 values,
+/// slot 1 indices). The executed path is the CPU/CUDA kernel.
+pub fn entry() -> FusedOpEntry {
+    FusedOpEntry {
+        destructive_input: None,
+        id: FusedOps::TOP_K_LAST_DIM,
+        name: "TopKLastDim",
+        family: FusedOpFamily::Forward,
+        pattern: SubgraphPattern::Callable(canonical_pattern),
+        decompose,
+        backward: BackwardKind::NotDifferentiable,
+        shape_rule,
+        dtype_rule,
+        output_views: Some(output_views),
+    }
+}
+
+/// No primitive decompose: the node is a two-slot bundle and the graph has no
+/// bundle-composer op to re-unite a values subgraph with an indices subgraph
+/// (the same Phase-1 multi-output limitation `SelectiveScan` documents). Per G2
+/// the node is returned unchanged (a surfaced gap, never a panic); the CPU
+/// kernel is the executed path and the correctness reference.
+pub fn decompose(_graph: &mut Graph, id: NodeId, _params: &FusedOpParams) -> NodeId {
+    id
+}
+
+/// TopKLastDim is built explicitly (by a model or by the `MatMulTopK`
+/// rewrite), never recognized from a primitive subgraph.
+pub fn canonical_pattern(_graph: &Graph, _root: NodeId) -> Option<PatternMatch> {
+    None
+}
 
 /// Build-time validation of `k` against the reduced axis length `n`. A typed
 /// error, never a panic: `1 <= k <= n`.

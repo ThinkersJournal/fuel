@@ -563,6 +563,11 @@ pub enum OpKind {
     /// `[..., M, N] = (a @ b) * row_scale`. Reuses `OpParams::Matmul` for shape.
     /// See `FusedOps::ROW_SCALED_MATMUL`.
     RowScaledMatMul,
+    /// The `k` largest values along the last axis and their `U32` indices
+    /// (ROADMAP row 172 item 2). One input `[.., n]`, a bundled two-slot output
+    /// `[values .. k ; indices .. k]`; geometry rides in `OpParams::TopKLastDim`.
+    /// See `FusedOps::TOP_K_LAST_DIM`.
+    TopKLastDim,
     /// A **runtime-registered** (Tier-2, JIT-synthesized / import-time) fused
     /// op. Carries no static kernel family: the concrete op is named by the
     /// runtime `FusedOpId` on the graph node, and its kernel resolves from the
@@ -699,6 +704,7 @@ impl OpKind {
             OpKind::Nf4Matmul => "nf4_matmul",
             OpKind::AwqMatmul => "awq_matmul",
             OpKind::RowScaledMatMul => "row_scaled_matmul",
+            OpKind::TopKLastDim => "top_k_last_dim",
             OpKind::RuntimeFused => "runtime_fused",
             OpKind::NonZeroIndices => "nonzero_indices",
         }

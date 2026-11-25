@@ -10944,7 +10944,7 @@ mod tests {
 
     fn pod_vec<T: bytemuck::Pod>(bytes: &[u8]) -> Vec<T> {
         bytes
-            .chunks_exact(std::mem::size_of::<T>())
+            .chunks(std::mem::size_of::<T>())
             .map(bytemuck::pod_read_unaligned)
             .collect()
     }

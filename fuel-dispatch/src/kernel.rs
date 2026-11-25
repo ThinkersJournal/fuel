@@ -763,6 +763,11 @@ pub enum OpParams {
         split_k_iters: i32,
     },
 
+    /// TopKLastDim execution parameters (ROADMAP row 172 item 2). 1 input
+    /// `x [.., n]` (every leading dim flattened into `rows`); the output is the
+    /// bundled `[values (rows*k, input dtype) ; indices (rows*k, U32)]`.
+    TopKLastDim { rows: usize, n: usize, k: usize },
+
     /// A **runtime fused op's** live scalar args (the `extract:` values from
     /// `FusedOpParams::Runtime { scalars }`), in the region's pattern
     /// pre-order — the same canonical slot order the synthesized kernel's

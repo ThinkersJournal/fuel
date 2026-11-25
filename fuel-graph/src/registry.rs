@@ -1295,6 +1295,7 @@ pub fn default_registry() -> &'static FusedOpRegistry {
             .with_entry(nf4_matmul::entry())
             .with_entry(awq_matmul::entry())
             .with_entry(row_scaled_matmul::entry())
+            .with_entry(top_k_last_dim::entry())
     })
 }
 

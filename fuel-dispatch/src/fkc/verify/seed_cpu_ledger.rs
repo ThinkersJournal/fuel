@@ -80,6 +80,8 @@ enum Family {
     FusedLinear,
     /// RowScaledMatMul (row 172 item 1): 3 inputs (a, b, row_scale `[m]`), `OpParams::Matmul`.
     RowScaledMatMul,
+    /// TopKLastDim (row 172 item 2): 1 input, `OpParams::TopKLastDim`, bundled output.
+    TopKLastDim,
     QMatMul,
     InplaceAffine,
     Fsce,
@@ -168,6 +170,11 @@ const TARGETS: &[(FusedOpId, Family, &str)] = &[
         FusedOps::ROW_SCALED_MATMUL,
         Family::RowScaledMatMul,
         "row_scaled_matmul",
+    ),
+    (
+        FusedOps::TOP_K_LAST_DIM,
+        Family::TopKLastDim,
+        "top_k_last_dim",
     ),
     (FusedOps::QMATMUL, Family::QMatMul, "qmatmul"),
     (
@@ -404,6 +411,25 @@ fn build_probe(family: Family, dtypes: &[DType], seed: u64) -> Option<Probe> {
                 },
                 out_dtype: dt,
                 out_shape: vec![m * n],
+                out_seed: None,
+            })
+        }
+        Family::TopKLastDim => {
+            if dtypes.len() != 2 {
+                return None;
+            }
+            let dt = dtypes[0];
+            let (rows, n, k) = (2usize, 4usize, 2usize);
+            let x = ht(dt, vec![rows * n], &fill_deterministic(rows * n, seed))?;
+            // The bundle is [values (rows*k) ; pad to 4 ; indices (rows*k of u32)].
+            let esz = dt.size_in_bytes();
+            let values_bytes = rows * k * esz;
+            let total = values_bytes.div_ceil(4) * 4 + rows * k * 4;
+            Some(Probe {
+                inputs: vec![x],
+                params: OpParams::TopKLastDim { rows, n, k },
+                out_dtype: dt,
+                out_shape: vec![total / esz],
                 out_seed: None,
             })
         }
@@ -2048,7 +2074,7 @@ mod tests {
     /// ## Result, measured 2026-08-26
     ///
     /// ```text
-    /// contract-derived CPU entries : 629
+    /// contract-derived CPU entries : 633
     /// production CPU entries       : 659
     /// production-only (orphans)    : 36
     /// contract-only (missing)      : 0
@@ -2060,7 +2086,7 @@ mod tests {
     /// QMatMul 1, Tril 6, Triu 6.
     ///
     /// **So `fill_unset_cpu_precision` is NOT redundant, and its scope is now
-    /// exactly bounded: it supplies NOTHING for the 629 entries a contract
+    /// exactly bounded: it supplies NOTHING for the 633 entries a contract
     /// covers (0 disagreements), and it fabricates a
     /// `PRIMITIVE_DETERMINISTIC_CPU` claim for 36 registrations that have NO
     /// CONTRACT AT ALL.** Retiring it is therefore a contract-authoring
@@ -2295,9 +2321,10 @@ mod tests {
         // entries' worth of sections, (b) conv's 20, (c) the four small non-conv
         // surfaces' 20, (d) FlashAttn's 8, (e) the three backwards' 24 and
         // (f) PagedAttn's 8, `nothing` must be ZERO and the backed count the
-        // full 629.
+        // full 633.
         // (625 -> 629 is row 172 item 1: the 4 RowScaledMatMul primitive CPU
-        // sections, +4 PREDICTED before the run.)
+        // sections, +4 PREDICTED before the run; 629 -> 633 is item 2's 4
+        // TopKLastDim sections, +4 PREDICTED.)
         //
         // ⚠️ THIS PIN IS NOW A RATCHET RATHER THAN A PROGRESS MARKER, and it
         // still discriminates: a new registration lands in `nothing` until a
@@ -2335,8 +2362,8 @@ mod tests {
         );
         assert_eq!(
             total - nothing,
-            629,
-            "expected all 629 contract-derived entries backed WITHOUT the fill. This table              is built by `register_into`, which does not apply              `fill_unset_cpu_precision` — so this count IS the post-fill-retirement              number for these entries, and a drop means the backing did not actually              move from the fill to contract + record."
+            633,
+            "expected all 633 contract-derived entries backed WITHOUT the fill. This table              is built by `register_into`, which does not apply              `fill_unset_cpu_precision` — so this count IS the post-fill-retirement              number for these entries, and a drop means the backing did not actually              move from the fill to contract + record."
         );
         assert_eq!(
             neither, nothing,

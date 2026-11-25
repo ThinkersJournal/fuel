@@ -4608,6 +4608,59 @@ macro_rules! cpu_selective_scan_wrapper {
     };
 }
 
+/// TopKLastDim dispatch wrapper (row 172 item 2). One input `x [.., n]`, ONE
+/// bundled output `[values ; pad to 4 ; indices]`; the kernel writes both slots.
+macro_rules! cpu_top_k_last_dim_wrapper {
+    ($wrapper:ident, $kernel:path) => {
+        pub(crate) fn $wrapper(
+            inputs: &[Arc<RwLock<Storage>>],
+            outputs: &mut [Arc<RwLock<Storage>>],
+            _layouts: &[Layout],
+            params: &OpParams,
+        ) -> Result<()> {
+            if inputs.len() != 1 || outputs.len() != 1 {
+                return Err(Error::Msg(format!(
+                    "top_k_last_dim wrapper expects 1 input and 1 (bundled) output, got {} and {}",
+                    inputs.len(),
+                    outputs.len(),
+                ))
+                .bt());
+            }
+            let (rows, n, k) = match params {
+                OpParams::TopKLastDim { rows, n, k } => (*rows, *n, *k),
+                other => {
+                    return Err(Error::Msg(format!(
+                        "top_k_last_dim wrapper expects OpParams::TopKLastDim, got {other:?}",
+                    ))
+                    .bt());
+                }
+            };
+            let x_guard = read_storage(&inputs[0])?;
+            let mut out_guard = write_storage(&outputs[0])?;
+            let x_cpu = cpu_input(&x_guard)?;
+            let out_cpu = cpu_output(&mut out_guard)?;
+            $kernel(x_cpu, out_cpu, rows, n, k)
+        }
+    };
+}
+
+cpu_top_k_last_dim_wrapper!(
+    top_k_last_dim_f32_cpu_wrapper,
+    fuel_cpu_backend::byte_kernels::top_k_last_dim_f32
+);
+cpu_top_k_last_dim_wrapper!(
+    top_k_last_dim_f64_cpu_wrapper,
+    fuel_cpu_backend::byte_kernels::top_k_last_dim_f64
+);
+cpu_top_k_last_dim_wrapper!(
+    top_k_last_dim_bf16_cpu_wrapper,
+    fuel_cpu_backend::byte_kernels::top_k_last_dim_bf16
+);
+cpu_top_k_last_dim_wrapper!(
+    top_k_last_dim_f16_cpu_wrapper,
+    fuel_cpu_backend::byte_kernels::top_k_last_dim_f16
+);
+
 cpu_selective_scan_wrapper!(
     selective_scan_f32_cpu_wrapper,
     fuel_cpu_backend::byte_kernels::selective_scan_f32

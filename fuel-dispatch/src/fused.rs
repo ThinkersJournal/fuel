@@ -2057,9 +2057,11 @@ mod tests {
         // and is the one documented KNOWN_GAPS allowlist line above,
         // not counted here. ROW_SCALED_MATMUL (row 172 item 1) is the 26th
         // registry entry and the 25th covered op (delta +1, predicted).
+        // TOP_K_LAST_DIM (row 172 item 2) is the 27th entry, the 26th covered
+        // (delta +1, predicted).
         assert_eq!(
-            covered, 25,
-            "expected 25 fused ops covered by bit-stable CPU impls, got {covered}",
+            covered, 26,
+            "expected 26 fused ops covered by bit-stable CPU impls, got {covered}",
         );
     }
 

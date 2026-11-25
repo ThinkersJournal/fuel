@@ -587,6 +587,11 @@ pub static CPU_ROPE_ENTRY_POINTS: &[(&str, KernelRef)] = &[
 /// These sections have NO `##` chassis umbrella, so there is no
 /// `registrable: false` describe-only entry to omit.
 pub static CPU_SSM_ENTRY_POINTS: &[(&str, KernelRef)] = &[
+    // TopKLastDim (row 172 item 2): key [T, T] (x + the bundle's primary slot).
+    ep!("top_k_last_dim", "f32", top_k_last_dim_f32_cpu_wrapper),
+    ep!("top_k_last_dim", "f64", top_k_last_dim_f64_cpu_wrapper),
+    ep!("top_k_last_dim", "bf16", top_k_last_dim_bf16_cpu_wrapper),
+    ep!("top_k_last_dim", "f16", top_k_last_dim_f16_cpu_wrapper),
     ep!(
         "fused_softmax_cross_entropy",
         "f32",
@@ -1530,6 +1535,11 @@ pub static CPU_FUSED_LINEAR_QUANT_ENTRY_POINTS: &[(&str, KernelRef)] = &[
         "row_scaled_matmul_cpu_f16",
         row_scaled_matmul_f16_cpu_wrapper
     ),
+    // TOP_K_LAST_DIM (row 172 item 2): bundle, 1 input + primary slot -> key [T, T]; 4 dtypes.
+    fep!("top_k_last_dim_cpu_f32", top_k_last_dim_f32_cpu_wrapper),
+    fep!("top_k_last_dim_cpu_f64", top_k_last_dim_f64_cpu_wrapper),
+    fep!("top_k_last_dim_cpu_bf16", top_k_last_dim_bf16_cpu_wrapper),
+    fep!("top_k_last_dim_cpu_f16", top_k_last_dim_f16_cpu_wrapper),
     // QMATMUL — key [F32, U32, F32]; NON-fanning, BASE symbol resolved AS-IS.
     fep!("qmatmul_cpu", qmatmul_f32_cpu_wrapper),
     // INPLACE_AFFINE — key [T, T]; multi-dtype fan. Symbol `inplace_affine_cpu_<dt>`
