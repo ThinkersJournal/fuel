@@ -6265,6 +6265,7 @@ fn fused_linear_check<T>(
     m: usize,
     n: usize,
     k: usize,
+    side_elems: usize,
 ) -> Result<Vec<usize>> {
     if lhs_batch_dims.len() != rhs_batch_dims.len() {
         return Err(Error::Msg(format!(
@@ -6299,7 +6300,7 @@ fn fused_linear_check<T>(
     if lhs.len_bytes() != lhs_count.saturating_mul(lhs_per).saturating_mul(elem)
         || rhs.len_bytes() != rhs_count.saturating_mul(rhs_per).saturating_mul(elem)
         || out.len_bytes() != lhs_count.saturating_mul(out_per).saturating_mul(elem)
-        || bias.len_bytes() != n.saturating_mul(elem)
+        || bias.len_bytes() != side_elems.saturating_mul(elem)
     {
         return Err(Error::Msg(format!("{name}: bytes mismatch",)).bt());
     }
@@ -6331,6 +6332,7 @@ macro_rules! fused_linear_native_kernel {
                 m,
                 n,
                 k,
+                n,
             )?;
             let lhs_view: &[$T] = lhs.as_slice()?;
             let rhs_view: &[$T] = rhs.as_slice()?;
@@ -6409,6 +6411,7 @@ macro_rules! fused_linear_half_kernel {
                 m,
                 n,
                 k,
+                n,
             )?;
             let lhs_view: &[$T] = lhs.as_slice()?;
             let rhs_view: &[$T] = rhs.as_slice()?;
@@ -6462,6 +6465,172 @@ macro_rules! fused_linear_half_kernel {
 
 fused_linear_half_kernel!(fused_linear_bf16, half::bf16);
 fused_linear_half_kernel!(fused_linear_f16, half::f16);
+
+// =============================================================================
+// RowScaledMatMul: matmul with a per-row scale epilogue (ROADMAP row 172 item 1)
+// =============================================================================
+//
+// Inputs: a [..., M, K], b [..., K, N], row_scale [..., M, 1] (one scale per
+// output row, shaped like the lhs batch ++ [M]).
+// Output: out[..., i, j] = (sum_k a[..., i, k] * b[..., k, j]) * row_scale[..., i].
+//
+// Numerics match the recipe `Mul(MatMul(a, b), BroadcastTo(scale))`: the dot
+// product is accumulated (k ascending, zero seed; f32 for half dtypes), stored
+// in the element dtype, THEN multiplied by the scale. Not seeded with the
+// scale, and not a single fused multiply-add per element.
+
+/// RowScaledMatMul for native arithmetic.
+macro_rules! row_scaled_matmul_native_kernel {
+    ($name:ident, $T:ty) => {
+        pub fn $name(
+            lhs: &CpuStorageBytes,
+            rhs: &CpuStorageBytes,
+            scale: &CpuStorageBytes,
+            out: &mut CpuStorageBytes,
+            lhs_batch_dims: &[usize],
+            rhs_batch_dims: &[usize],
+            m: usize,
+            n: usize,
+            k: usize,
+        ) -> Result<()> {
+            let lhs_count: usize = lhs_batch_dims.iter().product::<usize>().max(1);
+            let n_rep = fused_linear_check::<$T>(
+                stringify!($name),
+                lhs,
+                rhs,
+                scale,
+                out,
+                lhs_batch_dims,
+                rhs_batch_dims,
+                m,
+                n,
+                k,
+                lhs_count.saturating_mul(m),
+            )?;
+            let lhs_view: &[$T] = lhs.as_slice()?;
+            let rhs_view: &[$T] = rhs.as_slice()?;
+            let scale_view: &[$T] = scale.as_slice()?;
+            let out_view: &mut [$T] = out.as_slice_mut()?;
+            let batch_rank = lhs_batch_dims.len();
+            let (lhs_per, rhs_per, out_per) = (m * k, k * n, m * n);
+            let mut lhs_multi = vec![0_usize; batch_rank];
+            let mut rhs_multi = vec![0_usize; batch_rank];
+            for b in 0..lhs_count {
+                let mut rem = b;
+                for d in (0..batch_rank).rev() {
+                    let s = lhs_batch_dims[d];
+                    lhs_multi[d] = rem % s;
+                    rem /= s;
+                }
+                for d in 0..batch_rank {
+                    rhs_multi[d] = lhs_multi[d] / n_rep[d];
+                }
+                let mut rhs_b = 0_usize;
+                for d in 0..batch_rank {
+                    rhs_b = rhs_b * rhs_batch_dims[d] + rhs_multi[d];
+                }
+                let (lhs_off, rhs_off, out_off) = (b * lhs_per, rhs_b * rhs_per, b * out_per);
+                for i in 0..m {
+                    let out_row_off = out_off + i * n;
+                    out_view[out_row_off..out_row_off + n].fill(0 as $T);
+                    for kk in 0..k {
+                        let a = lhs_view[lhs_off + i * k + kk];
+                        let rhs_row_off = rhs_off + kk * n;
+                        for j in 0..n {
+                            out_view[out_row_off + j] += a * rhs_view[rhs_row_off + j];
+                        }
+                    }
+                    let s = scale_view[b * m + i];
+                    for j in 0..n {
+                        out_view[out_row_off + j] *= s;
+                    }
+                }
+            }
+            Ok(())
+        }
+    };
+}
+
+row_scaled_matmul_native_kernel!(row_scaled_matmul_f32, f32);
+row_scaled_matmul_native_kernel!(row_scaled_matmul_f64, f64);
+
+/// RowScaledMatMul for half-floats: accumulate in f32, narrow, then scale in the
+/// element dtype (via f32, narrowed), exactly the recipe's two roundings.
+macro_rules! row_scaled_matmul_half_kernel {
+    ($name:ident, $T:ty) => {
+        pub fn $name(
+            lhs: &CpuStorageBytes,
+            rhs: &CpuStorageBytes,
+            scale: &CpuStorageBytes,
+            out: &mut CpuStorageBytes,
+            lhs_batch_dims: &[usize],
+            rhs_batch_dims: &[usize],
+            m: usize,
+            n: usize,
+            k: usize,
+        ) -> Result<()> {
+            let lhs_count: usize = lhs_batch_dims.iter().product::<usize>().max(1);
+            let n_rep = fused_linear_check::<$T>(
+                stringify!($name),
+                lhs,
+                rhs,
+                scale,
+                out,
+                lhs_batch_dims,
+                rhs_batch_dims,
+                m,
+                n,
+                k,
+                lhs_count.saturating_mul(m),
+            )?;
+            let lhs_view: &[$T] = lhs.as_slice()?;
+            let rhs_view: &[$T] = rhs.as_slice()?;
+            let scale_view: &[$T] = scale.as_slice()?;
+            let out_view: &mut [$T] = out.as_slice_mut()?;
+            let batch_rank = lhs_batch_dims.len();
+            let (lhs_per, rhs_per, out_per) = (m * k, k * n, m * n);
+            let mut lhs_multi = vec![0_usize; batch_rank];
+            let mut rhs_multi = vec![0_usize; batch_rank];
+            let mut row_acc = vec![0.0_f32; n];
+            for b in 0..lhs_count {
+                let mut rem = b;
+                for d in (0..batch_rank).rev() {
+                    let s = lhs_batch_dims[d];
+                    lhs_multi[d] = rem % s;
+                    rem /= s;
+                }
+                for d in 0..batch_rank {
+                    rhs_multi[d] = lhs_multi[d] / n_rep[d];
+                }
+                let mut rhs_b = 0_usize;
+                for d in 0..batch_rank {
+                    rhs_b = rhs_b * rhs_batch_dims[d] + rhs_multi[d];
+                }
+                let (lhs_off, rhs_off, out_off) = (b * lhs_per, rhs_b * rhs_per, b * out_per);
+                for i in 0..m {
+                    row_acc.fill(0.0);
+                    for kk in 0..k {
+                        let a = lhs_view[lhs_off + i * k + kk].to_f32();
+                        let rhs_row_off = rhs_off + kk * n;
+                        for j in 0..n {
+                            row_acc[j] += a * rhs_view[rhs_row_off + j].to_f32();
+                        }
+                    }
+                    let s = scale_view[b * m + i].to_f32();
+                    let out_row_off = out_off + i * n;
+                    for j in 0..n {
+                        let narrowed = <$T>::from_f32(row_acc[j]);
+                        out_view[out_row_off + j] = <$T>::from_f32(narrowed.to_f32() * s);
+                    }
+                }
+            }
+            Ok(())
+        }
+    };
+}
+
+row_scaled_matmul_half_kernel!(row_scaled_matmul_bf16, half::bf16);
+row_scaled_matmul_half_kernel!(row_scaled_matmul_f16, half::f16);
 
 // =============================================================================
 // FusedSoftmaxCrossEntropy — fused softmax + NLL + reduction
@@ -10579,6 +10748,103 @@ fn extract_strided_chunk(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Reference: out[b,i,j] = (sum_k a[b,i,k] * w[b/rep,k,j]) * s[b,i] in f32.
+    fn naive_row_scaled(
+        a: &[f32],
+        w: &[f32],
+        s: &[f32],
+        (batch, rep, m, n, k): (usize, usize, usize, usize, usize),
+    ) -> Vec<f32> {
+        let mut out = vec![0.0_f32; batch * m * n];
+        for b in 0..batch {
+            for i in 0..m {
+                for j in 0..n {
+                    let mut acc = 0.0_f32;
+                    for kk in 0..k {
+                        acc += a[(b * m + i) * k + kk] * w[((b / rep) * k + kk) * n + j];
+                    }
+                    out[(b * m + i) * n + j] = acc * s[b * m + i];
+                }
+            }
+        }
+        out
+    }
+
+    /// RowScaledMatMul f32: a GQA-batched case (lhs batch 4, rhs batch 2) equals the
+    /// naive reference, and the scale is per ROW (a per-column or unscaled result
+    /// differs: the sabotage sibling below pins that).
+    #[test]
+    fn row_scaled_matmul_f32_matches_the_reference_and_scales_rows() {
+        let (batch, rep, m, n, k) = (4usize, 2usize, 3usize, 5usize, 7usize);
+        let a: Vec<f32> = (0..batch * m * k)
+            .map(|i| (i % 11) as f32 * 0.25 - 1.0)
+            .collect();
+        let w: Vec<f32> = (0..(batch / rep) * k * n)
+            .map(|i| (i % 7) as f32 * 0.5 - 1.5)
+            .collect();
+        let s: Vec<f32> = (0..batch * m).map(|i| 0.5 + i as f32).collect();
+        let mut out = CpuStorageBytes::from_zero_bytes(batch * m * n * 4);
+        row_scaled_matmul_f32(
+            &CpuStorageBytes::from_slice(&a),
+            &CpuStorageBytes::from_slice(&w),
+            &CpuStorageBytes::from_slice(&s),
+            &mut out,
+            &[4],
+            &[2],
+            m,
+            n,
+            k,
+        )
+        .expect("kernel");
+        let got: &[f32] = out.as_slice().unwrap();
+        let want = naive_row_scaled(&a, &w, &s, (batch, rep, m, n, k));
+        assert_eq!(got, &want[..]);
+        // Sabotage sibling: scaling by column index instead of row must differ.
+        let col: Vec<f32> = (0..batch * m).map(|i| 0.5 + (i % n) as f32).collect();
+        assert_ne!(naive_row_scaled(&a, &w, &col, (batch, rep, m, n, k)), want);
+    }
+
+    /// RowScaledMatMul bf16: f32 accumulate, narrow, then scale and narrow again
+    /// (the recipe's two roundings), bit-exact against that reference.
+    #[test]
+    fn row_scaled_matmul_bf16_rounds_twice_like_the_recipe() {
+        use half::bf16;
+        let (m, n, k) = (2usize, 3usize, 5usize);
+        let a: Vec<bf16> = (0..m * k)
+            .map(|i| bf16::from_f32(0.37 * i as f32 - 1.1))
+            .collect();
+        let w: Vec<bf16> = (0..k * n)
+            .map(|i| bf16::from_f32(0.21 * i as f32 - 0.9))
+            .collect();
+        let s: Vec<bf16> = vec![bf16::from_f32(1.37), bf16::from_f32(-0.61)];
+        let mut out = CpuStorageBytes::from_zero_bytes(m * n * 2);
+        row_scaled_matmul_bf16(
+            &CpuStorageBytes::from_slice(&a),
+            &CpuStorageBytes::from_slice(&w),
+            &CpuStorageBytes::from_slice(&s),
+            &mut out,
+            &[],
+            &[],
+            m,
+            n,
+            k,
+        )
+        .expect("kernel");
+        let got: &[bf16] = out.as_slice().unwrap();
+        let mut want = Vec::new();
+        for i in 0..m {
+            for j in 0..n {
+                let mut acc = 0.0_f32;
+                for kk in 0..k {
+                    acc += a[i * k + kk].to_f32() * w[kk * n + j].to_f32();
+                }
+                let narrowed = bf16::from_f32(acc);
+                want.push(bf16::from_f32(narrowed.to_f32() * s[i].to_f32()));
+            }
+        }
+        assert_eq!(got, &want[..]);
+    }
 
     /// Smoke: add two f32 storages elementwise.
     #[test]
