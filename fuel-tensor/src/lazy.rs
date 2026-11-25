@@ -10879,6 +10879,91 @@ mod phase_a3_keepdim_tests {
         assert_eq!(out.realize_f32(), vec![1.0, 2.0]);
     }
 
+    // ---- the divisor clamps at zero: var = sum((x-mean)^2) / max(0, n - correction) ----
+    // (ruling 2026-11-25, torch): extent == correction -> 0/0 = NaN; extent < correction -> x/0 =
+    // inf (NaN if the sum is 0); NEVER negative. Before, `correction > n` gave a finite, possibly
+    // NEGATIVE variance ([1,3] with correction 3 was -2.0).
+
+    /// `var(dim, correction)` of `data` (given as f64) in the named dtype, realized as f64.
+    fn var_in(dtype: &str, data: &[f64], shape: &[usize], dim: usize, correction: f64) -> Vec<f64> {
+        let dev = Device::cpu();
+        let s = Shape::from_dims(shape);
+        match dtype {
+            "f32" => Tensor::from_f32(data.iter().map(|&x| x as f32).collect::<Vec<_>>(), s, &dev)
+                .unwrap()
+                .var(dim, correction)
+                .unwrap()
+                .realize_f32()
+                .iter()
+                .map(|&x| x as f64)
+                .collect(),
+            "f64" => Tensor::from_f64(data.to_vec(), s, &dev)
+                .unwrap()
+                .var(dim, correction)
+                .unwrap()
+                .realize_f64(),
+            "f16" => Tensor::from_f16(
+                data.iter()
+                    .map(|&x| half::f16::from_f64(x))
+                    .collect::<Vec<_>>(),
+                s,
+                &dev,
+            )
+            .unwrap()
+            .var(dim, correction)
+            .unwrap()
+            .realize_f16()
+            .iter()
+            .map(|x| x.to_f64())
+            .collect(),
+            "bf16" => Tensor::from_bf16(
+                data.iter()
+                    .map(|&x| half::bf16::from_f64(x))
+                    .collect::<Vec<_>>(),
+                s,
+                &dev,
+            )
+            .unwrap()
+            .var(dim, correction)
+            .unwrap()
+            .realize_bf16()
+            .iter()
+            .map(|x| x.to_f64())
+            .collect(),
+            other => panic!("dtype {other}"),
+        }
+    }
+
+    #[test]
+    fn var_divisor_is_clamped_at_zero_in_every_dtype() {
+        for dt in ["f32", "f64", "f16", "bf16"] {
+            // extent == correction: 0/0 = NaN
+            assert!(var_in(dt, &[5.0], &[1], 0, 1.0)[0].is_nan(), "{dt} [5] c=1");
+            let v = var_in(dt, &[5.0, 7.0], &[2, 1], 1, 1.0);
+            assert!(v[0].is_nan() && v[1].is_nan(), "{dt} [[5],[7]] c=1: {v:?}");
+            // extent == correction with a nonzero sum: x/0 = inf
+            assert_eq!(
+                var_in(dt, &[1.0, 3.0], &[2], 0, 2.0)[0],
+                f64::INFINITY,
+                "{dt} [1,3] c=2"
+            );
+            // extent < correction: a zero sum is NaN, a nonzero sum is inf, NEVER negative
+            assert!(var_in(dt, &[5.0], &[1], 0, 2.0)[0].is_nan(), "{dt} [5] c=2");
+            assert_eq!(
+                var_in(dt, &[1.0, 3.0], &[2], 0, 3.0)[0],
+                f64::INFINITY,
+                "{dt} [1,3] c=3"
+            );
+            // controls: population variance of one element is 0; Bessel on two is 2
+            assert_eq!(var_in(dt, &[5.0], &[1], 0, 0.0)[0], 0.0, "{dt} [5] c=0");
+            assert_eq!(
+                var_in(dt, &[1.0, 3.0], &[2], 0, 1.0)[0],
+                2.0,
+                "{dt} [1,3] c=1"
+            );
+        }
+    }
+
     #[test]
     fn var_matches_unbiased_formula_with_correction_1() {
         // [[1,2,3],[4,5,6]] -> var along axis 1: each row has mean=mid, dev=[-1,0,1], sq sum=2, /(3-1) = 1
