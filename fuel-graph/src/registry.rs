@@ -52,6 +52,7 @@ pub mod reduce_max_to_backward;
 pub mod rms_norm_last_dim;
 pub mod rms_norm_last_dim_backward;
 pub mod rope;
+pub mod row_scaled_matmul;
 pub mod selective_scan;
 pub mod softmax_last_dim;
 pub mod softmax_last_dim_backward;
@@ -347,6 +348,9 @@ pub enum FusedOpParams {
         group_size: usize,
         split_k_iters: i32,
     },
+    /// RowScaledMatMul: `(a @ b) * row_scale`, no per-instance parameters
+    /// (the shapes are implicit in the three inputs).
+    RowScaledMatMul,
     /// FlashAttnBackward — shared params for the Q/K/V backward
     /// variants. Carries the same shape parameters as the forward
     /// `FlashAttn` so the recompute pass produces identical scores.
@@ -665,6 +669,11 @@ impl FusedOpParams {
                 tag: 23,
                 bits: Vec::new(),
                 ints: vec![*group_size as i64, *split_k_iters as i64],
+            },
+            FusedOpParams::RowScaledMatMul => FusedOpParamsKey {
+                tag: 24,
+                bits: Vec::new(),
+                ints: Vec::new(),
             },
             FusedOpParams::FlashAttnBackward {
                 softmax_scale,
@@ -1230,6 +1239,10 @@ impl FusedOps {
     /// into primitives — see the module doc on
     /// [`crate::registry::awq_matmul`] for the recipe.
     pub const AWQ_MATMUL: FusedOpId = FusedOpId(25);
+
+    /// RowScaledMatMul: `(a @ b) * row_scale` with `row_scale [..batch, M, 1]`
+    /// (a per-row / per-token scale; ROADMAP row 172 item 1).
+    pub const ROW_SCALED_MATMUL: FusedOpId = FusedOpId(26);
 }
 
 /// Process-wide default registry: the union of every fused op's
@@ -1269,6 +1282,10 @@ pub fn default_registry() -> &'static FusedOpRegistry {
             .with_entry(ssd_chunk_scan::entry())
             .with_entry(nf4_matmul::entry())
             .with_entry(awq_matmul::entry())
+        // NOT registered yet (row 172 item 1): registering makes the pattern
+        // live and the architecture lint requires a bit-stable CPU kernel per
+        // registered fused op (an unbound fused op does not realize, GAP-367).
+        // `row_scaled_matmul::entry()` joins the registry WITH its CPU kernel.
     })
 }
 
