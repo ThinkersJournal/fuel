@@ -3,6 +3,21 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## Unreleased (version allocated by pm-assist; BREAKING: CPU argmax/argmin numerics)
+
+### Breaking
+
+- `fuel-cpu-backend`: `argmax_dim_*` / `argmin_dim_*` (f32/f64/bf16/f16) now follow the torch NaN convention: a NaN WINS, for argmax and argmin alike, and the FIRST NaN's index is returned (an all-NaN row is index 0). Before, a NaN was ignored unless it sat at index 0 (`new > best` with element 0 as the initial best), so the result depended on where the NaN sat: `[1,NaN,0,5]` was (argmax 3, argmin 2), now (1, 1); `[1,5,NaN]` was (1, 0), now (2, 2). With no NaN nothing changes: ties take the first index and `-0.0 == +0.0`.
+- Downstream effect: any caller that took the argmax of NaN-bearing logits (greedy sampling, top-1 paths) now gets the NaN's index instead of the best finite one. That is torch's behaviour; it makes a NaN visible instead of masking it.
+
+### Fixed
+
+- `argmax_dim_f64` / `argmin_dim_f64` (and bf16/f16) compared after widening to f32, so f64 values closer than f32 resolution tied falsely (`[1, 1+1e-12, 1-1e-12]` argmax was 0). They now compare in f64 (exact for every input dtype).
+
+### Notes
+
+- CPU `max_reduce`/`min_reduce`/`reduce_max_to` already propagate a NaN (KISS-Ops 6.11-0002) and are unchanged; tests now pin that, plus `-0.0`/`+0.0` (the first-seen zero is kept) and that an empty reduction is an error. CUDA `arg_reduce` and `reduce` max/min still ignore NaN (baracuda probe) until baracuda matches; CPU and CUDA disagree on NaN rows until then.
+
 ## v0.52.0 - 2026-11-25 (PM-allocated; BREAKING: `FusedOpParams` gained two variants and the enum is not `non_exhaustive`; row 172 item 2)
 
 ### Breaking
