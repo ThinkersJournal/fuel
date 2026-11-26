@@ -40,6 +40,8 @@ use half::{bf16, f16};
 
 const NAN: f32 = f32::NAN;
 const DTYPES: [DType; 4] = [DType::F32, DType::F64, DType::F16, DType::BF16];
+// 4-digit test scale (~1/sqrt(2)), deliberately NOT FRAC_1_SQRT_2: the expected values were computed with exactly 0.7071.
+#[allow(clippy::approx_constant)]
 const SCALE: f32 = 0.7071;
 
 #[derive(Debug, Clone, Copy)]
