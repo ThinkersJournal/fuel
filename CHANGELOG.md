@@ -3,6 +3,17 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## Unreleased (version allocated by pm-assist; CUDA TopKLastDim binding, baracuda alpha.199)
+
+### Added
+
+- CUDA `TopKLastDim` (f32/f64) bound to baracuda's block-bitonic `topk` (`n <= 1024`, `k <= 64`; an over-cap shape is a typed `Err`, there is no per-shape decline: GAP-401). It follows the `torch.topk` convention the CPU kernel pins (NaN largest, ties lower index first): measured on the RTX 4070 at baracuda alpha.199, the two pinned vectors and 3840 random NaN/tie rows (10 shapes up to `n = 1024`, `k = 64`) equal the CPU kernel. At baracuda alpha.186 they did not (GAP-402), which is why item 2 shipped CPU-only. `MatMulTopK` stays CPU-only.
+- CUDA live tests (not in hosted CI; run under `gpu-run`): the NaN spec vectors through every CUDA arg/reduce binding (160/160 at alpha.199, baseline alpha.188 80/160; the four +-0 vectors follow the first-seen-zero rule), `Tensor::var` through the CUDA realize path (7/7), FlashAttn on the reachable decode rows (f16/bf16: 8/8; the multi-row, windowed and fully-masked cases are UNREACHABLE: Fuel binds only `flash_decoding`, GAP-409), `sign(NaN)`/`step(NaN)` = 0 (KISS 6.2-0009). The CUDA binding census golden moves 476 -> 478 (the two TopKLastDim bindings).
+
+### Changed
+
+- Dependencies (Cargo.lock only): the baracuda family 0.1.0-alpha.186 -> alpha.199 (21 packages); `baracuda-cuda-emit` stays 0.56.13. CUDA arg_reduce and value reduce max/min now propagate NaN on the device (the CPU rule), `reduce_max_to` included: nothing in the 34 `fuel-cuda-dispatch` test targets relied on the old NaN-ignoring behaviour (214 passed, `--include-ignored`, alpha.199; `jit_synth_kernel_live`, a separate feature shape, not run).
+
 ## v0.53.0 - 2026-11-26 (PM-allocated; BREAKING numerics: CPU/Metal argmax-argmin NaN, FlashAttn masked/NaN rows, var correction, greedy sampling on NaN)
 
 ### Breaking
