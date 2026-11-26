@@ -16,7 +16,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 3% of 938 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 3% of 942 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1301 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 5% of 294 lines verbatim
@@ -1092,20 +1092,20 @@ fuel-kernels-source/LICENSE-APACHE	copy		byte-identical packaged copy of the roo
 fuel-kernels-source/LICENSE-MIT	copy		byte-identical packaged copy of the root LICENSE-MIT
 fuel-kernels-source/README.md	own		no lineage; 0 of 10 lines verbatim in candle (0%)
 fuel-kernels-source/THIRD-PARTY-NOTICES.md	copy		byte-identical packaged copy of the root THIRD-PARTY-NOTICES.md
-fuel-kernels-source/kernels/compile.sh	own		no lineage; 0 of 72 lines verbatim in candle (0%)
+fuel-kernels-source/kernels/compile.sh	own		no lineage; 0 of 50 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/conv2d_im2col_bf16.glsl	own		no lineage; 0 of 37 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/flash_attn_backward_k_f32.glsl	own		no lineage; 0 of 86 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/flash_attn_backward_q_f32.glsl	own		no lineage; 0 of 95 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/flash_attn_backward_v_f32.glsl	own		no lineage; 0 of 63 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/flash_attn_bf16.glsl	own		no lineage; 0 of 84 lines verbatim in candle (0%)
-fuel-kernels-source/kernels/flash_attn_combine_bf16.glsl	own		no lineage; 0 of 51 lines verbatim in candle (0%)
-fuel-kernels-source/kernels/flash_attn_combine_f16.glsl	own		no lineage; 0 of 42 lines verbatim in candle (0%)
-fuel-kernels-source/kernels/flash_attn_combine_f32.glsl	own		no lineage; 0 of 39 lines verbatim in candle (0%)
+fuel-kernels-source/kernels/flash_attn_combine_bf16.glsl	own		no lineage; 0 of 50 lines verbatim in candle (0%)
+fuel-kernels-source/kernels/flash_attn_combine_f16.glsl	own		no lineage; 0 of 41 lines verbatim in candle (0%)
+fuel-kernels-source/kernels/flash_attn_combine_f32.glsl	own		no lineage; 0 of 38 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/flash_attn_f16.glsl	own		no lineage; 0 of 68 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/flash_attn_f32.glsl	own		no lineage; 0 of 84 lines verbatim in candle (0%)
-fuel-kernels-source/kernels/flash_attn_split_bf16.glsl	own		no lineage; 0 of 94 lines verbatim in candle (0%)
-fuel-kernels-source/kernels/flash_attn_split_f16.glsl	own		no lineage; 0 of 83 lines verbatim in candle (0%)
-fuel-kernels-source/kernels/flash_attn_split_f32.glsl	own		no lineage; 0 of 80 lines verbatim in candle (0%)
+fuel-kernels-source/kernels/flash_attn_split_bf16.glsl	own		no lineage; 0 of 93 lines verbatim in candle (0%)
+fuel-kernels-source/kernels/flash_attn_split_f16.glsl	own		no lineage; 0 of 82 lines verbatim in candle (0%)
+fuel-kernels-source/kernels/flash_attn_split_f32.glsl	own		no lineage; 0 of 79 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/matmul_coop.glsl	own		no lineage; 0 of 84 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/matmul_coop_bf16_bf16.glsl	own		no lineage; 0 of 64 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/matmul_coop_bf16_bf16_bf16.glsl	own		no lineage; 0 of 92 lines verbatim in candle (0%)
@@ -1119,7 +1119,7 @@ fuel-kernels-source/kernels/matmul_tiled.glsl	own		no lineage; 0 of 67 lines ver
 fuel-kernels-source/kernels/matmul_tiled_bf16_b.glsl	own		no lineage; 0 of 63 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/matvec.glsl	own		no lineage; 0 of 27 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/matvec_bf16_b.glsl	own		no lineage; 0 of 51 lines verbatim in candle (0%)
-fuel-kernels-source/kernels/matvec_cols.glsl	own		no lineage; 0 of 52 lines verbatim in candle (0%)
+fuel-kernels-source/kernels/matvec_cols.glsl	own		no lineage; 0 of 51 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/qmatvec_iq3_s.glsl	own		no lineage; 0 of 113 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/qmatvec_iq4_nl.glsl	own		no lineage; 0 of 32 lines verbatim in candle (0%)
 fuel-kernels-source/kernels/qmatvec_iq4_xs.glsl	own		no lineage; 0 of 40 lines verbatim in candle (0%)
@@ -1409,7 +1409,7 @@ fuel-tensor/src/inference_context.rs	own		no lineage; 16 of 1776 lines verbatim 
 fuel-tensor/src/judge/cache.rs	own		no lineage; 0 of 41 lines verbatim in candle (0%)
 fuel-tensor/src/judge/mod.rs	own		no lineage; 4 of 2130 lines verbatim in candle (0%)
 fuel-tensor/src/kv_block_pool_device.rs	own		no lineage; 4 of 1214 lines verbatim in candle (0%)
-fuel-tensor/src/lazy.rs	not-traced	candle-core/tests/bilinear_tests.rs	39 of 6412 lines also appear in candle (mostly candle-core/tests/bilinear_tests.rs); not judged
+fuel-tensor/src/lazy.rs	not-traced	candle-core/tests/bilinear_tests.rs	39 of 6432 lines also appear in candle (mostly candle-core/tests/bilinear_tests.rs); not judged
 fuel-tensor/src/lazy_latent_cache.rs	own		no lineage; 4 of 238 lines verbatim in candle (2%)
 fuel-tensor/src/lib.rs	own		no lineage; 8 of 84 lines verbatim in candle (10%)
 fuel-tensor/src/metal_backend/mod.rs	own		no lineage; 1 of 39 lines verbatim in candle (3%)
@@ -1454,6 +1454,7 @@ fuel-tensor/tests/phase_c_rotating_kv.rs	own		no lineage; 0 of 99 lines verbatim
 fuel-tensor/tests/phase_c_rotating_kv_cuda.rs	own		no lineage; 0 of 60 lines verbatim in candle (0%)
 fuel-tensor/tests/qmatmul_odd_n_q8_0.rs	own		no lineage; 0 of 62 lines verbatim in candle (0%)
 fuel-tensor/tests/recip_abs_realize_live.rs	own		no lineage; 0 of 55 lines verbatim in candle (0%)
+fuel-tensor/tests/sample_logits_contract.rs	own		no lineage; 0 of 45 lines verbatim in candle (0%)
 fuel-tensor/tests/sampling_temperature_zero.rs	own		no lineage; 0 of 23 lines verbatim in candle (0%)
 fuel-tensor/tests/strict_reproducibility_realize.rs	own		no lineage; 0 of 25 lines verbatim in candle (0%)
 fuel-tensor/tests/var_correction_cuda_live.rs	own		no lineage; 0 of 39 lines verbatim in candle (0%)

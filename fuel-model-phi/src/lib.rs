@@ -1252,7 +1252,7 @@ impl PhiModel {
 
         // Decode loop.
         for _ in 0..max_new_tokens {
-            let next = sample_logits(&last_logits, strategy, &mut rng_state);
+            let next = sample_logits(&last_logits, strategy, &mut rng_state)?;
             tokens.push(next);
             on_token(next);
             if let Some(eos) = eos_id
@@ -2740,7 +2740,7 @@ mod phi_kv_context_tests {
             .forward_with_kv_context(&prompt, &mut cache1, &mut ctx1)
             .expect("d1 prefill");
         for _ in 0..max_new {
-            let next = sample_logits(&last1, strategy, &mut rng1);
+            let next = sample_logits(&last1, strategy, &mut rng1).unwrap();
             ref_tokens.push(next);
             last1 = model
                 .forward_with_kv_context(&[next], &mut cache1, &mut ctx1)
@@ -2776,7 +2776,7 @@ mod phi_kv_context_tests {
             "prefill (seq>1) must NOT build the held session"
         );
         for _ in 0..max_new {
-            let next = sample_logits(&last2, strategy, &mut rng2);
+            let next = sample_logits(&last2, strategy, &mut rng2).unwrap();
             d2_tokens.push(next);
             last2 = model
                 .forward_with_kv_context_persistent(&[next], &mut cache2, &mut ctx2, &mut session)
@@ -2886,7 +2886,7 @@ mod phi_kv_context_tests {
                 .forward_with_kv_context_persistent(&prompt, &mut cache, &mut ctx, &mut session)
                 .expect("prefill");
             for _ in 0..decode_steps_before_overwrite {
-                let next = sample_logits(&last, strategy, &mut rng);
+                let next = sample_logits(&last, strategy, &mut rng).unwrap();
                 tokens.push(next);
                 last = model
                     .forward_with_kv_context_persistent(&[next], &mut cache, &mut ctx, &mut session)

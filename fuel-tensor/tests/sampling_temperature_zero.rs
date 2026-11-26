@@ -12,7 +12,7 @@ const LOGITS: [f32; 5] = [0.1, 0.2, 0.0, 0.3, 0.15];
 fn draws(strategy: SamplingStrategy, n: usize) -> Vec<u32> {
     let mut rng = 12345_u64;
     (0..n)
-        .map(|_| sample_logits(&LOGITS, strategy, &mut rng))
+        .map(|_| sample_logits(&LOGITS, strategy, &mut rng).unwrap())
         .collect()
 }
 
