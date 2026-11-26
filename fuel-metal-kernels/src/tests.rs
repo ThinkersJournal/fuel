@@ -2576,3 +2576,73 @@ fn argmax_argmin_nan_spec_vectors() {
         diverging.len()
     );
 }
+
+// ---- the arg-reduce comparator is spelled the way the CPU rule is (text level) ----
+// A TEXT-level pin on `reduce.metal` (read through `crate::source::REDUCE`, the same string the runtime compiles):
+// the `indexed<T>` comparators let a NaN WIN and take the first NaN's index; no NaN: ties take the first index.
+// The NaN test is a BIT-PATTERN test (`arg_is_nan`) because the shaders compile with fast math ON by default.
+// The numerics are measured by `argmax_argmin_nan_spec_vectors` on the host device.
+
+fn nan_comparator_body(src: &str, op: &str) -> String {
+    let head = format!("METAL_FUNC bool operator{op}(indexed<T> lhs, indexed<T> rhs)");
+    let at = src
+        .find(&head)
+        .unwrap_or_else(|| panic!("`{head}` not found in reduce.metal"));
+    let open = at + src[at..].find('{').expect("comparator has a body");
+    let mut depth = 0usize;
+    for (i, c) in src[open..].char_indices() {
+        match c {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return src[open..=open + i].to_string();
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("unbalanced braces in the `{op}` comparator");
+}
+
+fn nan_norm(s: &str) -> String {
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+#[test]
+fn both_indexed_comparators_let_a_nan_win_and_take_the_first_nan() {
+    for op in ["<", ">"] {
+        let body = nan_norm(&nan_comparator_body(crate::source::REDUCE, op));
+        for needle in [
+            "bool ln = arg_is_nan(lhs.val);",
+            "bool rn = arg_is_nan(rhs.val);",
+            "if (ln || rn) return ln && (!rn || lhs.i < rhs.i);",
+            "(lhs.val == rhs.val && lhs.i < rhs.i)",
+        ] {
+            assert!(
+                body.contains(needle),
+                "operator{op} for indexed<T> must contain `{needle}`; body: {body}"
+            );
+        }
+    }
+}
+
+/// Sabotage sibling: the OLD comparator text (NaN compares false, so a NaN is ignored) fails the same check.
+#[test]
+fn the_old_indexed_comparator_text_fails_the_check() {
+    let old = "constexpr METAL_FUNC bool operator>(indexed<T> lhs, indexed<T> rhs) { return lhs.val > rhs.val || (lhs.val == rhs.val && lhs.i < rhs.i); }";
+    assert!(!nan_norm(old).contains("if (ln || rn) return ln && (!rn || lhs.i < rhs.i);"));
+}
+
+#[test]
+fn the_nan_helper_covers_float_half_and_bfloat_by_bit_pattern() {
+    let src = nan_norm(crate::source::REDUCE);
+    for needle in [
+        "bool arg_is_nan(float x) { return (as_type<uint>(x) & 0x7fffffffu) > 0x7f800000u; }",
+        "bool arg_is_nan(half x) { return (as_type<ushort>(x) & 0x7fffu) > 0x7c00u; }",
+        "bool arg_is_nan(bfloat x) { return (as_type<ushort>(x) & 0x7fffu) > 0x7f80u; }",
+        "template<typename T> METAL_FUNC bool arg_is_nan(T) { return false; }",
+    ] {
+        assert!(src.contains(needle), "reduce.metal must contain `{needle}`");
+    }
+}
