@@ -2646,3 +2646,59 @@ fn the_nan_helper_covers_float_half_and_bfloat_by_bit_pattern() {
         assert!(src.contains(needle), "reduce.metal must contain `{needle}`");
     }
 }
+
+/// GAP-405 audit: NaN behaviour of the Metal paths that a fast-math compile could fold (relu, binary
+/// maximum/minimum, the value reduces, softmax, `affine` with an infinite scale = the `0 * inf` of the
+/// `Tensor::var` recipe). Fuel's convention (KISS-Ops 6.11-0002, torch): these PROPAGATE NaN, and
+/// `0 * inf` is NaN. The shaders compile with fast math ON by default (`get_compile_options`). Runs on
+/// whatever Metal device the host has; every case is printed (`METALNAN`) and any divergence fails.
+#[test]
+fn nan_audit_fast_math_paths() {
+    let nan = f32::NAN;
+    let inf = f32::INFINITY;
+    // `want`: None = NaN, Some(x) = exactly x.
+    let mut bad: Vec<String> = Vec::new();
+    let mut rec = |name: &str, got: &[f32], want: &[Option<f32>]| {
+        for (i, (g, w)) in got.iter().zip(want).enumerate() {
+            let ok = match w {
+                None => g.is_nan(),
+                Some(x) => !g.is_nan() && g == x,
+            };
+            println!(
+                "METALNAN {name}[{i}]: got {g} want {w:?} {}",
+                if ok { "OK" } else { "DIVERGES" }
+            );
+            if !ok {
+                bad.push(format!("{name}[{i}]: got {g} want {w:?}"));
+            }
+        }
+        assert_eq!(got.len(), want.len(), "{name}");
+    };
+    // relu: NaN -> NaN, negatives clamp.
+    let r = run(&[nan, -1.0f32, 2.0], unary::contiguous::relu::FLOAT);
+    rec("relu_f32", &r, &[None, Some(0.0), Some(2.0)]);
+    // binary maximum / minimum: either operand NaN -> NaN.
+    let r = run_binary(&[nan, 1.0f32, 2.0], &[1.0f32, nan, 3.0], "bmaximum_f32");
+    rec("bmaximum_f32", &r, &[None, None, Some(3.0)]);
+    let r = run_binary(&[nan, 1.0f32, 2.0], &[1.0f32, nan, 3.0], "bminimum_f32");
+    rec("bminimum_f32", &r, &[None, None, Some(2.0)]);
+    // value reduces over one row holding a NaN (N=4, one output).
+    let row = [1.0f32, nan, 0.0, 5.0];
+    let r: Vec<f32> = run_reduce(&row, 4, 1, "fast_max_f32");
+    rec("fast_max_f32", &r, &[None]);
+    let r: Vec<f32> = run_reduce(&row, 4, 1, "fast_min_f32");
+    rec("fast_min_f32", &r, &[None]);
+    let r: Vec<f32> = run_reduce(&row, 4, 1, "fast_sum_f32");
+    rec("fast_sum_f32", &r, &[None]);
+    // softmax of a row holding a NaN: every output is NaN.
+    let r = run_softmax(&[1.0f32, nan, 2.0, 3.0], 4, "softmax_f32");
+    rec("softmax_f32", &r, &[None, None, None, None]);
+    // affine with an infinite scale: 0*inf = NaN, 2*inf = inf, -3*inf = -inf (the var recipe's mul_scalar).
+    let r = run_affine(&[0.0f32, 2.0, -3.0], f64::INFINITY, 0.0);
+    rec("affine_inf_f32", &r, &[None, Some(inf), Some(-inf)]);
+    assert!(
+        bad.is_empty(),
+        "{} Metal NaN-audit case(s) diverge: {bad:?}",
+        bad.len()
+    );
+}
