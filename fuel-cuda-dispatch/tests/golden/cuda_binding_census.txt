@@ -435,6 +435,8 @@ TanhInplace [BF16, BF16] Cuda src=baracuda generic=false rev=e8a0b70b1c01f2ee
 TanhInplace [F16, F16] Cuda src=baracuda generic=false rev=e8a0b70b1c01f2ee
 TanhInplace [F32, F32] Cuda src=baracuda generic=false rev=e8a0b70b1c01f2ee
 TanhInplace [F64, F64] Cuda src=baracuda generic=false rev=e8a0b70b1c01f2ee
+TopKLastDim [F32, F32] Cuda src=baracuda generic=false rev=4c7f54ef7d932061
+TopKLastDim [F64, F64] Cuda src=baracuda generic=false rev=41ea0ab2e4efe09c
 Tril [BF16, BF16] Cuda src=baracuda generic=true rev=028d1599e581656b
 Tril [F16, F16] Cuda src=baracuda generic=true rev=028d1599e581656b
 Tril [F32, F32] Cuda src=baracuda generic=true rev=028d1599e581656b

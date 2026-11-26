@@ -1380,6 +1380,19 @@ pub static CUDA_AWQ_MATMUL_ENTRY_POINTS: &[(&str, KernelRef)] = &[cuda_ep!(
     crate::baracuda_dispatch::awq::awq_matmul_f16
 )];
 
+/// CUDA `top_k_last_dim` (baracuda block-bitonic topk; `OpKind::TopKLastDim`): symbol -> production wrapper.
+/// Contract: `fuel-cuda-dispatch/kernel-contracts/cuda/top_k_last_dim.fkc.md`.
+pub static CUDA_TOP_K_LAST_DIM_ENTRY_POINTS: &[(&str, KernelRef)] = &[
+    cuda_ep!(
+        "top_k_last_dim_f32",
+        crate::baracuda_dispatch::topk::top_k_last_dim_f32
+    ),
+    cuda_ep!(
+        "top_k_last_dim_f64",
+        crate::baracuda_dispatch::topk::top_k_last_dim_f64
+    ),
+];
+
 /// CUDA `qmatmul` (GGML block-quant matmul, F32 activations; `OpKind::QMatMul`): symbol -> production wrapper.
 /// Contract: `fuel-cuda-dispatch/kernel-contracts/cuda/qmatmul.fkc.md`.
 pub static CUDA_QMATMUL_ENTRY_POINTS: &[(&str, KernelRef)] = &[cuda_ep!(
@@ -1548,6 +1561,7 @@ impl LinkRegistry for CudaLinkRegistry {
             .chain(CUDA_PAD_BACKWARD_ENTRY_POINTS.iter())
             .chain(CUDA_CAUSAL_CONV1D_ENTRY_POINTS.iter())
             .chain(CUDA_AWQ_MATMUL_ENTRY_POINTS.iter())
+            .chain(CUDA_TOP_K_LAST_DIM_ENTRY_POINTS.iter())
             .chain(CUDA_QMATMUL_ENTRY_POINTS.iter())
             .chain(CUDA_GEMM_DENSE_ENTRY_POINTS.iter())
             .chain(CUDA_GEMM_INT_ENTRY_POINTS.iter())
