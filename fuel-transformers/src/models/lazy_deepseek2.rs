@@ -1635,7 +1635,7 @@ impl DeepSeek2Model {
 
         // Decode loop.
         for _ in 0..max_new_tokens {
-            let next = fuel_tensor::lazy::sample_logits(&last_logits, strategy, &mut rng_state);
+            let next = fuel_tensor::lazy::sample_logits(&last_logits, strategy, &mut rng_state)?;
             tokens.push(next);
             on_token(next);
             if let Some(eos) = eos_id
@@ -3596,7 +3596,7 @@ mod tests {
             .forward_with_latent_kv_context(&prompt, &mut cache1, &mut ctx1)
             .expect("d1 prefill");
         for _ in 0..max_new {
-            let next = fuel_tensor::lazy::sample_logits(&last1, strategy, &mut rng1);
+            let next = fuel_tensor::lazy::sample_logits(&last1, strategy, &mut rng1).unwrap();
             ref_tokens.push(next);
             last1 = model
                 .forward_with_latent_kv_context(&[next], &mut cache1, &mut ctx1)
@@ -3635,7 +3635,7 @@ mod tests {
             "prefill (seq>1) must NOT build the held session"
         );
         for _ in 0..max_new {
-            let next = fuel_tensor::lazy::sample_logits(&last2, strategy, &mut rng2);
+            let next = fuel_tensor::lazy::sample_logits(&last2, strategy, &mut rng2).unwrap();
             d2_tokens.push(next);
             last2 = model
                 .forward_with_latent_kv_context_persistent(

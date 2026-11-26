@@ -329,7 +329,8 @@ mod tests {
                     seed: 42,
                 },
                 &mut b,
-            );
+            )
+            .unwrap();
             assert_eq!(new, old);
         }
         assert_eq!(a, b, "both must consume the RNG identically");

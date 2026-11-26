@@ -748,7 +748,7 @@ pub(crate) fn sample_next(
     rng_state: &mut u64,
 ) -> fuel::Result<(u32, Option<TokenLogprob>)> {
     match params {
-        None => Ok((sample_logits(logits, strategy, rng_state), None)),
+        None => Ok((sample_logits(logits, strategy, rng_state)?, None)),
         Some(p) => {
             let r = sample_with_params(logits, p, history, rng_state)?;
             let lp = r.logprob.map(|logprob| TokenLogprob {
@@ -2967,7 +2967,7 @@ mod tests {
             )
             .unwrap();
             let mut rng = 0u64;
-            oracle_tokens.push(sample_logits(&logits, SamplingStrategy::Greedy, &mut rng));
+            oracle_tokens.push(sample_logits(&logits, SamplingStrategy::Greedy, &mut rng).unwrap());
         }
 
         // The surface under test: the SAME model through SessionScheduler,
@@ -4892,7 +4892,8 @@ mod tests {
             let pre = model
                 .forward_with_kv_context_persistent(prompt, &mut cache, &mut ctx, &mut sess)
                 .unwrap();
-            let next = fuel::lazy::sample_logits(&pre, SamplingStrategy::Greedy, &mut 0u64);
+            let next =
+                fuel::lazy::sample_logits(&pre, SamplingStrategy::Greedy, &mut 0u64).unwrap();
             model
                 .forward_with_kv_context_persistent(&[next], &mut cache, &mut ctx, &mut sess)
                 .unwrap()
@@ -5036,7 +5037,8 @@ mod tests {
             let pre = model
                 .forward_with_kv_context_persistent(prompt, &mut cache, &mut ctx, &mut sess)
                 .unwrap();
-            let next = fuel::lazy::sample_logits(&pre, SamplingStrategy::Greedy, &mut 0u64);
+            let next =
+                fuel::lazy::sample_logits(&pre, SamplingStrategy::Greedy, &mut 0u64).unwrap();
             model
                 .forward_with_kv_context_persistent(&[next], &mut cache, &mut ctx, &mut sess)
                 .unwrap()

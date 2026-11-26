@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 seed: 42,
             },
             &mut rng_state,
-        );
+        )?;
         all_tokens.push(next);
         if let Ok(full) = tokenizer.decode(&all_tokens, true) {
             if let Some(delta) = full.strip_prefix(&printed_text) {
