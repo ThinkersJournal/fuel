@@ -312,12 +312,16 @@ pub(crate) fn recompute_probs_recipe(
 
     // --- causal / sliding-window: additive -inf bands ------------------
     let needs_mask = causal || window_r.is_some() || window_l.is_some();
+    // The all -inf constant of the mask block (`neg_inf`), kept for the fully-masked-row
+    // select below.
+    let mut neg_inf_for_dead_rows: Option<PatternNode> = None;
     if needs_mask {
         // `S0` = scaled at mask entry; shared by `neg_inf` and the first band's
         // Add (emit dedups the clones). `neg_inf = -inf · 0 · S0`.
         let s0 = scaled;
         let zeros = r_op(OpTag::MulScalar, r_scalar(0.0), vec![s0.clone()]);
         let neg_inf = r_op(OpTag::AddScalar, r_scalar(f64::NEG_INFINITY), vec![zeros]);
+        neg_inf_for_dead_rows = Some(neg_inf.clone());
         // `q_pos_offset` shifts every band's diagonal: query row `i` sits at
         // absolute position `i + offset`, so key column `j` is causal iff
         // `j ≤ i + offset`.
@@ -340,7 +344,25 @@ pub(crate) fn recompute_probs_recipe(
     }
 
     // --- probs = softmax(scaled), carried as a nested Op::Fused node (2a) ---
-    let probs = r_op(OpTag::Fused, fused_softmax_attr(), vec![scaled]);
+    let mut probs = r_op(OpTag::Fused, fused_softmax_attr(), vec![scaled.clone()]);
+    // --- a FULLY MASKED row is ZEROS (ruling 2026-11-25; the flash / inference convention,
+    // the fused CPU kernel's result). Softmax of an all -inf row is 0/0 = NaN, so select it to 0.
+    // A row is fully masked iff its post-mask row max equals the row max of the all -inf
+    // constant built from the PRE-mask scores: equal (-inf == -inf) only when the mask removed
+    // every key. A NaN score makes both maxes NaN, `Equal` is false, and the row stays NaN
+    // (a NaN is never swallowed).
+    if let Some(neg_inf) = neg_inf_for_dead_rows {
+        let kd = r_shape(&[b, hq, sq, 1]);
+        let row_max = r_op(OpTag::ReduceMaxTo, kd.clone(), vec![scaled]);
+        let neg_inf_row_max = r_op(OpTag::ReduceMaxTo, kd, vec![neg_inf]);
+        let dead = r_op(
+            OpTag::Equal,
+            OpAttrs::default(),
+            vec![row_max, neg_inf_row_max],
+        );
+        let dead_full = r_op(OpTag::BroadcastTo, r_shape(&[b, hq, sq, sk]), vec![dead]);
+        probs = r_op(OpTag::MaskedFill, r_scalar(0.0), vec![probs, dead_full]);
+    }
     AttnRecomputeRecipe {
         probs,
         k_rep,
@@ -638,6 +660,8 @@ pub(crate) fn recompute_probs(
 
     // --- causal / sliding-window: additive -inf bands ------------------
     let needs_mask = causal || window_r.is_some() || window_l.is_some();
+    // The all -inf constant of the mask block, kept for the fully-masked-row select below.
+    let mut neg_inf_for_dead_rows: Option<NodeId> = None;
     if needs_mask {
         let zeros = graph.push(Node {
             op: Op::MulScalar(0.0),
@@ -651,6 +675,7 @@ pub(crate) fn recompute_probs(
             shape: scores_shape.clone(),
             dtype,
         });
+        neg_inf_for_dead_rows = Some(neg_inf);
         let add_band = |graph: &mut Graph, scaled: NodeId, op: Op| -> NodeId {
             let band = graph.push(Node {
                 op,
@@ -693,12 +718,50 @@ pub(crate) fn recompute_probs(
         }
     }
 
-    let probs = graph.push(Node {
+    let mut probs = graph.push(Node {
         op: Op::Fused(FusedOps::SOFTMAX_LAST_DIM, FusedOpParams::SoftmaxLastDim),
         inputs: vec![scaled],
         shape: scores_shape.clone(),
         dtype,
     });
+    // A FULLY MASKED row is ZEROS (ruling 2026-11-25): select it, exactly as the recipe does (see
+    // `recompute_probs_recipe`): dead iff the post-mask row max equals the row max of the all
+    // -inf constant built from the pre-mask scores; a NaN score makes both NaN so the row stays NaN.
+    if let Some(neg_inf) = neg_inf_for_dead_rows {
+        let kd_shape = Shape::from_dims(&[b, hq, sq, 1]);
+        let row_max = graph.push(Node {
+            op: Op::ReduceMaxTo(kd_shape.clone()),
+            inputs: vec![scaled],
+            shape: kd_shape.clone(),
+            dtype,
+        });
+        let neg_inf_row_max = graph.push(Node {
+            op: Op::ReduceMaxTo(kd_shape.clone()),
+            inputs: vec![neg_inf],
+            shape: kd_shape.clone(),
+            dtype,
+        });
+        let dead = graph.push(Node {
+            op: Op::Equal,
+            inputs: vec![row_max, neg_inf_row_max],
+            shape: kd_shape,
+            dtype: DType::Bool,
+        });
+        let dead_full = graph.push(Node {
+            op: Op::BroadcastTo(scores_shape.clone()),
+            inputs: vec![dead],
+            shape: scores_shape.clone(),
+            dtype: DType::Bool,
+        });
+        let zero = fuel_ir::Scalar::from_f64(0.0, dtype)
+            .expect("0.0 is representable in every float dtype");
+        probs = graph.push(Node {
+            op: Op::MaskedFill { value: zero },
+            inputs: vec![probs, dead_full],
+            shape: scores_shape.clone(),
+            dtype,
+        });
+    }
     AttnRecompute {
         probs,
         k_rep,

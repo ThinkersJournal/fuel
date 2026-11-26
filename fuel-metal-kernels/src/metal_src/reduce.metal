@@ -185,13 +185,39 @@ struct is_indexed_type<indexed<T>> {
 template <typename T>
 constexpr constant bool not_indexed_t = !is_indexed_t<T>;
 
+// NaN test for the arg-reduce comparator, by BIT PATTERN. The kernels are compiled with fast math ON by
+// default (`get_compile_options`, FUEL_METAL_ENABLE_FAST_MATH), under which `x != x` may be folded to
+// false (the compiler may assume no NaN); an exponent-all-ones-and-nonzero-mantissa test on the bits
+// cannot be folded away. The generic overload serves the integer types (never a NaN).
+template<typename T>
+METAL_FUNC bool arg_is_nan(T) { return false; }
+METAL_FUNC bool arg_is_nan(float x) { return (as_type<uint>(x) & 0x7fffffffu) > 0x7f800000u; }
+METAL_FUNC bool arg_is_nan(half x) { return (as_type<ushort>(x) & 0x7fffu) > 0x7c00u; }
+#if defined(__HAVE_BFLOAT__)
+METAL_FUNC bool arg_is_nan(bfloat x) { return (as_type<ushort>(x) & 0x7fffu) > 0x7f80u; }
+#endif
+
 template<typename T>
 constexpr METAL_FUNC bool operator<(indexed<T> lhs, indexed<T> rhs) {
+    // Spec rule (torch convention, shared with the CPU kernel): a NaN WINS for argmax AND argmin,
+    // and between two NaNs the lower index wins; with no NaN, ties take the lower index.
+    // `arg_is_nan` tests the bit pattern (fast math may fold `x != x`) and is false for integers.
+    // Measured on a hosted macOS Apple Paravirtual device (tests.rs argmax_argmin_nan_spec_vectors).
+    bool ln = arg_is_nan(lhs.val);
+    bool rn = arg_is_nan(rhs.val);
+    if (ln || rn) return ln && (!rn || lhs.i < rhs.i);
     return lhs.val < rhs.val || (lhs.val == rhs.val && lhs.i < rhs.i);
 }
 
 template<typename T>
 constexpr METAL_FUNC bool operator>(indexed<T> lhs, indexed<T> rhs) {
+    // Spec rule (torch convention, shared with the CPU kernel): a NaN WINS for argmax AND argmin,
+    // and between two NaNs the lower index wins; with no NaN, ties take the lower index.
+    // `arg_is_nan` tests the bit pattern (fast math may fold `x != x`) and is false for integers.
+    // Measured on a hosted macOS Apple Paravirtual device (tests.rs argmax_argmin_nan_spec_vectors).
+    bool ln = arg_is_nan(lhs.val);
+    bool rn = arg_is_nan(rhs.val);
+    if (ln || rn) return ln && (!rn || lhs.i < rhs.i);
     return lhs.val > rhs.val || (lhs.val == rhs.val && lhs.i < rhs.i);
 }
 
