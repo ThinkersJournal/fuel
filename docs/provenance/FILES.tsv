@@ -1258,7 +1258,7 @@ fuel-metal-kernels/src/metal_src/ternary.metal	candle	candle-metal-kernels/src/m
 fuel-metal-kernels/src/metal_src/unary.metal	candle	candle-metal-kernels/src/metal_src/unary.metal	rename/copy 91%; 93% of 159 lines verbatim
 fuel-metal-kernels/src/metal_src/utils.metal	candle	candle-metal-kernels/src/metal_src/utils.metal	rename/copy 100%; 100% of 18 lines verbatim
 fuel-metal-kernels/src/source.rs	candle	candle-metal-kernels/src/source.rs	rename/copy 96%; 94% of 17 lines verbatim
-fuel-metal-kernels/src/tests.rs	candle	candle-metal-kernels/src/tests.rs	rename/copy 91%; 91% of 1022 lines verbatim
+fuel-metal-kernels/src/tests.rs	candle-modified	candle-metal-kernels/src/tests.rs	rename/copy 83%; 84% of 1100 lines verbatim
 fuel-metal-kernels/src/utils.rs	candle	candle-metal-kernels/src/utils.rs	rename/copy 99%; 99% of 87 lines verbatim
 fuel-mkl-cpu-backend/Cargo.toml	own		no lineage; 2 of 18 lines verbatim in candle (11%)
 fuel-mkl-cpu-backend/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
@@ -1745,7 +1745,7 @@ fuel-vulkan-dispatch/tests/vulkan_claims_match_contracts.rs	own		no lineage; 0 o
 fuel-vulkan-dispatch/tests/vulkan_cross_vendor_masked_fill.rs	own		no lineage; 0 of 71 lines verbatim in candle (0%)
 fuel-vulkan-dispatch/tests/vulkan_deferred_eviction_live.rs	own		no lineage; 1 of 198 lines verbatim in candle (1%)
 fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	own		no lineage; 3 of 5538 lines verbatim in candle (0%)
-fuel-vulkan-dispatch/tests/vulkan_flash_attn_nan_rows_live.rs	own		no lineage; 3 of 125 lines verbatim in candle (2%)
+fuel-vulkan-dispatch/tests/vulkan_flash_attn_nan_rows_live.rs	own		no lineage; 4 of 127 lines verbatim in candle (3%)
 fuel-vulkan-dispatch/tests/vulkan_nan_shipped_spv_live.rs	own		no lineage; 1 of 114 lines verbatim in candle (1%)
 fuel-vulkan-dispatch/tests/vulkan_write_slice_rotating_live.rs	own		no lineage; 1 of 116 lines verbatim in candle (1%)
 fuel-vulkan-kernels/Cargo.toml	own		no lineage; 2 of 9 lines verbatim in candle (22%)

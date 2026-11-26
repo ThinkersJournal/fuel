@@ -3,6 +3,20 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## Unreleased (version allocated by pm-assist; BREAKING numerics: Metal max/min NaN)
+
+### Breaking
+
+- `fuel-metal-kernels`: the Metal binary `maximum`/`minimum` kernels and the `max`/`min` value reduces (f32/f16/bf16, including the simd-group path) now PROPAGATE a NaN (a NaN in either operand, or anywhere in the reduced row, gives NaN), as `KISS-Ops 6.11-0002` and the CPU kernels do. Before, they returned the non-NaN operand / the max of the finite elements: the shaders compile with fast math ON by default, which folded `a > b ? a : b` and `fast::max` into a NaN-ignoring max. The NaN test is by bit pattern (`nan_bits` in `binary.metal`, `arg_is_nan` in `reduce.metal`). Measured on the hosted macOS runner's `Apple Paravirtual device` (not physical hardware): 5 of 19 audit cases diverged before, 19 of 19 agree after, and the whole `fuel-metal-kernels` lib suite passes (65 tests). Any model that fed NaN through a Metal softmax-max, layer-norm max or an elementwise max now gets NaN where it previously got a finite value.
+
+### Added
+
+- `fuel-metal-kernels` tests: `nan_audit_fast_math_paths` (relu, binary max/min, value reduces, softmax, `affine` with an infinite scale = the `0 * inf` of the `Tensor::var` recipe) and `nan_audit_unary_and_half_variants` (every contiguous unary kernel NaN -> NaN in f32; f16/bf16 variants of relu, binary max/min, the value reduces and softmax). `sign(NaN) = 0` is KISS-pinned (6.2-0009) and reported, not asserted.
+
+### Notes
+
+- Not audited on Metal: the sort/index/ternary kernels and the other half-precision ops. The `Tensor::var` recipe is not runnable end to end on Metal (Metal is not wired into the lazy executor); its components were measured. `docs/gaps.md` GAP-405 carries the audit.
+
 ## v0.53.0 - 2026-11-26 (PM-allocated; BREAKING numerics: CPU/Metal argmax-argmin NaN, FlashAttn masked/NaN rows, var correction, greedy sampling on NaN)
 
 ### Breaking
