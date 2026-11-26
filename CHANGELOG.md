@@ -11,7 +11,7 @@ This documents the main changes to the `fuel` workspace.
 
 ### Changed
 
-- `fuel-vulkan-kernels/spv/SOURCE.txt`: the 153 Slang-derived `.spv` now rebuild from the published crate with the recorded toolchain (slangc 2026.8, Python 3.15.2): 145 are byte-identical to the 0.0.17-built files they replace nothing of (positive control), the 8 `arg_reduce` files carry the 0.6.0 bytes; new tree sha256 recorded.
+- `fuel-vulkan-kernels/spv/SOURCE.txt`: the 153 Slang-derived `.spv` now rebuild from the published crate with the recorded toolchain (slangc 2026.8, Python 3.15.2): 145 are byte-identical to the 0.0.17-built files already shipped (positive control), the 8 `arg_reduce` files carry the 0.6.0 bytes; new tree sha256 recorded.
 
 ## v0.53.0 - 2026-11-26 (PM-allocated; BREAKING numerics: CPU/Metal argmax-argmin NaN, FlashAttn masked/NaN rows, var correction, greedy sampling on NaN)
 
