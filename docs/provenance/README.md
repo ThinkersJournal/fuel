@@ -49,7 +49,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 |---|--:|--:|--:|--:|--:|--:|--:|--:|
 | `(root)` | 25 | 4 | 4 |  |  | 17 |  |  |
 | `.cargo` | 1 |  | 1 |  |  |  |  |  |
-| `.github` | 9 | 1 | 2 |  |  | 6 |  |  |
+| `.github` | 10 | 1 | 2 |  |  | 7 |  |  |
 | `docs` | 207 |  |  |  |  | 207 |  |  |
 | `fuel` | 9 |  |  |  |  | 6 |  | 3 |
 | `fuel-aocl-cpu-backend` | 8 |  |  |  |  | 5 |  | 3 |
@@ -96,5 +96,5 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-vulkan-dispatch` | 46 |  |  |  |  | 43 |  | 3 |
 | `fuel-vulkan-kernels` | 192 |  |  |  |  | 4 | 185 | 3 |
 | `scripts` | 81 |  |  | 1 |  | 80 |  |  |
-| **all** | **2042** | **109** | **217** | **260** | **4** | **1142** | **190** | **120** |
+| **all** | **2043** | **109** | **217** | **260** | **4** | **1143** | **190** | **120** |
 <!-- provenance-summary:end -->
