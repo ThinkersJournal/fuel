@@ -120,7 +120,7 @@ pub struct PrecisionGuarantee {
     /// bit-identical inputs on the same hardware (no nondeterminism
     /// from kernel scheduling, atomic ordering, etc.).
     ///
-    /// **This is NOT the KISS-Ops "bit-stable" value (6.17-0001/-0002).** KISS bit-stable means every atom rounds
+    /// **This is NOT the KISS-Ops "bit-stable" value (KISS-OPS-6.17-0001 and KISS-OPS-6.17-0002).** KISS bit-stable means every atom rounds
     /// independently at the storage dtype's full IEEE 754-2019 precision, SUBNORMALS PRESERVED; a kernel that flushes
     /// subnormals (FTZ/DAZ) is non-conformant under it and must decline `Exact`. A flush is DETERMINISTIC, so a
     /// flushing kernel can still be `bit_stable_on_same_hardware: true` here (Metal f32/bf16: FTZ measured, hosted

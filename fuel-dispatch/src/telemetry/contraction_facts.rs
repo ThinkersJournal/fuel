@@ -126,7 +126,7 @@ mod tests {
         assert_eq!(c.acc_dtype, DType::F32);
     }
 
-    // KISS-OPS 6.17-0002: a kernel that flushes subnormals (FTZ/DAZ) is non-conformant under bit-stable and MUST decline
+    // KISS-OPS-6.17-0002: a kernel that flushes subnormals (FTZ/DAZ) is non-conformant under bit-stable and MUST decline
     // `Exact`. Metal flushes f32 and bf16 subnormals (operands and results) and preserves f16 (vulkane's hosted-macOS
     // probe, run 45748530618; Fuel's own record `subnormal_behaviour_record` in fuel-metal-kernels). The declared `st`
     // math-precision of a contraction cell must therefore not be derived for a Metal target at f32/bf16.
