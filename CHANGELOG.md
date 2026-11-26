@@ -3,6 +3,18 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## Unreleased - follow-up to #715 (version allocated at gate time; behaviour change on the DECOMPOSED FlashAttn path, so noted Breaking)
+
+### Breaking
+
+- `fuel-graph`: the decomposed / backward-recompute `FlashAttn` (`recompute_probs`, `recompute_probs_recipe`) masks causal and window positions with a `MaskedFill(-inf)` SELECT under a `Ge` predicate built from `Iota` alone, replacing the additive `score + (-inf)` `Triu`/`Tril` bands. The additive form turned a NaN or +inf score at a MASKED-OUT position into NaN (`inf + -inf`) and the softmax spread it over the row, so the decomposed path disagreed with the fused CPU kernel and Vulkan GLSL (which skip inadmissible keys before scoring), and a masked-out K NaN poisoned the backward gradients too (aMusedPip review of #715, M1). A fully masked row (zeros) is now decided from the mask alone, so contract (1) takes precedence over (2): a NaN Q on a row that attends nothing is zeros on both paths. Graph shape changes: no `Triu`/`Tril` nodes in the decomposition; `Ge` + `MaskedFill` instead.
+- `fuel-tensor`: `Tensor::var` / `var_keepdim` return a typed error for a NaN `correction` (the zero-clamped divisor had turned a NaN result into `inf`; aMusedPip L2).
+
+### Notes
+
+- Pinned, not changed: an ATTENDED `+inf` score row is zeros on the fused CPU kernel (it treats a non-finite row max like a fully masked row) and NaN on the decomposed path (aMusedPip L1; pre-existing, outside the NaN scope of #715). `flash_attn_*_follows_the_masked_and_nan_row_contract` marks that case `Any` and says so.
+- The three live-Vulkan tests now point at the hosted `--skip` list in `rust-ci.yml` (aMusedPip N2).
+
 ## v0.53.0 - 2026-11-26 (PM-allocated; BREAKING numerics: CPU/Metal argmax-argmin NaN, FlashAttn masked/NaN rows, var correction, greedy sampling on NaN)
 
 ### Breaking
