@@ -84,14 +84,29 @@ impl LogitsProcessor {
     }
 
     fn sample_argmax(&mut self, logits: &[f32]) -> Result<u32> {
-        // Argmax with `total_cmp` to handle NaN deterministically and match the
-        // previous fuel-core `argmax` behaviour on float dtypes.
-        let (idx, _) = logits
-            .iter()
-            .enumerate()
-            .max_by(|(_, a), (_, b)| a.total_cmp(b))
-            .ok_or_else(|| Error::Msg("empty logits slice passed to sample_argmax".into()))?;
-        Ok(idx as u32)
+        // Greedy decoding follows the argmax spec (ruling 2026-11-25): ties take the FIRST
+        // index and `-0.0 == +0.0` (strict `>`), and a NaN logit is a typed error: the model
+        // produced NaN, and sampling must never silently pick a token from such a row. (The
+        // earlier `max_by(total_cmp)` returned the LAST tied index, the last NaN, and skipped a
+        // sign-bit NaN entirely.)
+        if logits.is_empty() {
+            return Err(Error::Msg(
+                "empty logits slice passed to sample_argmax".into(),
+            ));
+        }
+        if let Some(at) = logits.iter().position(|v| v.is_nan()) {
+            return Err(Error::Msg(format!(
+                "sample_argmax: logit {at} of {} is NaN (the model produced NaN); refusing to pick a token",
+                logits.len()
+            )));
+        }
+        let mut best = 0usize;
+        for (i, &v) in logits.iter().enumerate() {
+            if v > logits[best] {
+                best = i;
+            }
+        }
+        Ok(best as u32)
     }
 
     /// Host-side Gumbel-Softmax sampling.

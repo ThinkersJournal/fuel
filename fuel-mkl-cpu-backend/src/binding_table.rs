@@ -1049,7 +1049,10 @@ mod tests {
             let mut outs = [out.clone()];
             (alt.kernel)(&inputs, &mut outs, &[], &params).expect("alt kernel ok");
             let g = out.read().unwrap();
-            #[allow(unreachable_patterns)]
+            #[allow(
+                unreachable_patterns,
+                reason = "the `_` arm covers the non-Cpu BackendStorage variants, which a build without them makes unreachable"
+            )]
             let bytes = match &g.inner {
                 BackendStorage::Cpu(c) => c.as_slice::<f32>().unwrap().to_vec(),
                 _ => panic!("not cpu"),

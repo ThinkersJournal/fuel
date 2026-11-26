@@ -1666,6 +1666,80 @@ pub fn infer_storage_class(op: &Op) -> StorageClass {
     }
 }
 
+/// Identity of the shared host array a weight `Const` was built from: the data pointer, the element
+/// count and the dtype of the `Arc<[T]>` its constructor was handed.
+///
+/// Two `Const`s on different graphs built from the SAME `Arc` have the same key, which is what lets a
+/// caller that holds realized device copies of weights recognise a weight it has already uploaded
+/// (ROADMAP row 172). The key alone proves nothing about liveness (a freed allocation's address can be
+/// reused): use [`ConstOrigin::pin`], which succeeds only while the source `Arc` is alive, and keep the
+/// returned pin for as long as the key is trusted.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct ConstOriginKey {
+    /// Address of the first element of the source array.
+    pub ptr: usize,
+    /// Element count of the source array.
+    pub len: usize,
+    /// Element dtype of the source array.
+    pub dtype: DType,
+}
+
+/// A weak handle on the shared host array a `Const` was built from (see [`ConstOriginKey`]).
+///
+/// Holds only a `Weak`, so recording an origin never extends the array's life: a per-call array
+/// (a token-id table, a RoPE table, a mask) has no live source by the time anyone asks and
+/// [`Self::pin`] returns `None` for it, while a model weight, still held by the model, pins.
+#[derive(Clone)]
+pub struct ConstOrigin {
+    key: ConstOriginKey,
+    pin: Arc<dyn Fn() -> Option<Box<dyn std::any::Any + Send + Sync>> + Send + Sync>,
+    strong: Arc<dyn Fn() -> usize + Send + Sync>,
+}
+
+impl ConstOrigin {
+    fn of<T: Send + Sync + 'static>(data: &Arc<[T]>, dtype: DType) -> Self {
+        let weak = Arc::downgrade(data);
+        let counter = weak.clone();
+        Self {
+            key: ConstOriginKey {
+                ptr: data.as_ptr() as usize,
+                len: data.len(),
+                dtype,
+            },
+            pin: Arc::new(move || {
+                weak.upgrade()
+                    .map(|a| Box::new(a) as Box<dyn std::any::Any + Send + Sync>)
+            }),
+            strong: Arc::new(move || counter.strong_count()),
+        }
+    }
+
+    /// The identity of the source array.
+    pub fn key(&self) -> ConstOriginKey {
+        self.key
+    }
+
+    /// A strong handle that keeps the source array alive, or `None` if it is already gone (the
+    /// `Const` was built from a per-call array). Hold it for as long as [`Self::key`] is trusted.
+    pub fn pin(&self) -> Option<Box<dyn std::any::Any + Send + Sync>> {
+        (self.pin)()
+    }
+
+    /// How many strong handles the source array has right now, pins included. A holder of one pin
+    /// sees `1` when nothing else (no model) holds the array any more, which is its cue to let go.
+    pub fn strong_count(&self) -> usize {
+        (self.strong)()
+    }
+}
+
+impl std::fmt::Debug for ConstOrigin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ConstOrigin")
+            .field("key", &self.key)
+            .finish_non_exhaustive()
+    }
+}
+
 /// The graph arena. Stores every node added during a computation-building
 /// session. Nodes are append-only and indexed by [`NodeId`].
 ///
@@ -1756,6 +1830,10 @@ pub struct Graph {
     /// Absent ⇒ a normal, static-M matmul. A side-table (not an `Op::MatMul`
     /// field) so the dense-matmul enum + its every match arm stay untouched.
     node_matmul_row_count: HashMap<NodeId, DynScalar>,
+    /// Per-`Const` source identity ([`ConstOrigin`]), recorded by the `Arc`-taking `Const` constructors
+    /// (`from_f32`, `const_u32_like`, and their dtype and `_on` siblings). Sparse: a `Const` built from
+    /// an owned buffer has none. Weak: it never keeps a source array alive.
+    const_origins: HashMap<NodeId, ConstOrigin>,
     /// Process-unique identity for this graph, minted at construction.
     ///
     /// Tensors are **graph-affine**: every binary op requires both operands to
@@ -1804,6 +1882,7 @@ impl Graph {
             node_output_views: HashMap::new(),
             storage_class: HashMap::new(),
             node_matmul_row_count: HashMap::new(),
+            const_origins: HashMap::new(),
         }
     }
 
@@ -1811,6 +1890,16 @@ impl Graph {
     /// name *which* graphs disagree; see [`NodeHandle::graph_id`].
     pub fn id(&self) -> GraphId {
         self.id
+    }
+
+    /// Record where `id`'s `Const` data came from (see [`ConstOrigin`]).
+    pub fn set_const_origin(&mut self, id: NodeId, origin: ConstOrigin) {
+        self.const_origins.insert(id, origin);
+    }
+
+    /// Every `Const` of this graph with a recorded source identity.
+    pub fn const_origins(&self) -> impl Iterator<Item = (NodeId, &ConstOrigin)> {
+        self.const_origins.iter().map(|(id, o)| (*id, o))
     }
 
     /// Look up the resolved target backend for a node, if any has
@@ -2671,6 +2760,7 @@ impl Graph {
         self.node_output_views = remap.rekey(std::mem::take(&mut self.node_output_views));
         self.storage_class = remap.rekey(std::mem::take(&mut self.storage_class));
         self.node_matmul_row_count = remap.rekey(std::mem::take(&mut self.node_matmul_row_count));
+        self.const_origins = remap.rekey(std::mem::take(&mut self.const_origins));
 
         // Remap the side-effect-roots vector (every entry is live — they
         // were reachability seeds — so each maps).
@@ -3898,7 +3988,8 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f32]> = data.into();
         let buf = fuel_ir::HostBuffer::F32(v.to_vec());
-        Self::from_host_buffer(buf, DType::F32, shape, device)
+        let origin = ConstOrigin::of(&v, DType::F32);
+        Self::from_host_buffer(buf, DType::F32, shape, device).map(|h| h.with_origin(origin))
     }
 
     /// Build a `Const` tensor from an `f64` slice and shape on a fresh graph.
@@ -3922,7 +4013,8 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[bf16]> = data.into();
         let buf = fuel_ir::HostBuffer::BF16(v.to_vec());
-        Self::from_host_buffer(buf, DType::BF16, shape, device)
+        let origin = ConstOrigin::of(&v, DType::BF16);
+        Self::from_host_buffer(buf, DType::BF16, shape, device).map(|h| h.with_origin(origin))
     }
 
     /// Build a `Const` tensor from an `f16` slice and shape on a fresh graph.
@@ -3934,7 +4026,8 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f16]> = data.into();
         let buf = fuel_ir::HostBuffer::F16(v.to_vec());
-        Self::from_host_buffer(buf, DType::F16, shape, device)
+        let origin = ConstOrigin::of(&v, DType::F16);
+        Self::from_host_buffer(buf, DType::F16, shape, device).map(|h| h.with_origin(origin))
     }
 
     /// Build a `Const` tensor from a `u32` slice and shape on a fresh
@@ -3951,7 +4044,8 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[u32]> = data.into();
         let buf = fuel_ir::HostBuffer::U32(v.to_vec());
-        Self::from_host_buffer(buf, DType::U32, shape, device)
+        let origin = ConstOrigin::of(&v, DType::U32);
+        Self::from_host_buffer(buf, DType::U32, shape, device).map(|h| h.with_origin(origin))
     }
 
     /// G2 internal funnel: allocate Storage on `device` from `buf`,
@@ -4040,7 +4134,9 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f32]> = data.into();
         let buf = fuel_ir::HostBuffer::F32(v.to_vec());
+        let origin = ConstOrigin::of(&v, DType::F32);
         Self::from_host_buffer_on(graph, buf, DType::F32, shape, device)
+            .map(|h| h.with_origin(origin))
     }
 
     /// `f64` sibling of [`from_f32_on`](Self::from_f32_on) — builds on the given
@@ -4067,7 +4163,9 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[half::bf16]> = data.into();
         let buf = fuel_ir::HostBuffer::BF16(v.to_vec());
+        let origin = ConstOrigin::of(&v, DType::BF16);
         Self::from_host_buffer_on(graph, buf, DType::BF16, shape, device)
+            .map(|h| h.with_origin(origin))
     }
 
     /// `f16` sibling of [`from_f32_on`](Self::from_f32_on).
@@ -4079,7 +4177,9 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[half::f16]> = data.into();
         let buf = fuel_ir::HostBuffer::F16(v.to_vec());
+        let origin = ConstOrigin::of(&v, DType::F16);
         Self::from_host_buffer_on(graph, buf, DType::F16, shape, device)
+            .map(|h| h.with_origin(origin))
     }
 
     /// `u32` sibling of [`from_f32_on`](Self::from_f32_on) — index tensors for
@@ -4092,7 +4192,9 @@ impl NodeHandle {
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[u32]> = data.into();
         let buf = fuel_ir::HostBuffer::U32(v.to_vec());
+        let origin = ConstOrigin::of(&v, DType::U32);
         Self::from_host_buffer_on(graph, buf, DType::U32, shape, device)
+            .map(|h| h.with_origin(origin))
     }
 
     /// Phase 7.5 work item G2: build a `Const` leaf on a fresh graph
@@ -4146,7 +4248,9 @@ impl NodeHandle {
         shape: impl Into<Shape>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f32]> = data.into();
+        let origin = ConstOrigin::of(&v, DType::F32);
         self.const_like_host_buffer(fuel_ir::HostBuffer::F32(v.to_vec()), DType::F32, shape)
+            .map(|h| h.with_origin(origin))
     }
 
     /// Build a second `Const f64` tensor on the same graph as `self`.
@@ -4166,7 +4270,9 @@ impl NodeHandle {
         shape: impl Into<Shape>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[bf16]> = data.into();
+        let origin = ConstOrigin::of(&v, DType::BF16);
         self.const_like_host_buffer(fuel_ir::HostBuffer::BF16(v.to_vec()), DType::BF16, shape)
+            .map(|h| h.with_origin(origin))
     }
 
     /// Build a second `Const f16` tensor on the same graph as `self`.
@@ -4176,7 +4282,9 @@ impl NodeHandle {
         shape: impl Into<Shape>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[f16]> = data.into();
+        let origin = ConstOrigin::of(&v, DType::F16);
         self.const_like_host_buffer(fuel_ir::HostBuffer::F16(v.to_vec()), DType::F16, shape)
+            .map(|h| h.with_origin(origin))
     }
 
     /// Build a second `Const u32` (index) tensor on the same graph as `self`.
@@ -4186,7 +4294,9 @@ impl NodeHandle {
         shape: impl Into<Shape>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[u32]> = data.into();
+        let origin = ConstOrigin::of(&v, DType::U32);
         self.const_like_host_buffer(fuel_ir::HostBuffer::U32(v.to_vec()), DType::U32, shape)
+            .map(|h| h.with_origin(origin))
     }
 
     /// Build a sibling U8 `Const` on the same graph. Used by
@@ -4198,7 +4308,9 @@ impl NodeHandle {
         shape: impl Into<Shape>,
     ) -> Result<Self, fuel_ir::Error> {
         let v: Arc<[u8]> = data.into();
+        let origin = ConstOrigin::of(&v, DType::U8);
         self.const_like_host_buffer(fuel_ir::HostBuffer::U8(v.to_vec()), DType::U8, shape)
+            .map(|h| h.with_origin(origin))
     }
 
     /// Build a sibling I64 `Const` on the same graph. Used by
@@ -4218,6 +4330,15 @@ impl NodeHandle {
     /// so callers don't have to thread a device through hot paths
     /// like RoPE table construction or LoRA application — the const
     /// goes on the same device as the graph it joins.
+    /// Record this `Const`'s source array identity (see [`ConstOrigin`]).
+    fn with_origin(self, origin: ConstOrigin) -> Self {
+        self.graph
+            .write()
+            .unwrap()
+            .set_const_origin(self.id, origin);
+        self
+    }
+
     fn const_like_host_buffer(
         &self,
         buf: fuel_ir::HostBuffer,
@@ -7741,6 +7862,121 @@ impl NodeHandle {
         let y = producer.view(0)?;
         let last_state = producer.view(1)?;
         Ok((y, last_state))
+    }
+
+    /// TopKLastDim (ROADMAP row 172 item 2): the `k` largest values along the
+    /// last axis and their `U32` indices. Returns `(values, indices)`, each
+    /// `[.., k]`; descending, NaN largest, ties lower index first. `k` is static
+    /// and validated here (`1 <= k <= last axis length`); a bad `k`, a non-float
+    /// dtype or a rank-0 input is an `Err`, never a panic.
+    pub fn top_k_last_dim(
+        &self,
+        k: usize,
+    ) -> std::result::Result<(NodeHandle, NodeHandle), fuel_ir::Error> {
+        let dtype = self.dtype();
+        if !matches!(dtype, DType::F32 | DType::F64 | DType::BF16 | DType::F16) {
+            return Err(fuel_ir::Error::Msg(format!(
+                "top_k_last_dim: input must be F32/F64/BF16/F16, got {dtype:?}"
+            ))
+            .bt());
+        }
+        let shape = self.shape();
+        let Some(&n) = shape.dims().last() else {
+            return Err(fuel_ir::Error::Msg("top_k_last_dim: input must be rank >= 1".into()).bt());
+        };
+        crate::registry::top_k_last_dim::validate_k(k, n)
+            .map_err(|m| fuel_ir::Error::Msg(m).bt())?;
+        let params = crate::registry::FusedOpParams::TopKLastDim { k };
+        let entry = crate::registry::default_registry()
+            .entry(crate::registry::FusedOps::TOP_K_LAST_DIM)
+            .ok_or_else(|| {
+                fuel_ir::Error::Msg("top_k_last_dim: TOP_K_LAST_DIM is not registered".into()).bt()
+            })?;
+        let specs = (entry.output_views.ok_or_else(|| {
+            fuel_ir::Error::Msg("top_k_last_dim: entry has no output_views".into()).bt()
+        })?)(std::slice::from_ref(&shape), &[dtype], &params);
+        let (_total_bytes, views) = fuel_ir::storage::compose_bundle(&specs)?;
+        let slot0 = specs[0].shape.clone();
+        let mut g = self.graph.write().unwrap();
+        let id = g.push(Node {
+            op: Op::Fused(crate::registry::FusedOps::TOP_K_LAST_DIM, params),
+            inputs: vec![self.id],
+            shape: slot0,
+            dtype,
+        });
+        g.set_output_views(id, Arc::from(views.into_boxed_slice()))?;
+        drop(g);
+        let producer = Self {
+            graph: self.graph.clone(),
+            id,
+        };
+        let values = producer.view(0)?;
+        let indices = producer.view(1)?;
+        Ok((values, indices))
+    }
+
+    /// MatMulTopK (ROADMAP row 172 item 2 step B): `TopKLastDim(self @ b)` as one
+    /// fused node. `self [.., M, K]` and `b [.., K, N]` need equal rank >= 2 and
+    /// equal batch dims, one float dtype; returns `(values, indices)`, each
+    /// `[.., M, k]`. An `Err`, never a panic, on any violation.
+    pub fn matmul_top_k(
+        &self,
+        b: &NodeHandle,
+        k: usize,
+    ) -> std::result::Result<(NodeHandle, NodeHandle), fuel_ir::Error> {
+        self.require_same_graph(b, "matmul_top_k", "b")?;
+        let dtype = self.dtype();
+        if !matches!(dtype, DType::F32 | DType::F64 | DType::BF16 | DType::F16)
+            || b.dtype() != dtype
+        {
+            return Err(fuel_ir::Error::Msg(format!(
+                "matmul_top_k: a and b must share one float dtype, got {dtype:?} and {:?}",
+                b.dtype()
+            ))
+            .bt());
+        }
+        let (a_shape, b_shape) = (self.shape(), b.shape());
+        let (ad, bd) = (a_shape.dims(), b_shape.dims());
+        if ad.len() < 2 || ad.len() != bd.len() || ad[..ad.len() - 2] != bd[..bd.len() - 2] {
+            return Err(fuel_ir::Error::Msg(format!(
+                "matmul_top_k: a {ad:?} and b {bd:?} need equal rank >= 2 and equal batch dims"
+            ))
+            .bt());
+        }
+        if ad[ad.len() - 1] != bd[bd.len() - 2] {
+            return Err(fuel_ir::Error::Msg(format!(
+                "matmul_top_k: contracting dims disagree: a {ad:?}, b {bd:?}"
+            ))
+            .bt());
+        }
+        crate::registry::top_k_last_dim::validate_k(k, bd[bd.len() - 1])
+            .map_err(|m| fuel_ir::Error::Msg(m).bt())?;
+        let params = crate::registry::FusedOpParams::MatMulTopK { k };
+        let entry = crate::registry::default_registry()
+            .entry(crate::registry::FusedOps::MATMUL_TOP_K)
+            .ok_or_else(|| {
+                fuel_ir::Error::Msg("matmul_top_k: MATMUL_TOP_K is not registered".into()).bt()
+            })?;
+        let ins = [a_shape.clone(), b_shape.clone()];
+        let specs = (entry.output_views.ok_or_else(|| {
+            fuel_ir::Error::Msg("matmul_top_k: entry has no output_views".into()).bt()
+        })?)(&ins, &[dtype, dtype], &params);
+        let (_total_bytes, views) = fuel_ir::storage::compose_bundle(&specs)?;
+        let slot0 = specs[0].shape.clone();
+        let mut g = self.graph.write().unwrap();
+        let id = g.push(Node {
+            op: Op::Fused(crate::registry::FusedOps::MATMUL_TOP_K, params),
+            inputs: vec![self.id, b.id],
+            shape: slot0,
+            dtype,
+        });
+        g.set_output_views(id, Arc::from(views.into_boxed_slice()))?;
+        drop(g);
+        let producer = Self {
+            graph: self.graph.clone(),
+            id,
+        };
+        Ok((producer.view(0)?, producer.view(1)?))
     }
 
     /// Append an [`Op::NonZeroIndices`] producer node — the keystone
@@ -15401,7 +15637,7 @@ mod tests {
         multi_out_names.sort();
         assert_eq!(
             multi_out_names,
-            vec!["SelectiveScan", "SsdChunkScan"],
+            vec!["MatMulTopK", "SelectiveScan", "SsdChunkScan", "TopKLastDim"],
             "the multi-output registry set should match the item-3 \
              migrations (SelectiveScan + SsdChunkScan); add new \
              multi-output ops to this list as they migrate",
@@ -15457,8 +15693,26 @@ mod tests {
             }
         }
 
+        fn top_k_fixture() -> Fixture {
+            Fixture {
+                shapes: vec![Shape::from_dims(&[2, 5, 8])],
+                dtypes: vec![DType::F32],
+                params: FusedOpParams::TopKLastDim { k: 3 },
+            }
+        }
+
+        fn matmul_top_k_fixture() -> Fixture {
+            Fixture {
+                shapes: vec![Shape::from_dims(&[2, 4, 8]), Shape::from_dims(&[2, 8, 16])],
+                dtypes: vec![DType::F32; 2],
+                params: FusedOpParams::MatMulTopK { k: 3 },
+            }
+        }
+
         for entry in reg.entries_iter().filter(|e| e.output_views.is_some()) {
             let fx = match entry.name {
+                "MatMulTopK" => matmul_top_k_fixture(),
+                "TopKLastDim" => top_k_fixture(),
                 "SelectiveScan" => selective_scan_fixture(),
                 "SsdChunkScan" => ssd_chunk_scan_fixture(),
                 other => panic!(

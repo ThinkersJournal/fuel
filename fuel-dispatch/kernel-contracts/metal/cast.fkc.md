@@ -126,7 +126,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false                        # author-declared seed; Judge audits (§4.8)
-  notes: "Plain static_cast chain (IR fixed to T, no truncation intermediate, no rounding control). Widening pairs exact; narrowing pairs per MSL static_cast for that (src,dst). Deterministic per element."
+  notes: "Plain static_cast chain (IR fixed to T, no truncation intermediate, no rounding control). Widening pairs exact; narrowing pairs per MSL static_cast for that (src,dst). Deterministic per element. Subnormals preserved (measured, fuel run 45749639333: f32, bf16 and f16; narrowing casts for cast_kernel). Data movement: no arithmetic atom, no Exact claim is made. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity; none is written, and it must never be read as bit-stable: KISS-OPS-6.17-0001). bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
@@ -203,7 +203,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false                        # author-declared seed; Judge audits (§4.8)
-  notes: "Same plain static_cast chain as cast_kernel (IR fixed to T, no rounding control); only input addressing differs (get_strided_index). Widening pairs exact; narrowing per MSL static_cast. Deterministic per element."
+  notes: "Same plain static_cast chain as cast_kernel (IR fixed to T, no rounding control); only input addressing differs (get_strided_index). Widening pairs exact; narrowing per MSL static_cast. Deterministic per element. Subnormals preserved (measured, fuel run 45749639333: f32, bf16 and f16; narrowing casts for cast_kernel). Data movement: no arithmetic atom, no Exact claim is made. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity; none is written, and it must never be read as bit-stable: KISS-OPS-6.17-0001). bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```

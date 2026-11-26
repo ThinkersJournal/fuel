@@ -119,6 +119,12 @@ pub struct PrecisionGuarantee {
     /// True iff this kernel produces bit-identical output for
     /// bit-identical inputs on the same hardware (no nondeterminism
     /// from kernel scheduling, atomic ordering, etc.).
+    ///
+    /// **This is NOT the KISS-Ops "bit-stable" value (KISS-OPS-6.17-0001 and KISS-OPS-6.17-0002).** KISS bit-stable means every atom rounds
+    /// independently at the storage dtype's full IEEE 754-2019 precision, SUBNORMALS PRESERVED; a kernel that flushes
+    /// subnormals (FTZ/DAZ) is non-conformant under it and must decline `Exact`. A flush is DETERMINISTIC, so a
+    /// flushing kernel can still be `bit_stable_on_same_hardware: true` here (Metal f32/bf16: FTZ measured, hosted
+    /// macOS run 45748920513). This field claims same-hardware repeatability only, never exactness.
     pub bit_stable_on_same_hardware: bool,
     /// Maximum unit-in-last-place error vs the IEEE-754 correctly-
     /// rounded result. Tighter than max_relative for low-magnitude
@@ -2055,10 +2061,14 @@ mod tests {
         // FLASH_ATTN_BACKWARD_{Q,K,V} (reusing the binding-table CPU
         // dispatch wrappers). AWQ_MATMUL is the registry's 25th entry
         // and is the one documented KNOWN_GAPS allowlist line above,
-        // not counted here.
+        // not counted here. ROW_SCALED_MATMUL (row 172 item 1) is the 26th
+        // registry entry and the 25th covered op (delta +1, predicted).
+        // TOP_K_LAST_DIM (row 172 item 2) is the 27th entry, the 26th covered
+        // (delta +1, predicted). MATMUL_TOP_K (row 172 item 2 step B) is the
+        // 28th entry, the 27th covered (delta +1, predicted).
         assert_eq!(
-            covered, 24,
-            "expected 24 fused ops covered by bit-stable CPU impls, got {covered}",
+            covered, 27,
+            "expected 27 fused ops covered by bit-stable CPU impls, got {covered}",
         );
     }
 

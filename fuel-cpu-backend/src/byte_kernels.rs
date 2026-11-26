@@ -3459,7 +3459,7 @@ powi_backward_half_kernel!(powi_backward_f16, half::f16);
 // ArgMax/ArgMin extensions to f64/bf16/f16. The existing
 // `argextremum_dim_f32` operates on f32 directly; for other
 // dtypes we widen to f32 for comparison (uniform NaN handling).
-macro_rules! argextremum_dim_via_f32 {
+macro_rules! argextremum_dim_via_f64 {
     ($name:ident, $T:ty, $T_size:expr, $is_better:expr, $init:expr) => {
         pub fn $name(
             input: &CpuStorageBytes,
@@ -3503,18 +3503,18 @@ macro_rules! argextremum_dim_via_f32 {
             }
             let in_view: &[$T] = input.as_slice()?;
             let out_view: &mut [u32] = output.as_slice_mut()?;
-            let is_better: fn(f32, f32) -> bool = $is_better;
+            let is_better: fn(f64, f64) -> bool = $is_better;
             for outer in 0..outer_count {
                 for inner in 0..inner_count {
-                    let mut best_val: f32 = $init;
+                    let mut best_val: f64 = $init;
                     let mut best_idx = 0u32;
                     for d in 0..dim_size {
                         let off = (outer * dim_size + d) * inner_count + inner;
-                        let v = in_view[off].to_f32();
+                        let v = in_view[off].to_f64();
                         if d == 0 {
                             best_val = v;
                             best_idx = 0;
-                        } else if is_better(v, best_val) {
+                        } else if !best_val.is_nan() && (v.is_nan() || is_better(v, best_val)) {
                             best_val = v;
                             best_idx = d as u32;
                         }
@@ -3527,57 +3527,68 @@ macro_rules! argextremum_dim_via_f32 {
     };
 }
 
-// f64 has a native to_f32 method via the `as` cast — wrap it.
-trait ToF32Ext {
-    fn to_f32(self) -> f32;
+// Compare in f64: exact for f64 and for every narrower input dtype (the earlier f32
+// widening collapsed f64 values closer than f32 resolution into false ties).
+trait ToF64Ext {
+    fn to_f64(self) -> f64;
 }
-impl ToF32Ext for f64 {
-    fn to_f32(self) -> f32 {
-        self as f32
+impl ToF64Ext for f64 {
+    fn to_f64(self) -> f64 {
+        self
+    }
+}
+impl ToF64Ext for half::bf16 {
+    fn to_f64(self) -> f64 {
+        half::bf16::to_f64(self)
+    }
+}
+impl ToF64Ext for half::f16 {
+    fn to_f64(self) -> f64 {
+        half::f16::to_f64(self)
     }
 }
 
-argextremum_dim_via_f32!(
+argextremum_dim_via_f64!(
     argmax_dim_f64,
     f64,
     std::mem::size_of::<f64>(),
-    |new: f32, best: f32| new > best,
-    f32::NEG_INFINITY
+    |new: f64, best: f64| new > best,
+    f64::NEG_INFINITY
 );
-argextremum_dim_via_f32!(
+argextremum_dim_via_f64!(
     argmin_dim_f64,
     f64,
     std::mem::size_of::<f64>(),
-    |new: f32, best: f32| new < best,
-    f32::INFINITY
+    |new: f64, best: f64| new < best,
+    f64::INFINITY
 );
-argextremum_dim_via_f32!(
+argextremum_dim_via_f64!(
     argmax_dim_bf16,
     half::bf16,
     std::mem::size_of::<half::bf16>(),
-    |new: f32, best: f32| new > best,
-    f32::NEG_INFINITY
+    |new: f64, best: f64| new > best,
+    f64::NEG_INFINITY
 );
-argextremum_dim_via_f32!(
+argextremum_dim_via_f64!(
     argmin_dim_bf16,
     half::bf16,
     std::mem::size_of::<half::bf16>(),
-    |new: f32, best: f32| new < best,
-    f32::INFINITY
+    |new: f64, best: f64| new < best,
+    f64::INFINITY
 );
-argextremum_dim_via_f32!(
+argextremum_dim_via_f64!(
     argmax_dim_f16,
     half::f16,
     std::mem::size_of::<half::f16>(),
-    |new: f32, best: f32| new > best,
-    f32::NEG_INFINITY
+    |new: f64, best: f64| new > best,
+    f64::NEG_INFINITY
 );
-argextremum_dim_via_f32!(
+argextremum_dim_via_f64!(
     argmin_dim_f16,
     half::f16,
     std::mem::size_of::<half::f16>(),
-    |new: f32, best: f32| new < best,
-    f32::INFINITY
+    |new: f64, best: f64| new < best,
+    f64::INFINITY
 );
 
 // =============================================================================
@@ -6265,6 +6276,7 @@ fn fused_linear_check<T>(
     m: usize,
     n: usize,
     k: usize,
+    side_elems: usize,
 ) -> Result<Vec<usize>> {
     if lhs_batch_dims.len() != rhs_batch_dims.len() {
         return Err(Error::Msg(format!(
@@ -6299,7 +6311,7 @@ fn fused_linear_check<T>(
     if lhs.len_bytes() != lhs_count.saturating_mul(lhs_per).saturating_mul(elem)
         || rhs.len_bytes() != rhs_count.saturating_mul(rhs_per).saturating_mul(elem)
         || out.len_bytes() != lhs_count.saturating_mul(out_per).saturating_mul(elem)
-        || bias.len_bytes() != n.saturating_mul(elem)
+        || bias.len_bytes() != side_elems.saturating_mul(elem)
     {
         return Err(Error::Msg(format!("{name}: bytes mismatch",)).bt());
     }
@@ -6331,6 +6343,7 @@ macro_rules! fused_linear_native_kernel {
                 m,
                 n,
                 k,
+                n,
             )?;
             let lhs_view: &[$T] = lhs.as_slice()?;
             let rhs_view: &[$T] = rhs.as_slice()?;
@@ -6409,6 +6422,7 @@ macro_rules! fused_linear_half_kernel {
                 m,
                 n,
                 k,
+                n,
             )?;
             let lhs_view: &[$T] = lhs.as_slice()?;
             let rhs_view: &[$T] = rhs.as_slice()?;
@@ -6462,6 +6476,383 @@ macro_rules! fused_linear_half_kernel {
 
 fused_linear_half_kernel!(fused_linear_bf16, half::bf16);
 fused_linear_half_kernel!(fused_linear_f16, half::f16);
+
+// =============================================================================
+// RowScaledMatMul: matmul with a per-row scale epilogue (ROADMAP row 172 item 1)
+// =============================================================================
+//
+// Inputs: a [..., M, K], b [..., K, N], row_scale [..., M, 1] (one scale per
+// output row, shaped like the lhs batch ++ [M]).
+// Output: out[..., i, j] = (sum_k a[..., i, k] * b[..., k, j]) * row_scale[..., i].
+//
+// Numerics match the recipe `Mul(MatMul(a, b), BroadcastTo(scale))`: the dot
+// product is accumulated (k ascending, zero seed; f32 for half dtypes), stored
+// in the element dtype, THEN multiplied by the scale. Not seeded with the
+// scale, and not a single fused multiply-add per element.
+
+/// RowScaledMatMul for native arithmetic.
+macro_rules! row_scaled_matmul_native_kernel {
+    ($name:ident, $T:ty) => {
+        pub fn $name(
+            lhs: &CpuStorageBytes,
+            rhs: &CpuStorageBytes,
+            scale: &CpuStorageBytes,
+            out: &mut CpuStorageBytes,
+            lhs_batch_dims: &[usize],
+            rhs_batch_dims: &[usize],
+            m: usize,
+            n: usize,
+            k: usize,
+        ) -> Result<()> {
+            let lhs_count: usize = lhs_batch_dims.iter().product::<usize>().max(1);
+            let n_rep = fused_linear_check::<$T>(
+                stringify!($name),
+                lhs,
+                rhs,
+                scale,
+                out,
+                lhs_batch_dims,
+                rhs_batch_dims,
+                m,
+                n,
+                k,
+                lhs_count.saturating_mul(m),
+            )?;
+            let lhs_view: &[$T] = lhs.as_slice()?;
+            let rhs_view: &[$T] = rhs.as_slice()?;
+            let scale_view: &[$T] = scale.as_slice()?;
+            let out_view: &mut [$T] = out.as_slice_mut()?;
+            let batch_rank = lhs_batch_dims.len();
+            let (lhs_per, rhs_per, out_per) = (m * k, k * n, m * n);
+            let mut lhs_multi = vec![0_usize; batch_rank];
+            let mut rhs_multi = vec![0_usize; batch_rank];
+            for b in 0..lhs_count {
+                let mut rem = b;
+                for d in (0..batch_rank).rev() {
+                    let s = lhs_batch_dims[d];
+                    lhs_multi[d] = rem % s;
+                    rem /= s;
+                }
+                for d in 0..batch_rank {
+                    rhs_multi[d] = lhs_multi[d] / n_rep[d];
+                }
+                let mut rhs_b = 0_usize;
+                for d in 0..batch_rank {
+                    rhs_b = rhs_b * rhs_batch_dims[d] + rhs_multi[d];
+                }
+                let (lhs_off, rhs_off, out_off) = (b * lhs_per, rhs_b * rhs_per, b * out_per);
+                for i in 0..m {
+                    let out_row_off = out_off + i * n;
+                    out_view[out_row_off..out_row_off + n].fill(0 as $T);
+                    for kk in 0..k {
+                        let a = lhs_view[lhs_off + i * k + kk];
+                        let rhs_row_off = rhs_off + kk * n;
+                        for j in 0..n {
+                            out_view[out_row_off + j] += a * rhs_view[rhs_row_off + j];
+                        }
+                    }
+                    let s = scale_view[b * m + i];
+                    for j in 0..n {
+                        out_view[out_row_off + j] *= s;
+                    }
+                }
+            }
+            Ok(())
+        }
+    };
+}
+
+row_scaled_matmul_native_kernel!(row_scaled_matmul_f32, f32);
+row_scaled_matmul_native_kernel!(row_scaled_matmul_f64, f64);
+
+/// RowScaledMatMul for half-floats: accumulate in f32, narrow, then scale in the
+/// element dtype (via f32, narrowed), exactly the recipe's two roundings.
+macro_rules! row_scaled_matmul_half_kernel {
+    ($name:ident, $T:ty) => {
+        pub fn $name(
+            lhs: &CpuStorageBytes,
+            rhs: &CpuStorageBytes,
+            scale: &CpuStorageBytes,
+            out: &mut CpuStorageBytes,
+            lhs_batch_dims: &[usize],
+            rhs_batch_dims: &[usize],
+            m: usize,
+            n: usize,
+            k: usize,
+        ) -> Result<()> {
+            let lhs_count: usize = lhs_batch_dims.iter().product::<usize>().max(1);
+            let n_rep = fused_linear_check::<$T>(
+                stringify!($name),
+                lhs,
+                rhs,
+                scale,
+                out,
+                lhs_batch_dims,
+                rhs_batch_dims,
+                m,
+                n,
+                k,
+                lhs_count.saturating_mul(m),
+            )?;
+            let lhs_view: &[$T] = lhs.as_slice()?;
+            let rhs_view: &[$T] = rhs.as_slice()?;
+            let scale_view: &[$T] = scale.as_slice()?;
+            let out_view: &mut [$T] = out.as_slice_mut()?;
+            let batch_rank = lhs_batch_dims.len();
+            let (lhs_per, rhs_per, out_per) = (m * k, k * n, m * n);
+            let mut lhs_multi = vec![0_usize; batch_rank];
+            let mut rhs_multi = vec![0_usize; batch_rank];
+            let mut row_acc = vec![0.0_f32; n];
+            for b in 0..lhs_count {
+                let mut rem = b;
+                for d in (0..batch_rank).rev() {
+                    let s = lhs_batch_dims[d];
+                    lhs_multi[d] = rem % s;
+                    rem /= s;
+                }
+                for d in 0..batch_rank {
+                    rhs_multi[d] = lhs_multi[d] / n_rep[d];
+                }
+                let mut rhs_b = 0_usize;
+                for d in 0..batch_rank {
+                    rhs_b = rhs_b * rhs_batch_dims[d] + rhs_multi[d];
+                }
+                let (lhs_off, rhs_off, out_off) = (b * lhs_per, rhs_b * rhs_per, b * out_per);
+                for i in 0..m {
+                    row_acc.fill(0.0);
+                    for kk in 0..k {
+                        let a = lhs_view[lhs_off + i * k + kk].to_f32();
+                        let rhs_row_off = rhs_off + kk * n;
+                        for j in 0..n {
+                            row_acc[j] += a * rhs_view[rhs_row_off + j].to_f32();
+                        }
+                    }
+                    let s = scale_view[b * m + i].to_f32();
+                    let out_row_off = out_off + i * n;
+                    for j in 0..n {
+                        let narrowed = <$T>::from_f32(row_acc[j]);
+                        out_view[out_row_off + j] = <$T>::from_f32(narrowed.to_f32() * s);
+                    }
+                }
+            }
+            Ok(())
+        }
+    };
+}
+
+row_scaled_matmul_half_kernel!(row_scaled_matmul_bf16, half::bf16);
+row_scaled_matmul_half_kernel!(row_scaled_matmul_f16, half::f16);
+
+// =============================================================================
+// TopKLastDim: the k largest values along the last axis + their indices
+// (ROADMAP row 172 item 2 step A)
+// =============================================================================
+//
+// Input: x [rows, n] (leading dims flattened). Output: ONE bundled buffer
+// `[values (rows*k of T) ; pad to 4 ; indices (rows*k of u32)]`, the layout
+// `compose_bundle` computes for slots `(T, [.., k])`, `(U32, [.., k])`.
+//
+// Order per row: descending by value, NaN sorts as the LARGEST (torch.topk),
+// ties take the LOWER index first (deterministic). Selection is a full stable
+// sort of the row's indices (a reference implementation: O(n log n)).
+
+/// Bytes of the values slot, then the 4-aligned offset of the indices slot.
+fn top_k_bundle_layout(elem: usize, rows: usize, k: usize) -> (usize, usize) {
+    let values_bytes = rows.saturating_mul(k).saturating_mul(elem);
+    let idx_off = values_bytes.div_ceil(4) * 4;
+    (values_bytes, idx_off)
+}
+
+/// The row's `k` best indices under the TopK order, given each element as f64
+/// (every float dtype widens to f64 exactly, so the order is dtype-faithful).
+fn top_k_indices(row: &[f64], k: usize) -> Vec<usize> {
+    let mut idx: Vec<usize> = (0..row.len()).collect();
+    idx.sort_by(|&a, &b| {
+        let (x, y) = (row[a], row[b]);
+        match (x.is_nan(), y.is_nan()) {
+            (true, true) => a.cmp(&b),
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            (false, false) => y
+                .partial_cmp(&x)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(a.cmp(&b)),
+        }
+    });
+    idx.truncate(k);
+    idx
+}
+
+macro_rules! top_k_last_dim_kernel {
+    ($name:ident, $T:ty, $widen:expr) => {
+        pub fn $name(
+            input: &CpuStorageBytes,
+            out: &mut CpuStorageBytes,
+            rows: usize,
+            n: usize,
+            k: usize,
+        ) -> Result<()> {
+            if k == 0 || k > n {
+                return Err(Error::Msg(format!(
+                    "{}: k = {k} must be in 1..={n}",
+                    stringify!($name)
+                ))
+                .bt());
+            }
+            let elem = std::mem::size_of::<$T>();
+            let (values_bytes, idx_off) = top_k_bundle_layout(elem, rows, k);
+            let need = idx_off + rows.saturating_mul(k).saturating_mul(4);
+            if input.len_bytes() != rows.saturating_mul(n).saturating_mul(elem)
+                || out.len_bytes() != need
+            {
+                return Err(Error::Msg(format!("{}: bytes mismatch", stringify!($name))).bt());
+            }
+            let x: &[$T] = input.as_slice()?;
+            let bytes = out.bytes_mut();
+            let (vbytes, rest) = bytes.split_at_mut(values_bytes);
+            let ibytes = &mut rest[idx_off - values_bytes..];
+            let values: &mut [$T] = bytemuck::try_cast_slice_mut(vbytes).map_err(|e| {
+                Error::Msg(format!("{}: values cast {e:?}", stringify!($name))).bt()
+            })?;
+            let indices: &mut [u32] = bytemuck::try_cast_slice_mut(ibytes).map_err(|e| {
+                Error::Msg(format!("{}: indices cast {e:?}", stringify!($name))).bt()
+            })?;
+            let widen = $widen;
+            let mut row64 = vec![0.0_f64; n];
+            for r in 0..rows {
+                let row = &x[r * n..(r + 1) * n];
+                for (d, s) in row64.iter_mut().zip(row) {
+                    *d = widen(*s);
+                }
+                for (slot, i) in top_k_indices(&row64, k).into_iter().enumerate() {
+                    values[r * k + slot] = row[i];
+                    indices[r * k + slot] = i as u32;
+                }
+            }
+            Ok(())
+        }
+    };
+}
+
+// MatMulTopK (row 172 item 2 step B): `TopKLastDim(a @ b)` in one kernel, the
+// CPU reference of the epilogue-fused GPU path. Inputs `a [batch, m, kk]`,
+// `b [batch, kk, n]` (equal batch counts, contiguous); output the TopK bundle
+// over the matmul's `[batch*m, n]` rows. The dot products are accumulated
+// k-ascending from zero (f32 for half dtypes), then NARROWED to the element dtype
+// exactly like the unfused matmul's store, then selected. NOT bit-equal to the
+// unfused path's matmul (the unfused CPU matmul uses a blocked gemm with a
+// different accumulation order), so a near-tie within matmul rounding can pick a
+// different index; the selection ORDER rules are identical.
+macro_rules! matmul_top_k_kernel {
+    ($name:ident, $T:ty, $acc:ty, $to_acc:expr, $from_acc:expr, $widen:expr) => {
+        pub fn $name(
+            lhs: &CpuStorageBytes,
+            rhs: &CpuStorageBytes,
+            out: &mut CpuStorageBytes,
+            batch: usize,
+            m: usize,
+            n: usize,
+            kk: usize,
+            top_k: usize,
+        ) -> Result<()> {
+            if top_k == 0 || top_k > n {
+                return Err(Error::Msg(format!(
+                    "{}: top_k = {top_k} must be in 1..={n}",
+                    stringify!($name)
+                ))
+                .bt());
+            }
+            let elem = std::mem::size_of::<$T>();
+            let rows = batch.saturating_mul(m);
+            let (values_bytes, idx_off) = top_k_bundle_layout(elem, rows, top_k);
+            let need = idx_off + rows.saturating_mul(top_k).saturating_mul(4);
+            if lhs.len_bytes() != rows.saturating_mul(kk).saturating_mul(elem)
+                || rhs.len_bytes()
+                    != batch
+                        .saturating_mul(kk)
+                        .saturating_mul(n)
+                        .saturating_mul(elem)
+                || out.len_bytes() != need
+            {
+                return Err(Error::Msg(format!("{}: bytes mismatch", stringify!($name))).bt());
+            }
+            let a: &[$T] = lhs.as_slice()?;
+            let w: &[$T] = rhs.as_slice()?;
+            let bytes = out.bytes_mut();
+            let (vbytes, rest) = bytes.split_at_mut(values_bytes);
+            let ibytes = &mut rest[idx_off - values_bytes..];
+            let values: &mut [$T] = bytemuck::try_cast_slice_mut(vbytes).map_err(|e| {
+                Error::Msg(format!("{}: values cast {e:?}", stringify!($name))).bt()
+            })?;
+            let indices: &mut [u32] = bytemuck::try_cast_slice_mut(ibytes).map_err(|e| {
+                Error::Msg(format!("{}: indices cast {e:?}", stringify!($name))).bt()
+            })?;
+            let to_acc = $to_acc;
+            let from_acc = $from_acc;
+            let widen = $widen;
+            let mut row: Vec<$T> = vec![from_acc(<$acc>::default()); n];
+            let mut row64 = vec![0.0_f64; n];
+            let mut acc: Vec<$acc> = vec![<$acc>::default(); n];
+            for r in 0..rows {
+                let bi = r / m;
+                acc.fill(<$acc>::default());
+                for q in 0..kk {
+                    let av = to_acc(a[r * kk + q]);
+                    for j in 0..n {
+                        acc[j] += av * to_acc(w[(bi * kk + q) * n + j]);
+                    }
+                }
+                for j in 0..n {
+                    row[j] = from_acc(acc[j]);
+                    row64[j] = widen(row[j]);
+                }
+                for (slot, i) in top_k_indices(&row64, top_k).into_iter().enumerate() {
+                    values[r * top_k + slot] = row[i];
+                    indices[r * top_k + slot] = i as u32;
+                }
+            }
+            Ok(())
+        }
+    };
+}
+
+matmul_top_k_kernel!(
+    matmul_top_k_f32,
+    f32,
+    f32,
+    |v: f32| v,
+    |v: f32| v,
+    |v: f32| v as f64
+);
+matmul_top_k_kernel!(
+    matmul_top_k_f64,
+    f64,
+    f64,
+    |v: f64| v,
+    |v: f64| v,
+    |v: f64| v
+);
+matmul_top_k_kernel!(
+    matmul_top_k_bf16,
+    half::bf16,
+    f32,
+    |v: half::bf16| v.to_f32(),
+    half::bf16::from_f32,
+    |v: half::bf16| v.to_f64()
+);
+matmul_top_k_kernel!(
+    matmul_top_k_f16,
+    half::f16,
+    f32,
+    |v: half::f16| v.to_f32(),
+    half::f16::from_f32,
+    |v: half::f16| v.to_f64()
+);
+
+top_k_last_dim_kernel!(top_k_last_dim_f32, f32, |v: f32| v as f64);
+top_k_last_dim_kernel!(top_k_last_dim_f64, f64, |v: f64| v);
+top_k_last_dim_kernel!(top_k_last_dim_bf16, half::bf16, |v: half::bf16| v.to_f64());
+top_k_last_dim_kernel!(top_k_last_dim_f16, half::f16, |v: half::f16| v.to_f64());
 
 // =============================================================================
 // FusedSoftmaxCrossEntropy — fused softmax + NLL + reduction
@@ -7697,6 +8088,7 @@ macro_rules! flash_attn_native_kernel {
                         let mut scores = vec![$T_zero; k_len];
                         let mut admissible = vec![false; k_len];
                         let mut max_score: $T = <$T>::NEG_INFINITY;
+                        let mut has_nan = false;
                         for kj in 0..k_len {
                             if !flash_attn_admissible(aq, kj, causal, window_left, window_right) {
                                 continue;
@@ -7718,9 +8110,22 @@ macro_rules! flash_attn_native_kernel {
                                 s += slope * delta;
                             }
                             scores[kj] = s;
+                            if s.is_nan() {
+                                has_nan = true;
+                            }
                             if s > max_score {
                                 max_score = s;
                             }
+                        }
+                        // A NaN score (a NaN in Q, or in a K row this query attends) makes the
+                        // row NaN: it must never be swallowed by the "row max not finite" skip
+                        // below, which is for a FULLY MASKED row (no admissible key) and leaves
+                        // it zero (the flash/inference convention).
+                        if has_nan {
+                            for slot in out_view[o_off + qi * d..o_off + (qi + 1) * d].iter_mut() {
+                                *slot = <$T>::NAN;
+                            }
+                            continue;
                         }
                         if !max_score.is_finite() {
                             continue;
@@ -7854,6 +8259,7 @@ macro_rules! flash_attn_half_kernel {
                         let mut scores = vec![0.0_f32; k_len];
                         let mut admissible = vec![false; k_len];
                         let mut max_score = f32::NEG_INFINITY;
+                        let mut has_nan = false;
                         for kj in 0..k_len {
                             if !flash_attn_admissible(aq, kj, causal, window_left, window_right) {
                                 continue;
@@ -7874,9 +8280,22 @@ macro_rules! flash_attn_half_kernel {
                                 s += slope * delta;
                             }
                             scores[kj] = s;
+                            if s.is_nan() {
+                                has_nan = true;
+                            }
                             if s > max_score {
                                 max_score = s;
                             }
+                        }
+                        // A NaN score (a NaN in Q, or in a K row this query attends) makes the
+                        // row NaN: it must never be swallowed by the "row max not finite" skip
+                        // below, which is for a FULLY MASKED row (no admissible key) and leaves
+                        // it zero (the flash/inference convention).
+                        if has_nan {
+                            for slot in out_view[o_off + qi * d..o_off + (qi + 1) * d].iter_mut() {
+                                *slot = <$T>::NAN;
+                            }
+                            continue;
                         }
                         if !max_score.is_finite() {
                             continue;
@@ -9276,10 +9695,11 @@ pub fn min_reduce_f16(
 /// each row of `dim`.
 ///
 /// Tie-breaking: returns the first index that achieves the
-/// extremum (lowest index on ties). NaN handling propagates per
-/// IEEE-754 — comparisons against NaN return false, so a NaN
-/// row's argmax is whichever non-NaN slot it first encountered
-/// (or 0 if every value is NaN).
+/// extremum (lowest index on ties; `-0.0 == +0.0`). NaN follows the torch
+/// convention: a NaN WINS, for argmax and argmin alike, and the FIRST NaN's index is
+/// returned (an all-NaN row is index 0). The earlier `new > best` rule with element 0
+/// as the initial best ignored a NaN unless it sat at index 0, so the answer depended on
+/// NaN's position (cluster-PM ruling; CHANGELOG BREAKING).
 fn argextremum_dim_f32(
     name: &str,
     input: &CpuStorageBytes,
@@ -9336,7 +9756,7 @@ fn argextremum_dim_f32(
                 if d == 0 {
                     best_val = v;
                     best_idx = 0;
-                } else if is_better(v, best_val) {
+                } else if !best_val.is_nan() && (v.is_nan() || is_better(v, best_val)) {
                     best_val = v;
                     best_idx = d as u32;
                 }
@@ -10580,6 +11000,236 @@ fn extract_strided_chunk(
 mod tests {
     use super::*;
 
+    /// Reference: out[b,i,j] = (sum_k a[b,i,k] * w[b/rep,k,j]) * s[b,i] in f32.
+    fn naive_row_scaled(
+        a: &[f32],
+        w: &[f32],
+        s: &[f32],
+        (batch, rep, m, n, k): (usize, usize, usize, usize, usize),
+    ) -> Vec<f32> {
+        let mut out = vec![0.0_f32; batch * m * n];
+        for b in 0..batch {
+            for i in 0..m {
+                for j in 0..n {
+                    let mut acc = 0.0_f32;
+                    for kk in 0..k {
+                        acc += a[(b * m + i) * k + kk] * w[((b / rep) * k + kk) * n + j];
+                    }
+                    out[(b * m + i) * n + j] = acc * s[b * m + i];
+                }
+            }
+        }
+        out
+    }
+
+    /// RowScaledMatMul f32: a GQA-batched case (lhs batch 4, rhs batch 2) equals the
+    /// naive reference, and the scale is per ROW (a per-column or unscaled result
+    /// differs: the sabotage sibling below pins that).
+    #[test]
+    fn row_scaled_matmul_f32_matches_the_reference_and_scales_rows() {
+        let (batch, rep, m, n, k) = (4usize, 2usize, 3usize, 5usize, 7usize);
+        let a: Vec<f32> = (0..batch * m * k)
+            .map(|i| (i % 11) as f32 * 0.25 - 1.0)
+            .collect();
+        let w: Vec<f32> = (0..(batch / rep) * k * n)
+            .map(|i| (i % 7) as f32 * 0.5 - 1.5)
+            .collect();
+        let s: Vec<f32> = (0..batch * m).map(|i| 0.5 + i as f32).collect();
+        let mut out = CpuStorageBytes::from_zero_bytes(batch * m * n * 4);
+        row_scaled_matmul_f32(
+            &CpuStorageBytes::from_slice(&a),
+            &CpuStorageBytes::from_slice(&w),
+            &CpuStorageBytes::from_slice(&s),
+            &mut out,
+            &[4],
+            &[2],
+            m,
+            n,
+            k,
+        )
+        .expect("kernel");
+        let got: &[f32] = out.as_slice().unwrap();
+        let want = naive_row_scaled(&a, &w, &s, (batch, rep, m, n, k));
+        assert_eq!(got, &want[..]);
+        // Sabotage sibling: scaling by column index instead of row must differ.
+        let col: Vec<f32> = (0..batch * m).map(|i| 0.5 + (i % n) as f32).collect();
+        assert_ne!(naive_row_scaled(&a, &w, &col, (batch, rep, m, n, k)), want);
+    }
+
+    /// RowScaledMatMul bf16: f32 accumulate, narrow, then scale and narrow again
+    /// (the recipe's two roundings), bit-exact against that reference.
+    #[test]
+    fn row_scaled_matmul_bf16_rounds_twice_like_the_recipe() {
+        use half::bf16;
+        let (m, n, k) = (2usize, 3usize, 5usize);
+        let a: Vec<bf16> = (0..m * k)
+            .map(|i| bf16::from_f32(0.37 * i as f32 - 1.1))
+            .collect();
+        let w: Vec<bf16> = (0..k * n)
+            .map(|i| bf16::from_f32(0.21 * i as f32 - 0.9))
+            .collect();
+        let s: Vec<bf16> = vec![bf16::from_f32(1.37), bf16::from_f32(-0.61)];
+        let mut out = CpuStorageBytes::from_zero_bytes(m * n * 2);
+        row_scaled_matmul_bf16(
+            &CpuStorageBytes::from_slice(&a),
+            &CpuStorageBytes::from_slice(&w),
+            &CpuStorageBytes::from_slice(&s),
+            &mut out,
+            &[],
+            &[],
+            m,
+            n,
+            k,
+        )
+        .expect("kernel");
+        let got: &[bf16] = out.as_slice().unwrap();
+        let mut want = Vec::new();
+        for i in 0..m {
+            for j in 0..n {
+                let mut acc = 0.0_f32;
+                for kk in 0..k {
+                    acc += a[i * k + kk].to_f32() * w[kk * n + j].to_f32();
+                }
+                let narrowed = bf16::from_f32(acc);
+                want.push(bf16::from_f32(narrowed.to_f32() * s[i].to_f32()));
+            }
+        }
+        assert_eq!(got, &want[..]);
+    }
+
+    fn pod_vec<T: bytemuck::Pod>(bytes: &[u8]) -> Vec<T> {
+        bytes
+            .chunks(std::mem::size_of::<T>())
+            .map(bytemuck::pod_read_unaligned)
+            .collect()
+    }
+
+    /// Decode a TopK bundle for f32: (values, indices).
+    fn top_k_decode_f32(out: &CpuStorageBytes, rows: usize, k: usize) -> (Vec<f32>, Vec<u32>) {
+        let (vb, io) = top_k_bundle_layout(4, rows, k);
+        let b = out.bytes();
+        let v: Vec<f32> = pod_vec(&b[..vb]);
+        let i: Vec<u32> = pod_vec(&b[io..io + rows * k * 4]);
+        (v, i)
+    }
+
+    /// TopK f32: descending, NaN largest, ties lower-index-first, two rows.
+    #[test]
+    fn top_k_last_dim_f32_orders_nan_largest_and_ties_by_index() {
+        let x = [
+            1.0_f32,
+            5.0,
+            f32::NAN,
+            5.0,
+            2.0,
+            /* row 2 */ 3.0,
+            3.0,
+            3.0,
+            -1.0,
+            9.0,
+        ];
+        let mut out = CpuStorageBytes::from_zero_bytes(2 * 3 * 4 * 2);
+        top_k_last_dim_f32(&CpuStorageBytes::from_slice(&x), &mut out, 2, 5, 3).expect("kernel");
+        let (v, i) = top_k_decode_f32(&out, 2, 3);
+        // row 0: NaN (idx 2) first, then the two 5.0s lower index first (1, 3).
+        assert_eq!(i[..3], [2, 1, 3]);
+        assert!(v[0].is_nan() && v[1] == 5.0 && v[2] == 5.0);
+        // row 1: 9.0 (idx 4), then the 3.0s by index (0, 1).
+        assert_eq!(i[3..], [4, 0, 1]);
+        assert_eq!(v[3..], [9.0, 3.0, 3.0]);
+    }
+
+    /// MatMulTopK f32: a batched case equals TopK over a naive matmul, and the
+    /// rows are taken in (batch, m) order. Distinct values, so the selection is
+    /// independent of accumulation order.
+    #[test]
+    fn matmul_top_k_f32_equals_top_k_of_the_naive_matmul() {
+        let (batch, m, n, kk, tk) = (2usize, 2usize, 5usize, 3usize, 2usize);
+        let a: Vec<f32> = (0..batch * m * kk)
+            .map(|i| (i as f32) * 0.5 - 2.0)
+            .collect();
+        let w: Vec<f32> = (0..batch * kk * n)
+            .map(|i| ((i * 7) % 11) as f32 - 5.0)
+            .collect();
+        let rows = batch * m;
+        let (_, io) = top_k_bundle_layout(4, rows, tk);
+        let mut out = CpuStorageBytes::from_zero_bytes(io + rows * tk * 4);
+        matmul_top_k_f32(
+            &CpuStorageBytes::from_slice(&a),
+            &CpuStorageBytes::from_slice(&w),
+            &mut out,
+            batch,
+            m,
+            n,
+            kk,
+            tk,
+        )
+        .expect("kernel");
+        let (v, i) = top_k_decode_f32(&out, rows, tk);
+        for r in 0..rows {
+            let bi = r / m;
+            let mut full = vec![0.0_f32; n];
+            for j in 0..n {
+                for q in 0..kk {
+                    full[j] += a[r * kk + q] * w[(bi * kk + q) * n + j];
+                }
+            }
+            let want: Vec<u32> =
+                top_k_indices(&full.iter().map(|x| *x as f64).collect::<Vec<_>>(), tk)
+                    .into_iter()
+                    .map(|x| x as u32)
+                    .collect();
+            assert_eq!(i[r * tk..(r + 1) * tk], want[..], "row {r}");
+            for s in 0..tk {
+                assert_eq!(v[r * tk + s], full[want[s] as usize], "row {r} slot {s}");
+            }
+        }
+    }
+
+    /// k out of range is a typed error, not a panic (the kernel-side twin of
+    /// the build-time validation).
+    #[test]
+    fn top_k_last_dim_rejects_k_zero_and_k_over_n() {
+        for k in [0usize, 6] {
+            let mut out = CpuStorageBytes::from_zero_bytes(64);
+            let r = top_k_last_dim_f32(
+                &CpuStorageBytes::from_slice(&[0.0_f32; 5]),
+                &mut out,
+                1,
+                5,
+                k,
+            );
+            assert!(r.is_err(), "k = {k}");
+        }
+    }
+
+    /// bf16 values are carried exactly and the indices slot is 4-aligned even
+    /// when the values slot is an odd number of bf16 (3 values = 6 bytes).
+    #[test]
+    fn top_k_last_dim_bf16_pads_the_indices_slot_to_four_bytes() {
+        use half::bf16;
+        let x: Vec<bf16> = [0.5_f32, 4.0, 2.0, 1.0]
+            .iter()
+            .map(|v| bf16::from_f32(*v))
+            .collect();
+        let (vb, io) = top_k_bundle_layout(2, 1, 3);
+        assert_eq!(
+            (vb, io),
+            (6, 8),
+            "6 value bytes pad to an 8-byte index offset"
+        );
+        let mut out = CpuStorageBytes::from_zero_bytes(io + 3 * 4);
+        top_k_last_dim_bf16(&CpuStorageBytes::from_slice(&x), &mut out, 1, 4, 3).expect("kernel");
+        let b = out.bytes();
+        let v: Vec<bf16> = pod_vec(&b[..vb]);
+        let i: Vec<u32> = pod_vec(&b[io..io + 12]);
+        assert_eq!(
+            v.iter().map(|x| x.to_f32()).collect::<Vec<_>>(),
+            [4.0, 2.0, 1.0]
+        );
+        assert_eq!(i, [1, 2, 3]);
+    }
+
     /// Smoke: add two f32 storages elementwise.
     #[test]
     fn add_f32_round_trip() {
@@ -11508,6 +12158,356 @@ mod tests {
         let mut out = CpuStorageBytes::from_zero_bytes(4);
         argmax_dim_f32(&input, &mut out, &[4], 0).expect("argmax");
         assert_eq!(out.as_slice::<u32>().unwrap(), &[0u32]);
+    }
+
+    // ---- NaN convention (CireSnave/cluster-PM ruling, torch convention) ----
+    // A NaN WINS: argmax and argmin both return the FIRST NaN's index. With no NaN, ties
+    // return the first index and -0.0 == +0.0. The old rule (`new > best`, init = element 0)
+    // ignored a NaN unless it sat at index 0, so the answer depended on NaN's position.
+
+    /// Closed-form reference over f64 rows: first NaN, else first index of the extremum.
+    fn arg_reference(row: &[f64], max: bool) -> u32 {
+        if let Some(i) = row.iter().position(|v| v.is_nan()) {
+            return i as u32;
+        }
+        let mut best = 0usize;
+        for (i, &v) in row.iter().enumerate() {
+            if (max && v > row[best]) || (!max && v < row[best]) {
+                best = i;
+            }
+        }
+        best as u32
+    }
+
+    macro_rules! arg_nan_tests {
+        ($modname:ident, $T:ty, $max:ident, $min:ident, $conv:expr) => {
+            mod $modname {
+                use super::*;
+                fn run(
+                    f: fn(&CpuStorageBytes, &mut CpuStorageBytes, &[usize], usize) -> Result<()>,
+                    x: &[f64],
+                    shape: &[usize],
+                    dim: usize,
+                ) -> Vec<u32> {
+                    let conv: fn(f64) -> $T = $conv;
+                    let v: Vec<$T> = x.iter().map(|&a| conv(a)).collect();
+                    let input = CpuStorageBytes::from_slice(&v);
+                    let outn: usize = shape.iter().product::<usize>() / shape[dim];
+                    let mut out = CpuStorageBytes::from_zero_bytes(outn * 4);
+                    f(&input, &mut out, shape, dim).expect("arg kernel");
+                    out.as_slice::<u32>().unwrap().to_vec()
+                }
+                fn both(x: &[f64]) -> (u32, u32) {
+                    let n = x.len();
+                    (run($max, x, &[n], 0)[0], run($min, x, &[n], 0)[0])
+                }
+                const NAN: f64 = f64::NAN;
+                #[test]
+                fn the_spec_vectors() {
+                    assert_eq!(both(&[1.0, NAN, 0.0, 5.0]), (1, 1));
+                    assert_eq!(both(&[1.0, 5.0, NAN]), (2, 2));
+                    assert_eq!(both(&[NAN, 1.0, 5.0]), (0, 0));
+                    assert_eq!(both(&[3.0, NAN, NAN, 1.0]), (1, 1));
+                    // no NaN: ties are the first index
+                    assert_eq!(both(&[5.0, 5.0, 2.0, 2.0]), (0, 2));
+                    // -0.0 == +0.0: the first index of the tie
+                    assert_eq!(both(&[-0.0, 0.0, 0.0]), (0, 0));
+                    assert_eq!(both(&[0.0, -0.0, -0.0]), (0, 0));
+                    // an all-NaN row is index 0
+                    assert_eq!(both(&[NAN, NAN, NAN]), (0, 0));
+                }
+                #[test]
+                fn random_rows_with_nan_and_ties_match_the_closed_form() {
+                    let mut s: u64 = 0x2545_F491_4F6C_DD1D;
+                    let mut next = move || {
+                        s ^= s << 13;
+                        s ^= s >> 7;
+                        s ^= s << 17;
+                        s
+                    };
+                    let (rows, n) = (400usize, 37usize);
+                    let mut x = Vec::with_capacity(rows * n);
+                    for r in 0..rows {
+                        // every 3rd row has no NaN so the tie path is exercised too
+                        for _ in 0..n {
+                            let q = next();
+                            x.push(if r % 3 != 0 && q % 9 == 0 {
+                                NAN
+                            } else {
+                                ((q >> 8) % 5) as f64 - 2.0
+                            });
+                        }
+                    }
+                    let got_max = run($max, &x, &[rows, n], 1);
+                    let got_min = run($min, &x, &[rows, n], 1);
+                    let mut with_nan = 0;
+                    for r in 0..rows {
+                        let row = &x[r * n..(r + 1) * n];
+                        with_nan += row.iter().any(|v| v.is_nan()) as usize;
+                        assert_eq!(got_max[r], arg_reference(row, true), "max row {r}: {row:?}");
+                        assert_eq!(
+                            got_min[r],
+                            arg_reference(row, false),
+                            "min row {r}: {row:?}"
+                        );
+                    }
+                    assert!(
+                        with_nan > rows / 4,
+                        "the fixture must contain NaN rows: {with_nan}"
+                    );
+                }
+                #[test]
+                fn the_reduction_axis_variant_agrees() {
+                    // [3, 4] reduced over dim 0: columns are rows of the 1-D case.
+                    let x = [
+                        1.0, NAN, 0.0, 5.0, //
+                        2.0, 7.0, NAN, 5.0, //
+                        2.0, 7.0, 3.0, 1.0,
+                    ];
+                    let max = run($max, &x, &[3, 4], 0);
+                    let min = run($min, &x, &[3, 4], 0);
+                    let col = |c: usize| [x[c], x[4 + c], x[8 + c]];
+                    for c in 0..4 {
+                        assert_eq!(max[c], arg_reference(&col(c), true), "col {c}");
+                        assert_eq!(min[c], arg_reference(&col(c), false), "col {c}");
+                    }
+                    assert_eq!((max[1], max[2]), (0, 1));
+                }
+            }
+        };
+    }
+    arg_nan_tests!(arg_nan_f32, f32, argmax_dim_f32, argmin_dim_f32, |a| a
+        as f32);
+    arg_nan_tests!(arg_nan_f64, f64, argmax_dim_f64, argmin_dim_f64, |a| a);
+    arg_nan_tests!(
+        arg_nan_bf16,
+        half::bf16,
+        argmax_dim_bf16,
+        argmin_dim_bf16,
+        |a| { half::bf16::from_f64(a) }
+    );
+    arg_nan_tests!(
+        arg_nan_f16,
+        half::f16,
+        argmax_dim_f16,
+        argmin_dim_f16,
+        |a| { half::f16::from_f64(a) }
+    );
+
+    // ---- reduce max/min NaN rule (same ruling: a NaN propagates; max == value at argmax) ----
+    // The chassis `Max`/`Min` already fold through the NaN-propagating `Maximum`/`Minimum`
+    // (KISS-Ops 6.11-0002), so these tests PIN today's rule rather than change it; they are
+    // not red. CUDA's reduce IGNORES NaN (baracuda probe 2): CPU and CUDA disagree today, and
+    // CUDA is the side that moves.
+
+    macro_rules! reduce_nan_tests {
+        ($modname:ident, $T:ty, $max:ident, $min:ident, $argmax:ident, $argmin:ident,
+         $max_to:ident, $conv:expr, $back:expr) => {
+            mod $modname {
+                use super::*;
+                const NAN: f64 = f64::NAN;
+                fn conv(a: f64) -> $T {
+                    let c: fn(f64) -> $T = $conv;
+                    c(a)
+                }
+                fn back(a: $T) -> f64 {
+                    let b: fn($T) -> f64 = $back;
+                    b(a)
+                }
+                fn red(
+                    f: fn(&CpuStorageBytes, &mut CpuStorageBytes, &[usize], &[usize]) -> Result<()>,
+                    x: &[f64],
+                    shape: &[usize],
+                    dims: &[usize],
+                ) -> Vec<f64> {
+                    let v: Vec<$T> = x.iter().map(|&a| conv(a)).collect();
+                    let input = CpuStorageBytes::from_slice(&v);
+                    let outn: usize = shape
+                        .iter()
+                        .enumerate()
+                        .filter(|(i, _)| !dims.contains(i))
+                        .map(|(_, s)| *s)
+                        .product();
+                    let mut out =
+                        CpuStorageBytes::from_zero_bytes(outn * std::mem::size_of::<$T>());
+                    f(&input, &mut out, shape, dims).expect("reduce");
+                    out.as_slice::<$T>()
+                        .unwrap()
+                        .iter()
+                        .map(|&a| back(a))
+                        .collect()
+                }
+                fn mm(x: &[f64]) -> (f64, f64) {
+                    let n = x.len();
+                    (red($max, x, &[n], &[0])[0], red($min, x, &[n], &[0])[0])
+                }
+                #[test]
+                fn a_nan_propagates_in_both_max_and_min() {
+                    for row in [
+                        &[1.0, NAN, 0.0, 5.0][..],
+                        &[NAN, 1.0, 5.0],
+                        &[1.0, 5.0, NAN],
+                        &[NAN, NAN, NAN],
+                        &[3.0, NAN, NAN, 1.0],
+                    ] {
+                        let (mx, mn) = mm(row);
+                        assert!(mx.is_nan() && mn.is_nan(), "{row:?}: max {mx} min {mn}");
+                    }
+                }
+                #[test]
+                fn no_nan_infinities_and_signed_zero() {
+                    assert_eq!(mm(&[1.0, 5.0, 2.0]), (5.0, 1.0));
+                    assert_eq!(
+                        mm(&[f64::NEG_INFINITY, 2.0, f64::INFINITY]),
+                        (f64::INFINITY, f64::NEG_INFINITY)
+                    );
+                    assert_eq!(
+                        mm(&[f64::NEG_INFINITY, f64::NEG_INFINITY]),
+                        (f64::NEG_INFINITY, f64::NEG_INFINITY)
+                    );
+                    // -0.0 vs +0.0: the FIRST-seen zero is kept (a-biased fold). Stated, not torch-specified.
+                    let (mx, mn) = mm(&[-0.0, 0.0]);
+                    assert!(
+                        mx.is_sign_negative() && mn.is_sign_negative(),
+                        "first zero wins: {mx} {mn}"
+                    );
+                    let (mx, mn) = mm(&[0.0, -0.0]);
+                    assert!(
+                        mx.is_sign_positive() && mn.is_sign_positive(),
+                        "first zero wins: {mx} {mn}"
+                    );
+                }
+                #[test]
+                fn the_empty_reduction_is_an_error_today() {
+                    // Rule today: an EMPTY reduction is an Err, not an identity value: a
+                    // zero-byte storage cannot be viewed as a typed slice (alignment cast).
+                    // The error is incidental to that view, not a designed empty-reduce rule.
+                    let input = CpuStorageBytes::from_zero_bytes(0);
+                    let mut out = CpuStorageBytes::from_zero_bytes(std::mem::size_of::<$T>());
+                    assert!($max(&input, &mut out, &[0], &[0]).is_err());
+                    assert!($min(&input, &mut out, &[0], &[0]).is_err());
+                }
+                #[test]
+                fn random_rows_match_the_f64_reference_and_agree_with_argmax() {
+                    let mut s: u64 = 0xD1B5_4A32_D192_ED03;
+                    let mut next = move || {
+                        s ^= s << 13;
+                        s ^= s >> 7;
+                        s ^= s << 17;
+                        s
+                    };
+                    let (rows, n) = (300usize, 29usize);
+                    let mut x = Vec::new();
+                    for r in 0..rows {
+                        for _ in 0..n {
+                            let q = next();
+                            x.push(if r % 3 != 0 && q % 8 == 0 {
+                                NAN
+                            } else {
+                                ((q >> 8) % 7) as f64 - 3.0
+                            });
+                        }
+                    }
+                    let mx = red($max, &x, &[rows, n], &[1]);
+                    let mn = red($min, &x, &[rows, n], &[1]);
+                    let vals: Vec<$T> = x.iter().map(|&a| conv(a)).collect();
+                    let input = CpuStorageBytes::from_slice(&vals);
+                    let mut am = CpuStorageBytes::from_zero_bytes(rows * 4);
+                    let mut an = CpuStorageBytes::from_zero_bytes(rows * 4);
+                    $argmax(&input, &mut am, &[rows, n], 1).unwrap();
+                    $argmin(&input, &mut an, &[rows, n], 1).unwrap();
+                    let (am, an) = (am.as_slice::<u32>().unwrap(), an.as_slice::<u32>().unwrap());
+                    for r in 0..rows {
+                        let row = &x[r * n..(r + 1) * n];
+                        let has_nan = row.iter().any(|v| v.is_nan());
+                        if has_nan {
+                            assert!(mx[r].is_nan() && mn[r].is_nan(), "row {r}");
+                        } else {
+                            let hi = row.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+                            let lo = row.iter().cloned().fold(f64::INFINITY, f64::min);
+                            assert_eq!((mx[r], mn[r]), (hi, lo), "row {r}");
+                        }
+                        // reduce-max and argmax agree: the value at the arg index IS the max (NaN or not).
+                        let (vi, vj) = (row[am[r] as usize], row[an[r] as usize]);
+                        assert!(
+                            (vi.is_nan() && mx[r].is_nan()) || vi == mx[r],
+                            "argmax row {r}"
+                        );
+                        assert!(
+                            (vj.is_nan() && mn[r].is_nan()) || vj == mn[r],
+                            "argmin row {r}"
+                        );
+                    }
+                }
+                #[test]
+                fn reduce_max_to_agrees_with_max_reduce_on_nan() {
+                    let x = [1.0, NAN, 0.0, 5.0, 2.0, 3.0];
+                    let v: Vec<$T> = x.iter().map(|&a| conv(a)).collect();
+                    let input = CpuStorageBytes::from_slice(&v);
+                    let mut out = CpuStorageBytes::from_zero_bytes(2 * std::mem::size_of::<$T>());
+                    $max_to(&input, &mut out, &[2, 3], &[2, 1]).unwrap();
+                    let r = out.as_slice::<$T>().unwrap();
+                    assert!(back(r[0]).is_nan());
+                    assert_eq!(back(r[1]), 5.0);
+                }
+            }
+        };
+    }
+    reduce_nan_tests!(
+        red_nan_f32,
+        f32,
+        max_reduce_f32,
+        min_reduce_f32,
+        argmax_dim_f32,
+        argmin_dim_f32,
+        reduce_max_to_f32,
+        |a| a as f32,
+        |a| a as f64
+    );
+    reduce_nan_tests!(
+        red_nan_f64,
+        f64,
+        max_reduce_f64,
+        min_reduce_f64,
+        argmax_dim_f64,
+        argmin_dim_f64,
+        reduce_max_to_f64,
+        |a| a,
+        |a| a
+    );
+    reduce_nan_tests!(
+        red_nan_bf16,
+        half::bf16,
+        max_reduce_bf16,
+        min_reduce_bf16,
+        argmax_dim_bf16,
+        argmin_dim_bf16,
+        reduce_max_to_bf16,
+        half::bf16::from_f64,
+        half::bf16::to_f64
+    );
+    reduce_nan_tests!(
+        red_nan_f16,
+        half::f16,
+        max_reduce_f16,
+        min_reduce_f16,
+        argmax_dim_f16,
+        argmin_dim_f16,
+        reduce_max_to_f16,
+        half::f16::from_f64,
+        half::f16::to_f64
+    );
+
+    /// f64 must compare in f64: two values 1e-12 apart are not a tie.
+    #[test]
+    fn argmax_dim_f64_compares_at_f64_precision() {
+        let x = [1.0_f64, 1.0 + 1e-12, 1.0 - 1e-12];
+        let input = CpuStorageBytes::from_slice(&x);
+        let mut out = CpuStorageBytes::from_zero_bytes(4);
+        argmax_dim_f64(&input, &mut out, &[3], 0).unwrap();
+        assert_eq!(out.as_slice::<u32>().unwrap(), &[1u32]);
+        argmin_dim_f64(&input, &mut out, &[3], 0).unwrap();
+        assert_eq!(out.as_slice::<u32>().unwrap(), &[2u32]);
     }
 
     #[test]

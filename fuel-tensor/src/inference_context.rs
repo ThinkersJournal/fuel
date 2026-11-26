@@ -2070,6 +2070,40 @@ pub struct InferenceContext {
     decode_session: Option<DecodeSession>,
 }
 
+/// `FUEL_WEIGHT_RESIDENCY=0` turns the per-device weight residency off (the measurement control for
+/// ROADMAP row 172: every realize then re-uploads its weights as it did before).
+const WEIGHT_RESIDENCY_ENV: &str = "FUEL_WEIGHT_RESIDENCY";
+
+/// `FUEL_WEIGHT_RESIDENCY_BYTES=<n>` sets the weight residency's byte cap outright (0 turns it off),
+/// replacing the share of the device's memory below.
+const WEIGHT_RESIDENCY_BYTES_ENV: &str = "FUEL_WEIGHT_RESIDENCY_BYTES";
+
+/// The share of a device's reported memory the weight residency may hold, in percent.
+///
+/// 40% because the rest has to hold everything else a serving process puts on the same card: KV
+/// caches, activations, the decode session's own buffers, a second model being warmed, and other
+/// processes (a desktop compositor alone takes about 0.5 GB of an 8 GB laptop card). It is a ceiling
+/// on what is RETAINED across contexts, not an extra cost for a single model: the decode session
+/// shares the resident storages, so one model in use needs its weights on the card either way (measured
+/// on the 4070, ROADMAP row 172). On the 8 GB 4070 this is a cap of about 3.2 GB, enough for
+/// Qwen3-0.6B Q4_K_M (1.19 GB) with a second small model alongside.
+const WEIGHT_RESIDENCY_SHARE_PERCENT: u64 = 40;
+
+/// The byte cap for `device`'s weight residency, or `None` for no residency.
+///
+/// `FUEL_WEIGHT_RESIDENCY_BYTES` wins when set. Otherwise the cap is [`WEIGHT_RESIDENCY_SHARE_PERCENT`]
+/// of the device's reported total memory (Vulkan: the `VK_EXT_memory_budget` device-local budget; CUDA:
+/// the driver's total). A device that cannot report it (a Vulkan driver without that extension, a
+/// backend with no runtime surface) gets `None`: no signal means no residency, never a guessed cap,
+/// so such a device behaves exactly as before.
+fn weight_residency_cap(device: &Device) -> Option<u64> {
+    if let Ok(v) = std::env::var(WEIGHT_RESIDENCY_BYTES_ENV) {
+        return v.trim().parse::<u64>().ok().filter(|&n| n > 0);
+    }
+    let total = device.as_dyn().as_backend_runtime()?.total_bytes()?;
+    Some(total / 100 * WEIGHT_RESIDENCY_SHARE_PERCENT).filter(|&n| n > 0)
+}
+
 impl InferenceContext {
     pub fn new(device: Device) -> Self {
         Self {
@@ -2179,7 +2213,7 @@ impl InferenceContext {
             graph,
             target,
             &self.device,
-            self.cloned_persistent(),
+            self.realize_cache(graph)?,
             env,
         )
     }
@@ -2204,7 +2238,7 @@ impl InferenceContext {
             graph,
             target,
             &self.device,
-            self.cloned_persistent(),
+            self.realize_cache(graph)?,
             env,
         )
     }
@@ -2231,7 +2265,7 @@ impl InferenceContext {
             graph,
             target,
             &self.device,
-            self.cloned_persistent(),
+            self.realize_cache(graph)?,
             env,
         )
     }
@@ -2308,6 +2342,62 @@ impl InferenceContext {
             &self.device,
             self.cloned_persistent(),
         )
+    }
+
+    /// [`Self::cloned_persistent`] plus, on a non-CPU device, the resident device copy of every weight
+    /// `Const` of `graph` whose source array this device has already uploaded (uploading it now the
+    /// first time). `build_const_cache` skips every node already in the cache, so a seeded weight costs
+    /// the realize nothing. Per-call arrays (no live source) are left to `build_const_cache`.
+    fn realize_cache(&self, graph: &Arc<RwLock<Graph>>) -> Result<StorageCache> {
+        let mut cache = self.cloned_persistent();
+        if self.device.location() == DeviceLocation::Cpu
+            || std::env::var(WEIGHT_RESIDENCY_ENV).as_deref() == Ok("0")
+        {
+            return Ok(cache);
+        }
+        let Some(cap) = weight_residency_cap(&self.device) else {
+            return Ok(cache);
+        };
+        let wanted: Vec<(NodeId, fuel_graph::ConstOrigin)> = {
+            let g = graph
+                .read()
+                .map_err(|_| Error::Msg("graph lock poisoned".into()).bt())?;
+            g.const_origins()
+                .filter(|(id, _)| !cache.contains_key(id))
+                .map(|(id, o)| (id, o.clone()))
+                .collect()
+        };
+        let mut residency = self
+            .device
+            .weights
+            .0
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
+        // A model that was dropped since the last realize no longer holds its weights: let those go
+        // before taking on new ones, so a model swap does not grow the device's residency.
+        residency.set_cap(Some(cap));
+        residency.sweep_orphans();
+        for (id, origin) in wanted {
+            let resident = residency.get_or_upload(&origin, || {
+                let host = {
+                    let g = graph
+                        .read()
+                        .map_err(|_| Error::Msg("graph lock poisoned".into()).bt())?;
+                    let slot = g.storage_for(id).ok_or_else(|| {
+                        Error::Msg(format!("weight Const {id:?} has no storage slot")).bt()
+                    })?;
+                    let slot = slot
+                        .read()
+                        .map_err(|_| Error::Msg("slot lock poisoned".into()).bt())?;
+                    slot.as_dyn().to_host_buffer_dyn()?
+                };
+                crate::pipelined_bridge::upload_host_buffer_to_device(&self.device, host)
+            })?;
+            if let Some(storage) = resident {
+                cache.insert(id, storage);
+            }
+        }
+        Ok(cache)
     }
 
     /// Build a [`StorageCache`] containing Arc-clones of every
@@ -2992,5 +3082,37 @@ mod tests {
         assert!(LatentKvCache::with_capacity(0, 4, vec![vec![2]], DType::F32, &device).is_err());
         assert!(LatentKvCache::with_capacity(1, 0, vec![vec![2]], DType::F32, &device).is_err());
         assert!(LatentKvCache::with_capacity(1, 4, vec![], DType::F32, &device).is_err());
+    }
+
+    /// ROADMAP row 172 control: a CPU realize never touches the device's weight residency (no upload, no
+    /// entry, no hit), and the weights it computes with are exactly the source arrays.
+    #[test]
+    fn a_cpu_realize_leaves_the_weight_residency_untouched() {
+        let dev = Device::cpu();
+        let w: Arc<[f32]> = vec![1.0, 2.0, 3.0].into();
+        let a =
+            fuel_graph::NodeHandle::from_f32(Arc::clone(&w), Shape::from_dims(&[3]), dev.as_dyn())
+                .unwrap();
+        let b = a
+            .const_f32_like(Arc::clone(&w), Shape::from_dims(&[3]))
+            .unwrap();
+        let y = a.add(&b);
+        assert_eq!(
+            a.graph().read().unwrap().const_origins().count(),
+            2,
+            "both weight Consts recorded their origin"
+        );
+        let ctx = InferenceContext::new(dev.clone());
+        for _ in 0..2 {
+            let out = ctx
+                .realize_one_as_with_env::<f32>(y.graph(), y.id(), &SymEnv::new())
+                .expect("cpu realize");
+            assert_eq!(out, vec![2.0, 4.0, 6.0]);
+        }
+        assert_eq!(
+            dev.weight_residency_stats(),
+            crate::WeightResidencyStats::default(),
+            "a CPU device must never use the residency"
+        );
     }
 }
