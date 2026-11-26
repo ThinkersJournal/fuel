@@ -117,8 +117,9 @@ pub struct SystemTopology {
     /// Numeric per-path transfer calibration (planner Stage 1).
     /// Probed lazily on the first [`Self::transfer_calibration`] /
     /// [`Self::transfer_estimate`] call and cached for the lifetime
-    /// of this snapshot — i.e. once per topology generation. Empty
-    /// (and free to build) on CPU-only hosts.
+    /// of this snapshot; a rebuilt snapshot with the SAME device list
+    /// inherits it ([`SystemTopology::current`]), so a process probes once.
+    /// Empty (and free to build) on CPU-only hosts.
     transfer_calibration: OnceLock<TransferCalibration>,
 }
 
@@ -147,7 +148,23 @@ impl SystemTopology {
         // last writer wins and both produce an internally-consistent
         // view (the build re-reads the counter inside `build_at` —
         // see TDP-6).
-        let fresh = Arc::new(SystemTopology::build_at(cur_gen));
+        let fresh = SystemTopology::build_at(cur_gen);
+        // Row 173 lever 2: the transfer probe measures the PHYSICAL links of the devices, which a
+        // generation bump (a kernel or backend registration) does not change. Carry the previous
+        // snapshot's result over when the device list is identical, so a process probes once, not
+        // once per rebuild (the cold Qwen3 prefill paid ~1 s twice). A different device list is a
+        // different question and re-probes.
+        // `DeviceLocation` equality is kind + ordinal ONLY (no adapter identity), so this assumes the same
+        // ordinal is the same adapter for the life of the process; it is stale only if an adapter is swapped at
+        // an ordinal without the list changing. The cross-process cache (ROADMAP row 162) keys on a full
+        // device fingerprint instead, never on `DeviceLocation`.
+        if let Some(prev) = CURRENT_TOPOLOGY.read().unwrap().as_ref()
+            && prev.devices == fresh.devices
+            && let Some(cal) = prev.transfer_calibration.get()
+        {
+            let _ = fresh.transfer_calibration.set(cal.clone());
+        }
+        let fresh = Arc::new(fresh);
         let mut guard = CURRENT_TOPOLOGY.write().unwrap();
         // Re-check under the write lock: another thread may have built
         // a newer or equal snapshot already.

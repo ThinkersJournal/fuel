@@ -3,7 +3,22 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
-## v0.55.1 - 2026-11-26 (PM-allocated; additive: CUDA TopKLastDim binding, baracuda alpha.199; not breaking)
+## v0.56.0 - 2026-11-26 (PM-allocated; BREAKING: takes unpopped-vocab 0.58 and fireline-grammar 0.9, whose types fuel re-exports; first published version of the 0.53.0 to 0.55.2 content)
+
+**This is the first published version carrying the content of the sections 0.53.0, 0.54.0, 0.55.0, 0.55.1 and 0.55.2 below (none of them was published; each is superseded by this one). Read those sections for the changes; the Breaking items in 0.53.0, 0.54.0 and 0.55.0 apply to this release.**
+
+### Changed
+
+- Dependencies: `unpopped-vocab` 0.58, `fireline-grammar` 0.9 (fuel re-exports `OpAttrs`, `OpTag`, `PatternNode` and `shape_expr::*`, so this is a breaking take), `baracuda` 0.1.0-alpha.209 (cuda-seam 0.58). `Cargo.toml` and `Cargo.lock` only; the CUDA census is byte-identical to its golden.
+
+
+## v0.55.2 - 2026-11-26 (not published; superseded by 0.56.0)
+
+### Changed
+
+- A rebuilt topology snapshot inherits the transfer calibration instead of probing again (`fuel-dispatch` topology, `fuel-hardware` transfer cost); a new test pins that the probes run once.
+
+## v0.55.1 - 2026-11-26 (not published; superseded by 0.56.0)
 
 ### Added
 
@@ -14,7 +29,7 @@ This documents the main changes to the `fuel` workspace.
 
 - Dependencies (Cargo.lock only): the baracuda family 0.1.0-alpha.186 -> alpha.199 (21 packages); `baracuda-cuda-emit` stays 0.56.13. CUDA arg_reduce and value reduce max/min now propagate NaN on the device (the CPU rule), `reduce_max_to` included: nothing in the 34 `fuel-cuda-dispatch` test targets relied on the old NaN-ignoring behaviour (214 passed, `--include-ignored`, alpha.199; `jit_synth_kernel_live`, a separate feature shape, not run).
 
-## v0.55.0 - 2026-11-26 (PM-allocated; BREAKING numerics: Metal max/min NaN)
+## v0.55.0 - 2026-11-26 (not published; superseded by 0.56.0)
 
 ### Breaking
 
@@ -53,7 +68,7 @@ This documents the main changes to the `fuel` workspace.
 
 - Not audited on Metal: the sort/index/ternary kernels and the other half-precision ops. The `Tensor::var` recipe is not runnable end to end on Metal (Metal is not wired into the lazy executor); its components were measured. `docs/gaps.md` GAP-405 carries the audit.
 
-## v0.54.0 - 2026-11-26 (not published; superseded by 0.55.0)
+## v0.54.0 - 2026-11-26 (not published; superseded by 0.56.0)
 
 ### Breaking
 
@@ -74,7 +89,7 @@ This documents the main changes to the `fuel` workspace.
 - Pinned, not changed: an ATTENDED `+inf` score row is zeros on the fused CPU kernel (it treats a non-finite row max like a fully masked row) and NaN on the decomposed path (aMusedPip L1; pre-existing, outside the NaN scope of #715). `flash_attn_*_follows_the_masked_and_nan_row_contract` marks that case `Any` and says so.
 - The three live-Vulkan tests now point at the hosted `--skip` list in `rust-ci.yml` (aMusedPip N2).
 
-## v0.53.0 - 2026-11-26 (not published; superseded by 0.55.0)
+## v0.53.0 - 2026-11-26 (not published; superseded by 0.56.0)
 
 ### Breaking
 
