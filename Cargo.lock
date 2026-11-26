@@ -1671,9 +1671,9 @@ checksum = "7333138f222a331547d087b1524f951cfeb2fc5de1d0369945e62521d1effc40"
 
 [[package]]
 name = "fireline-grammar"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8901184392d46ce64a8eff3f5ab9cb85fbfd2a8d9d040dc6898d745e7bb58980"
+checksum = "c0f3a6547e3b4738ceb2319dc137774472258b9344fef8cf16c2c9dcbdef55e6"
 
 [[package]]
 name = "fireline-synth"
@@ -1687,12 +1687,12 @@ dependencies = [
 
 [[package]]
 name = "fireline-synth"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13e26c7179c8dadc43375e00578b3e0cf167b4f71edd531e56dd18e600d8d48e"
+checksum = "3cb47ef7d0dd9fb3064e4cd3aa32fb2f74f62d6d66c61af19219502b53d34297"
 dependencies = [
- "fireline-grammar 0.10.1",
- "unpopped-vocab 0.59.3",
+ "fireline-grammar 0.11.0",
+ "unpopped-vocab 0.60.1",
 ]
 
 [[package]]
@@ -1916,7 +1916,7 @@ dependencies = [
  "baracuda-cuda-seam",
  "baracuda-nvrtc",
  "bytemuck",
- "fireline-synth 0.10.1",
+ "fireline-synth 0.11.0",
  "fuel-cpu-backend",
  "fuel-cuda-backend",
  "fuel-dispatch",
@@ -1951,8 +1951,8 @@ version = "0.57.1"
 dependencies = [
  "baracuda-kernels-types",
  "bytemuck",
- "fireline-grammar 0.10.1",
- "fireline-synth 0.10.1",
+ "fireline-grammar 0.11.0",
+ "fireline-synth 0.11.0",
  "fuel-backend-contract",
  "fuel-conv",
  "fuel-cpu-backend",
@@ -2050,7 +2050,7 @@ dependencies = [
 name = "fuel-graph"
 version = "0.57.1"
 dependencies = [
- "fireline-grammar 0.10.1",
+ "fireline-grammar 0.11.0",
  "float8",
  "fuel-backend-contract",
  "fuel-cpu-backend",
@@ -2117,7 +2117,7 @@ dependencies = [
 name = "fuel-kiss-ref-backend"
 version = "0.57.1"
 dependencies = [
- "fireline-grammar 0.10.1",
+ "fireline-grammar 0.11.0",
  "fuel-ir",
  "half",
  "kiss-classify-vocab",
@@ -5835,16 +5835,6 @@ name = "unpopped-vocab"
 version = "0.58.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10ccfcfac209cbf9ba9dd1416c074087bfe628c3405e7254a14faa02310b29d2"
-dependencies = [
- "float8",
- "half",
-]
-
-[[package]]
-name = "unpopped-vocab"
-version = "0.59.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c43542c0eb2e8059743ffdce7b16fbdea8daeafa19e984800ecd2932f6e08930"
 dependencies = [
  "float8",
  "half",

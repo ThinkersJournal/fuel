@@ -351,8 +351,8 @@ unpopped-vocab         = { version = "~0.60.1" }
 # FireLine kernel-seam crates (wave 1): the grammar and the JIT envelope that used to be fuel-kernel-seam-types and
 # fuel-kernel-seam. `~` pins: pre-1.0, a minor bump is breaking. (fireline-announce, the former -announce crate, is
 # not a Fuel dependency: nothing in Fuel imported it.)
-fireline-grammar       = { version = "~0.10.1" }
-fireline-synth         = { version = "~0.10.1" }
+fireline-grammar       = { version = "~0.11" }
+fireline-synth         = { version = "~0.11" }
 baracuda-kernels-types = { version = "0.1.0-alpha.209" }
 baracuda-kernels-sys   = { version = "0.1.0-alpha.209", features = [
     "cudnn",
