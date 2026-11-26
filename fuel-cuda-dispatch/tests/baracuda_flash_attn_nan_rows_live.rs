@@ -6,6 +6,14 @@
 //! MASKED OUT for the query is UNSPECIFIED (NaN allowed; otherwise it must equal the NaN-free
 //! reference); (4) normal rows are unaffected in a mixed batch.
 //!
+//! **What Fuel binds (measured 2026-11-25, alpha.199):** at the `FlashAttn` `[T;4]` CUDA key there are
+//! ZERO bindings for f32/f64 (those resolve to the decomposition / CPU) and exactly ONE for f16 and bf16,
+//! `flash_decoding` (a capacity-K DECODE kernel: `seq_q == 1`, no window, no softcap). baracuda's
+//! `flash_sdpa` wrappers exist in `fuel-cuda-backend` but are NOT registered in the dispatch table, so
+//! the E0k fixes to `flash_sdpa` do not reach Fuel's IR, and the FULLY-MASKED-row case (it needs a window
+//! or `sq > sk`) is UNREACHABLE on CUDA: the multi-row cases below report `UNREACHABLE` by design; the
+//! `decode-*` cases (`sq == 1`) are the reachable ones.
+//!
 //! Every registered alternative is run and labelled by its index. A dispatch ERROR (a binding that
 //! rejects the params, e.g. a decode kernel for `sq != 1`, or a window) is reported as `UNREACHABLE`,
 //! not as a divergence: that is the answer to "does CUDA reach this case from Fuel's IR".
@@ -139,6 +147,73 @@ fn cases() -> Vec<Case> {
             None,
             vec![o(1.0), o(2.0), n, s(3.1126556)],
         ),
+    ]
+    .into_iter()
+    .chain(decode_cases())
+    .collect()
+}
+
+/// Host reference for one decode row (d = 2): `softmax(scale * q.k) . v`, f64.
+fn reference_row(q: &[f32], k: &[f32], v: &[f32], sk: usize, scale: f64) -> [f32; 2] {
+    let s: Vec<f64> = (0..sk)
+        .map(|j| scale * (q[0] as f64 * k[j * 2] as f64 + q[1] as f64 * k[j * 2 + 1] as f64))
+        .collect();
+    let m = s.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let e: Vec<f64> = s.iter().map(|x| (x - m).exp()).collect();
+    let z: f64 = e.iter().sum();
+    let mut out = [0.0f64; 2];
+    for j in 0..sk {
+        out[0] += e[j] * v[j * 2] as f64;
+        out[1] += e[j] * v[j * 2 + 1] as f64;
+    }
+    [(out[0] / z) as f32, (out[1] / z) as f32]
+}
+
+/// The REACHABLE cases: decode rows (`sq == 1`), `sk = 8`, no mask.
+fn decode_cases() -> Vec<Case> {
+    use Want::{Nan as n, Val as s};
+    let sk = 8usize;
+    let q = vec![0.5f32, -0.25];
+    let k: Vec<f32> = (0..sk * 2)
+        .map(|i| ((i * 37 % 101) as f32 - 50.0) * 0.01)
+        .collect();
+    let v: Vec<f32> = (0..sk * 2)
+        .map(|i| ((i * 53 % 97) as f32 - 48.0) * 0.02)
+        .collect();
+    let r = reference_row(&q, &k, &v, sk, SCALE as f64);
+    let mk = |name, q: Vec<f32>, k: Vec<f32>, v: Vec<f32>, want| Case {
+        name,
+        q,
+        k,
+        v,
+        sq: 1,
+        sk,
+        causal: false,
+        wl: None,
+        want,
+    };
+    let mut kn = k.clone();
+    kn[5 * 2] = f32::NAN;
+    let mut vn = v.clone();
+    vn[3 * 2] = f32::NAN;
+    vec![
+        mk(
+            "decode-control",
+            q.clone(),
+            k.clone(),
+            v.clone(),
+            vec![s(r[0]), s(r[1])],
+        ),
+        mk(
+            "decode-nan-q",
+            vec![f32::NAN, -0.25],
+            k.clone(),
+            v.clone(),
+            vec![n, n],
+        ),
+        mk("decode-nan-k", q.clone(), kn, v.clone(), vec![n, n]),
+        // NaN in column 0 of a visible V row: column 0 NaN, column 1 finite.
+        mk("decode-nan-v", q, k, vn, vec![n, s(r[1])]),
     ]
 }
 
