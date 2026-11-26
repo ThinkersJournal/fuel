@@ -2615,6 +2615,236 @@ mod tests {
         }
     }
 
+    // ---- FlashAttn on masked and NaN rows (ruling 2026-11-25; every path) ----
+    // (1) a FULLY MASKED row (no key admitted by causal/window) is ZEROS; (2) a NaN in Q, or in
+    // K/V at a position the query ATTENDS, makes that output NaN (never swallowed); (3) a NaN in a
+    // V row whose key is MASKED OUT for a query is UNSPECIFIED: an implementation MAY ignore it (the
+    // fused CPU kernel) or propagate it (the dense decomposition, Vulkan); the result depends on tile
+    // geometry, so NO test pins either: the row must not crash and, if it is not NaN, must equal the
+    // NaN-free reference; (4) normal rows are unaffected in a mixed batch.
+
+    struct AttnCase {
+        name: &'static str,
+        q: Vec<f32>,
+        k: Vec<f32>,
+        v: Vec<f32>,
+        sq: usize,
+        sk: usize,
+        causal: bool,
+        wl: Option<usize>,
+    }
+
+    fn attn_cases() -> Vec<AttnCase> {
+        let nan = f32::NAN;
+        let bq = vec![0.5f32, -0.25, 0.1, 0.9, -0.4, 0.3];
+        let bk = vec![0.3f32, 0.2, -0.1, 0.6];
+        let bv = vec![1.0f32, 2.0, 3.0, 4.0];
+        let c = |name, q: Vec<f32>, k: Vec<f32>, v: Vec<f32>, sq, sk, causal, wl| AttnCase {
+            name,
+            q,
+            k,
+            v,
+            sq,
+            sk,
+            causal,
+            wl,
+        };
+        vec![
+            c(
+                "control",
+                bq[..4].to_vec(),
+                bk.clone(),
+                bv.clone(),
+                2,
+                2,
+                false,
+                None,
+            ),
+            // sq=3 > sk=2, causal, window_left=0: row 2 attends nothing.
+            c(
+                "fully-masked-row-mixed",
+                bq.clone(),
+                bk.clone(),
+                bv.clone(),
+                3,
+                2,
+                true,
+                Some(0),
+            ),
+            c(
+                "nan-q-row1",
+                vec![0.5, -0.25, nan, 0.9],
+                bk.clone(),
+                bv.clone(),
+                2,
+                2,
+                false,
+                None,
+            ),
+            c(
+                "nan-k-row1",
+                bq[..4].to_vec(),
+                vec![0.3, 0.2, nan, 0.6],
+                bv.clone(),
+                2,
+                2,
+                false,
+                None,
+            ),
+            c(
+                "nan-v-row1",
+                bq[..4].to_vec(),
+                bk.clone(),
+                vec![1.0, 2.0, nan, 4.0],
+                2,
+                2,
+                false,
+                None,
+            ),
+            // PIP #715 M1: a non-finite score at a MASKED-OUT position must never reach the softmax.
+            // sq=3 > sk=2, causal, window_left=0: row 2 attends nothing, and its Q is NaN. Contract (1)
+            // "a fully masked row is zeros" takes precedence over (2) "NaN in Q makes the row NaN":
+            // nothing is attended, so nothing is poisoned (the fused CPU kernel's result).
+            c(
+                "nan-q-fully-masked-row",
+                vec![0.5, -0.25, 0.1, 0.9, nan, 0.3],
+                bk.clone(),
+                bv.clone(),
+                3,
+                2,
+                true,
+                Some(0),
+            ),
+            // Row 0 does not attend key 1 (causal); key 1 is NaN / +inf. Row 0 must be its NaN-free value.
+            c(
+                "nan-k-masked-key",
+                bq[..4].to_vec(),
+                vec![0.3, 0.2, nan, nan],
+                bv.clone(),
+                2,
+                2,
+                true,
+                None,
+            ),
+            c(
+                "inf-k-masked-key",
+                bq[..4].to_vec(),
+                vec![0.3, 0.2, f32::INFINITY, f32::INFINITY],
+                bv.clone(),
+                2,
+                2,
+                true,
+                None,
+            ),
+            c(
+                "nan-v-masked-key",
+                bq[..4].to_vec(),
+                bk.clone(),
+                vec![1.0, 2.0, nan, 4.0],
+                2,
+                2,
+                true,
+                None,
+            ),
+        ]
+    }
+
+    /// What one output element must be.
+    #[derive(Debug, Clone, Copy)]
+    enum Want {
+        /// Must be NaN.
+        Nan,
+        /// Must equal this value within 1e-4.
+        Val(f32),
+        /// UNSPECIFIED (contract (3)): NaN is allowed; otherwise it must equal this NaN-free reference.
+        NanOrVal(f32),
+        /// Not asserted (the attended non-finite score row: a pre-existing fused/decomposed difference, PIP L1).
+        Any,
+    }
+
+    fn attn_expected(name: &str) -> Vec<Want> {
+        use Want::{Any as a, Nan as n, NanOrVal as o, Val as s};
+        match name {
+            "control" => vec![s(1.8943309), s(2.894331), s(2.1126559), s(3.1126556)],
+            "fully-masked-row-mixed" => vec![s(1.0), s(2.0), s(3.0), s(4.0), s(0.0), s(0.0)],
+            "nan-q-row1" => vec![s(1.8943309), s(2.894331), n, n],
+            "nan-k-row1" => vec![n, n, n, n],
+            "nan-v-row1" => vec![n, s(2.894331), n, s(3.1126556)],
+            // Row 0 attends only key 0 (the NaN V row is masked out for it): UNSPECIFIED; the
+            // NaN-free reference is [1, 2]. Row 1 attends the NaN V row: column 0 must be NaN.
+            "nan-v-masked-key" => vec![o(1.0), o(2.0), n, s(3.1126556)],
+            "nan-q-fully-masked-row" => vec![s(1.0), s(2.0), s(3.0), s(4.0), s(0.0), s(0.0)],
+            "nan-k-masked-key" => vec![s(1.0), s(2.0), n, n],
+            "inf-k-masked-key" => vec![s(1.0), s(2.0), a, a],
+            other => panic!("no expectation for {other}"),
+        }
+    }
+
+    fn attn_check(name: &str, path: &str, got: &[f32], want: &[Want]) -> Option<String> {
+        assert_eq!(got.len(), want.len(), "{name}/{path}");
+        let bad: Vec<String> = got
+            .iter()
+            .zip(want)
+            .enumerate()
+            .filter(|(_, (g, w))| match w {
+                Want::Nan => !g.is_nan(),
+                Want::Val(x) => g.is_nan() || (**g - *x).abs() > 1e-4,
+                Want::NanOrVal(x) => !g.is_nan() && (**g - *x).abs() > 1e-4,
+                Want::Any => false,
+            })
+            .map(|(i, (g, w))| format!("[{i}] got {g} want {w:?}"))
+            .collect();
+        (!bad.is_empty()).then(|| format!("{name}/{path}: {}", bad.join("; ")))
+    }
+
+    // 4-digit test scale (~1/sqrt(2)), deliberately NOT FRAC_1_SQRT_2: the expected values in
+    // `attn_expected` were computed with exactly 0.7071 (same posture as `flash_decompose_vs_reference`).
+    #[allow(clippy::approx_constant)]
+    fn attn_tensor(c: &AttnCase) -> Tensor {
+        let dev = Device::cpu();
+        let q = Tensor::from_f32(c.q.clone(), Shape::from_dims(&[1, 1, c.sq, 2]), &dev).unwrap();
+        let k = q
+            .const_f32_like(c.k.clone(), Shape::from_dims(&[1, 1, c.sk, 2]))
+            .unwrap();
+        let v = q
+            .const_f32_like(c.v.clone(), Shape::from_dims(&[1, 1, c.sk, 2]))
+            .unwrap();
+        q.flash_attn(&k, &v, None, 0.7071, c.causal, c.wl, None, None)
+            .unwrap()
+    }
+
+    #[test]
+    fn flash_attn_fused_cpu_follows_the_masked_and_nan_row_contract() {
+        let mut bad = Vec::new();
+        for c in attn_cases() {
+            let got = attn_tensor(&c).realize_f32();
+            bad.extend(attn_check(c.name, "fused", &got, &attn_expected(c.name)));
+        }
+        assert!(bad.is_empty(), "{bad:#?}");
+    }
+
+    #[test]
+    fn flash_attn_decomposed_cpu_follows_the_masked_and_nan_row_contract() {
+        let mut bad = Vec::new();
+        for c in attn_cases() {
+            let attn = attn_tensor(&c);
+            let graph = attn.inner.graph().clone();
+            let id = attn.inner.id();
+            let roots =
+                fuel_graph::opt::RuleRegistry::lowering_only().optimize_to_fixpoint(&graph, &[id]);
+            let got =
+                crate::pipelined_bridge::realize_one_as::<f32>(&graph, roots[0], &Device::cpu())
+                    .expect("realize decomposed FlashAttn on CPU");
+            bad.extend(attn_check(
+                c.name,
+                "decomposed",
+                &got,
+                &attn_expected(c.name),
+            ));
+        }
+        assert!(bad.is_empty(), "{bad:#?}");
+    }
+
     #[test]
     fn flash_attn_decompose_vanilla() {
         flash_decompose_vs_reference(1, 1, false, None, false);
@@ -6437,13 +6667,24 @@ impl Tensor {
     /// Bessel's correction to be an EXPLICIT attribute, not an implicit
     /// torch-style default silently baked into the divisor — this
     /// parameter exists so a caller cannot get Bessel's correction by
-    /// omission. `correction >= n` produces a non-finite result (same
-    /// shape as any other degenerate reduction — never a panic).
+    /// omission. The divisor is clamped at zero, `max(0, n - correction)`
+    /// (the torch rule), so the result is never negative and never a panic:
+    /// `correction == n` is `0/0 = NaN`; `correction > n` is `x/0 = inf`
+    /// (`NaN` if the sum of squared deviations is 0, e.g. a single element).
+    /// Before 2026-11-25 only `correction == n` was non-finite and
+    /// `correction > n` returned a finite, possibly NEGATIVE variance.
     pub fn var_keepdim<D: Dim>(
         &self,
         dim: D,
         correction: f64,
     ) -> std::result::Result<Self, fuel_ir::Error> {
+        // A NaN correction is a caller error: `f64::max` returns the non-NaN operand, so it would otherwise be
+        // clamped to a zero divisor and silently turn a NaN result into `inf` (PIP #715 L2).
+        if correction.is_nan() {
+            return Err(fuel_ir::Error::Msg(
+                "var_keepdim: correction must not be NaN".to_string(),
+            ));
+        }
         let shape = self.shape();
         let dim = dim.to_index(&shape, "var_keepdim")?;
         let dims = shape.dims();
@@ -6453,7 +6694,7 @@ impl Tensor {
         let squares = deviation.sqr();
         // sum_keepdim then divide by (n - correction); leaves the reduced dim as 1.
         let summed = squares.sum_keepdim(dim)?;
-        let divisor = n as f64 - correction;
+        let divisor = (n as f64 - correction).max(0.0);
         Ok(summed.mul_scalar(1.0 / divisor))
     }
 
@@ -10877,6 +11118,101 @@ mod phase_a3_keepdim_tests {
         let out = t.min_keepdim(1_usize).unwrap();
         assert_eq!(out.shape().dims(), &[2, 1]);
         assert_eq!(out.realize_f32(), vec![1.0, 2.0]);
+    }
+
+    // ---- the divisor clamps at zero: var = sum((x-mean)^2) / max(0, n - correction) ----
+    // (ruling 2026-11-25, torch): extent == correction -> 0/0 = NaN; extent < correction -> x/0 =
+    // inf (NaN if the sum is 0); NEVER negative. Before, `correction > n` gave a finite, possibly
+    // NEGATIVE variance ([1,3] with correction 3 was -2.0).
+
+    /// `var(dim, correction)` of `data` (given as f64) in the named dtype, realized as f64.
+    fn var_in(dtype: &str, data: &[f64], shape: &[usize], dim: usize, correction: f64) -> Vec<f64> {
+        let dev = Device::cpu();
+        let s = Shape::from_dims(shape);
+        match dtype {
+            "f32" => Tensor::from_f32(data.iter().map(|&x| x as f32).collect::<Vec<_>>(), s, &dev)
+                .unwrap()
+                .var(dim, correction)
+                .unwrap()
+                .realize_f32()
+                .iter()
+                .map(|&x| x as f64)
+                .collect(),
+            "f64" => Tensor::from_f64(data.to_vec(), s, &dev)
+                .unwrap()
+                .var(dim, correction)
+                .unwrap()
+                .realize_f64(),
+            "f16" => Tensor::from_f16(
+                data.iter()
+                    .map(|&x| half::f16::from_f64(x))
+                    .collect::<Vec<_>>(),
+                s,
+                &dev,
+            )
+            .unwrap()
+            .var(dim, correction)
+            .unwrap()
+            .realize_f16()
+            .iter()
+            .map(|x| x.to_f64())
+            .collect(),
+            "bf16" => Tensor::from_bf16(
+                data.iter()
+                    .map(|&x| half::bf16::from_f64(x))
+                    .collect::<Vec<_>>(),
+                s,
+                &dev,
+            )
+            .unwrap()
+            .var(dim, correction)
+            .unwrap()
+            .realize_bf16()
+            .iter()
+            .map(|x| x.to_f64())
+            .collect(),
+            other => panic!("dtype {other}"),
+        }
+    }
+
+    /// PIP #715 L2: a NaN correction is a typed error, never a silently clamped zero divisor (`inf`).
+    #[test]
+    fn var_rejects_a_nan_correction() {
+        let dev = Device::cpu();
+        let x = Tensor::from_f32(vec![1.0, 3.0], Shape::from_dims(&[2]), &dev).unwrap();
+        assert!(x.var_keepdim(0, f64::NAN).is_err());
+        // control: the same call with a finite correction succeeds
+        assert!(x.var_keepdim(0, 1.0).is_ok());
+    }
+
+    #[test]
+    fn var_divisor_is_clamped_at_zero_in_every_dtype() {
+        for dt in ["f32", "f64", "f16", "bf16"] {
+            // extent == correction: 0/0 = NaN
+            assert!(var_in(dt, &[5.0], &[1], 0, 1.0)[0].is_nan(), "{dt} [5] c=1");
+            let v = var_in(dt, &[5.0, 7.0], &[2, 1], 1, 1.0);
+            assert!(v[0].is_nan() && v[1].is_nan(), "{dt} [[5],[7]] c=1: {v:?}");
+            // extent == correction with a nonzero sum: x/0 = inf
+            assert_eq!(
+                var_in(dt, &[1.0, 3.0], &[2], 0, 2.0)[0],
+                f64::INFINITY,
+                "{dt} [1,3] c=2"
+            );
+            // extent < correction: a zero sum is NaN, a nonzero sum is inf, NEVER negative
+            assert!(var_in(dt, &[5.0], &[1], 0, 2.0)[0].is_nan(), "{dt} [5] c=2");
+            assert_eq!(
+                var_in(dt, &[1.0, 3.0], &[2], 0, 3.0)[0],
+                f64::INFINITY,
+                "{dt} [1,3] c=3"
+            );
+            // controls: population variance of one element is 0; Bessel on two is 2
+            assert_eq!(var_in(dt, &[5.0], &[1], 0, 0.0)[0], 0.0, "{dt} [5] c=0");
+            assert_eq!(
+                var_in(dt, &[1.0, 3.0], &[2], 0, 1.0)[0],
+                2.0,
+                "{dt} [1,3] c=1"
+            );
+        }
     }
 
     #[test]

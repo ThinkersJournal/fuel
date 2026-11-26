@@ -2517,3 +2517,132 @@ fn commands_concurrent_acquisition() {
 
     commands.wait_until_completed().unwrap();
 }
+
+/// The argmax/argmin NaN SPEC VECTORS (torch convention, the CPU rule): a NaN WINS for both, the
+/// FIRST NaN's index is returned, ties take the first index, `-0.0 == +0.0`. Shared with the CPU
+/// test mods `arg_nan_*` and the Vulkan test `vulkan_arg_nan_vectors_live`. Runs on whatever Metal
+/// device the host has (a hosted macOS runner exposes an "Apple Paravirtual device").
+#[test]
+fn argmax_argmin_nan_spec_vectors() {
+    const NAN: f64 = f64::NAN;
+    let mut long: Vec<f64> = (0..1024).map(|i| (i % 7) as f64).collect();
+    long[700] = NAN;
+    let long_ties: Vec<f64> = (0..1024).map(|i| (i % 7) as f64).collect();
+    let vectors: Vec<(&str, Vec<f64>, u32, u32)> = vec![
+        ("nan-mid", vec![1.0, NAN, 0.0, 5.0], 1, 1),
+        ("nan-last", vec![1.0, 5.0, NAN], 2, 2),
+        ("nan-first", vec![NAN, 1.0, 5.0], 0, 0),
+        ("two-nans", vec![3.0, NAN, NAN, 1.0], 1, 1),
+        ("all-nan", vec![NAN, NAN, NAN], 0, 0),
+        ("ties", vec![5.0, 5.0, 2.0, 2.0], 0, 2),
+        ("zeros-a", vec![-0.0, 0.0, 0.0], 0, 0),
+        ("zeros-b", vec![0.0, -0.0, -0.0], 0, 0),
+        ("long-nan-700", long, 700, 700),
+        ("long-ties", long_ties, 6, 0),
+    ];
+    let mut diverging: Vec<String> = Vec::new();
+    for (dt, conv) in [("f32", 0u8), ("f16", 1u8), ("bf16", 2u8)] {
+        for (vname, row, want_max, want_min) in &vectors {
+            for (op, want) in [("argmax", *want_max), ("argmin", *want_min)] {
+                let name: &'static str = Box::leak(format!("fast_{op}_{dt}").into_boxed_str());
+                let got: u32 = match conv {
+                    0 => {
+                        let v: Vec<f32> = row.iter().map(|&x| x as f32).collect();
+                        run_reduce::<f32, u32>(&v, v.len(), 1, name)[0]
+                    }
+                    1 => {
+                        let v: Vec<f16> = row.iter().map(|&x| f16::from_f64(x)).collect();
+                        run_reduce::<f16, u32>(&v, v.len(), 1, name)[0]
+                    }
+                    _ => {
+                        let v: Vec<bf16> = row.iter().map(|&x| bf16::from_f64(x)).collect();
+                        run_reduce::<bf16, u32>(&v, v.len(), 1, name)[0]
+                    }
+                };
+                let ok = got == want;
+                println!(
+                    "METALARG {op}/{dt}/{vname}: got {got} want {want} {}",
+                    if ok { "OK" } else { "DIVERGES" }
+                );
+                if !ok {
+                    diverging.push(format!("{op}/{dt}/{vname}: got {got} want {want}"));
+                }
+            }
+        }
+    }
+    assert!(
+        diverging.is_empty(),
+        "{} Metal arg-reduce case(s) diverge from the NaN spec: {diverging:?}",
+        diverging.len()
+    );
+}
+
+// ---- the arg-reduce comparator is spelled the way the CPU rule is (text level) ----
+// A TEXT-level pin on `reduce.metal` (read through `crate::source::REDUCE`, the same string the runtime compiles):
+// the `indexed<T>` comparators let a NaN WIN and take the first NaN's index; no NaN: ties take the first index.
+// The NaN test is a BIT-PATTERN test (`arg_is_nan`) because the shaders compile with fast math ON by default.
+// The numerics are measured by `argmax_argmin_nan_spec_vectors` on the host device.
+
+fn nan_comparator_body(src: &str, op: &str) -> String {
+    let head = format!("METAL_FUNC bool operator{op}(indexed<T> lhs, indexed<T> rhs)");
+    let at = src
+        .find(&head)
+        .unwrap_or_else(|| panic!("`{head}` not found in reduce.metal"));
+    let open = at + src[at..].find('{').expect("comparator has a body");
+    let mut depth = 0usize;
+    for (i, c) in src[open..].char_indices() {
+        match c {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return src[open..=open + i].to_string();
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("unbalanced braces in the `{op}` comparator");
+}
+
+fn nan_norm(s: &str) -> String {
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+#[test]
+fn both_indexed_comparators_let_a_nan_win_and_take_the_first_nan() {
+    for op in ["<", ">"] {
+        let body = nan_norm(&nan_comparator_body(crate::source::REDUCE, op));
+        for needle in [
+            "bool ln = arg_is_nan(lhs.val);",
+            "bool rn = arg_is_nan(rhs.val);",
+            "if (ln || rn) return ln && (!rn || lhs.i < rhs.i);",
+            "(lhs.val == rhs.val && lhs.i < rhs.i)",
+        ] {
+            assert!(
+                body.contains(needle),
+                "operator{op} for indexed<T> must contain `{needle}`; body: {body}"
+            );
+        }
+    }
+}
+
+/// Sabotage sibling: the OLD comparator text (NaN compares false, so a NaN is ignored) fails the same check.
+#[test]
+fn the_old_indexed_comparator_text_fails_the_check() {
+    let old = "constexpr METAL_FUNC bool operator>(indexed<T> lhs, indexed<T> rhs) { return lhs.val > rhs.val || (lhs.val == rhs.val && lhs.i < rhs.i); }";
+    assert!(!nan_norm(old).contains("if (ln || rn) return ln && (!rn || lhs.i < rhs.i);"));
+}
+
+#[test]
+fn the_nan_helper_covers_float_half_and_bfloat_by_bit_pattern() {
+    let src = nan_norm(crate::source::REDUCE);
+    for needle in [
+        "bool arg_is_nan(float x) { return (as_type<uint>(x) & 0x7fffffffu) > 0x7f800000u; }",
+        "bool arg_is_nan(half x) { return (as_type<ushort>(x) & 0x7fffu) > 0x7c00u; }",
+        "bool arg_is_nan(bfloat x) { return (as_type<ushort>(x) & 0x7fffu) > 0x7f80u; }",
+        "template<typename T> METAL_FUNC bool arg_is_nan(T) { return false; }",
+    ] {
+        assert!(src.contains(needle), "reduce.metal must contain `{needle}`");
+    }
+}

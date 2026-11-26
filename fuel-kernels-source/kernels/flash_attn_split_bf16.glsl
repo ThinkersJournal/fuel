@@ -63,6 +63,14 @@ shared float partial_max[TPB];
 shared float partial_sum[TPB];
 shared float chunk_max_shared;
 shared float chunk_sum_shared;
+shared uint nan_flag;   // poison: set when any admissible score is NaN
+
+// NaN by BIT PATTERN (a NaN compare may be folded away by the compiler) and a canonical NaN, for the
+// poison flag: a NaN score (a NaN in Q, or in a K row this query attends) must make the row NaN, never
+// be swallowed by the "row max not finite" skip (ruling 2026-11-25; the flash/inference convention keeps a
+// FULLY MASKED row at zeros).
+bool is_nan_bits(float x) { return (floatBitsToUint(x) & 0x7fffffffu) > 0x7f800000u; }
+float nan_f() { return uintBitsToFloat(0x7fc00000u); }
 
 void main() {
     uint split = gl_WorkGroupID.x;
@@ -86,6 +94,8 @@ void main() {
     uint n = (hi_k > lo) ? (hi_k - lo) : 0u;
 
     float alibi_h = (p.use_alibi != 0u) ? bf16_u16_to_f32(alibi_slopes[hi]) : 0.0;
+    if (tid == 0u) nan_flag = 0u;
+    barrier();
 
     for (uint j = tid; j < n; j += TPB) {
         uint kj = lo + j;
@@ -101,9 +111,20 @@ void main() {
         if (p.use_alibi != 0u) {
             s += alibi_h * (float(kj) - float(qi));
         }
+        if (is_nan_bits(s)) atomicOr(nan_flag, 1u);
         scores[j] = s;
     }
     barrier();
+    // A poisoned chunk: NaN partial (max NaN, sum 1 so the combine does not skip it); the combine
+    // turns any NaN partial max into a NaN row.
+    if (nan_flag != 0u) {
+        for (uint dx = tid; dx < p.D; dx += TPB) P[part_off + dx] = nan_f();
+        if (tid == 0u) {
+            P[part_off + p.D] = nan_f();
+            P[part_off + p.D + 1u] = 1.0;
+        }
+        return;
+    }
 
     float local_max = -3.402823e+38;
     for (uint j = tid; j < n; j += TPB) {
