@@ -2792,3 +2792,88 @@ fn nan_audit_unary_and_half_variants() {
         bad.len()
     );
 }
+
+/// Subnormal behaviour of the Metal kernels (vulkane's hosted-macOS probe, run 45748530618, found that the Metal
+/// device FLUSHES f32 and bf16 subnormals, operands and results, to zero and PRESERVES f16 ones). This test
+/// MEASURES it for Fuel's kernels on the host device and prints one `METALSUB` line per case (`FLUSHED` when the
+/// result is zero where IEEE gives a nonzero subnormal, `IEEE` when preserved). It asserts nothing: it is a
+/// record, not a gate (CPU/CUDA/Vulkan subnormals are a separate measurement; do not read it as parity).
+#[test]
+fn subnormal_behaviour_record() {
+    // f32: smallest normal is 1.17549435e-38; 1e-40 and 2e-40 are subnormal.
+    let s1 = 1.0e-40_f32;
+    let s2 = 2.0e-40_f32;
+    let report = |name: &str, got: f32, want: f32| {
+        let kind = if got == want {
+            "IEEE"
+        } else if got == 0.0 {
+            "FLUSHED"
+        } else {
+            "OTHER"
+        };
+        println!("METALSUB {name}: got {got:e} want {want:e} {kind}");
+    };
+    // operand subnormal, result subnormal
+    let r = run_binary(&[s1], &[s1], "badd_f32");
+    report("badd_f32 subnormal+subnormal", r[0], s1 + s1);
+    let r = run_binary(&[s1], &[0.0f32], "badd_f32");
+    report("badd_f32 subnormal+0 (operand preserved?)", r[0], s1);
+    // result subnormal from normal operands: 1e-30 * 1e-10 = 1e-40
+    let r = run_binary(&[1.0e-30_f32], &[1.0e-10_f32], "bmul_f32");
+    report(
+        "bmul_f32 normal*normal -> subnormal result",
+        r[0],
+        1.0e-30_f32 * 1.0e-10_f32,
+    );
+    let r = run_binary(&[s1], &[1.0f32], "bmul_f32");
+    report("bmul_f32 subnormal*1 (operand preserved?)", r[0], s1);
+    let r = run_binary(&[s1], &[0.0f32], "bmaximum_f32");
+    report("bmaximum_f32 max(subnormal, 0)", r[0], s1);
+    let r = run_affine(&[s1], 1.0, 0.0);
+    report("affine_f32 1*subnormal+0", r[0], s1);
+    let r = run_affine(&[1.0e-30_f32], 1.0e-10, 0.0);
+    report(
+        "affine_f32 normal*1e-10 -> subnormal result",
+        r[0],
+        1.0e-30_f32 * 1.0e-10_f32,
+    );
+    let r: Vec<f32> = run_reduce(&[s1, s2], 2, 1, "fast_sum_f32");
+    report("fast_sum_f32 [1e-40, 2e-40]", r[0], s1 + s2);
+    let r: Vec<f32> = run_reduce(&[s1, s2], 2, 1, "fast_max_f32");
+    report("fast_max_f32 [1e-40, 2e-40]", r[0], s2);
+    let r = run_softmax(&[s1, s2], 2, "softmax_f32");
+    println!(
+        "METALSUB softmax_f32 [1e-40, 2e-40]: got {:?} (uniform 0.5 expected either way)",
+        r
+    );
+    // bf16: same exponent range as f32 (smallest normal ~1.1755e-38); 1e-40 is a bf16 subnormal.
+    let b1 = bf16::from_f32(1.0e-40);
+    let rb = run_binary(&[b1], &[b1], "badd_bf16");
+    println!(
+        "METALSUB badd_bf16 subnormal+subnormal: got {:e} want {:e} (bf16 subnormal operand {:e})",
+        rb[0].to_f32(),
+        (b1 + b1).to_f32(),
+        b1.to_f32()
+    );
+    let rb = run_binary(&[b1], &[bf16::from_f32(0.0)], "badd_bf16");
+    println!(
+        "METALSUB badd_bf16 subnormal+0: got {:e} want {:e}",
+        rb[0].to_f32(),
+        b1.to_f32()
+    );
+    // f16: smallest normal 6.1035e-5; 1e-6 is an f16 subnormal.
+    let h1 = f16::from_f32(1.0e-6);
+    let rh = run_binary(&[h1], &[h1], "badd_f16");
+    println!(
+        "METALSUB badd_f16 subnormal+subnormal: got {:e} want {:e} (f16 subnormal operand {:e})",
+        rh[0].to_f32(),
+        (h1 + h1).to_f32(),
+        h1.to_f32()
+    );
+    let rh = run_binary(&[h1], &[f16::from_f32(0.0)], "badd_f16");
+    println!(
+        "METALSUB badd_f16 subnormal+0: got {:e} want {:e}",
+        rh[0].to_f32(),
+        h1.to_f32()
+    );
+}
