@@ -2702,3 +2702,93 @@ fn nan_audit_fast_math_paths() {
         bad.len()
     );
 }
+
+/// GAP-405 audit, part 2: every contiguous UNARY kernel maps a NaN input to NaN (f32; `sign` is reported but
+/// not asserted: torch gives NaN, Fuel's convention for it is not pinned), and the half-precision (f16, bf16)
+/// variants of the ops audited in `nan_audit_fast_math_paths`: relu, binary maximum/minimum, the value
+/// reduces, softmax.
+#[test]
+fn nan_audit_unary_and_half_variants() {
+    let mut bad: Vec<String> = Vec::new();
+    let mut note = |name: &str, ok: bool, got: String| {
+        println!(
+            "METALNAN {name}: got {got} {}",
+            if ok { "OK" } else { "DIVERGES" }
+        );
+        if !ok {
+            bad.push(format!("{name}: got {got}"));
+        }
+    };
+    // ---- unary, f32: NaN in -> NaN out (element 0), element 1 (0.5) stays finite.
+    macro_rules! unary_nan {
+        ($($op:ident),*) => {$(
+            let r = run(&[f32::NAN, 0.5f32], unary::contiguous::$op::FLOAT);
+            note(concat!("unary_", stringify!($op), "_f32"), r[0].is_nan() && !r[1].is_nan(), format!("{r:?}"));
+        )*};
+    }
+    unary_nan!(
+        cos, sin, exp, sqr, sqrt, neg, log, gelu_tanh, abs, ceil, floor, relu, round, erf, gelu,
+        tanh, recip, silu, sigmoid
+    );
+    let r = run(&[f32::NAN, 0.5f32], unary::contiguous::sign::FLOAT);
+    println!("METALNAN unary_sign_f32 (informational, torch gives NaN): got {r:?}");
+    // ---- half variants.
+    macro_rules! half_variants {
+        ($T:ty, $suffix:literal, $conv:expr, $relu:expr) => {{
+            let c: fn(f32) -> $T = $conv;
+            let nan = c(f32::NAN);
+            let v = |xs: &[f32]| -> Vec<$T> { xs.iter().map(|&x| c(x)).collect() };
+            let isn = |x: $T| -> bool { f32::from(x).is_nan() };
+            let r = run(&v(&[f32::NAN, -1.0, 2.0]), $relu);
+            note(
+                concat!("relu_", $suffix),
+                isn(r[0]) && f32::from(r[1]) == 0.0 && f32::from(r[2]) == 2.0,
+                format!("{r:?}"),
+            );
+            let x = v(&[f32::NAN, 1.0, 2.0]);
+            let y = v(&[1.0, f32::NAN, 3.0]);
+            let r = run_binary(&x, &y, concat!("bmaximum_", $suffix));
+            note(
+                concat!("bmaximum_", $suffix),
+                isn(r[0]) && isn(r[1]) && f32::from(r[2]) == 3.0,
+                format!("{r:?}"),
+            );
+            let r = run_binary(&x, &y, concat!("bminimum_", $suffix));
+            note(
+                concat!("bminimum_", $suffix),
+                isn(r[0]) && isn(r[1]) && f32::from(r[2]) == 2.0,
+                format!("{r:?}"),
+            );
+            let row = v(&[1.0, f32::NAN, 0.0, 5.0]);
+            let r: Vec<$T> = run_reduce(&row, 4, 1, concat!("fast_max_", $suffix));
+            note(concat!("fast_max_", $suffix), isn(r[0]), format!("{r:?}"));
+            let r: Vec<$T> = run_reduce(&row, 4, 1, concat!("fast_min_", $suffix));
+            note(concat!("fast_min_", $suffix), isn(r[0]), format!("{r:?}"));
+            let r: Vec<$T> = run_reduce(&row, 4, 1, concat!("fast_sum_", $suffix));
+            note(concat!("fast_sum_", $suffix), isn(r[0]), format!("{r:?}"));
+            let r = run_softmax(
+                &v(&[1.0, f32::NAN, 2.0, 3.0]),
+                4,
+                concat!("softmax_", $suffix),
+            );
+            note(
+                concat!("softmax_", $suffix),
+                r.iter().all(|x| isn(*x)),
+                format!("{r:?}"),
+            );
+            let _ = nan;
+        }};
+    }
+    half_variants!(f16, "f16", f16::from_f32, unary::contiguous::relu::HALF);
+    half_variants!(
+        bf16,
+        "bf16",
+        bf16::from_f32,
+        unary::contiguous::relu::BFLOAT
+    );
+    assert!(
+        bad.is_empty(),
+        "{} Metal NaN-audit case(s) diverge: {bad:?}",
+        bad.len()
+    );
+}
