@@ -2965,3 +2965,137 @@ fn subnormal_data_movement_record() {
     let r = run(&[ah, -ah], unary::contiguous::neg::HALF);
     line("neg f16 [a]", r[0].to_f32(), (-ah).to_f32());
 }
+
+/// Subnormal behaviour of the Metal MATMUL (`mlx_gemm`) and SOFTMAX kernels per dtype (GAP-410): printed as
+/// `METALSUB3 <case>: got .. want .. PRESERVED|FLUSHED`. A record, not a gate. gemm: `out[0] = lhs[0] * rhs[0] + 0..`
+/// with every other lhs element 0 and every rhs element `r`, so out[0] = lhs[0] * r (operand-subnormal case: r = 1;
+/// result-subnormal case: both operands normal, product subnormal). softmax: row `[0, -x]` -> out[1] = exp(-x) /
+/// (1 + exp(-x)), a subnormal RESULT from normal inputs.
+#[test]
+fn subnormal_matmul_softmax_record() {
+    let line = |name: &str, got: f32, want: f32| {
+        let kind = if got == want {
+            "PRESERVED"
+        } else if got == 0.0 {
+            "FLUSHED"
+        } else {
+            "OTHER"
+        };
+        println!("METALSUB3 {name}: got {got:e} want {want:e} {kind}");
+    };
+    let (b, m, n, k) = (1usize, 2usize, 4usize, 3usize);
+    let strides = ([m * k, k, 1], [n * k, n, 1]);
+    // f32
+    let mut lhs = vec![0.0f32; m * k];
+    lhs[0] = 1.0e-40;
+    let rhs = vec![1.0f32; n * k];
+    let r = run_mlx_gemm(
+        GemmDType::F32,
+        (b, m, n, k),
+        &lhs,
+        &strides.0,
+        0,
+        &rhs,
+        &strides.1,
+        0,
+    );
+    line("gemm f32 subnormal operand", r[0], 1.0e-40);
+    lhs[0] = 1.0e-30;
+    let rhs = vec![1.0e-10f32; n * k];
+    let r = run_mlx_gemm(
+        GemmDType::F32,
+        (b, m, n, k),
+        &lhs,
+        &strides.0,
+        0,
+        &rhs,
+        &strides.1,
+        0,
+    );
+    line("gemm f32 subnormal result", r[0], 1.0e-30f32 * 1.0e-10f32);
+    // bf16
+    let mut lhs = vec![bf16::from_f32(0.0); m * k];
+    lhs[0] = bf16::from_f32(1.0e-40);
+    let rhs = vec![bf16::from_f32(1.0); n * k];
+    let r = run_mlx_gemm(
+        GemmDType::BF16,
+        (b, m, n, k),
+        &lhs,
+        &strides.0,
+        0,
+        &rhs,
+        &strides.1,
+        0,
+    );
+    line(
+        "gemm bf16 subnormal operand",
+        r[0].to_f32(),
+        lhs[0].to_f32(),
+    );
+    lhs[0] = bf16::from_f32(1.0e-30);
+    let rhs = vec![bf16::from_f32(1.0e-10); n * k];
+    let r = run_mlx_gemm(
+        GemmDType::BF16,
+        (b, m, n, k),
+        &lhs,
+        &strides.0,
+        0,
+        &rhs,
+        &strides.1,
+        0,
+    );
+    line(
+        "gemm bf16 subnormal result",
+        r[0].to_f32(),
+        lhs[0].to_f32() * rhs[0].to_f32(),
+    );
+    // f16 (subnormal range ~6e-8..6e-5)
+    let mut lhs = vec![f16::from_f32(0.0); m * k];
+    lhs[0] = f16::from_f32(1.0e-6);
+    let rhs = vec![f16::from_f32(1.0); n * k];
+    let r = run_mlx_gemm(
+        GemmDType::F16,
+        (b, m, n, k),
+        &lhs,
+        &strides.0,
+        0,
+        &rhs,
+        &strides.1,
+        0,
+    );
+    line("gemm f16 subnormal operand", r[0].to_f32(), lhs[0].to_f32());
+    lhs[0] = f16::from_f32(1.0e-3);
+    let rhs = vec![f16::from_f32(1.0e-3); n * k];
+    let r = run_mlx_gemm(
+        GemmDType::F16,
+        (b, m, n, k),
+        &lhs,
+        &strides.0,
+        0,
+        &rhs,
+        &strides.1,
+        0,
+    );
+    line("gemm f16 subnormal result", r[0].to_f32(), 1.0e-6);
+    // softmax: out[1] = exp(-x)/(1+exp(-x)), subnormal for x = 90 (f32/bf16) and x = 10 (f16)
+    let want32 = (-90.0f64).exp() / (1.0 + (-90.0f64).exp());
+    let r = run_softmax(&[0.0f32, -90.0], 2, "softmax_f32");
+    line("softmax f32 subnormal result", r[1], want32 as f32);
+    let r = run_softmax(
+        &[bf16::from_f32(0.0), bf16::from_f32(-90.0)],
+        2,
+        "softmax_bf16",
+    );
+    line(
+        "softmax bf16 subnormal result",
+        r[1].to_f32(),
+        want32 as f32,
+    );
+    let want16 = (-10.0f64).exp() / (1.0 + (-10.0f64).exp());
+    let r = run_softmax(
+        &[f16::from_f32(0.0), f16::from_f32(-10.0)],
+        2,
+        "softmax_f16",
+    );
+    line("softmax f16 subnormal result", r[1].to_f32(), want16 as f32);
+}
