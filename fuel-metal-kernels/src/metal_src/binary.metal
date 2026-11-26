@@ -149,6 +149,18 @@ template <
 #endif
 
 // Define binary ops
+// NaN by BIT PATTERN: the shaders compile with fast math ON by default (`get_compile_options`), under which
+// `a > b ? a : b` and `fast::max` are folded to a NaN-IGNORING max, and `x != x` may fold away. Fuel's convention
+// (KISS-Ops 6.11-0002, torch) is that max/min PROPAGATE NaN, so the NaN test is an exponent/mantissa test.
+// The generic overload serves the integer types (never a NaN).
+template<typename T>
+METAL_FUNC bool nan_bits(T) { return false; }
+METAL_FUNC bool nan_bits(float x) { return (as_type<uint>(x) & 0x7fffffffu) > 0x7f800000u; }
+METAL_FUNC bool nan_bits(half x) { return (as_type<ushort>(x) & 0x7fffu) > 0x7c00u; }
+#if defined(__HAVE_BFLOAT__)
+METAL_FUNC bool nan_bits(bfloat x) { return (as_type<ushort>(x) & 0x7fffu) > 0x7f80u; }
+#endif
+
 #define define_binary_op(name, op)      \
 struct name {                           \
     template <typename T>               \
@@ -169,8 +181,8 @@ define_binary_op(badd, x + y);
 define_binary_op(bsub, x - y);
 define_binary_op(bmul, x * y);
 define_binary_op(bdiv, x / y);
-define_binary_op(bminimum, MIN(x, y));
-define_binary_op(bmaximum, MAX(x, y));
+define_binary_op(bminimum, (nan_bits(x) ? x : (nan_bits(y) ? y : MIN(x, y))));
+define_binary_op(bmaximum, (nan_bits(x) ? x : (nan_bits(y) ? y : MAX(x, y))));
 
 // Define binary ops that return a bool
 define_binary_bool_op(beq, x == y);

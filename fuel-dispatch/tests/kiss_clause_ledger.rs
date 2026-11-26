@@ -235,6 +235,13 @@ const LEDGER: &[Row] = &[
         exists_at: None,
     },
     Row {
+        clause: "KISS-CONTRACT-6.8-0001",
+        disposition: Reference,
+        test: None,
+        reason: "Cited in the Metal contract notes to say why those sections are NOT KISS Contracts: a Contract must carry `math_fidelity`, and a flushing f32/bf16 kernel has no admissible value (6.17-0003), so the sections are Fuel-native documents and make no claim of KISS-Contract conformance (kiss ruling relayed by pm-kernels 2026-11-26).",
+        exists_at: None,
+    },
+    Row {
         clause: "KISS-CONTRACT-6.9-0001",
         disposition: Record,
         test: None,
@@ -306,6 +313,29 @@ const LEDGER: &[Row] = &[
         disposition: Record,
         test: None,
         reason: "docs/gaps.md registry row. Cited to identify the clause a gap is about.",
+        exists_at: None,
+    },
+    Row {
+        clause: "KISS-OPS-6.17-0001",
+        disposition: Reference,
+        test: None,
+        reason: "Cited in the Metal contract notes to say why NO `math_fidelity` is written: an unnamed fidelity reads as bit-stable under this clause, so a flushing kernel must not be allowed to read that way. The notes declare the flush in prose (measured, with run ids) and write no fidelity value; `bit_stable_on_same_hardware` is labelled a deterministic-re-run claim, NOT KISS bit-stable.",
+        exists_at: None,
+    },
+    Row {
+        clause: "KISS-OPS-6.17-0002",
+        disposition: Declined,
+        test: Some(
+            "fuel-dispatch/src/telemetry/contraction_facts.rs::a_metal_target_declines_the_bit_stable_key_for_f32_and_bf16",
+        ),
+        reason: "A kernel that flushes subnormals must decline `Exact`. Metal flushes f32 and bf16 subnormal operands and results (measured on the hosted macOS device: vulkane run 45748530618, fuel runs 45748920513 and 45764780697; f16 preserves), so Fuel DECLINES Exact for those kernels: the contraction structure key is not derived for f32/bf16 on a Metal target (the named test, with a CUDA sibling that keeps the key), and every affected Metal precision note says so. 40 of the 52 f32/bf16 Metal sections are not yet individually measured (GAP-410).",
+        exists_at: None,
+    },
+    Row {
+        clause: "KISS-OPS-6.17-0003",
+        disposition: Reference,
+        test: None,
+        reason: "Cited to record that no MathFidelity value admits flushing, so a flushing kernel cannot be named a fidelity: the only honest outcomes are decline (6.17-0002) or a bit-stable kernel. Nothing for Fuel to discharge; the decline is 6.17-0002's row.",
         exists_at: None,
     },
     Row {
