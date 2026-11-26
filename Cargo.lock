@@ -753,7 +753,7 @@ dependencies = [
  "regex",
  "rustc-hash 2.1.3",
  "shlex 2.0.1",
- "syn 3.0.10",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -3952,9 +3952,9 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "onemkl"
-version = "0.4.2"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02c46f453e82557ee7f4ce871692b93f196b3d1a0e265f59978ab58a74e96a74"
+checksum = "3921946f88f42d7a15f05060ce12e2926f4ca39619c83df14d68d70424b76b11"
 dependencies = [
  "num-complex",
  "num-traits",
@@ -3963,9 +3963,9 @@ dependencies = [
 
 [[package]]
 name = "onemkl-sys"
-version = "0.4.2"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e655f21e1424a40450eca05c6324e676f569b44de864e64cd324aceae10a042d"
+checksum = "50801c3aaa1c4ab54c8a6b52bb2348935d10b8178bfd59ac71fa8be8d745abf4"
 dependencies = [
  "bindgen 0.73.2",
 ]
