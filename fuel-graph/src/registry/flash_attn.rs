@@ -120,13 +120,6 @@ fn r_perm(p: Vec<u8>) -> OpAttrs {
         ..OpAttrs::default()
     }
 }
-/// A baked concrete diagonal for a Triu/Tril band (`tag_to_op` reads `axis`).
-fn r_diag(diagonal: i64) -> OpAttrs {
-    OpAttrs {
-        axis: Some(diagonal),
-        ..OpAttrs::default()
-    }
-}
 /// A baked `Slice { dim, start, len }` attr (all concrete at decompose time).
 fn r_slice(dim: i64, start: u64, len: u64) -> OpAttrs {
     OpAttrs {
@@ -174,23 +167,10 @@ fn repeat_kv_heads_recipe(
     r_op(OpTag::Reshape, r_shape(&[b, hq, s, d]), vec![bc])
 }
 
-/// ALiBi bias `slope[h] · (j - (i + q_pos_offset))` broadcast to `[B, Hq, Sq,
-/// Sk]` as recipe DATA — the structure-preserving migration of
-/// [`alibi_bias`]. The bottom-right decode alignment rides an `AddScalar`
-/// shift emitted only when `q_pos_offset != 0` (byte-identical to the
-/// imperative guard). The interior nodes are all F32 (Iota → F32); the final
-/// F32→`dtype` `Cast` is emitted only when the attention dtype differs (an
-/// F32→F32 cast is an executor-less identity), exactly as the imperative does.
-/// Every BroadcastTo is preceded by an equal-rank Reshape (no D4 auto-pad).
-fn alibi_bias_recipe(
-    alibi: PatternNode,
-    b: usize,
-    hq: usize,
-    sq: usize,
-    sk: usize,
-    q_pos_offset: usize,
-    dtype: DType,
-) -> PatternNode {
+/// `rel[i, j] = j - (i + q_pos_offset)` as an F32 `[B, Hq, Sq, Sk]` recipe node (built from `Iota` only: it
+/// depends on NO score, so a NaN/inf score can never reach it). Shared by the ALiBi bias and the
+/// causal/window mask predicates.
+fn rel_pos_recipe(b: usize, hq: usize, sq: usize, sk: usize, q_pos_offset: usize) -> PatternNode {
     let grid = &[sq, sk];
     let full = &[b, hq, sq, sk];
     let row = r_op(
@@ -214,7 +194,28 @@ fn alibi_bias_recipe(
         );
     }
     let rel_re = r_op(OpTag::Reshape, r_shape(&[1, 1, sq, sk]), vec![rel]);
-    let rel_4d = r_op(OpTag::BroadcastTo, r_shape(full), vec![rel_re]);
+    r_op(OpTag::BroadcastTo, r_shape(full), vec![rel_re])
+}
+
+/// ALiBi bias `slope[h] · (j - (i + q_pos_offset))` broadcast to `[B, Hq, Sq,
+/// Sk]` as recipe DATA — the structure-preserving migration of
+/// [`alibi_bias`]. The bottom-right decode alignment rides an `AddScalar`
+/// shift emitted only when `q_pos_offset != 0` (byte-identical to the
+/// imperative guard). The interior nodes are all F32 (Iota → F32); the final
+/// F32→`dtype` `Cast` is emitted only when the attention dtype differs (an
+/// F32→F32 cast is an executor-less identity), exactly as the imperative does.
+/// Every BroadcastTo is preceded by an equal-rank Reshape (no D4 auto-pad).
+fn alibi_bias_recipe(
+    alibi: PatternNode,
+    b: usize,
+    hq: usize,
+    sq: usize,
+    sk: usize,
+    q_pos_offset: usize,
+    dtype: DType,
+) -> PatternNode {
+    let full = &[b, hq, sq, sk];
+    let rel_4d = rel_pos_recipe(b, hq, sq, sk, q_pos_offset);
     let slope_re = r_op(OpTag::Reshape, r_shape(&[1, hq, 1, 1]), vec![alibi]);
     let slope_4d = r_op(OpTag::BroadcastTo, r_shape(full), vec![slope_re]);
     let bias_f32 = r_op(OpTag::Mul, OpAttrs::default(), vec![slope_4d, rel_4d]);
@@ -247,13 +248,11 @@ pub(crate) struct AttnRecomputeRecipe {
 /// shared by the C-T3 forward and the C-T4 backward). `k_use`/`v_use` are the
 /// (possibly-sliced) K/V recipe subtrees. Returns an [`AttnRecomputeRecipe`].
 ///
-/// The mask bands share the SAME `neg_inf` node (`AddScalar(-inf)(MulScalar(0)(
-/// S0))`, `S0` = the scaled scores at mask entry): every band is authored over a
-/// clone of `neg_inf`, and emit's slot-free identity-share collapses the clones
-/// (and the shared `S0`) to one node each — reproducing the imperative DAG
-/// sharing. The concrete `q_pos_offset` shifts every band diagonal (`o+1`,
-/// `o+r+1`, `o-l-1`) and the alibi rel, baked per call. ZERO open scalar slots
-/// (scale, `1/cap`, `cap`, `0`, `-inf` are all baked pattern constants).
+/// The causal / window mask is a SELECT (PIP #715 M1): each band is a `Ge` predicate over `rel = j - (i + offset)`
+/// (an `Iota`-only node: no score in it) driving a `MaskedFill(-inf)` on the scores, so a masked-out NaN or +inf score is
+/// REPLACED, never summed with `-inf`. The per-row dead flag (a fully masked row is zeros) is read from the same fills
+/// applied to an all-zero grid, so a score never decides it. The concrete `q_pos_offset` is baked per call. ZERO open
+/// scalar slots (scale, `1/cap`, `cap`, `0`, `-inf` are all baked pattern constants).
 pub(crate) fn recompute_probs_recipe(
     q: PatternNode,
     k_use: PatternNode,
@@ -310,37 +309,52 @@ pub(crate) fn recompute_probs_recipe(
         scaled = r_op(OpTag::Add, OpAttrs::default(), vec![scaled, bias]);
     }
 
-    // --- causal / sliding-window: additive -inf bands ------------------
+    // --- causal / sliding-window: a SELECT, never an additive band (PIP #715 M1) ----
+    // `scaled + (-inf)` turns a masked-out NaN score into NaN and a masked-out +inf score into NaN
+    // (`inf + -inf`), which the softmax then spreads over the row; the fused kernels skip inadmissible keys
+    // before scoring, so they never see it. A `MaskedFill(-inf)` under a predicate built from `Iota` alone
+    // (no score in it) replaces the score instead, so fused and decomposed agree.
     let needs_mask = causal || window_r.is_some() || window_l.is_some();
-    // The all -inf constant of the mask block (`neg_inf`), kept for the fully-masked-row
-    // select below.
-    let mut neg_inf_for_dead_rows: Option<PatternNode> = None;
+    // Per-row "every key is masked" source, derived from the MASK ALONE (the row max of an all-zero grid under
+    // the same fills is 0 where any key is admitted, -inf where none is), kept for the dead-row select below.
+    let mut dead_rows: Option<(PatternNode, PatternNode)> = None;
     if needs_mask {
-        // `S0` = scaled at mask entry; shared by `neg_inf` and the first band's
-        // Add (emit dedups the clones). `neg_inf = -inf · 0 · S0`.
-        let s0 = scaled;
-        let zeros = r_op(OpTag::MulScalar, r_scalar(0.0), vec![s0.clone()]);
-        let neg_inf = r_op(OpTag::AddScalar, r_scalar(f64::NEG_INFINITY), vec![zeros]);
-        neg_inf_for_dead_rows = Some(neg_inf.clone());
-        // `q_pos_offset` shifts every band's diagonal: query row `i` sits at
-        // absolute position `i + offset`, so key column `j` is causal iff
-        // `j ≤ i + offset`.
-        let o = q_pos_offset as i64;
-        let add_band = |running: PatternNode, band_op: OpTag, diagonal: i64| -> PatternNode {
-            let band = r_op(band_op, r_diag(diagonal), vec![neg_inf.clone()]);
-            r_op(OpTag::Add, OpAttrs::default(), vec![running, band])
+        let rel = rel_pos_recipe(b, hq, sq, sk, q_pos_offset);
+        let zeros = r_op(OpTag::MulScalar, r_scalar(0.0), vec![rel.clone()]);
+        // `shifted >= 0` is exactly the masked region: causal `rel >= 1`, window_right r `rel >= r + 1`,
+        // window_left l `-rel >= l + 1`.
+        let predicate = |shift: f64, negate: bool| -> PatternNode {
+            let base = if negate {
+                r_op(OpTag::MulScalar, r_scalar(-1.0), vec![rel.clone()])
+            } else {
+                rel.clone()
+            };
+            let shifted = r_op(OpTag::AddScalar, r_scalar(shift), vec![base]);
+            r_op(OpTag::Ge, OpAttrs::default(), vec![shifted, zeros.clone()])
         };
-        let mut running = s0;
+        let mut masks: Vec<PatternNode> = Vec::new();
         if causal {
-            running = add_band(running, OpTag::Triu, o + 1);
+            masks.push(predicate(-1.0, false));
         }
         if let Some(r) = window_r {
-            running = add_band(running, OpTag::Triu, o + r as i64 + 1);
+            masks.push(predicate(-(r as f64) - 1.0, false));
         }
         if let Some(l) = window_l {
-            running = add_band(running, OpTag::Tril, o - l as i64 - 1);
+            masks.push(predicate(-(l as f64) - 1.0, true));
         }
-        scaled = running;
+        let fill = |running: PatternNode, mask: &PatternNode| -> PatternNode {
+            r_op(
+                OpTag::MaskedFill,
+                r_scalar(f64::NEG_INFINITY),
+                vec![running, mask.clone()],
+            )
+        };
+        let mut zero_grid = zeros.clone();
+        for m in &masks {
+            scaled = fill(scaled, m);
+            zero_grid = fill(zero_grid, m);
+        }
+        dead_rows = Some((zeros, zero_grid));
     }
 
     // --- probs = softmax(scaled), carried as a nested Op::Fused node (2a) ---
@@ -351,14 +365,16 @@ pub(crate) fn recompute_probs_recipe(
     // constant built from the PRE-mask scores: equal (-inf == -inf) only when the mask removed
     // every key. A NaN score makes both maxes NaN, `Equal` is false, and the row stays NaN
     // (a NaN is never swallowed).
-    if let Some(neg_inf) = neg_inf_for_dead_rows {
+    if let Some((zeros, zero_grid)) = dead_rows {
         let kd = r_shape(&[b, hq, sq, 1]);
-        let row_max = r_op(OpTag::ReduceMaxTo, kd.clone(), vec![scaled]);
-        let neg_inf_row_max = r_op(OpTag::ReduceMaxTo, kd, vec![neg_inf]);
+        let admitted_max = r_op(OpTag::ReduceMaxTo, kd.clone(), vec![zero_grid]);
+        // The all -inf reference: the UNMASKED zero grid pushed to -inf (NaN-free, built from `Iota`).
+        let neg_inf_grid = r_op(OpTag::AddScalar, r_scalar(f64::NEG_INFINITY), vec![zeros]);
+        let neg_inf_row_max = r_op(OpTag::ReduceMaxTo, kd, vec![neg_inf_grid]);
         let dead = r_op(
             OpTag::Equal,
             OpAttrs::default(),
-            vec![row_max, neg_inf_row_max],
+            vec![admitted_max, neg_inf_row_max],
         );
         let dead_full = r_op(OpTag::BroadcastTo, r_shape(&[b, hq, sq, sk]), vec![dead]);
         probs = r_op(OpTag::MaskedFill, r_scalar(0.0), vec![probs, dead_full]);
@@ -445,7 +461,7 @@ fn recipe(
 ///   scaled = MulScalar(softmax_scale)(scores)
 ///          [ softcap: cap·tanh(scaled/cap) ]
 ///          [ alibi:   scaled += slope · (j - i)  via Iota positions ]
-///          [ causal / sliding-window: additive -inf bands via Triu/Tril ]
+///          [ causal / sliding-window: Ge predicate + MaskedFill(-inf) select ]
 ///   probs  = SoftmaxLastDim(scaled)                # softmax over Sk (nested 2a)
 ///   out    = MatMul(probs, v)                      # [B, Hq, Sq, D]
 /// ```
@@ -658,64 +674,63 @@ pub(crate) fn recompute_probs(
         });
     }
 
-    // --- causal / sliding-window: additive -inf bands ------------------
+    // --- causal / sliding-window: a SELECT, never an additive band (PIP #715 M1) ----
+    // See `recompute_probs_recipe`: a masked-out NaN/+inf score must be REPLACED by -inf, not added to it.
     let needs_mask = causal || window_r.is_some() || window_l.is_some();
-    // The all -inf constant of the mask block, kept for the fully-masked-row select below.
-    let mut neg_inf_for_dead_rows: Option<NodeId> = None;
+    // Per-row dead flag source: the same fills applied to an all-zero grid built from `Iota` alone.
+    let mut dead_grid: Option<(NodeId, NodeId)> = None;
     if needs_mask {
-        let zeros = graph.push(Node {
-            op: Op::MulScalar(0.0),
-            inputs: vec![scaled],
-            shape: scores_shape.clone(),
-            dtype,
-        });
-        let neg_inf = graph.push(Node {
-            op: Op::AddScalar(f64::NEG_INFINITY),
-            inputs: vec![zeros],
-            shape: scores_shape.clone(),
-            dtype,
-        });
-        neg_inf_for_dead_rows = Some(neg_inf);
-        let add_band = |graph: &mut Graph, scaled: NodeId, op: Op| -> NodeId {
-            let band = graph.push(Node {
-                op,
-                inputs: vec![neg_inf],
-                shape: scores_shape.clone(),
-                dtype,
-            });
+        let f32 = DType::F32;
+        let rel = rel_pos(graph, b, hq, sq, sk, q_pos_offset);
+        let grid_f32 = |graph: &mut Graph, op: Op, input: NodeId| -> NodeId {
             graph.push(Node {
-                op: Op::Add,
-                inputs: vec![scaled, band],
+                op,
+                inputs: vec![input],
                 shape: scores_shape.clone(),
-                dtype,
+                dtype: f32,
             })
         };
-        // `q_pos_offset` (= `k_len - Sq` for a bottom-right-aligned capacity-K
-        // decode; 0 for the vanilla top-left case) shifts every band's
-        // diagonal: query row `i` sits at absolute position `i + offset`, so a
-        // key column `j` is causal iff `j ≤ i + offset`.
-        let o = q_pos_offset as i64;
+        let zeros = grid_f32(graph, Op::MulScalar(0.0), rel);
+        // `shifted >= 0` is exactly the masked region: causal `rel >= 1`, window_right r `rel >= r + 1`,
+        // window_left l `-rel >= l + 1`.
+        let predicate = |graph: &mut Graph, shift: f64, negate: bool| -> NodeId {
+            let base = if negate {
+                grid_f32(graph, Op::MulScalar(-1.0), rel)
+            } else {
+                rel
+            };
+            let shifted = grid_f32(graph, Op::AddScalar(shift), base);
+            graph.push(Node {
+                op: Op::Ge,
+                inputs: vec![shifted, zeros],
+                shape: scores_shape.clone(),
+                dtype: DType::Bool,
+            })
+        };
+        let mut masks: Vec<NodeId> = Vec::new();
         if causal {
-            scaled = add_band(graph, scaled, Op::Triu { diagonal: o + 1 });
+            masks.push(predicate(graph, -1.0, false));
         }
         if let Some(r) = window_r {
-            scaled = add_band(
-                graph,
-                scaled,
-                Op::Triu {
-                    diagonal: o + r as i64 + 1,
-                },
-            );
+            masks.push(predicate(graph, -(r as f64) - 1.0, false));
         }
         if let Some(l) = window_l {
-            scaled = add_band(
-                graph,
-                scaled,
-                Op::Tril {
-                    diagonal: o - l as i64 - 1,
-                },
-            );
+            masks.push(predicate(graph, -(l as f64) - 1.0, true));
         }
+        let mut zero_grid = zeros;
+        for m in masks {
+            for (target, d) in [(&mut scaled, dtype), (&mut zero_grid, f32)] {
+                let value = fuel_ir::Scalar::from_f64(f64::NEG_INFINITY, d)
+                    .expect("-inf is representable in every float dtype");
+                *target = graph.push(Node {
+                    op: Op::MaskedFill { value },
+                    inputs: vec![*target, m],
+                    shape: scores_shape.clone(),
+                    dtype: d,
+                });
+            }
+        }
+        dead_grid = Some((zeros, zero_grid));
     }
 
     let mut probs = graph.push(Node {
@@ -725,25 +740,32 @@ pub(crate) fn recompute_probs(
         dtype,
     });
     // A FULLY MASKED row is ZEROS (ruling 2026-11-25): select it, exactly as the recipe does (see
-    // `recompute_probs_recipe`): dead iff the post-mask row max equals the row max of the all
-    // -inf constant built from the pre-mask scores; a NaN score makes both NaN so the row stays NaN.
-    if let Some(neg_inf) = neg_inf_for_dead_rows {
+    // `recompute_probs_recipe`): dead iff no key is admitted, read from the MASK ALONE (a score, NaN or not,
+    // never decides it).
+    if let Some((zeros, zero_grid)) = dead_grid {
+        let f32 = DType::F32;
         let kd_shape = Shape::from_dims(&[b, hq, sq, 1]);
-        let row_max = graph.push(Node {
+        let admitted_max = graph.push(Node {
             op: Op::ReduceMaxTo(kd_shape.clone()),
-            inputs: vec![scaled],
+            inputs: vec![zero_grid],
             shape: kd_shape.clone(),
-            dtype,
+            dtype: f32,
+        });
+        let neg_inf_grid = graph.push(Node {
+            op: Op::AddScalar(f64::NEG_INFINITY),
+            inputs: vec![zeros],
+            shape: scores_shape.clone(),
+            dtype: f32,
         });
         let neg_inf_row_max = graph.push(Node {
             op: Op::ReduceMaxTo(kd_shape.clone()),
-            inputs: vec![neg_inf],
+            inputs: vec![neg_inf_grid],
             shape: kd_shape.clone(),
-            dtype,
+            dtype: f32,
         });
         let dead = graph.push(Node {
             op: Op::Equal,
-            inputs: vec![row_max, neg_inf_row_max],
+            inputs: vec![admitted_max, neg_inf_row_max],
             shape: kd_shape,
             dtype: DType::Bool,
         });
@@ -808,18 +830,15 @@ pub(crate) fn repeat_kv_heads(
     })
 }
 
-/// Build the ALiBi bias `slope[h] · (j - i)` broadcast to `[B, Hq, Sq, Sk]`,
-/// cast to `dtype`. Uses `Op::Iota` for the row/column position indices.
-/// Shared with `paged_attn` (`Sk` = the paged `kv_len`).
-pub(crate) fn alibi_bias(
+/// `rel[i, j] = j - (i + q_pos_offset)` as an F32 `[B, Hq, Sq, Sk]` node built from `Iota` alone (no score in it),
+/// shared by the ALiBi bias and the causal/window mask predicates (twin of `rel_pos_recipe`).
+fn rel_pos(
     graph: &mut Graph,
-    alibi_id: NodeId,
     b: usize,
     hq: usize,
     sq: usize,
     sk: usize,
     q_pos_offset: usize,
-    dtype: DType,
 ) -> NodeId {
     let f32 = DType::F32;
     let grid = Shape::from_dims(&[sq, sk]);
@@ -882,12 +901,30 @@ pub(crate) fn alibi_bias(
         shape: Shape::from_dims(&[1, 1, sq, sk]),
         dtype: f32,
     });
-    let rel_4d = graph.push(Node {
+    graph.push(Node {
         op: Op::BroadcastTo(full.clone()),
         inputs: vec![rel_re],
         shape: full.clone(),
         dtype: f32,
-    });
+    })
+}
+
+/// Build the ALiBi bias `slope[h] · (j - i)` broadcast to `[B, Hq, Sq, Sk]`,
+/// cast to `dtype`. Uses `Op::Iota` for the row/column position indices.
+/// Shared with `paged_attn` (`Sk` = the paged `kv_len`).
+pub(crate) fn alibi_bias(
+    graph: &mut Graph,
+    alibi_id: NodeId,
+    b: usize,
+    hq: usize,
+    sq: usize,
+    sk: usize,
+    q_pos_offset: usize,
+    dtype: DType,
+) -> NodeId {
+    let f32 = DType::F32;
+    let full = Shape::from_dims(&[b, hq, sq, sk]);
+    let rel_4d = rel_pos(graph, b, hq, sq, sk, q_pos_offset);
     let slope_re = graph.push(Node {
         op: Op::Reshape(Shape::from_dims(&[1, hq, 1, 1])),
         inputs: vec![alibi_id],
