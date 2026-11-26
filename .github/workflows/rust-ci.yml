@@ -705,14 +705,19 @@ jobs:
       # CireSnave's rule (2026-10-16): tests that cannot run on GitHub run on the self-hosted runner under
       # the same conditions, never ignored. `device-tests.yml` runs them on the GPU runner, where a missing
       # adapter or lock FAILS (GAP-157). Removing this skip without a hosted adapter reddens CI.
+      # Three more of the same kind (row 172, 2026-11-26): `var_divisor_clamp_on_every_vulkan_adapter` (fuel-tensor,
+      # var_correction_vulkan_live), `vulkan_arg_reduce_nan_spec_vectors` (vulkan_arg_nan_vectors_live) and
+      # `vulkan_flash_attn_nan_row_contract` (vulkan_flash_attn_nan_rows_live): live-Vulkan device tests, run by name
+      # on the GPU runner. They failed the hosted macOS Test Suite on fuel#715 (no Vulkan adapter), which is how this
+      # skip list was found incomplete.
       - name: Run tests (with lld on Linux)
         if: runner.os == 'Linux'
         env:
           RUSTFLAGS: "-C link-arg=-fuse-ld=lld"
-        run: cargo test --locked --workspace --no-fail-fast ${{ env.WORKSPACE_EXCLUDES }} -- --skip shipped_vulkan_spv_nan_behaviour_is_pinned --skip dropping_a_backend_with_an_open_batch_does_not_crash
+        run: cargo test --locked --workspace --no-fail-fast ${{ env.WORKSPACE_EXCLUDES }} -- --skip shipped_vulkan_spv_nan_behaviour_is_pinned --skip dropping_a_backend_with_an_open_batch_does_not_crash --skip var_divisor_clamp_on_every_vulkan_adapter --skip vulkan_arg_reduce_nan_spec_vectors --skip vulkan_flash_attn_nan_row_contract
       - name: Run tests (Windows)
         if: runner.os == 'Windows' && steps.cls.outputs.light != 'true'
-        run: cargo test --locked --workspace --no-fail-fast ${{ env.WORKSPACE_EXCLUDES }} -- --skip shipped_vulkan_spv_nan_behaviour_is_pinned --skip dropping_a_backend_with_an_open_batch_does_not_crash
+        run: cargo test --locked --workspace --no-fail-fast ${{ env.WORKSPACE_EXCLUDES }} -- --skip shipped_vulkan_spv_nan_behaviour_is_pinned --skip dropping_a_backend_with_an_open_batch_does_not_crash --skip var_divisor_clamp_on_every_vulkan_adapter --skip vulkan_arg_reduce_nan_spec_vectors --skip vulkan_flash_attn_nan_row_contract
       # macOS gets its OWN exclusion set, and the difference is the point: this
       # runner CAN build the Metal crates (objc2 is happy on Apple), so
       # excluding them here would throw away the only Metal test coverage in the
@@ -722,7 +727,7 @@ jobs:
       # not collapse them into one list.
       - name: Run tests (macOS)
         if: runner.os == 'macOS' && steps.cls.outputs.light != 'true'
-        run: cargo test --locked --workspace --no-fail-fast ${{ env.MACOS_EXCLUDES }} -- --skip shipped_vulkan_spv_nan_behaviour_is_pinned --skip dropping_a_backend_with_an_open_batch_does_not_crash
+        run: cargo test --locked --workspace --no-fail-fast ${{ env.MACOS_EXCLUDES }} -- --skip shipped_vulkan_spv_nan_behaviour_is_pinned --skip dropping_a_backend_with_an_open_batch_does_not_crash --skip var_divisor_clamp_on_every_vulkan_adapter --skip vulkan_arg_reduce_nan_spec_vectors --skip vulkan_flash_attn_nan_row_contract
       - name: Run telemetry-gated dispatch tests (sk4 wire codec)
         # `always() &&` is LOAD-BEARING, not defensive. Without it this step is
         # skipped whenever ANY earlier step in the job fails — and on a CI
