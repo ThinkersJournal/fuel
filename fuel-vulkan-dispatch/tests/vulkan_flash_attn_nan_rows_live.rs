@@ -67,6 +67,8 @@ fn reference_row(q: &[f32], k: &[f32], v: &[f32], sk: usize, scale: f64) -> [f32
     [(out[0] / z) as f32, (out[1] / z) as f32]
 }
 
+// 4-digit test scale (~1/sqrt(2)), deliberately NOT FRAC_1_SQRT_2: the expected values were computed with exactly 0.7071.
+#[allow(clippy::approx_constant)]
 const SCALE: f32 = 0.7071;
 
 fn cases() -> Vec<Case> {
