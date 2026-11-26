@@ -19,7 +19,9 @@ use fuel_ir::{DeviceLocation, Shape};
 use fuel_tensor::lazy::Tensor;
 
 /// `(name, data, shape, dim, correction, want)`; `want`: NaN / +inf / a finite value.
-fn vectors() -> Vec<(&'static str, Vec<f32>, Vec<usize>, usize, f64, f32)> {
+type VarCase = (&'static str, Vec<f32>, Vec<usize>, usize, f64, f32);
+
+fn vectors() -> Vec<VarCase> {
     vec![
         ("one-elem-c1", vec![5.0], vec![1], 0, 1.0, f32::NAN),
         (
