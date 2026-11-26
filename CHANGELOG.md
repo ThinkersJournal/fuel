@@ -14,6 +14,20 @@ This documents the main changes to the `fuel` workspace.
 
 - Dependencies (Cargo.lock only): the baracuda family 0.1.0-alpha.186 -> alpha.199 (21 packages); `baracuda-cuda-emit` stays 0.56.13. CUDA arg_reduce and value reduce max/min now propagate NaN on the device (the CPU rule), `reduce_max_to` included: nothing in the 34 `fuel-cuda-dispatch` test targets relied on the old NaN-ignoring behaviour (214 passed, `--include-ignored`, alpha.199; `jit_synth_kernel_live`, a separate feature shape, not run).
 
+## v0.55.0 - 2026-11-26 (PM-allocated; BREAKING numerics: Metal max/min NaN)
+
+### Breaking
+
+- `fuel-metal-kernels`: the Metal binary `maximum`/`minimum` kernels and the `max`/`min` value reduces (f32/f16/bf16, including the simd-group path) now PROPAGATE a NaN (a NaN in either operand, or anywhere in the reduced row, gives NaN), as `KISS-Ops 6.11-0002` and the CPU kernels do. Before, they returned the non-NaN operand / the max of the finite elements: the shaders compile with fast math ON by default, which folded `a > b ? a : b` and `fast::max` into a NaN-ignoring max. The NaN test is by bit pattern (`nan_bits` in `binary.metal`, `arg_is_nan` in `reduce.metal`). Measured on the hosted macOS runner's `Apple Paravirtual device` (not physical hardware): 5 of 19 audit cases diverged before, 19 of 19 agree after, and the whole `fuel-metal-kernels` lib suite passes (65 tests). Any model that fed NaN through a Metal softmax-max, layer-norm max or an elementwise max now gets NaN where it previously got a finite value.
+
+### Added
+
+- `fuel-metal-kernels` tests: `nan_audit_fast_math_paths` (relu, binary max/min, value reduces, softmax, `affine` with an infinite scale = the `0 * inf` of the `Tensor::var` recipe) and `nan_audit_unary_and_half_variants` (every contiguous unary kernel NaN -> NaN in f32; f16/bf16 variants of relu, binary max/min, the value reduces and softmax). `sign(NaN) = 0` is KISS-pinned (6.2-0009) and reported, not asserted.
+
+### Notes
+
+- Not audited on Metal: the sort/index/ternary kernels and the other half-precision ops. The `Tensor::var` recipe is not runnable end to end on Metal (Metal is not wired into the lazy executor); its components were measured. `docs/gaps.md` GAP-405 carries the audit.
+
 ## v0.54.0 - 2026-11-26 (PM-allocated; BREAKING: follow-up to #715, behaviour change on the DECOMPOSED FlashAttn path and var NaN correction is an Err)
 
 ### Breaking
