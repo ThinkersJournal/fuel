@@ -289,15 +289,17 @@ struct Min {
     static constexpr METAL_FUNC T init() {
         return numeric_limits<T>::max();
     }
+    // NaN-propagating (see arg_is_nan): `simd_min` ignores a NaN, so any NaN lane poisons the result.
     static METAL_FUNC T simd_op(T a) {
-        return simd_min(a);
+        T r = simd_min(a);
+        return simd_any(arg_is_nan(a)) ? static_cast<T>(as_type<float>(0x7fc00000u)) : r;
     }
 
     template<typename V>
     METAL_FUNC V operator()(V a, V b) { return a < b ? a : b; }
 
-    METAL_FUNC float operator()(float a, float b) { return fast::min(a, b); }
-    METAL_FUNC half   operator()(half   a, half   b) { return min(a, b); }
+    METAL_FUNC float operator()(float a, float b) { return (arg_is_nan(a) || arg_is_nan(b)) ? as_type<float>(0x7fc00000u) : fast::min(a, b); }
+    METAL_FUNC half   operator()(half   a, half   b) { return (arg_is_nan(a) || arg_is_nan(b)) ? static_cast<half>(as_type<float>(0x7fc00000u)) : min(a, b); }
     METAL_FUNC uint operator()(uint a, uint b) { return min(a, b); }
     METAL_FUNC uchar operator()(uchar a, uchar b) { return min(a, b); }
 
@@ -306,7 +308,7 @@ struct Min {
     #endif
 
     #if defined(__HAVE_BFLOAT__)
-    METAL_FUNC bfloat operator()(bfloat a, bfloat b) { return static_cast<bfloat>(fast::min(static_cast<float>(a), static_cast<float>(b))); }
+    METAL_FUNC bfloat operator()(bfloat a, bfloat b) { return (arg_is_nan(a) || arg_is_nan(b)) ? static_cast<bfloat>(as_type<float>(0x7fc00000u)) : static_cast<bfloat>(fast::min(static_cast<float>(a), static_cast<float>(b))); }
     #endif
 };
 
@@ -315,15 +317,17 @@ struct Max {
     static constexpr METAL_FUNC T init() {
         return numeric_limits<T>::lowest();
     }
+    // NaN-propagating (see arg_is_nan): `simd_max` ignores a NaN, so any NaN lane poisons the result.
     static METAL_FUNC T simd_op(T a) {
-        return simd_max(a);
+        T r = simd_max(a);
+        return simd_any(arg_is_nan(a)) ? static_cast<T>(as_type<float>(0x7fc00000u)) : r;
     }
 
     template<typename V>
     METAL_FUNC V operator()(V a, V b) { return a > b ? a : b; }
 
-    METAL_FUNC float operator()(float a, float b) { return fast::max(a, b); }
-    METAL_FUNC half operator()(half a, half b) { return max(a, b); }
+    METAL_FUNC float operator()(float a, float b) { return (arg_is_nan(a) || arg_is_nan(b)) ? as_type<float>(0x7fc00000u) : fast::max(a, b); }
+    METAL_FUNC half operator()(half a, half b) { return (arg_is_nan(a) || arg_is_nan(b)) ? static_cast<half>(as_type<float>(0x7fc00000u)) : max(a, b); }
     METAL_FUNC uint operator()(uint a, uint b) { return max(a, b); }
     METAL_FUNC uchar operator()(uchar a, uchar b) { return max(a, b); }
 
@@ -332,7 +336,7 @@ struct Max {
     #endif
 
     #if defined(__HAVE_BFLOAT__)
-    METAL_FUNC bfloat operator()(bfloat a, bfloat b) { return static_cast<bfloat>(fast::max(static_cast<float>(a), static_cast<float>(b))); }
+    METAL_FUNC bfloat operator()(bfloat a, bfloat b) { return (arg_is_nan(a) || arg_is_nan(b)) ? static_cast<bfloat>(as_type<float>(0x7fc00000u)) : static_cast<bfloat>(fast::max(static_cast<float>(a), static_cast<float>(b))); }
     #endif
 };
 

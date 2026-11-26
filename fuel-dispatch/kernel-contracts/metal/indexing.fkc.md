@@ -108,7 +108,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "pure index-select copy; output bytes are an exact copy of selected source elements; bit-identical."
+  notes: "pure index-select copy; output bytes are an exact copy of selected source elements; bit-identical. Subnormals preserved (measured, fuel run 45749639333: f32, bf16 and f16; narrowing casts for cast_kernel). Data movement: no arithmetic atom, no Exact claim is made. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity; none is written, and it must never be read as bit-stable: KISS-OPS-6.17-0001). bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: bitwise   # exact copy; each tid owns a disjoint output element
 ```
@@ -184,7 +184,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "exact element gather; output bytes copied verbatim from source; bit-identical."
+  notes: "exact element gather; output bytes copied verbatim from source; bit-identical. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: bitwise   # exact copy; each tid owns a disjoint output element
 ```
@@ -275,7 +275,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "exact element SET into dst; each tid owns a disjoint (left,right) column so writes do not race; bit-identical."
+  notes: "exact element SET into dst; each tid owns a disjoint (left,right) column so writes do not race; bit-identical. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: bitwise   # disjoint-column exact writes; no atomic accumulation
 ```
@@ -356,7 +356,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "non-atomic += but each tid owns a disjoint (left,right) column so no race; accumulation in value dtype T (no f32 promotion); bit-identical on same hardware."
+  notes: "non-atomic += but each tid owns a disjoint (left,right) column so no race; accumulation in value dtype T (no f32 promotion); bit-identical on same hardware. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise   # FP accumulate order is fixed (disjoint columns); not cross-hardware exact for half
 ```
@@ -437,7 +437,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "base copied then non-atomic += over disjoint (left,right) columns (no race); accumulation in value dtype T (no f32 promotion); bit-identical on same hardware."
+  notes: "base copied then non-atomic += over disjoint (left,right) columns (no race); accumulation in value dtype T (no f32 promotion); bit-identical on same hardware. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise   # fixed accumulate order (disjoint columns); not cross-hardware exact for half
 ```
@@ -514,7 +514,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "pure ternary select; output is a byte-exact copy of the chosen t/f element; no arithmetic; bit-identical."
+  notes: "pure ternary select; output is a byte-exact copy of the chosen t/f element; no arithmetic; bit-identical. Subnormals preserved (measured, fuel run 45749639333: f32, bf16 and f16; narrowing casts for cast_kernel). Data movement: no arithmetic atom, no Exact claim is made. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity; none is written, and it must never be read as bit-stable: KISS-OPS-6.17-0001). bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: bitwise   # exact copy of the selected element; each tid owns a disjoint output element
 ```

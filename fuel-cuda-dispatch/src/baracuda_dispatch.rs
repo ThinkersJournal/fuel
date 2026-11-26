@@ -1102,6 +1102,73 @@ pub mod awq {
 }
 
 // ===========================================================================
+// TopKLastDim — baracuda block-bitonic topk (ROADMAP row 172 item 2 step A)
+// ===========================================================================
+//
+// One input `x [.., n]`, ONE bundled output `[values ; pad to 4 ; U32 indices]`.
+// f32 / f64 only; `n <= 1024` and `k <= 64` (baracuda's trailblazer caps): a
+// shape outside them is a typed `Err` from `topk::check_caps` before any
+// allocation or launch (a binding is admitted by dtype/layout/rank, not by
+// value, so there is no decline to the CPU path). Semantics (NaN placement,
+// tie order) are pinned by the live parity test against the CPU kernel, not
+// assumed here.
+
+pub mod topk {
+    use super::*;
+    use fuel_cuda_backend::baracuda::topk as bk;
+
+    macro_rules! top_k_wrapper {
+        ($name:ident, $kernel:path, $label:literal) => {
+            pub fn $name(
+                inputs: &[Arc<RwLock<Storage>>],
+                outputs: &mut [Arc<RwLock<Storage>>],
+                _layouts: &[Layout],
+                params: &OpParams,
+            ) -> Result<()> {
+                if inputs.len() != 1 || outputs.len() != 1 {
+                    return Err(Error::Msg(format!(
+                        concat!(
+                            $label,
+                            ": expected 1 input and 1 (bundled) output, got {} and {}"
+                        ),
+                        inputs.len(),
+                        outputs.len(),
+                    ))
+                    .bt());
+                }
+                let (rows, n, k) = match params {
+                    OpParams::TopKLastDim { rows, n, k } => (*rows, *n, *k),
+                    other => {
+                        return Err(Error::Msg(format!(
+                            concat!($label, ": expected OpParams::TopKLastDim, got {:?}"),
+                            other
+                        ))
+                        .bt());
+                    }
+                };
+                let in_guard = read_storage(&inputs[0])?;
+                let mut out_guard = write_storage(&outputs[0])?;
+                let x = cuda_input(&in_guard)?;
+                let result = $kernel(x, rows, n, k)?;
+                *cuda_output(&mut out_guard)? = result;
+                Ok(())
+            }
+        };
+    }
+
+    top_k_wrapper!(
+        top_k_last_dim_f32,
+        bk::top_k_last_dim_f32,
+        "top_k_last_dim_f32"
+    );
+    top_k_wrapper!(
+        top_k_last_dim_f64,
+        bk::top_k_last_dim_f64,
+        "top_k_last_dim_f64"
+    );
+}
+
+// ===========================================================================
 // ArgMaxDim / ArgMinDim — U32-output variants (alpha.28)
 // ===========================================================================
 //
@@ -4271,6 +4338,30 @@ fn register_cuda_qmatmul_from_contract(table: &mut KernelBindingTable) {
         .expect("CUDA qmatmul contract must register into the binding table");
 }
 
+/// The authored CUDA (baracuda) TopKLastDim kernel contract (`include_str!`), imported by
+/// [`register_cuda_top_k_last_dim_from_contract`] - the SOLE registration path.
+const CUDA_TOP_K_LAST_DIM_CONTRACT: &str =
+    include_str!("../kernel-contracts/cuda/top_k_last_dim.fkc.md");
+
+/// Register the CUDA TopKLastDim kernels (f32/f64; row 172 item 2) FROM their FKC contract.
+fn register_cuda_top_k_last_dim_from_contract(table: &mut KernelBindingTable) {
+    let provider = fuel_dispatch::fkc::import_bundle_str(
+        CUDA_TOP_K_LAST_DIM_CONTRACT,
+        &crate::link::CudaLinkRegistry,
+    )
+    .expect(
+        "authored CUDA top_k_last_dim contract must import (embedded include_str!, CudaLinkRegistry)",
+    );
+    debug_assert!(
+        provider.fused.is_empty(),
+        "cuda top_k_last_dim contract declares no fused ops"
+    );
+    let mut fused = fuel_dispatch::fused::FusedKernelRegistry::new();
+    provider
+        .register_into(table, &mut fused)
+        .expect("CUDA top_k_last_dim contract must register into the binding table");
+}
+
 /// The authored CUDA (baracuda) AWQ matmul kernel contract (`include_str!`), imported by
 /// [`register_cuda_awq_matmul_from_contract`] - the SOLE registration path.
 const CUDA_AWQ_MATMUL_CONTRACT: &str = include_str!("../kernel-contracts/cuda/awq_matmul.fkc.md");
@@ -4504,6 +4595,7 @@ pub fn register_baracuda_cuda_kernels(table: &mut KernelBindingTable) {
     register_cuda_pad_backward_from_contract(table);
     register_cuda_causal_conv1d_from_contract(table);
     register_cuda_awq_matmul_from_contract(table);
+    register_cuda_top_k_last_dim_from_contract(table);
     register_cuda_qmatmul_from_contract(table);
     register_cuda_indexing_from_contract(table);
 
