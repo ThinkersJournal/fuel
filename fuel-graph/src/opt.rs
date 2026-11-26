@@ -5738,12 +5738,12 @@ mod tests {
         assert!(has_matmul, "decomposed FlashAttn must contain a MatMul");
     }
 
-    /// G2: causal FlashAttn decomposes too — the causal mask is an additive
-    /// `-inf` `Triu` band (no new primitive needed), so the node lowers
-    /// rather than staying fused. (The decomposed *numerics* are verified
-    /// separately by a parity test vs. the reference attention.)
+    /// G2: causal FlashAttn decomposes too — the causal mask is a `Ge` predicate (built from `Iota` alone) under a
+    /// `MaskedFill(-inf)` SELECT, never an additive band (PIP #715 M1: `score + -inf` turns a masked-out NaN or
+    /// +inf score into NaN), so the node lowers rather than staying fused. (The decomposed *numerics* are
+    /// verified separately by a parity test vs. the reference attention and by the masked-out non-finite cases.)
     #[test]
-    fn flash_attn_causal_decomposes_with_triu_mask() {
+    fn flash_attn_causal_decomposes_with_a_select_mask() {
         let s = Shape::from_dims(&[1, 1, 2, 1]); // Sq=Sk=2 so the mask is non-trivial
         let q = NodeHandle::from_f32(vec![0.0_f32; 2], s.clone(), cpu_dev()).unwrap();
         let k = q.const_f32_like(vec![0.0_f32; 2], s.clone()).unwrap();
@@ -5757,12 +5757,21 @@ mod tests {
         let g = graph.read().unwrap();
         assert!(
             !matches!(g.node(root).op, Op::Fused(fid, _) if fid == crate::registry::FusedOps::FLASH_ATTN),
-            "causal FlashAttn must decompose (Triu mask), not stay fused",
+            "causal FlashAttn must decompose (select mask), not stay fused",
         );
-        let has_triu = (0..g.len()).any(|i| matches!(g.node(NodeId(i)).op, Op::Triu { .. }));
+        let has = |pred: &dyn Fn(&Op) -> bool| (0..g.len()).any(|i| pred(&g.node(NodeId(i)).op));
         assert!(
-            has_triu,
-            "causal decomposition must contain a Triu mask band"
+            has(&|o| matches!(o, Op::Ge)),
+            "causal decomposition must contain a Ge mask predicate"
+        );
+        assert!(
+            has(&|o| matches!(o, Op::MaskedFill { .. })),
+            "causal decomposition must contain a MaskedFill select"
+        );
+        // The retired additive form: a Triu band summed into the scores.
+        assert!(
+            !has(&|o| matches!(o, Op::Triu { .. })),
+            "the mask must not be an additive Triu band (a masked-out NaN/inf score would reach the softmax)"
         );
     }
 

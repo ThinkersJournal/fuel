@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
+// HOSTED-CI NOTE (PIP #715 N2): this test needs a live Vulkan adapter, so the hosted `rust-ci.yml` test steps skip it BY NAME
+// (`--skip` list); a rename of any test here MUST be mirrored there, or hosted CI reddens. The GPU runner
+// (`device-tests.yml`) runs it whole.
 //! `Tensor::var`'s divisor clamp (`max(0, n - correction)`, the torch rule; ruling 2026-11-25) run
 //! through the Vulkan backend on every non-CPU adapter, f32. `var` is a RECIPE over
 //! mean/sub/sqr/sum/mul_scalar, so Vulkan inherits the rule through its own kernels; this MEASURES it
