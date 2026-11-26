@@ -119,7 +119,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "steel tiles; f16/bf16 accumulate internally in f32. Not bit-stable cross-hardware (tile/warp reduction order)."
+  notes: "steel tiles; f16/bf16 accumulate internally in f32. Not bit-stable cross-hardware (tile/warp reduction order). FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: nondeterministic
 ```
@@ -212,7 +212,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "f32-accumulated online softmax; softcapping disabled (1.0). Not bit-stable cross-hardware (tile/warp reduction order)."
+  notes: "f32-accumulated online softmax; softcapping disabled (1.0). Not bit-stable cross-hardware (tile/warp reduction order). FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: nondeterministic
 ```
@@ -297,7 +297,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "f32-accumulated; alpha pre-divided by softcapping when capping enabled. Not bit-stable cross-hardware."
+  notes: "f32-accumulated; alpha pre-divided by softcapping when capping enabled. Not bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: nondeterministic
 ```
@@ -383,7 +383,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "f32 partial accumulators (intermediate/sums/maxs); final numerics depend on pass-2 reduction. Not bit-stable cross-hardware."
+  notes: "f32 partial accumulators (intermediate/sums/maxs); final numerics depend on pass-2 reduction. Not bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: nondeterministic
 ```
@@ -461,7 +461,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "f32 reduction of pass-1 partials via online-softmax rescale; narrows to itype on store. Not bit-stable cross-hardware."
+  notes: "f32 reduction of pass-1 partials via online-softmax rescale; narrows to itype on store. Not bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: nondeterministic
 ```

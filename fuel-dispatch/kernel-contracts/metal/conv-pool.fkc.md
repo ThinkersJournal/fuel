@@ -153,7 +153,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Pure gather with zero-padding (literal 0 out of range); no arithmetic, exact and bitwise-stable. dtype preserved."
+  notes: "Pure gather with zero-padding (literal 0 out of range); no arithmetic, exact and bitwise-stable. dtype preserved. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: bitwise
 ```
@@ -239,7 +239,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Pure gather with zero-padding; no arithmetic, exact and bitwise-stable. dtype preserved."
+  notes: "Pure gather with zero-padding; no arithmetic, exact and bitwise-stable. dtype preserved. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: bitwise
 ```
@@ -326,7 +326,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "T-precision accumulator (NO f32 widening for half); deterministic fixed scatter order into a fresh zero-init buffer; overlapping contributions accumulated."
+  notes: "T-precision accumulator (NO f32 widening for half); deterministic fixed scatter order into a fresh zero-init buffer; overlapping contributions accumulated. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -411,7 +411,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Nearest-neighbour copies the source value through unchanged; no arithmetic, exact and bitwise-stable. dtype preserved."
+  notes: "Nearest-neighbour copies the source value through unchanged; no arithmetic, exact and bitwise-stable. dtype preserved. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: bitwise
 ```
@@ -500,7 +500,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Interpolation accumulated in f32 (fixed four-tap order) then cast to the output dtype; half (f16/bf16) narrows on store. Deterministic; not bit-stable cross-hardware."
+  notes: "Interpolation accumulated in f32 (fixed four-tap order) then cast to the output dtype; half (f16/bf16) narrows on store. Deterministic; not bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -585,7 +585,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Pure max-reduction over the window: no rounding, no accumulation; result is bitwise-stable. NaN follows the fast::max / '>' window-scan semantics."
+  notes: "Pure max-reduction over the window: no rounding, no accumulation; result is bitwise-stable. NaN follows the fast::max / '>' window-scan semantics. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: same_hardware_bitwise
 ```
@@ -670,7 +670,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Float dtypes accumulate the window sum in f32 then divide and cast on store; integer dtypes accumulate in the integer type. Fixed summation order, deterministic; not bit-stable cross-hardware."
+  notes: "Float dtypes accumulate the window sum in f32 then divide and cast on store; integer dtypes accumulate in the integer type. Fixed summation order, deterministic; not bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -764,7 +764,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Float dtypes accumulate in f32 (A=float) then cast on store; integer dtypes accumulate in the integer type. Fixed accumulation order, deterministic; not bit-stable cross-hardware."
+  notes: "Float dtypes accumulate in f32 (A=float) then cast on store; integer dtypes accumulate in the integer type. Fixed accumulation order, deterministic; not bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -854,7 +854,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Accumulation in an f32 accumulator (A=float) then cast on store; f32/f16/bf16 only (no int variants). Fixed accumulation order, deterministic; not bit-stable cross-hardware."
+  notes: "Accumulation in an f32 accumulator (A=float) then cast on store; f32/f16/bf16 only (no int variants). Fixed accumulation order, deterministic; not bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```

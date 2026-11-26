@@ -466,7 +466,10 @@ pub struct CostMemory {
 /// (`0`, a float, or `~`); the typed conversion is a lowering concern.
 #[derive(Debug, Clone, Deserialize)]
 pub struct PrecisionBlock {
-    /// Whether bit-stable on the same hardware.
+    /// Whether bit-stable on the same hardware: a deterministic re-run only. **Not** the KISS-Ops bit-stable value
+    /// (6.17-0001/-0002: full-precision rounding, subnormals preserved): a kernel that flushes subnormals is still
+    /// deterministic, so it may declare `true` here while NOT advertising Exact (Metal f32/bf16: see each Metal
+    /// precision note).
     #[serde(default)]
     pub bit_stable_on_same_hardware: Option<bool>,
     /// Max ULP error (`~` ⇒ none).

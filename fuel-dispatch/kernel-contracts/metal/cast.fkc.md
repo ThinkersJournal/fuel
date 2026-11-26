@@ -126,7 +126,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false                        # author-declared seed; Judge audits (§4.8)
-  notes: "Plain static_cast chain (IR fixed to T, no truncation intermediate, no rounding control). Widening pairs exact; narrowing pairs per MSL static_cast for that (src,dst). Deterministic per element."
+  notes: "Plain static_cast chain (IR fixed to T, no truncation intermediate, no rounding control). Widening pairs exact; narrowing pairs per MSL static_cast for that (src,dst). Deterministic per element. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: same_hardware_bitwise
 ```
@@ -203,7 +203,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false                        # author-declared seed; Judge audits (§4.8)
-  notes: "Same plain static_cast chain as cast_kernel (IR fixed to T, no rounding control); only input addressing differs (get_strided_index). Widening pairs exact; narrowing per MSL static_cast. Deterministic per element."
+  notes: "Same plain static_cast chain as cast_kernel (IR fixed to T, no rounding control); only input addressing differs (get_strided_index). Widening pairs exact; narrowing per MSL static_cast. Deterministic per element. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: same_hardware_bitwise
 ```

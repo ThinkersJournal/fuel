@@ -139,7 +139,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false                        # author-declared seed; Judge audits (§4.8)
-  notes: "Per-op numerics vary: gelu uses precise::tanh; erf is the A&S 7.1.26 polynomial (NOT exact erf — error-bearing); abs casts to float. Several ops compute internally at f32 and narrow on store; bf16/f16 narrow on store. Deterministic per element."
+  notes: "Per-op numerics vary: gelu uses precise::tanh; erf is the A&S 7.1.26 polynomial (NOT exact erf — error-bearing); abs casts to float. Several ops compute internally at f32 and narrow on store; bf16/f16 narrow on store. Deterministic per element. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: same_hardware_bitwise
 ```
@@ -212,7 +212,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false
-  notes: "Numerics identical to unary_kernel (gelu precise::tanh; erf A&S 7.1.26 polynomial, not exact; abs via float). Addressing-only difference. Deterministic per element."
+  notes: "Numerics identical to unary_kernel (gelu precise::tanh; erf A&S 7.1.26 polynomial, not exact; abs via float). Addressing-only difference. Deterministic per element. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: same_hardware_bitwise
 ```
@@ -281,7 +281,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false
-  notes: "Exact store of the scalar value into every element; bit-exact. UNREGISTRABLE pending a Fuel scalar-fill OpKind."
+  notes: "Exact store of the scalar value into every element; bit-exact. UNREGISTRABLE pending a Fuel scalar-fill OpKind. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: same_hardware_bitwise
 ```
@@ -347,7 +347,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false
-  notes: "Exact scalar store; bit-exact. UNREGISTRABLE pending a Fuel scalar-fill OpKind."
+  notes: "Exact scalar store; bit-exact. UNREGISTRABLE pending a Fuel scalar-fill OpKind. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: same_hardware_bitwise
 ```
@@ -419,7 +419,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false
-  notes: "Exact element copy (no arithmetic); bit-exact. UNREGISTRABLE pending a Fuel same-device strided-copy OpKind."
+  notes: "Exact element copy (no arithmetic); bit-exact. UNREGISTRABLE pending a Fuel same-device strided-copy OpKind. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: same_hardware_bitwise
 ```
@@ -498,7 +498,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false
-  notes: "Plain operators; min/max via MIN/MAX macro (NaN-naive: picks by >/<). Arithmetic in the dtype's native op; comparisons return U8 (1/0). Deterministic per element."
+  notes: "Plain operators; min/max via MIN/MAX macro (NaN-naive: picks by >/<). Arithmetic in the dtype's native op; comparisons return U8 (1/0). Deterministic per element. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -578,7 +578,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false
-  notes: "Numerics identical to binary_kernel (plain operators; min/max NaN-naive via MIN/MAX macro; comparisons → U8). Addressing-only difference. Deterministic per element."
+  notes: "Numerics identical to binary_kernel (plain operators; min/max NaN-naive via MIN/MAX macro; comparisons → U8). Addressing-only difference. Deterministic per element. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -652,7 +652,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false
-  notes: "Accumulates in f32 then casts back ⇒ f16/bf16 affine is f32-internal (single rounding on store). IEEE inf/NaN. mul==1 ⇒ AddScalar; add==0 ⇒ MulScalar. Deterministic per element."
+  notes: "Accumulates in f32 then casts back ⇒ f16/bf16 affine is f32-internal (single rounding on store). IEEE inf/NaN. mul==1 ⇒ AddScalar; add==0 ⇒ MulScalar. Deterministic per element. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -725,7 +725,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false
-  notes: "f32-internal accumulate then cast (f16/bf16 single rounding on store). Numerics identical to affine_kernel; addressing-only difference. Deterministic per element."
+  notes: "f32-internal accumulate then cast (f16/bf16 single rounding on store). Numerics identical to affine_kernel; addressing-only difference. Deterministic per element. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -795,7 +795,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false
-  notes: "pow computed in f32 then cast back ⇒ f16/bf16 is f32-internal. Transcendental error of the MSL pow. IEEE NaN (e.g. pow(-2,0.5)=NaN). UNREGISTRABLE pending a Fuel scalar-float-power OpKind."
+  notes: "pow computed in f32 then cast back ⇒ f16/bf16 is f32-internal. Transcendental error of the MSL pow. IEEE NaN (e.g. pow(-2,0.5)=NaN). UNREGISTRABLE pending a Fuel scalar-float-power OpKind. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -863,7 +863,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false
-  notes: "f32-internal pow then cast; numerics identical to powf_kernel; addressing-only difference. UNREGISTRABLE pending a Fuel scalar-float-power OpKind."
+  notes: "f32-internal pow then cast; numerics identical to powf_kernel; addressing-only difference. UNREGISTRABLE pending a Fuel scalar-float-power OpKind. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -932,7 +932,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false
-  notes: "exp computed in T (NOT promoted to f32) — so f16/bf16 ELU is lower-precision than the f32-internal affine/powf. Positive branch is the identity. UNREGISTRABLE pending a Fuel ELU OpKind."
+  notes: "exp computed in T (NOT promoted to f32) — so f16/bf16 ELU is lower-precision than the f32-internal affine/powf. Positive branch is the identity. UNREGISTRABLE pending a Fuel ELU OpKind. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -1000,7 +1000,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false
-  notes: "exp in T (not f32-promoted); numerics identical to elu_kernel; addressing-only difference. UNREGISTRABLE pending a Fuel ELU OpKind."
+  notes: "exp in T (not f32-promoted); numerics identical to elu_kernel; addressing-only difference. UNREGISTRABLE pending a Fuel ELU OpKind. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -1069,7 +1069,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: false
-  notes: "Exact store of the scalar value into every element of [0,numel); bit-exact. Dense-only, no offset/strided (unlike const_set). UNREGISTRABLE pending a Fuel scalar-fill OpKind."
+  notes: "Exact store of the scalar value into every element of [0,numel); bit-exact. Dense-only, no offset/strided (unlike const_set). UNREGISTRABLE pending a Fuel scalar-fill OpKind. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: same_hardware_bitwise
 ```

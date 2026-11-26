@@ -108,7 +108,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "pure index-select copy; output bytes are an exact copy of selected source elements; bit-identical."
+  notes: "pure index-select copy; output bytes are an exact copy of selected source elements; bit-identical. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: bitwise   # exact copy; each tid owns a disjoint output element
 ```
@@ -184,7 +184,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "exact element gather; output bytes copied verbatim from source; bit-identical."
+  notes: "exact element gather; output bytes copied verbatim from source; bit-identical. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: bitwise   # exact copy; each tid owns a disjoint output element
 ```
@@ -275,7 +275,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "exact element SET into dst; each tid owns a disjoint (left,right) column so writes do not race; bit-identical."
+  notes: "exact element SET into dst; each tid owns a disjoint (left,right) column so writes do not race; bit-identical. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: bitwise   # disjoint-column exact writes; no atomic accumulation
 ```
@@ -356,7 +356,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "non-atomic += but each tid owns a disjoint (left,right) column so no race; accumulation in value dtype T (no f32 promotion); bit-identical on same hardware."
+  notes: "non-atomic += but each tid owns a disjoint (left,right) column so no race; accumulation in value dtype T (no f32 promotion); bit-identical on same hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise   # FP accumulate order is fixed (disjoint columns); not cross-hardware exact for half
 ```
@@ -437,7 +437,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "base copied then non-atomic += over disjoint (left,right) columns (no race); accumulation in value dtype T (no f32 promotion); bit-identical on same hardware."
+  notes: "base copied then non-atomic += over disjoint (left,right) columns (no race); accumulation in value dtype T (no f32 promotion); bit-identical on same hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise   # fixed accumulate order (disjoint columns); not cross-hardware exact for half
 ```
@@ -514,7 +514,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "pure ternary select; output is a byte-exact copy of the chosen t/f element; no arithmetic; bit-identical."
+  notes: "pure ternary select; output is a byte-exact copy of the chosen t/f element; no arithmetic; bit-identical. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
 
 determinism: bitwise   # exact copy of the selected element; each tid owns a disjoint output element
 ```

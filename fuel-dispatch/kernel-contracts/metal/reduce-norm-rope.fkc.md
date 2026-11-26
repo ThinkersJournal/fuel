@@ -148,7 +148,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Sum/Mul/Min/Max accumulate in T (NOT widened to f32 for half); Min/Max via fast::min/max; arg ops tie-break to lowest index; simd-shuffle tree reduce -> NOT bit-stable cross-hardware; empty tensor errors for min/max/arg."
+  notes: "Sum/Mul/Min/Max accumulate in T (NOT widened to f32 for half); Min/Max via fast::min/max; arg ops tie-break to lowest index; simd-shuffle tree reduce -> NOT bit-stable cross-hardware; empty tensor errors for min/max/arg. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -225,7 +225,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "identical numerics to fast_reduce (in-T value fold, fast::min/max, tie-to-lowest, f32-only nothing here); strided indexer (rank 1-4 specialized, >4 fallback loop); simd-shuffle tree -> NOT bit-stable cross-hardware; empty errors for min/max/arg."
+  notes: "identical numerics to fast_reduce (in-T value fold, fast::min/max, tie-to-lowest, f32-only nothing here); strided indexer (rank 1-4 specialized, >4 fallback loop); simd-shuffle tree -> NOT bit-stable cross-hardware; empty errors for min/max/arg. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -302,7 +302,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "online (Welford MD) max-subtract softmax; denominator d accumulates in f32 (f16/bf16 narrow on store); exp at f32; NOT bit-stable cross-hardware (transcendental + lane order)."
+  notes: "online (Welford MD) max-subtract softmax; denominator d accumulates in f32 (f16/bf16 narrow on store); exp at f32; NOT bit-stable cross-hardware (transcendental + lane order). FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -389,7 +389,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "mean(x^2) accumulated in f32 (RMS<float>); no mean-centering; f16/bf16 narrow on store; optional inline alpha scale; simd-shuffle reduce -> NOT bit-stable cross-hardware."
+  notes: "mean(x^2) accumulated in f32 (RMS<float>); no mean-centering; f16/bf16 narrow on store; optional inline alpha scale; simd-shuffle reduce -> NOT bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -478,7 +478,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "mean/M2 accumulated in f32 (LayerNormValue<float>); f16/bf16 narrow on store; optional inline alpha·+beta; simd-shuffle reduce -> NOT bit-stable cross-hardware."
+  notes: "mean/M2 accumulated in f32 (LayerNormValue<float>); f16/bf16 narrow on store; optional inline alpha·+beta; simd-shuffle reduce -> NOT bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -564,7 +564,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "pure elementwise interleaved (adjacent-pair) rotation; arithmetic in T (no f32 widening); cos/sin caller-supplied, per-batch when stride_b>0; not bit-stable cross-hardware (transcendental tables differ)."
+  notes: "pure elementwise interleaved (adjacent-pair) rotation; arithmetic in T (no f32 widening); cos/sin caller-supplied, per-batch when stride_b>0; not bit-stable cross-hardware (transcendental tables differ). FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -649,7 +649,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "pure elementwise rotate-halves (split-half pairing); arithmetic in T (no f32 widening); cos/sin caller-supplied, per-batch when stride_b>0; not bit-stable cross-hardware."
+  notes: "pure elementwise rotate-halves (split-half pairing); arithmetic in T (no f32 widening); cos/sin caller-supplied, per-batch when stride_b>0; not bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```
@@ -734,7 +734,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "pure elementwise rotate-halves over (b,t,h,d) layout; arithmetic in T (no f32 widening); cos/sin caller-supplied, per-batch when stride_b>0; not bit-stable cross-hardware."
+  notes: "pure elementwise rotate-halves over (b,t,h,d) layout; arithmetic in T (no f32 widening); cos/sin caller-supplied, per-batch when stride_b>0; not bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: same_hardware_bitwise
 ```

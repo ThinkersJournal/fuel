@@ -189,7 +189,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true                        # audited, no static bound applies (none(reason))
-  notes: "f32 accumulate; only lossy step is the pre-baked weight quantization. Not bit-stable cross- or same-hardware (GPU reduction order); per-quant error audited at model level."
+  notes: "f32 accumulate; only lossy step is the pre-baked weight quantization. Not bit-stable cross- or same-hardware (GPU reduction order); per-quant error audited at model level. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: nondeterministic
 ```
@@ -304,7 +304,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true                        # audited, no static bound applies (none(reason))
-  notes: "f32 accumulate; only lossy step is the pre-baked weight quantization. Not bit-stable cross- or same-hardware (GPU tiled reduction order); per-quant error audited at model level. Q8_1/Q8K rejected on this path."
+  notes: "f32 accumulate; only lossy step is the pre-baked weight quantization. Not bit-stable cross- or same-hardware (GPU tiled reduction order); per-quant error audited at model level. Q8_1/Q8K rejected on this path. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
 
 determinism: nondeterministic
 ```
