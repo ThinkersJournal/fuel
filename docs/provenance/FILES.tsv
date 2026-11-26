@@ -1242,7 +1242,7 @@ fuel-metal-kernels/src/metal/encoder.rs	candle	candle-metal-kernels/src/metal/en
 fuel-metal-kernels/src/metal/library.rs	candle	candle-metal-kernels/src/metal/library.rs	rename/copy 98%; 98% of 59 lines verbatim
 fuel-metal-kernels/src/metal/mod.rs	candle-modified	candle-metal-kernels/src/metal/mod.rs	rename/copy 86%; 67% of 3 lines verbatim
 fuel-metal-kernels/src/metal_src/affine.metal	candle	candle-metal-kernels/src/metal_src/affine.metal	rename/copy 100%; 100% of 64 lines verbatim
-fuel-metal-kernels/src/metal_src/binary.metal	candle	candle-metal-kernels/src/metal_src/binary.metal	rename/copy 100%; 100% of 106 lines verbatim
+fuel-metal-kernels/src/metal_src/binary.metal	candle-modified	candle-metal-kernels/src/metal_src/binary.metal	rename/copy 87%; 91% of 115 lines verbatim
 fuel-metal-kernels/src/metal_src/cast.metal	candle	candle-metal-kernels/src/metal_src/cast.metal	rename/copy 100%; 100% of 50 lines verbatim
 fuel-metal-kernels/src/metal_src/conv.metal	candle	candle-metal-kernels/src/metal_src/conv.metal	rename/copy 100%; 100% of 389 lines verbatim
 fuel-metal-kernels/src/metal_src/fill.metal	candle	candle-metal-kernels/src/metal_src/fill.metal	rename/copy 100%; 100% of 14 lines verbatim
@@ -1251,14 +1251,14 @@ fuel-metal-kernels/src/metal_src/mlx_gemm.metal	candle	candle-metal-kernels/src/
 fuel-metal-kernels/src/metal_src/mlx_sort.metal	candle	candle-metal-kernels/src/metal_src/mlx_sort.metal	rename/copy 100%; 100% of 405 lines verbatim
 fuel-metal-kernels/src/metal_src/quantized.metal	candle	candle-metal-kernels/src/metal_src/quantized.metal	rename/copy 100%; 100% of 4279 lines verbatim
 fuel-metal-kernels/src/metal_src/random.metal	candle	candle-metal-kernels/src/metal_src/random.metal	rename/copy 100%; 100% of 111 lines verbatim
-fuel-metal-kernels/src/metal_src/reduce.metal	candle	candle-metal-kernels/src/metal_src/reduce.metal	rename/copy 96%; 97% of 770 lines verbatim
+fuel-metal-kernels/src/metal_src/reduce.metal	candle	candle-metal-kernels/src/metal_src/reduce.metal	rename/copy 93%; 96% of 774 lines verbatim
 fuel-metal-kernels/src/metal_src/scaled_dot_product_attention.metal	candle	candle-metal-kernels/src/metal_src/scaled_dot_product_attention.metal	rename/copy 100%; 100% of 1172 lines verbatim
 fuel-metal-kernels/src/metal_src/sort.metal	candle	candle-metal-kernels/src/metal_src/sort.metal	rename/copy 100%; 100% of 50 lines verbatim
 fuel-metal-kernels/src/metal_src/ternary.metal	candle	candle-metal-kernels/src/metal_src/ternary.metal	rename/copy 100%; 100% of 67 lines verbatim
 fuel-metal-kernels/src/metal_src/unary.metal	candle	candle-metal-kernels/src/metal_src/unary.metal	rename/copy 91%; 93% of 159 lines verbatim
 fuel-metal-kernels/src/metal_src/utils.metal	candle	candle-metal-kernels/src/metal_src/utils.metal	rename/copy 100%; 100% of 18 lines verbatim
 fuel-metal-kernels/src/source.rs	candle	candle-metal-kernels/src/source.rs	rename/copy 96%; 94% of 17 lines verbatim
-fuel-metal-kernels/src/tests.rs	candle	candle-metal-kernels/src/tests.rs	rename/copy 94%; 94% of 984 lines verbatim
+fuel-metal-kernels/src/tests.rs	candle	candle-metal-kernels/src/tests.rs	rename/copy 91%; 91% of 1022 lines verbatim
 fuel-metal-kernels/src/utils.rs	candle	candle-metal-kernels/src/utils.rs	rename/copy 99%; 99% of 87 lines verbatim
 fuel-mkl-cpu-backend/Cargo.toml	own		no lineage; 2 of 18 lines verbatim in candle (11%)
 fuel-mkl-cpu-backend/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
