@@ -3,6 +3,12 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.55.2 - 2026-11-26 (PM-allocated; perf; not breaking)
+
+### Changed
+
+- A rebuilt topology snapshot inherits the transfer calibration instead of probing again (`fuel-dispatch` topology, `fuel-hardware` transfer cost); a new test pins that the probes run once.
+
 ## v0.55.1 - 2026-11-26 (PM-allocated; additive: CUDA TopKLastDim binding, baracuda alpha.199; not breaking)
 
 ### Added

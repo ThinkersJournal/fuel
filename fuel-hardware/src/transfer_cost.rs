@@ -83,6 +83,7 @@ use fuel_ir::{DeviceLocation, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 /// Schema version for persisted bandwidth reports. Bump when the
@@ -490,6 +491,16 @@ pub fn fit_transfer_estimate(points: &[(u64, u64)]) -> Option<TransferEstimate> 
     })
 }
 
+/// How many times [`TransferCalibration::calibrate`] has run in this process (row 173 lever 2).
+static CALIBRATE_RUNS: AtomicUsize = AtomicUsize::new(0);
+
+/// Number of [`TransferCalibration::calibrate`] runs so far in this process: a diagnostic, and the
+/// counter the "probe once per process" test reads. Each run is a real probe on a GPU host (about
+/// 1 s cold on the RTX 4070 Laptop, see `docs/design-notes/2026-11-23-qwen3-prefill-attribution.md`).
+pub fn calibrate_runs() -> usize {
+    CALIBRATE_RUNS.load(Ordering::Relaxed)
+}
+
 /// Probed per-path transfer estimates, keyed by `(src, dst)`
 /// [`DeviceLocation`] pairs. Built once per topology generation by
 /// [`TransferCalibration::calibrate`]; cached lazily on the
@@ -517,6 +528,7 @@ impl TransferCalibration {
     /// instantiate (driver missing at runtime) is silently skipped;
     /// its paths price via fallbacks.
     pub fn calibrate(devices: &[DeviceLocation]) -> TransferCalibration {
+        CALIBRATE_RUNS.fetch_add(1, Ordering::Relaxed);
         let mut probed = HashMap::new();
         for &dev in devices {
             let pair = match dev {
