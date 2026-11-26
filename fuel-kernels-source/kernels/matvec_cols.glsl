@@ -1,5 +1,6 @@
 #version 450
 // SPDX-License-Identifier: MIT OR Apache-2.0
+// compile: --target-env vulkan1.0   (SPIR-V 1.0 / BufferBlock: how the shipped .spv was built; GAP-407)
 // GEMV for M == 1 with a row-major [K, N] right operand (unit stride along N):
 //   C[1, N] = A[1, K] @ B[K, N].
 //

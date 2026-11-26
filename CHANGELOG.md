@@ -3,6 +3,12 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.57.1 - 2026-11-26 (PM-allocated; kernel sources and tooling only; not breaking)
+
+### Changed
+
+- `fuel-kernels-source/kernels/compile.sh` gains `--target-env` sidecar and `--check`; seven GLSL sidecar lines record how each flash-attention SPIR-V reproduces (32/32 with glslang 16.2.0 on the source branch); GAP-407 row text. No `.spv` and no Rust change.
+
 ## v0.57.0 - 2026-11-26 (PM-allocated; BREAKING: `sample_logits` and `spec_argmax` return `Result`; NaN row = typed Err)
 
 ### Fixed
