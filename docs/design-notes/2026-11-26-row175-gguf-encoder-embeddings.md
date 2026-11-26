@@ -25,6 +25,13 @@ One shared embedding API that loads the GGUF encoders Ollama users run and retur
 ## Correctness gate
 Per family, reference vectors from llama.cpp (`llama-embedding`) and sentence-transformers on a fixed 8-sentence corpus including a padded-length mix, recorded with tool version, model file sha256 and licence. Pass = cosine >= tolerance calibrated by sabotage (not inherited), f32 and f16, CPU first, then CUDA, then Vulkan. A batch of N padded sequences must equal N singleton runs within that tolerance (the padding-invariance control).
 
+## Lightbulb requirements (their finding 2026-11-26, read from their message, not their note)
+- Token ids only; Lightbulb tokenizes, counts usage and rejects over-length input (never truncates). Ids INCLUDE the model's special tokens (CLS/SEP); the mask covers them.
+- `max_position()` exposed beside `hidden_size()`.
+- `normalized()` flag from config, not hard-coded L2 (some models want raw vectors).
+- Matryoshka: nomic-embed-text-v1.5 applies layer_norm over the full width BEFORE truncating, then L2; truncate-then-renorm is wrong for it and fine for mxbai. Expose an optional `layer_norm + truncate(dim) + L2` step (or the pre-L2 pooled vector), selected by model config.
+- Call shape: one request array at a time, B <= 64. First model: nomic-embed-text (nomic_bert) or bge/MiniLM, whichever lands first; slice 1 stays bert-family MiniLM/bge, nomic-bert is slice 3 unless Lightbulb asks to swap.
+
 ## Slices
 0. GGUF header table (above) + gaps/ROADMAP citation. 1. ONE family end to end: bert-family MiniLM/bge on CPU f32 (smallest): loader, mask, pooling, normalise, reference vectors. 2. f16, then CUDA/Vulkan. 3. nomic-bert, then xlm-roberta (bge-m3), then arctic. 4. Lightbulb integration; `release_pooled_memory` for encoders when it lands (Lightbulb's ask, not built).
 
