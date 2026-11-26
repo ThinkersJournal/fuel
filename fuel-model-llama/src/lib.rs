@@ -3622,7 +3622,7 @@ impl LlamaModel {
 
         // Decode loop.
         for _ in 0..max_new_tokens {
-            let next = sample_logits(&last_logits, strategy, &mut rng_state);
+            let next = sample_logits(&last_logits, strategy, &mut rng_state)?;
             tokens.push(next);
             on_token(next);
             if let Some(eos) = eos_id
@@ -3815,7 +3815,7 @@ impl LlamaModel {
                         // We don't need draft_probs in greedy, but the
                         // slot has to exist to keep indexing uniform.
                         draft_probs_stash.push(Vec::new());
-                        spec_argmax(&draft_last_logits)
+                        spec_argmax(&draft_last_logits)?
                     }
                     SamplingStrategy::Temperature { .. } => {
                         let probs = spec_softmax_temp(&draft_last_logits, temp);
@@ -3849,7 +3849,7 @@ impl LlamaModel {
                         } else {
                             &verify_logits[(i - 1) * vocab..i * vocab]
                         };
-                        let target_pick = spec_argmax(prev_row);
+                        let target_pick = spec_argmax(prev_row)?;
                         if target_pick == drafts[i] {
                             accepted += 1;
                         } else {
@@ -3861,7 +3861,7 @@ impl LlamaModel {
                         Some(t) => t,
                         None => spec_argmax(
                             &verify_logits[(drafts.len() - 1) * vocab..drafts.len() * vocab],
-                        ),
+                        )?,
                     }
                 }
                 SamplingStrategy::Temperature { .. } => {
@@ -6951,7 +6951,7 @@ mod generate_tests {
             .forward_with_kv_context(&prompt, &mut cache1, &mut ctx1)
             .expect("d1 prefill");
         for _ in 0..max_new {
-            let next = sample_logits(&last1, strategy, &mut rng1);
+            let next = sample_logits(&last1, strategy, &mut rng1).unwrap();
             ref_tokens.push(next);
             last1 = model
                 .forward_with_kv_context(&[next], &mut cache1, &mut ctx1)
@@ -6991,7 +6991,7 @@ mod generate_tests {
             "prefill (seq>1) must NOT build the held session"
         );
         for _ in 0..max_new {
-            let next = sample_logits(&last2, strategy, &mut rng2);
+            let next = sample_logits(&last2, strategy, &mut rng2).unwrap();
             d2_tokens.push(next);
             last2 = model
                 .forward_with_kv_context_persistent(&[next], &mut cache2, &mut ctx2, &mut session)
@@ -7759,7 +7759,7 @@ mod generate_tests {
                 let mut last_cpu =
                     model.forward_with_kv_context(&prompt, &mut cpu_cache, &mut cpu_ctx)?;
                 for _ in 0..max_new {
-                    let next = sample_logits(&last_cpu, strategy, &mut cpu_rng);
+                    let next = sample_logits(&last_cpu, strategy, &mut cpu_rng).unwrap();
                     last_cpu =
                         model.forward_with_kv_context(&[next], &mut cpu_cache, &mut cpu_ctx)?;
                     out.push(last_cpu.clone());
@@ -7815,7 +7815,7 @@ mod generate_tests {
             .forward_with_kv_context(&prompt, &mut cuda_rebuild_cache, &mut cuda_rebuild_ctx)
             .expect("cuda rebuild prefill");
         for _ in 0..max_new {
-            let next = sample_logits(&last_rebuild, strategy, &mut rebuild_rng);
+            let next = sample_logits(&last_rebuild, strategy, &mut rebuild_rng).unwrap();
             rebuild_tokens.push(next);
             last_rebuild = model
                 .forward_with_kv_context(&[next], &mut cuda_rebuild_cache, &mut cuda_rebuild_ctx)
@@ -7854,7 +7854,7 @@ mod generate_tests {
             "prefill (seq>1) must NOT build the held session"
         );
         for _ in 0..max_new {
-            let next = sample_logits(&last_persist, strategy, &mut persist_rng);
+            let next = sample_logits(&last_persist, strategy, &mut persist_rng).unwrap();
             persist_tokens.push(next);
             last_persist = model
                 .forward_with_kv_context_persistent(
@@ -10032,7 +10032,7 @@ mod generate_tests {
                 let mut last_cpu =
                     model.forward_with_kv_context(&prompt, &mut cpu_cache, &mut cpu_ctx)?;
                 for _ in 0..max_new {
-                    let next = sample_logits(&last_cpu, strategy, &mut cpu_rng);
+                    let next = sample_logits(&last_cpu, strategy, &mut cpu_rng).unwrap();
                     last_cpu =
                         model.forward_with_kv_context(&[next], &mut cpu_cache, &mut cpu_ctx)?;
                     out.push(last_cpu.clone());
@@ -10082,7 +10082,7 @@ mod generate_tests {
             .forward_with_kv_context(&prompt, &mut vk_rebuild_cache, &mut vk_rebuild_ctx)
             .expect("vk rebuild prefill");
         for _ in 0..max_new {
-            let next = sample_logits(&last_rebuild, strategy, &mut rebuild_rng);
+            let next = sample_logits(&last_rebuild, strategy, &mut rebuild_rng).unwrap();
             rebuild_tokens.push(next);
             last_rebuild = model
                 .forward_with_kv_context(&[next], &mut vk_rebuild_cache, &mut vk_rebuild_ctx)
@@ -10118,7 +10118,7 @@ mod generate_tests {
             "prefill (seq>1) must NOT build the held session"
         );
         for _ in 0..max_new {
-            let next = sample_logits(&last_persist, strategy, &mut persist_rng);
+            let next = sample_logits(&last_persist, strategy, &mut persist_rng).unwrap();
             persist_tokens.push(next);
             last_persist = model
                 .forward_with_kv_context_persistent(
@@ -10261,7 +10261,7 @@ mod generate_tests {
             .unwrap();
         let t_d1 = std::time::Instant::now();
         for _ in 0..n {
-            let next = sample_logits(&last1, strategy, &mut rng1);
+            let next = sample_logits(&last1, strategy, &mut rng1).unwrap();
             last1 = model
                 .forward_with_kv_context(&[next], &mut cache1, &mut ctx1)
                 .unwrap();
@@ -10286,7 +10286,7 @@ mod generate_tests {
             .unwrap();
         let t_d2 = std::time::Instant::now();
         for _ in 0..n {
-            let next = sample_logits(&last2, strategy, &mut rng2);
+            let next = sample_logits(&last2, strategy, &mut rng2).unwrap();
             last2 = model
                 .forward_with_kv_context_persistent(&[next], &mut cache2, &mut ctx2, &mut session)
                 .unwrap();
@@ -10364,7 +10364,7 @@ mod generate_tests {
             .unwrap();
         let t_d1 = std::time::Instant::now();
         for _ in 0..n {
-            let next = sample_logits(&last1, strategy, &mut rng1);
+            let next = sample_logits(&last1, strategy, &mut rng1).unwrap();
             last1 = model
                 .forward_with_kv_context(&[next], &mut cache1, &mut ctx1)
                 .unwrap();
@@ -10389,7 +10389,7 @@ mod generate_tests {
             .unwrap();
         let t_d2 = std::time::Instant::now();
         for _ in 0..n {
-            let next = sample_logits(&last2, strategy, &mut rng2);
+            let next = sample_logits(&last2, strategy, &mut rng2).unwrap();
             last2 = model
                 .forward_with_kv_context_persistent(&[next], &mut cache2, &mut ctx2, &mut session)
                 .unwrap();
@@ -10656,7 +10656,7 @@ mod generate_tests {
             let opt_after_prefill = fuel_tensor::pipelined_bridge::optimize_calls_thread_local();
             let mut rng2 = 0u64;
             for i in 0..n {
-                let next = sample_logits(&last2, strategy, &mut rng2);
+                let next = sample_logits(&last2, strategy, &mut rng2).unwrap();
                 d2_tokens.push(next);
                 let t = Instant::now();
                 last2 = model
@@ -10749,7 +10749,7 @@ mod generate_tests {
                 eprintln!("  D3 prefill: {:.1} ms", d3_prefill.as_secs_f64() * 1e3);
                 let mut rng3 = 0u64;
                 for i in 0..n {
-                    let next = sample_logits(&last3, strategy, &mut rng3);
+                    let next = sample_logits(&last3, strategy, &mut rng3).unwrap();
                     d3_tokens.push(next);
                     let t = Instant::now();
                     last3 = model
@@ -10811,7 +10811,7 @@ mod generate_tests {
             eprintln!("  D1 prefill: {:.1} ms", d1_prefill.as_secs_f64() * 1e3);
             let mut rng1 = 0u64;
             for i in 0..n {
-                let next = sample_logits(&last1, strategy, &mut rng1);
+                let next = sample_logits(&last1, strategy, &mut rng1).unwrap();
                 let t = Instant::now();
                 match model.forward_with_kv_context(&[next], &mut cache1, &mut ctx1) {
                     Ok(l) => last1 = l,
