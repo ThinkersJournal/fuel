@@ -60,12 +60,24 @@ compile_wgsl() {
   "$NAGA" "$src" "$out"
 }
 
+# The flags a GLSL file is compiled with: the default target (Vulkan 1.1), or the sidecar `// compile: <flags>`
+# within the first 8 lines REPLACING it (the sidecar carries the target flags only; `-V -S comp` are always given).
+glsl_target_flags() {
+  local src="$1" side
+  side="$(head -n 8 "$src" | tr -d '\r' | sed -n 's#^// compile:[[:space:]]*\(--target-env[[:space:]]*[A-Za-z0-9._]*\).*#\1#p' | head -n 1)"
+  if [[ -n "$side" ]]; then echo "$side"; else echo "--target-env vulkan1.1"; fi
+}
+
+# Where compile_glsl writes: OUT_DIR normally, CHECK_DIR under --check.
 compile_glsl() {
   local src="$1"
   local base; base="$(basename "$src" .glsl)"
-  local out="$OUT_DIR/$base.spv"
-  echo "  glsl  $base.glsl -> ../fuel-vulkan-kernels/spv/$base.spv"
-  "$GLSLANG" -V -S comp --target-env vulkan1.1 "$src" -o "$out" >/dev/null
+  local dest="${COMPILE_OUT_DIR:-$OUT_DIR}"
+  local out="$dest/$base.spv"
+  local flags; flags="$(glsl_target_flags "$src")"
+  echo "  glsl  $base.glsl [$flags] -> $out"
+  # shellcheck disable=SC2086
+  "$GLSLANG" -V -S comp $flags "$src" -o "$out" >/dev/null
 }
 
 compile_one() {
@@ -76,6 +88,29 @@ compile_one() {
     *) echo "warning: unknown shader type: $f" >&2 ;;
   esac
 }
+
+# --check [files...]: rebuild into a temp dir and compare byte-for-byte with the committed .spv. Exits 1 if any
+# file differs or is missing, listing each (a binary nobody can rebuild is an unverifiable artifact: GAP-407).
+if [[ "${1:-}" == "--check" ]]; then
+  shift
+  check_tool "$GLSLANG" "glslangValidator"
+  COMPILE_OUT_DIR="$(mktemp -d)"
+  cd "$SRC_DIR"
+  files=("$@")
+  if (( ${#files[@]} == 0 )); then shopt -s nullglob; files=(*.glsl); fi
+  ok=0; bad=0
+  for f in "${files[@]}"; do
+    base="$(basename "$f" .glsl)"
+    compile_glsl "$f" >/dev/null
+    if [[ ! -f "$OUT_DIR/$base.spv" ]]; then echo "MISSING  $base.spv (no committed file)"; bad=$((bad+1))
+    elif cmp -s "$COMPILE_OUT_DIR/$base.spv" "$OUT_DIR/$base.spv"; then echo "OK       $base.spv"; ok=$((ok+1))
+    else echo "DIFFERS  $base.spv  ($(glsl_target_flags "$f"))"; bad=$((bad+1)); fi
+  done
+  echo "glslangValidator: $("$GLSLANG" --version | head -n 1)"
+  echo "check: $ok reproduced, $bad not, of $((ok+bad)) GLSL files"
+  [[ $bad -eq 0 ]]
+  exit $?
+fi
 
 if (( $# > 0 )); then
   # Check only the tools we actually need.

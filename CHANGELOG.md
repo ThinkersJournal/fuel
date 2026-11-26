@@ -3,13 +3,45 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
-## v0.55.2 - 2026-11-26 (PM-allocated; perf; not breaking)
+## v0.57.1 - 2026-11-26 (PM-allocated; kernel sources and tooling only; not breaking)
+
+### Changed
+
+- `fuel-kernels-source/kernels/compile.sh` gains `--target-env` sidecar and `--check`; seven GLSL sidecar lines record how each flash-attention SPIR-V reproduces (32/32 with glslang 16.2.0 on the source branch); GAP-407 row text. No `.spv` and no Rust change.
+
+## v0.57.0 - 2026-11-26 (PM-allocated; BREAKING: `sample_logits` and `spec_argmax` return `Result`; NaN row = typed Err)
+
+### Fixed
+
+- `fuel::lazy::sample_logits` (greedy, and `Temperature` with `temp <= 0` or NaN) picked a token from a row containing NaN (`max_by(partial_cmp -> Equal)` treats NaN as a tie) and the LAST index on a tie. **This was a published silent wrong result:** every published `fuel-tensor` carries it, from the oldest (0.19.1) to 0.56.1 (read from the 17 `.crate` files on crates.io: `sample_logits` with `max_by(partial_cmp -> Equal)` in each; earlier `fuel-core` publishes were not read). Callers in this workspace: `fuel-inference` (`sample_next`, the legacy path), `fuel-model-llama`, `fuel-model-phi`, `fuel-transformers` (`lazy_deepseek2`) and the `gemma-lazy` example. It now follows the `sample_argmax` contract (cluster ruling 2026-11-26): an empty row or a NaN anywhere in the row is a typed `Err`, ties take the FIRST index, `+inf`/`-inf` are ordinary values for greedy; the `Temperature` path also refuses any non-finite logit, as `sample_with_params` does. `spec_argmax` follows the same rule. `fuel-inference`'s legacy path (a session with no `SamplingParams`) therefore returns an `Err` on a NaN row instead of a garbage token.
+
+### Breaking
+
+- `sample_logits(..) -> u32` is now `-> fuel_ir::Result<u32>` and `spec_argmax(..) -> u32` is now `-> fuel_ir::Result<u32>`: callers add `?`.
+- **Greedy tie-break flips from the last tied index to the FIRST** (the torch convention). Lightbulb's golden outputs for tied-logit rows change; regenerate them.
+
+## v0.56.1 - 2026-11-26 (PM-allocated; CI only; not breaking)
+
+### Added
+
+- `.github/workflows/metal-shader-check.yml`: a hosted macOS job that compiles the Metal shaders and runs the device probe (no probe-branch push trigger). No crate code changes.
+
+## v0.56.0 - 2026-11-26 (PM-allocated; BREAKING: takes unpopped-vocab 0.58 and fireline-grammar 0.9, whose types fuel re-exports; first published version of the 0.53.0 to 0.55.2 content)
+
+**This is the first published version carrying the content of the sections 0.53.0, 0.54.0, 0.55.0, 0.55.1 and 0.55.2 below (none of them was published; each is superseded by this one). Read those sections for the changes; the Breaking items in 0.53.0, 0.54.0 and 0.55.0 apply to this release.**
+
+### Changed
+
+- Dependencies: `unpopped-vocab` 0.58, `fireline-grammar` 0.9 (fuel re-exports `OpAttrs`, `OpTag`, `PatternNode` and `shape_expr::*`, so this is a breaking take), `baracuda` 0.1.0-alpha.209 (cuda-seam 0.58). `Cargo.toml` and `Cargo.lock` only; the CUDA census is byte-identical to its golden.
+
+
+## v0.55.2 - 2026-11-26 (not published; superseded by 0.56.0)
 
 ### Changed
 
 - A rebuilt topology snapshot inherits the transfer calibration instead of probing again (`fuel-dispatch` topology, `fuel-hardware` transfer cost); a new test pins that the probes run once.
 
-## v0.55.1 - 2026-11-26 (PM-allocated; additive: CUDA TopKLastDim binding, baracuda alpha.199; not breaking)
+## v0.55.1 - 2026-11-26 (not published; superseded by 0.56.0)
 
 ### Added
 
@@ -20,7 +52,7 @@ This documents the main changes to the `fuel` workspace.
 
 - Dependencies (Cargo.lock only): the baracuda family 0.1.0-alpha.186 -> alpha.199 (21 packages); `baracuda-cuda-emit` stays 0.56.13. CUDA arg_reduce and value reduce max/min now propagate NaN on the device (the CPU rule), `reduce_max_to` included: nothing in the 34 `fuel-cuda-dispatch` test targets relied on the old NaN-ignoring behaviour (214 passed, `--include-ignored`, alpha.199; `jit_synth_kernel_live`, a separate feature shape, not run).
 
-## v0.55.0 - 2026-11-26 (PM-allocated; BREAKING numerics: Metal max/min NaN)
+## v0.55.0 - 2026-11-26 (not published; superseded by 0.56.0)
 
 ### Breaking
 
@@ -59,7 +91,7 @@ This documents the main changes to the `fuel` workspace.
 
 - Not audited on Metal: the sort/index/ternary kernels and the other half-precision ops. The `Tensor::var` recipe is not runnable end to end on Metal (Metal is not wired into the lazy executor); its components were measured. `docs/gaps.md` GAP-405 carries the audit.
 
-## v0.54.0 - 2026-11-26 (not published; superseded by 0.55.0)
+## v0.54.0 - 2026-11-26 (not published; superseded by 0.56.0)
 
 ### Breaking
 
@@ -80,7 +112,7 @@ This documents the main changes to the `fuel` workspace.
 - Pinned, not changed: an ATTENDED `+inf` score row is zeros on the fused CPU kernel (it treats a non-finite row max like a fully masked row) and NaN on the decomposed path (aMusedPip L1; pre-existing, outside the NaN scope of #715). `flash_attn_*_follows_the_masked_and_nan_row_contract` marks that case `Any` and says so.
 - The three live-Vulkan tests now point at the hosted `--skip` list in `rust-ci.yml` (aMusedPip N2).
 
-## v0.53.0 - 2026-11-26 (not published; superseded by 0.55.0)
+## v0.53.0 - 2026-11-26 (not published; superseded by 0.56.0)
 
 ### Breaking
 
