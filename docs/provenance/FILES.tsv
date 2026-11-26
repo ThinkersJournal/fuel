@@ -15,7 +15,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 3% of 895 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 3% of 899 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1301 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 5% of 294 lines verbatim
@@ -579,7 +579,7 @@ fuel-dispatch/src/fkc/precision.rs	own		no lineage; 1 of 136 lines verbatim in c
 fuel-dispatch/src/fkc/register.rs	own		no lineage; 2 of 1840 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/return_check.rs	own		no lineage; 0 of 912 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/revhash.rs	own		no lineage; 1 of 191 lines verbatim in candle (1%)
-fuel-dispatch/src/fkc/schema.rs	own		no lineage; 17 of 307 lines verbatim in candle (6%)
+fuel-dispatch/src/fkc/schema.rs	own		no lineage; 17 of 309 lines verbatim in candle (6%)
 fuel-dispatch/src/fkc/shape_constraint.rs	own		no lineage; 4 of 612 lines verbatim in candle (1%)
 fuel-dispatch/src/fkc/shape_expr.rs	own		no lineage; 0 of 15 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/shape_expr_parse.rs	own		no lineage; 0 of 48 lines verbatim in candle (0%)
@@ -608,7 +608,7 @@ fuel-dispatch/src/fkc/verify/seed_vulkan_ledger.rs	own		no lineage; 0 of 249 lin
 fuel-dispatch/src/fkc/verify/seed_vulkan_matmul_accuracy.rs	own		no lineage; 0 of 134 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/verify/ulp.rs	own		no lineage; 4 of 490 lines verbatim in candle (1%)
 fuel-dispatch/src/fkc/warn.rs	own		no lineage; 1 of 19 lines verbatim in candle (5%)
-fuel-dispatch/src/fused.rs	own		no lineage; 6 of 1351 lines verbatim in candle (0%)
+fuel-dispatch/src/fused.rs	own		no lineage; 6 of 1356 lines verbatim in candle (0%)
 fuel-dispatch/src/fused_cost.rs	own		no lineage; 2 of 271 lines verbatim in candle (1%)
 fuel-dispatch/src/jit_adopt.rs	own		no lineage; 0 of 345 lines verbatim in candle (0%)
 fuel-dispatch/src/jit_carrier.rs	own		no lineage; 0 of 158 lines verbatim in candle (0%)
@@ -652,7 +652,7 @@ fuel-dispatch/src/runtime_fused_kernels.rs	own		no lineage; 1 of 425 lines verba
 fuel-dispatch/src/runtime_fused_pathfinder.rs	own		no lineage; 2 of 191 lines verbatim in candle (1%)
 fuel-dispatch/src/telemetry/baracuda_provider.rs	own		no lineage; 0 of 402 lines verbatim in candle (0%)
 fuel-dispatch/src/telemetry/config.rs	own		no lineage; 1 of 48 lines verbatim in candle (2%)
-fuel-dispatch/src/telemetry/contraction_facts.rs	own		no lineage; 0 of 68 lines verbatim in candle (0%)
+fuel-dispatch/src/telemetry/contraction_facts.rs	own		no lineage; 0 of 84 lines verbatim in candle (0%)
 fuel-dispatch/src/telemetry/hooks.rs	own		no lineage; 0 of 47 lines verbatim in candle (0%)
 fuel-dispatch/src/telemetry/impl_id.rs	own		no lineage; 1 of 89 lines verbatim in candle (1%)
 fuel-dispatch/src/telemetry/judge_sink.rs	own		no lineage; 4 of 209 lines verbatim in candle (2%)
@@ -1258,7 +1258,7 @@ fuel-metal-kernels/src/metal_src/ternary.metal	candle	candle-metal-kernels/src/m
 fuel-metal-kernels/src/metal_src/unary.metal	candle	candle-metal-kernels/src/metal_src/unary.metal	rename/copy 91%; 93% of 159 lines verbatim
 fuel-metal-kernels/src/metal_src/utils.metal	candle	candle-metal-kernels/src/metal_src/utils.metal	rename/copy 100%; 100% of 18 lines verbatim
 fuel-metal-kernels/src/source.rs	candle	candle-metal-kernels/src/source.rs	rename/copy 96%; 94% of 17 lines verbatim
-fuel-metal-kernels/src/tests.rs	candle-modified	candle-metal-kernels/src/tests.rs	rename/copy 83%; 84% of 1100 lines verbatim
+fuel-metal-kernels/src/tests.rs	candle-modified	candle-metal-kernels/src/tests.rs	rename/copy 77%; 78% of 1185 lines verbatim
 fuel-metal-kernels/src/utils.rs	candle	candle-metal-kernels/src/utils.rs	rename/copy 99%; 99% of 87 lines verbatim
 fuel-mkl-cpu-backend/Cargo.toml	own		no lineage; 2 of 18 lines verbatim in candle (11%)
 fuel-mkl-cpu-backend/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
