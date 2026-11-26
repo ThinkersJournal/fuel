@@ -460,7 +460,7 @@ checksum = "2b2d15bc3becf8ff9b3f111e3544ed118ce539dc2f8c89dd688b423d98221b44"
 dependencies = [
  "baracuda-nvrtc",
  "unpopped",
- "unpopped-vocab",
+ "unpopped-vocab 0.58.5",
 ]
 
 [[package]]
@@ -470,10 +470,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "782769e71161a93a2c7c72060525a52d9ff2ce2a41b88fd4307cf8b50ba09365"
 dependencies = [
  "baracuda-cuda-emit",
- "fireline-grammar",
- "fireline-synth",
+ "fireline-grammar 0.9.0",
+ "fireline-synth 0.9.0",
  "unpopped",
- "unpopped-vocab",
+ "unpopped-vocab 0.58.5",
 ]
 
 [[package]]
@@ -627,7 +627,7 @@ dependencies = [
  "float8",
  "half",
  "thiserror 2.0.21",
- "unpopped-vocab",
+ "unpopped-vocab 0.58.5",
 ]
 
 [[package]]
@@ -688,7 +688,7 @@ checksum = "41a0d7c07c4fec338fbf45bd5a516e87a98880e286b22bf02a5412081faeb867"
 dependencies = [
  "float8",
  "half",
- "unpopped-vocab",
+ "unpopped-vocab 0.58.5",
 ]
 
 [[package]]
@@ -1670,13 +1670,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7333138f222a331547d087b1524f951cfeb2fc5de1d0369945e62521d1effc40"
 
 [[package]]
+name = "fireline-grammar"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8901184392d46ce64a8eff3f5ab9cb85fbfd2a8d9d040dc6898d745e7bb58980"
+
+[[package]]
 name = "fireline-synth"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e96afa0371e75f43829f053012d808b92c236860933ce41812a5d4107c03e50"
 dependencies = [
- "fireline-grammar",
- "unpopped-vocab",
+ "fireline-grammar 0.9.0",
+ "unpopped-vocab 0.58.5",
+]
+
+[[package]]
+name = "fireline-synth"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13e26c7179c8dadc43375e00578b3e0cf167b4f71edd531e56dd18e600d8d48e"
+dependencies = [
+ "fireline-grammar 0.10.1",
+ "unpopped-vocab 0.59.3",
 ]
 
 [[package]]
@@ -1900,7 +1916,7 @@ dependencies = [
  "baracuda-cuda-seam",
  "baracuda-nvrtc",
  "bytemuck",
- "fireline-synth",
+ "fireline-synth 0.10.1",
  "fuel-cpu-backend",
  "fuel-cuda-backend",
  "fuel-dispatch",
@@ -1910,7 +1926,7 @@ dependencies = [
  "fuel-quantized",
  "fuel-test-support",
  "half",
- "unpopped-vocab",
+ "unpopped-vocab 0.60.1",
 ]
 
 [[package]]
@@ -1935,8 +1951,8 @@ version = "0.57.0"
 dependencies = [
  "baracuda-kernels-types",
  "bytemuck",
- "fireline-grammar",
- "fireline-synth",
+ "fireline-grammar 0.10.1",
+ "fireline-synth 0.10.1",
  "fuel-backend-contract",
  "fuel-conv",
  "fuel-cpu-backend",
@@ -1960,7 +1976,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tracing",
- "unpopped-vocab",
+ "unpopped-vocab 0.60.1",
 ]
 
 [[package]]
@@ -2034,7 +2050,7 @@ dependencies = [
 name = "fuel-graph"
 version = "0.57.0"
 dependencies = [
- "fireline-grammar",
+ "fireline-grammar 0.10.1",
  "float8",
  "fuel-backend-contract",
  "fuel-cpu-backend",
@@ -2101,7 +2117,7 @@ dependencies = [
 name = "fuel-kiss-ref-backend"
 version = "0.57.0"
 dependencies = [
- "fireline-grammar",
+ "fireline-grammar 0.10.1",
  "fuel-ir",
  "half",
  "kiss-classify-vocab",
@@ -5811,14 +5827,34 @@ dependencies = [
  "libm",
  "serde",
  "serde_json",
- "unpopped-vocab",
+ "unpopped-vocab 0.58.5",
 ]
 
 [[package]]
 name = "unpopped-vocab"
-version = "0.58.0"
+version = "0.58.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3a9780412ac76df204c54f75f151c598901b4c00a9223e5166ca4220ce7a92b"
+checksum = "10ccfcfac209cbf9ba9dd1416c074087bfe628c3405e7254a14faa02310b29d2"
+dependencies = [
+ "float8",
+ "half",
+]
+
+[[package]]
+name = "unpopped-vocab"
+version = "0.59.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c43542c0eb2e8059743ffdce7b16fbdea8daeafa19e984800ecd2932f6e08930"
+dependencies = [
+ "float8",
+ "half",
+]
+
+[[package]]
+name = "unpopped-vocab"
+version = "0.60.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfeae2c453b5fd463d3c32f008e6cf06fb696eefa62bbecde2424827f891e0ae"
 dependencies = [
  "float8",
  "half",
