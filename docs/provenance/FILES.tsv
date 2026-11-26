@@ -15,9 +15,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 3% of 911 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 3% of 911 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 3% of 911 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 3% of 915 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1301 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 5% of 294 lines verbatim
@@ -91,9 +89,7 @@ docs/frontier-paradigms-vision.md	own		no lineage; 0 of 155 lines verbatim in ca
 docs/fuel-consumer-seam.md	own		no lineage; 0 of 1061 lines verbatim in candle (0%)
 docs/fused-op-registry.md	own		no lineage; 0 of 311 lines verbatim in candle (0%)
 docs/gap-015-handoff.md	own		no lineage; 0 of 183 lines verbatim in candle (0%)
-docs/gaps.md	own		no lineage; 0 of 450 lines verbatim in candle (0%)
-docs/gaps.md	own		no lineage; 0 of 450 lines verbatim in candle (0%)
-docs/gaps.md	own		no lineage; 0 of 450 lines verbatim in candle (0%)
+docs/gaps.md	own		no lineage; 0 of 451 lines verbatim in candle (0%)
 docs/interchange/stablehlo-to-fuel-op-map.md	own		no lineage; 0 of 157 lines verbatim in candle (0%)
 docs/kernel-contracts/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
 docs/method-rules-drafts-issue-159.md	own		no lineage; 0 of 286 lines verbatim in candle (0%)
@@ -589,7 +585,7 @@ fuel-dispatch/src/fkc/precision.rs	own		no lineage; 1 of 136 lines verbatim in c
 fuel-dispatch/src/fkc/register.rs	own		no lineage; 2 of 1840 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/return_check.rs	own		no lineage; 0 of 912 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/revhash.rs	own		no lineage; 1 of 191 lines verbatim in candle (1%)
-fuel-dispatch/src/fkc/schema.rs	own		no lineage; 17 of 307 lines verbatim in candle (6%)
+fuel-dispatch/src/fkc/schema.rs	own		no lineage; 17 of 309 lines verbatim in candle (6%)
 fuel-dispatch/src/fkc/shape_constraint.rs	own		no lineage; 4 of 612 lines verbatim in candle (1%)
 fuel-dispatch/src/fkc/shape_expr.rs	own		no lineage; 0 of 15 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/shape_expr_parse.rs	own		no lineage; 0 of 48 lines verbatim in candle (0%)
@@ -618,7 +614,7 @@ fuel-dispatch/src/fkc/verify/seed_vulkan_ledger.rs	own		no lineage; 0 of 249 lin
 fuel-dispatch/src/fkc/verify/seed_vulkan_matmul_accuracy.rs	own		no lineage; 0 of 134 lines verbatim in candle (0%)
 fuel-dispatch/src/fkc/verify/ulp.rs	own		no lineage; 4 of 490 lines verbatim in candle (1%)
 fuel-dispatch/src/fkc/warn.rs	own		no lineage; 1 of 19 lines verbatim in candle (5%)
-fuel-dispatch/src/fused.rs	own		no lineage; 6 of 1351 lines verbatim in candle (0%)
+fuel-dispatch/src/fused.rs	own		no lineage; 6 of 1356 lines verbatim in candle (0%)
 fuel-dispatch/src/fused_cost.rs	own		no lineage; 2 of 271 lines verbatim in candle (1%)
 fuel-dispatch/src/jit_adopt.rs	own		no lineage; 0 of 345 lines verbatim in candle (0%)
 fuel-dispatch/src/jit_carrier.rs	own		no lineage; 0 of 158 lines verbatim in candle (0%)
@@ -662,7 +658,7 @@ fuel-dispatch/src/runtime_fused_kernels.rs	own		no lineage; 1 of 425 lines verba
 fuel-dispatch/src/runtime_fused_pathfinder.rs	own		no lineage; 2 of 191 lines verbatim in candle (1%)
 fuel-dispatch/src/telemetry/baracuda_provider.rs	own		no lineage; 0 of 402 lines verbatim in candle (0%)
 fuel-dispatch/src/telemetry/config.rs	own		no lineage; 1 of 48 lines verbatim in candle (2%)
-fuel-dispatch/src/telemetry/contraction_facts.rs	own		no lineage; 0 of 68 lines verbatim in candle (0%)
+fuel-dispatch/src/telemetry/contraction_facts.rs	own		no lineage; 0 of 89 lines verbatim in candle (0%)
 fuel-dispatch/src/telemetry/hooks.rs	own		no lineage; 0 of 47 lines verbatim in candle (0%)
 fuel-dispatch/src/telemetry/impl_id.rs	own		no lineage; 1 of 89 lines verbatim in candle (1%)
 fuel-dispatch/src/telemetry/judge_sink.rs	own		no lineage; 4 of 209 lines verbatim in candle (2%)
@@ -678,7 +674,7 @@ fuel-dispatch/tests/bit_stable_coverage_flip.rs	own		no lineage; 4 of 610 lines 
 fuel-dispatch/tests/cuda_iota_live.rs	own		no lineage; 1 of 44 lines verbatim in candle (2%)
 fuel-dispatch/tests/fkc_clause_coverage.rs	own		no lineage; 1 of 209 lines verbatim in candle (0%)
 fuel-dispatch/tests/fkc_prose_clause_coverage.rs	own		no lineage; 0 of 158 lines verbatim in candle (0%)
-fuel-dispatch/tests/kiss_clause_ledger.rs	own		no lineage; 2 of 510 lines verbatim in candle (0%)
+fuel-dispatch/tests/kiss_clause_ledger.rs	own		no lineage; 2 of 519 lines verbatim in candle (0%)
 fuel-dispatch/tests/kiss_derivation_vectors.rs	own		no lineage; 2 of 384 lines verbatim in candle (1%)
 fuel-dispatch/tests/kiss_signed_zero_tie_conformance.rs	own		no lineage; 0 of 136 lines verbatim in candle (0%)
 fuel-dispatch/tests/kiss_structure_key_byte_match.rs	own		no lineage; 0 of 729 lines verbatim in candle (0%)
@@ -1252,7 +1248,7 @@ fuel-metal-kernels/src/metal/encoder.rs	candle	candle-metal-kernels/src/metal/en
 fuel-metal-kernels/src/metal/library.rs	candle	candle-metal-kernels/src/metal/library.rs	rename/copy 98%; 98% of 59 lines verbatim
 fuel-metal-kernels/src/metal/mod.rs	candle-modified	candle-metal-kernels/src/metal/mod.rs	rename/copy 86%; 67% of 3 lines verbatim
 fuel-metal-kernels/src/metal_src/affine.metal	candle	candle-metal-kernels/src/metal_src/affine.metal	rename/copy 100%; 100% of 64 lines verbatim
-fuel-metal-kernels/src/metal_src/binary.metal	candle	candle-metal-kernels/src/metal_src/binary.metal	rename/copy 100%; 100% of 106 lines verbatim
+fuel-metal-kernels/src/metal_src/binary.metal	candle-modified	candle-metal-kernels/src/metal_src/binary.metal	rename/copy 87%; 91% of 115 lines verbatim
 fuel-metal-kernels/src/metal_src/cast.metal	candle	candle-metal-kernels/src/metal_src/cast.metal	rename/copy 100%; 100% of 50 lines verbatim
 fuel-metal-kernels/src/metal_src/conv.metal	candle	candle-metal-kernels/src/metal_src/conv.metal	rename/copy 100%; 100% of 389 lines verbatim
 fuel-metal-kernels/src/metal_src/fill.metal	candle	candle-metal-kernels/src/metal_src/fill.metal	rename/copy 100%; 100% of 14 lines verbatim
@@ -1261,14 +1257,14 @@ fuel-metal-kernels/src/metal_src/mlx_gemm.metal	candle	candle-metal-kernels/src/
 fuel-metal-kernels/src/metal_src/mlx_sort.metal	candle	candle-metal-kernels/src/metal_src/mlx_sort.metal	rename/copy 100%; 100% of 405 lines verbatim
 fuel-metal-kernels/src/metal_src/quantized.metal	candle	candle-metal-kernels/src/metal_src/quantized.metal	rename/copy 100%; 100% of 4279 lines verbatim
 fuel-metal-kernels/src/metal_src/random.metal	candle	candle-metal-kernels/src/metal_src/random.metal	rename/copy 100%; 100% of 111 lines verbatim
-fuel-metal-kernels/src/metal_src/reduce.metal	candle	candle-metal-kernels/src/metal_src/reduce.metal	rename/copy 96%; 97% of 770 lines verbatim
+fuel-metal-kernels/src/metal_src/reduce.metal	candle	candle-metal-kernels/src/metal_src/reduce.metal	rename/copy 93%; 96% of 774 lines verbatim
 fuel-metal-kernels/src/metal_src/scaled_dot_product_attention.metal	candle	candle-metal-kernels/src/metal_src/scaled_dot_product_attention.metal	rename/copy 100%; 100% of 1172 lines verbatim
 fuel-metal-kernels/src/metal_src/sort.metal	candle	candle-metal-kernels/src/metal_src/sort.metal	rename/copy 100%; 100% of 50 lines verbatim
 fuel-metal-kernels/src/metal_src/ternary.metal	candle	candle-metal-kernels/src/metal_src/ternary.metal	rename/copy 100%; 100% of 67 lines verbatim
 fuel-metal-kernels/src/metal_src/unary.metal	candle	candle-metal-kernels/src/metal_src/unary.metal	rename/copy 91%; 93% of 159 lines verbatim
 fuel-metal-kernels/src/metal_src/utils.metal	candle	candle-metal-kernels/src/metal_src/utils.metal	rename/copy 100%; 100% of 18 lines verbatim
 fuel-metal-kernels/src/source.rs	candle	candle-metal-kernels/src/source.rs	rename/copy 96%; 94% of 17 lines verbatim
-fuel-metal-kernels/src/tests.rs	candle	candle-metal-kernels/src/tests.rs	rename/copy 90%; 91% of 1016 lines verbatim
+fuel-metal-kernels/src/tests.rs	candle-modified	candle-metal-kernels/src/tests.rs	rename/copy 74%; 76% of 1226 lines verbatim
 fuel-metal-kernels/src/utils.rs	candle	candle-metal-kernels/src/utils.rs	rename/copy 99%; 99% of 87 lines verbatim
 fuel-mkl-cpu-backend/Cargo.toml	own		no lineage; 2 of 18 lines verbatim in candle (11%)
 fuel-mkl-cpu-backend/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
