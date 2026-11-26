@@ -3,6 +3,12 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.56.1 - 2026-11-26 (PM-allocated; CI only; not breaking)
+
+### Added
+
+- `.github/workflows/metal-shader-check.yml`: a hosted macOS job that compiles the Metal shaders and runs the device probe (no probe-branch push trigger). No crate code changes.
+
 ## v0.56.0 - 2026-11-26 (PM-allocated; BREAKING: takes unpopped-vocab 0.58 and fireline-grammar 0.9, whose types fuel re-exports; first published version of the 0.53.0 to 0.55.2 content)
 
 **This is the first published version carrying the content of the sections 0.53.0, 0.54.0, 0.55.0, 0.55.1 and 0.55.2 below (none of them was published; each is superseded by this one). Read those sections for the changes; the Breaking items in 0.53.0, 0.54.0 and 0.55.0 apply to this release.**
