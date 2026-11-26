@@ -80,7 +80,7 @@ kernel family backs six logical ops selected by the host kernel name: the value-
 input dtype — the **Mul** reduction is MSL-level only and has **no backing OpKind today**
 [consumer-ahead]) and the index-returning **ArgMax / ArgMin**
 (`OpKind::ArgMaxDim` / `ArgMinDim`, `impl_arg_reduce`, output = **U32** index;
-`storer<indexed<T>>` writes the `.i` field). The reduced region is indexed **linearly**
+`storer<indexed<T>>` writes the `.i` field). **NaN rule (spec, torch convention; measured 2026-11-25 on the hosted macOS runner's Apple Paravirtual device, 60/60 spec vectors, old comparator 30/60 diverge; not measured on physical Apple hardware):** the `indexed<T>` comparator lets a NaN WIN for argmax and argmin alike, the first NaN's index wins between NaNs, and with no NaN ties take the lowest index; the NaN test is a bit-pattern test (`arg_is_nan`) because the shaders compile with fast math on. Before this change a NaN was ignored. `fuel-metal-kernels` `argmax_argmin_nan_spec_vectors` runs the spec vectors on any host device. The reduced region is indexed **linearly**
 (`indexer_t<uint,false>`); one threadgroup folds one group via a simd-shuffle tree reduce and emits
 one output element. Output shape = the source with the reduced dims removed (one element per
 threadgroup). Min/Max use `fast::min`/`fast::max` for floats; arg ops break ties to the **lowest
@@ -148,7 +148,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Sum/Mul/Min/Max accumulate in T (NOT widened to f32 for half); Min/Max via fast::min/max; arg ops tie-break to lowest index; simd-shuffle tree reduce -> NOT bit-stable cross-hardware; empty tensor errors for min/max/arg."
+  notes: "Sum/Mul/Min/Max accumulate in T (NOT widened to f32 for half); Min/Max via fast::min/max; arg ops tie-break to lowest index; simd-shuffle tree reduce -> NOT bit-stable cross-hardware; empty tensor errors for min/max/arg. Declined Exact (KISS-OPS-6.17-0002): the Sum reduce flushes f32/bf16 subnormals (measured, fuel run 45748920513); the f32 Max reduce preserved them (measured, same run; a comparison-only path, not a general guarantee). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
@@ -225,7 +225,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "identical numerics to fast_reduce (in-T value fold, fast::min/max, tie-to-lowest, f32-only nothing here); strided indexer (rank 1-4 specialized, >4 fallback loop); simd-shuffle tree -> NOT bit-stable cross-hardware; empty errors for min/max/arg."
+  notes: "identical numerics to fast_reduce (in-T value fold, fast::min/max, tie-to-lowest, f32-only nothing here); strided indexer (rank 1-4 specialized, >4 fallback loop); simd-shuffle tree -> NOT bit-stable cross-hardware; empty errors for min/max/arg. Declined Exact (KISS-OPS-6.17-0002): the Sum reduce flushes f32/bf16 subnormals (measured, fuel run 45748920513); the f32 Max reduce preserved them (measured, same run; a comparison-only path, not a general guarantee). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
@@ -302,7 +302,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "online (Welford MD) max-subtract softmax; denominator d accumulates in f32 (f16/bf16 narrow on store); exp at f32; NOT bit-stable cross-hardware (transcendental + lane order)."
+  notes: "online (Welford MD) max-subtract softmax; denominator d accumulates in f32 (f16/bf16 narrow on store); exp at f32; NOT bit-stable cross-hardware (transcendental + lane order). Declined Exact (KISS-OPS-6.17-0002): this kernel flushes f32/bf16 subnormal operands and results to zero (measured, vulkane run 45748530618; fuel run 45748920513; softmax f32/bf16 subnormal result flushed to 0: fuel run 45764780697 (hosted macOS Apple Paravirtual device)). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserves subnormals (measured, same run). bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
@@ -389,7 +389,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "mean(x^2) accumulated in f32 (RMS<float>); no mean-centering; f16/bf16 narrow on store; optional inline alpha scale; simd-shuffle reduce -> NOT bit-stable cross-hardware."
+  notes: "mean(x^2) accumulated in f32 (RMS<float>); no mean-centering; f16/bf16 narrow on store; optional inline alpha scale; simd-shuffle reduce -> NOT bit-stable cross-hardware. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
@@ -478,7 +478,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "mean/M2 accumulated in f32 (LayerNormValue<float>); f16/bf16 narrow on store; optional inline alpha·+beta; simd-shuffle reduce -> NOT bit-stable cross-hardware."
+  notes: "mean/M2 accumulated in f32 (LayerNormValue<float>); f16/bf16 narrow on store; optional inline alpha·+beta; simd-shuffle reduce -> NOT bit-stable cross-hardware. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
@@ -564,7 +564,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "pure elementwise interleaved (adjacent-pair) rotation; arithmetic in T (no f32 widening); cos/sin caller-supplied, per-batch when stride_b>0; not bit-stable cross-hardware (transcendental tables differ)."
+  notes: "pure elementwise interleaved (adjacent-pair) rotation; arithmetic in T (no f32 widening); cos/sin caller-supplied, per-batch when stride_b>0; not bit-stable cross-hardware (transcendental tables differ). Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
@@ -649,7 +649,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "pure elementwise rotate-halves (split-half pairing); arithmetic in T (no f32 widening); cos/sin caller-supplied, per-batch when stride_b>0; not bit-stable cross-hardware."
+  notes: "pure elementwise rotate-halves (split-half pairing); arithmetic in T (no f32 widening); cos/sin caller-supplied, per-batch when stride_b>0; not bit-stable cross-hardware. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
@@ -734,7 +734,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "pure elementwise rotate-halves over (b,t,h,d) layout; arithmetic in T (no f32 widening); cos/sin caller-supplied, per-batch when stride_b>0; not bit-stable cross-hardware."
+  notes: "pure elementwise rotate-halves over (b,t,h,d) layout; arithmetic in T (no f32 widening); cos/sin caller-supplied, per-batch when stride_b>0; not bit-stable cross-hardware. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```

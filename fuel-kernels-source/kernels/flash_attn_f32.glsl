@@ -56,6 +56,14 @@ shared float partial_max[TPB];
 shared float partial_sum[TPB];
 shared float row_max_shared;
 shared float row_sum_shared;
+shared uint nan_flag;   // poison: set when any admissible score is NaN
+
+// NaN by BIT PATTERN (a NaN compare may be folded away by the compiler) and a canonical NaN, for the
+// poison flag: a NaN score (a NaN in Q, or in a K row this query attends) must make the row NaN, never
+// be swallowed by the "row max not finite" skip (ruling 2026-11-25; the flash/inference convention keeps a
+// FULLY MASKED row at zeros).
+bool is_nan_bits(float x) { return (floatBitsToUint(x) & 0x7fffffffu) > 0x7f800000u; }
+float nan_f() { return uintBitsToFloat(0x7fc00000u); }
 
 void main() {
     uint linear = gl_WorkGroupID.z;
@@ -77,6 +85,8 @@ void main() {
     uint o_row_off = ((bi * p.Hq + hi) * p.Sq + qi) * p.D;
 
     float alibi_h = (p.use_alibi != 0u) ? alibi_slopes[hi] : 0.0;
+    if (tid == 0u) nan_flag = 0u;
+    barrier();
 
     // ------ Stage 1: scores[kj] = dot(Q_row, K_row) * scale + mask + alibi ------
     for (uint kj = tid; kj < p.Sk; kj += TPB) {
@@ -95,9 +105,16 @@ void main() {
             float delta = float(kj) - float(qi);
             s += alibi_h * delta;
         }
+        if (is_nan_bits(s)) atomicOr(nan_flag, 1u);
         scores[kj] = s;
     }
     barrier();
+    if (nan_flag != 0u) {
+        for (uint dx = tid; dx < p.D; dx += TPB) {
+            O[o_row_off + dx] = nan_f();
+        }
+        return;
+    }
 
     // ------ Stage 2: row max (parallel reduction) ------
     float local_max = -3.402823e+38;

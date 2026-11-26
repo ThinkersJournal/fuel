@@ -35,6 +35,13 @@ uint f32_to_bf16_bits(float x) {
     return (rounded >> 16u) & 0xFFFFu;
 }
 
+// NaN by BIT PATTERN (a NaN compare may be folded away by the compiler) and a canonical NaN, for the
+// poison flag: a NaN score (a NaN in Q, or in a K row this query attends) must make the row NaN, never
+// be swallowed by the "row max not finite" skip (ruling 2026-11-25; the flash/inference convention keeps a
+// FULLY MASKED row at zeros).
+bool is_nan_bits(float x) { return (floatBitsToUint(x) & 0x7fffffffu) > 0x7f800000u; }
+float nan_f() { return uintBitsToFloat(0x7fc00000u); }
+
 void main() {
     uint row = gl_WorkGroupID.z;
     if (row >= p.rows) return;
@@ -42,6 +49,15 @@ void main() {
     uint stride = p.D + 2u;
     uint base = row * p.splits * stride;
 
+    // A poisoned split (a NaN score in its chunk) wrote NaN as its max: the row is NaN.
+    bool poisoned = false;
+    for (uint s = 0u; s < p.splits; ++s) {
+        if (is_nan_bits(P[base + s * stride + p.D])) poisoned = true;
+    }
+    if (poisoned) {
+        for (uint dx = tid; dx < p.D; dx += 256u) O[row * p.D + dx] = uint16_t(f32_to_bf16_bits(nan_f()));
+        return;
+    }
     float M = -3.402823e+38;
     for (uint s = 0u; s < p.splits; ++s) {
         float l = P[base + s * stride + p.D + 1u];

@@ -3,6 +3,67 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.55.0 - 2026-11-26 (PM-allocated; BREAKING numerics: Metal max/min NaN)
+
+### Breaking
+
+- `fuel-metal-kernels`: the Metal binary `maximum`/`minimum` kernels and the `max`/`min` value reduces (f32/f16/bf16, including the simd-group path) now PROPAGATE a NaN (a NaN in either operand, or anywhere in the reduced row, gives NaN), as `KISS-Ops 6.11-0002` and the CPU kernels do. Before, they returned the non-NaN operand / the max of the finite elements: the shaders compile with fast math ON by default, which folded `a > b ? a : b` and `fast::max` into a NaN-ignoring max. The NaN test is by bit pattern (`nan_bits` in `binary.metal`, `arg_is_nan` in `reduce.metal`). Measured on the hosted macOS runner's `Apple Paravirtual device` (not physical hardware): 5 of 19 audit cases diverged before, 19 of 19 agree after, and the whole `fuel-metal-kernels` lib suite passes (65 tests). Any model that fed NaN through a Metal softmax-max, layer-norm max or an elementwise max now gets NaN where it previously got a finite value.
+
+### Added
+
+- `fuel-metal-kernels` tests: `nan_audit_fast_math_paths` (relu, binary max/min, value reduces, softmax, `affine` with an infinite scale = the `0 * inf` of the `Tensor::var` recipe) and `nan_audit_unary_and_half_variants` (every contiguous unary kernel NaN -> NaN in f32; f16/bf16 variants of relu, binary max/min, the value reduces and softmax). `sign(NaN) = 0` is KISS-pinned (6.2-0009) and reported, not asserted.
+
+### Notes
+
+- Not audited on Metal: the sort/index/ternary kernels and the other half-precision ops. The `Tensor::var` recipe is not runnable end to end on Metal (Metal is not wired into the lazy executor); its components were measured. `docs/gaps.md` GAP-405 carries the audit.
+
+## v0.54.0 - 2026-11-26 (PM-allocated; BREAKING: follow-up to #715, behaviour change on the DECOMPOSED FlashAttn path and var NaN correction is an Err)
+
+### Breaking
+
+- `fuel-graph`: the decomposed / backward-recompute `FlashAttn` (`recompute_probs`, `recompute_probs_recipe`) masks causal and window positions with a `MaskedFill(-inf)` SELECT under a `Ge` predicate built from `Iota` alone, replacing the additive `score + (-inf)` `Triu`/`Tril` bands. The additive form turned a NaN or +inf score at a MASKED-OUT position into NaN (`inf + -inf`) and the softmax spread it over the row, so the decomposed path disagreed with the fused CPU kernel and Vulkan GLSL (which skip inadmissible keys before scoring), and a masked-out K NaN poisoned the backward gradients too (aMusedPip review of #715, M1). A fully masked row (zeros) is now decided from the mask alone, so contract (1) takes precedence over (2): a NaN Q on a row that attends nothing is zeros on both paths. Graph shape changes: no `Triu`/`Tril` nodes in the decomposition; `Ge` + `MaskedFill` instead.
+- `fuel-tensor`: `Tensor::var` / `var_keepdim` return a typed error for a NaN `correction` (the zero-clamped divisor had turned a NaN result into `inf`; aMusedPip L2).
+
+- Includes everything in 0.53.0 below, which was never published (superseded by this release); crates.io goes from 0.47.32 straight to 0.54.0. The 0.53.0 Breaking entries, repeated here so a reader upgrading from 0.47.32 sees them in one place:
+
+- `fuel-cpu-backend`: `argmax_dim_*` / `argmin_dim_*` (f32/f64/bf16/f16) now follow the torch NaN convention: a NaN WINS, for argmax and argmin alike, and the FIRST NaN's index is returned (an all-NaN row is index 0). Before, a NaN was ignored unless it sat at index 0 (`new > best` with element 0 as the initial best), so the result depended on where the NaN sat: `[1,NaN,0,5]` was (argmax 3, argmin 2), now (1, 1); `[1,5,NaN]` was (1, 0), now (2, 2). With no NaN nothing changes: ties take the first index and `-0.0 == +0.0`.
+- `fuel-cpu-backend` / `fuel-graph`: `FlashAttn` follows one contract on masked and NaN rows, on the fused CPU kernel and on the decomposed (softmax) recipe: (1) a FULLY MASKED row (no key admitted by causal/window) is ZEROS (the flash/inference convention; the fused kernel already did this, the DECOMPOSITION returned NaN and now returns zeros: a `MaskedFill[0]` select on rows whose post-mask row max equals the all -inf constant's); (2) a NaN in Q, or in K/V at a position the query attends, makes that output NaN. **Before, the fused CPU kernel returned ZEROS for a NaN query row** (all scores NaN, row max stayed -inf, row skipped): the NaN was swallowed. Now it is NaN (BREAKING for any caller that relied on the swallow); (3) a NaN in a V row whose key is MASKED OUT for a query is UNSPECIFIED (the fused CPU kernel ignores it; the dense decomposition and the Vulkan kernel propagate it): no test pins either, the row must not crash and, if not NaN, must equal the NaN-free reference. The imperative `recompute_probs` (the FlashAttn backward V-variant) carries the same select, so a fully masked row's gradient is 0, not NaN. CUDA/Vulkan/Metal attention are not changed here (CUDA waits on baracuda E0k).
+- `fuel-tensor`: `Tensor::var` / `var_keepdim` divide by `max(0, n - correction)` (the torch rule). Before, `correction > n` gave a finite, possibly NEGATIVE variance (`[1,3]` with `correction = 3` was `-2.0`; `[5]` with `correction = 2` was `0.0`). Now: `correction == n` is NaN (0/0), `correction > n` is `inf` (NaN when the sum of squared deviations is 0), never negative. `correction < n` is unchanged. Every backend inherits the rule through the recipe (mean/sub/sqr/sum/mul_scalar); only CPU is measured. The `var_keepdim` doc comment's claim that `correction >= n` is non-finite was true only for `==`.
+- `fuel-transformers`: greedy decoding (`LogitsProcessor` with `Sampling::ArgMax`, `sample_argmax`) now returns a typed error when the logit row contains a NaN (the model produced NaN: no token is picked silently), and ties take the FIRST index. Before: `max_by(total_cmp)` returned the LAST tied index and the last NaN, and skipped a sign-bit NaN. Consumers that sample greedily (lightbulb) must handle the new `Err`. Other strategies (multinomial, top-k/top-p, Gumbel) are unchanged and do not check for NaN.
+- Downstream effect: any caller that took the argmax of NaN-bearing logits (greedy sampling, top-1 paths) now gets the NaN's index instead of the best finite one. That is torch's behaviour; it makes a NaN visible instead of masking it.
+- Metal `argmax`/`argmin` (`fuel-metal-kernels` `reduce.metal`, the `indexed<T>` comparator): a NaN now wins and the first NaN's index is returned, the spec rule (before: a NaN was ignored). **Measured on the hosted macOS runner's `Apple Paravirtual device` (2026-11-25, GitHub Actions, fast math at the runtime default): the 10 spec vectors x f32/f16/bf16 x argmax/argmin = 60 of 60 agree with the spec; the SAME vectors on the old comparator diverge in 30 of 60 (control).** A paravirtual GPU is not a physical Apple GPU, so it is not claimed for hardware; text-level tests in `fuel-metal-kernels` pin the comparator source and `fuel-metal-kernels` `argmax_argmin_nan_spec_vectors` runs the vectors wherever a device exists. The NaN test is by bit pattern because the shaders compile with fast math on.
+
+### Notes
+
+- Pinned, not changed: an ATTENDED `+inf` score row is zeros on the fused CPU kernel (it treats a non-finite row max like a fully masked row) and NaN on the decomposed path (aMusedPip L1; pre-existing, outside the NaN scope of #715). `flash_attn_*_follows_the_masked_and_nan_row_contract` marks that case `Any` and says so.
+- The three live-Vulkan tests now point at the hosted `--skip` list in `rust-ci.yml` (aMusedPip N2).
+
+## v0.53.0 - 2026-11-26 (not published; superseded by 0.54.0)
+
+### Breaking
+
+- `fuel-cpu-backend`: `argmax_dim_*` / `argmin_dim_*` (f32/f64/bf16/f16) now follow the torch NaN convention: a NaN WINS, for argmax and argmin alike, and the FIRST NaN's index is returned (an all-NaN row is index 0). Before, a NaN was ignored unless it sat at index 0 (`new > best` with element 0 as the initial best), so the result depended on where the NaN sat: `[1,NaN,0,5]` was (argmax 3, argmin 2), now (1, 1); `[1,5,NaN]` was (1, 0), now (2, 2). With no NaN nothing changes: ties take the first index and `-0.0 == +0.0`.
+- `fuel-cpu-backend` / `fuel-graph`: `FlashAttn` follows one contract on masked and NaN rows, on the fused CPU kernel and on the decomposed (softmax) recipe: (1) a FULLY MASKED row (no key admitted by causal/window) is ZEROS (the flash/inference convention; the fused kernel already did this, the DECOMPOSITION returned NaN and now returns zeros: a `MaskedFill[0]` select on rows whose post-mask row max equals the all -inf constant's); (2) a NaN in Q, or in K/V at a position the query attends, makes that output NaN. **Before, the fused CPU kernel returned ZEROS for a NaN query row** (all scores NaN, row max stayed -inf, row skipped): the NaN was swallowed. Now it is NaN (BREAKING for any caller that relied on the swallow); (3) a NaN in a V row whose key is MASKED OUT for a query is UNSPECIFIED (the fused CPU kernel ignores it; the dense decomposition and the Vulkan kernel propagate it): no test pins either, the row must not crash and, if not NaN, must equal the NaN-free reference. The imperative `recompute_probs` (the FlashAttn backward V-variant) carries the same select, so a fully masked row's gradient is 0, not NaN. CUDA/Vulkan/Metal attention are not changed here (CUDA waits on baracuda E0k).
+- `fuel-tensor`: `Tensor::var` / `var_keepdim` divide by `max(0, n - correction)` (the torch rule). Before, `correction > n` gave a finite, possibly NEGATIVE variance (`[1,3]` with `correction = 3` was `-2.0`; `[5]` with `correction = 2` was `0.0`). Now: `correction == n` is NaN (0/0), `correction > n` is `inf` (NaN when the sum of squared deviations is 0), never negative. `correction < n` is unchanged. Every backend inherits the rule through the recipe (mean/sub/sqr/sum/mul_scalar); only CPU is measured. The `var_keepdim` doc comment's claim that `correction >= n` is non-finite was true only for `==`.
+- `fuel-transformers`: greedy decoding (`LogitsProcessor` with `Sampling::ArgMax`, `sample_argmax`) now returns a typed error when the logit row contains a NaN (the model produced NaN: no token is picked silently), and ties take the FIRST index. Before: `max_by(total_cmp)` returned the LAST tied index and the last NaN, and skipped a sign-bit NaN. Consumers that sample greedily (lightbulb) must handle the new `Err`. Other strategies (multinomial, top-k/top-p, Gumbel) are unchanged and do not check for NaN.
+- Downstream effect: any caller that took the argmax of NaN-bearing logits (greedy sampling, top-1 paths) now gets the NaN's index instead of the best finite one. That is torch's behaviour; it makes a NaN visible instead of masking it.
+- Metal `argmax`/`argmin` (`fuel-metal-kernels` `reduce.metal`, the `indexed<T>` comparator): a NaN now wins and the first NaN's index is returned, the spec rule (before: a NaN was ignored). **Measured on the hosted macOS runner's `Apple Paravirtual device` (2026-11-25, GitHub Actions, fast math at the runtime default): the 10 spec vectors x f32/f16/bf16 x argmax/argmin = 60 of 60 agree with the spec; the SAME vectors on the old comparator diverge in 30 of 60 (control).** A paravirtual GPU is not a physical Apple GPU, so it is not claimed for hardware; text-level tests in `fuel-metal-kernels` pin the comparator source and `fuel-metal-kernels` `argmax_argmin_nan_spec_vectors` runs the vectors wherever a device exists. The NaN test is by bit pattern because the shaders compile with fast math on.
+
+### Fixed
+
+- Known divergences left open, measured: Vulkan `argmax`/`argmin` ignore a NaN (36 cases per adapter on the 4070 and the Radeon 610M; `fuel-vulkan-dispatch/tests/vulkan_arg_nan_vectors_live.rs` pins it both ways); CUDA `arg_reduce` ignores a NaN (baracuda probe).
+- `argmax_dim_f64` / `argmin_dim_f64` (and bf16/f16) compared after widening to f32, so f64 values closer than f32 resolution tied falsely (`[1, 1+1e-12, 1-1e-12]` argmax was 0). They now compare in f64 (exact for every input dtype).
+
+### Notes
+
+- CPU `max_reduce`/`min_reduce`/`reduce_max_to` already propagate a NaN (KISS-Ops 6.11-0002) and are unchanged; tests now pin that, plus `-0.0`/`+0.0` (the first-seen zero is kept) and that an empty reduction is an error. CUDA `arg_reduce` and `reduce` max/min still ignore NaN (baracuda probe) until baracuda matches; CPU and CUDA disagree on NaN rows until then.
+
+## v0.52.1 - 2026-11-25 (PM-allocated; docs only: row 172 design notes for items 2 and 3, GAP-399..406 provisional; not breaking)
+
+### Changed
+
+- Docs: design notes `docs/design-notes/2026-11-25-row172-item2-matmul-topk-epilogue.md` and `2026-11-25-row172-item3-conv-epilogue.md`; `docs/gaps.md` GAP-399 to GAP-406 (provisional); the ROADMAP row 172 line; provenance index lines. No code change.
+
 ## v0.52.0 - 2026-11-25 (PM-allocated; BREAKING: `FusedOpParams` gained two variants and the enum is not `non_exhaustive`; row 172 item 2)
 
 ### Breaking

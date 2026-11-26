@@ -2517,3 +2517,585 @@ fn commands_concurrent_acquisition() {
 
     commands.wait_until_completed().unwrap();
 }
+
+/// The argmax/argmin NaN SPEC VECTORS (torch convention, the CPU rule): a NaN WINS for both, the
+/// FIRST NaN's index is returned, ties take the first index, `-0.0 == +0.0`. Shared with the CPU
+/// test mods `arg_nan_*` and the Vulkan test `vulkan_arg_nan_vectors_live`. Runs on whatever Metal
+/// device the host has (a hosted macOS runner exposes an "Apple Paravirtual device").
+#[test]
+fn argmax_argmin_nan_spec_vectors() {
+    const NAN: f64 = f64::NAN;
+    let mut long: Vec<f64> = (0..1024).map(|i| (i % 7) as f64).collect();
+    long[700] = NAN;
+    let long_ties: Vec<f64> = (0..1024).map(|i| (i % 7) as f64).collect();
+    let vectors: Vec<(&str, Vec<f64>, u32, u32)> = vec![
+        ("nan-mid", vec![1.0, NAN, 0.0, 5.0], 1, 1),
+        ("nan-last", vec![1.0, 5.0, NAN], 2, 2),
+        ("nan-first", vec![NAN, 1.0, 5.0], 0, 0),
+        ("two-nans", vec![3.0, NAN, NAN, 1.0], 1, 1),
+        ("all-nan", vec![NAN, NAN, NAN], 0, 0),
+        ("ties", vec![5.0, 5.0, 2.0, 2.0], 0, 2),
+        ("zeros-a", vec![-0.0, 0.0, 0.0], 0, 0),
+        ("zeros-b", vec![0.0, -0.0, -0.0], 0, 0),
+        ("long-nan-700", long, 700, 700),
+        ("long-ties", long_ties, 6, 0),
+    ];
+    let mut diverging: Vec<String> = Vec::new();
+    for (dt, conv) in [("f32", 0u8), ("f16", 1u8), ("bf16", 2u8)] {
+        for (vname, row, want_max, want_min) in &vectors {
+            for (op, want) in [("argmax", *want_max), ("argmin", *want_min)] {
+                let name: &'static str = Box::leak(format!("fast_{op}_{dt}").into_boxed_str());
+                let got: u32 = match conv {
+                    0 => {
+                        let v: Vec<f32> = row.iter().map(|&x| x as f32).collect();
+                        run_reduce::<f32, u32>(&v, v.len(), 1, name)[0]
+                    }
+                    1 => {
+                        let v: Vec<f16> = row.iter().map(|&x| f16::from_f64(x)).collect();
+                        run_reduce::<f16, u32>(&v, v.len(), 1, name)[0]
+                    }
+                    _ => {
+                        let v: Vec<bf16> = row.iter().map(|&x| bf16::from_f64(x)).collect();
+                        run_reduce::<bf16, u32>(&v, v.len(), 1, name)[0]
+                    }
+                };
+                let ok = got == want;
+                println!(
+                    "METALARG {op}/{dt}/{vname}: got {got} want {want} {}",
+                    if ok { "OK" } else { "DIVERGES" }
+                );
+                if !ok {
+                    diverging.push(format!("{op}/{dt}/{vname}: got {got} want {want}"));
+                }
+            }
+        }
+    }
+    assert!(
+        diverging.is_empty(),
+        "{} Metal arg-reduce case(s) diverge from the NaN spec: {diverging:?}",
+        diverging.len()
+    );
+}
+
+// ---- the arg-reduce comparator is spelled the way the CPU rule is (text level) ----
+// A TEXT-level pin on `reduce.metal` (read through `crate::source::REDUCE`, the same string the runtime compiles):
+// the `indexed<T>` comparators let a NaN WIN and take the first NaN's index; no NaN: ties take the first index.
+// The NaN test is a BIT-PATTERN test (`arg_is_nan`) because the shaders compile with fast math ON by default.
+// The numerics are measured by `argmax_argmin_nan_spec_vectors` on the host device.
+
+fn nan_comparator_body(src: &str, op: &str) -> String {
+    let head = format!("METAL_FUNC bool operator{op}(indexed<T> lhs, indexed<T> rhs)");
+    let at = src
+        .find(&head)
+        .unwrap_or_else(|| panic!("`{head}` not found in reduce.metal"));
+    let open = at + src[at..].find('{').expect("comparator has a body");
+    let mut depth = 0usize;
+    for (i, c) in src[open..].char_indices() {
+        match c {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return src[open..=open + i].to_string();
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("unbalanced braces in the `{op}` comparator");
+}
+
+fn nan_norm(s: &str) -> String {
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+#[test]
+fn both_indexed_comparators_let_a_nan_win_and_take_the_first_nan() {
+    for op in ["<", ">"] {
+        let body = nan_norm(&nan_comparator_body(crate::source::REDUCE, op));
+        for needle in [
+            "bool ln = arg_is_nan(lhs.val);",
+            "bool rn = arg_is_nan(rhs.val);",
+            "if (ln || rn) return ln && (!rn || lhs.i < rhs.i);",
+            "(lhs.val == rhs.val && lhs.i < rhs.i)",
+        ] {
+            assert!(
+                body.contains(needle),
+                "operator{op} for indexed<T> must contain `{needle}`; body: {body}"
+            );
+        }
+    }
+}
+
+/// Sabotage sibling: the OLD comparator text (NaN compares false, so a NaN is ignored) fails the same check.
+#[test]
+fn the_old_indexed_comparator_text_fails_the_check() {
+    let old = "constexpr METAL_FUNC bool operator>(indexed<T> lhs, indexed<T> rhs) { return lhs.val > rhs.val || (lhs.val == rhs.val && lhs.i < rhs.i); }";
+    assert!(!nan_norm(old).contains("if (ln || rn) return ln && (!rn || lhs.i < rhs.i);"));
+}
+
+#[test]
+fn the_nan_helper_covers_float_half_and_bfloat_by_bit_pattern() {
+    let src = nan_norm(crate::source::REDUCE);
+    for needle in [
+        "bool arg_is_nan(float x) { return (as_type<uint>(x) & 0x7fffffffu) > 0x7f800000u; }",
+        "bool arg_is_nan(half x) { return (as_type<ushort>(x) & 0x7fffu) > 0x7c00u; }",
+        "bool arg_is_nan(bfloat x) { return (as_type<ushort>(x) & 0x7fffu) > 0x7f80u; }",
+        "template<typename T> METAL_FUNC bool arg_is_nan(T) { return false; }",
+    ] {
+        assert!(src.contains(needle), "reduce.metal must contain `{needle}`");
+    }
+}
+
+/// GAP-405 audit: NaN behaviour of the Metal paths that a fast-math compile could fold (relu, binary
+/// maximum/minimum, the value reduces, softmax, `affine` with an infinite scale = the `0 * inf` of the
+/// `Tensor::var` recipe). Fuel's convention (KISS-Ops 6.11-0002, torch): these PROPAGATE NaN, and
+/// `0 * inf` is NaN. The shaders compile with fast math ON by default (`get_compile_options`). Runs on
+/// whatever Metal device the host has; every case is printed (`METALNAN`) and any divergence fails.
+#[test]
+fn nan_audit_fast_math_paths() {
+    let nan = f32::NAN;
+    let inf = f32::INFINITY;
+    // `want`: None = NaN, Some(x) = exactly x.
+    let mut bad: Vec<String> = Vec::new();
+    let mut rec = |name: &str, got: &[f32], want: &[Option<f32>]| {
+        for (i, (g, w)) in got.iter().zip(want).enumerate() {
+            let ok = match w {
+                None => g.is_nan(),
+                Some(x) => !g.is_nan() && g == x,
+            };
+            println!(
+                "METALNAN {name}[{i}]: got {g} want {w:?} {}",
+                if ok { "OK" } else { "DIVERGES" }
+            );
+            if !ok {
+                bad.push(format!("{name}[{i}]: got {g} want {w:?}"));
+            }
+        }
+        assert_eq!(got.len(), want.len(), "{name}");
+    };
+    // relu: NaN -> NaN, negatives clamp.
+    let r = run(&[nan, -1.0f32, 2.0], unary::contiguous::relu::FLOAT);
+    rec("relu_f32", &r, &[None, Some(0.0), Some(2.0)]);
+    // binary maximum / minimum: either operand NaN -> NaN.
+    let r = run_binary(&[nan, 1.0f32, 2.0], &[1.0f32, nan, 3.0], "bmaximum_f32");
+    rec("bmaximum_f32", &r, &[None, None, Some(3.0)]);
+    let r = run_binary(&[nan, 1.0f32, 2.0], &[1.0f32, nan, 3.0], "bminimum_f32");
+    rec("bminimum_f32", &r, &[None, None, Some(2.0)]);
+    // value reduces over one row holding a NaN (N=4, one output).
+    let row = [1.0f32, nan, 0.0, 5.0];
+    let r: Vec<f32> = run_reduce(&row, 4, 1, "fast_max_f32");
+    rec("fast_max_f32", &r, &[None]);
+    let r: Vec<f32> = run_reduce(&row, 4, 1, "fast_min_f32");
+    rec("fast_min_f32", &r, &[None]);
+    let r: Vec<f32> = run_reduce(&row, 4, 1, "fast_sum_f32");
+    rec("fast_sum_f32", &r, &[None]);
+    // softmax of a row holding a NaN: every output is NaN.
+    let r = run_softmax(&[1.0f32, nan, 2.0, 3.0], 4, "softmax_f32");
+    rec("softmax_f32", &r, &[None, None, None, None]);
+    // affine with an infinite scale: 0*inf = NaN, 2*inf = inf, -3*inf = -inf (the var recipe's mul_scalar).
+    let r = run_affine(&[0.0f32, 2.0, -3.0], f64::INFINITY, 0.0);
+    rec("affine_inf_f32", &r, &[None, Some(inf), Some(-inf)]);
+    assert!(
+        bad.is_empty(),
+        "{} Metal NaN-audit case(s) diverge: {bad:?}",
+        bad.len()
+    );
+}
+
+/// GAP-405 audit, part 2: every contiguous UNARY kernel maps a NaN input to NaN (f32; `sign` is reported but
+/// not asserted: torch gives NaN, Fuel's convention for it is not pinned), and the half-precision (f16, bf16)
+/// variants of the ops audited in `nan_audit_fast_math_paths`: relu, binary maximum/minimum, the value
+/// reduces, softmax.
+#[test]
+fn nan_audit_unary_and_half_variants() {
+    let mut bad: Vec<String> = Vec::new();
+    let mut note = |name: &str, ok: bool, got: String| {
+        println!(
+            "METALNAN {name}: got {got} {}",
+            if ok { "OK" } else { "DIVERGES" }
+        );
+        if !ok {
+            bad.push(format!("{name}: got {got}"));
+        }
+    };
+    // ---- unary, f32: NaN in -> NaN out (element 0), element 1 (0.5) stays finite.
+    macro_rules! unary_nan {
+        ($($op:ident),*) => {$(
+            let r = run(&[f32::NAN, 0.5f32], unary::contiguous::$op::FLOAT);
+            note(concat!("unary_", stringify!($op), "_f32"), r[0].is_nan() && !r[1].is_nan(), format!("{r:?}"));
+        )*};
+    }
+    unary_nan!(
+        cos, sin, exp, sqr, sqrt, neg, log, gelu_tanh, abs, ceil, floor, relu, round, erf, gelu,
+        tanh, recip, silu, sigmoid
+    );
+    let r = run(&[f32::NAN, 0.5f32], unary::contiguous::sign::FLOAT);
+    println!("METALNAN unary_sign_f32 (informational, torch gives NaN): got {r:?}");
+    // ---- half variants.
+    macro_rules! half_variants {
+        ($T:ty, $suffix:literal, $conv:expr, $relu:expr) => {{
+            let c: fn(f32) -> $T = $conv;
+            let nan = c(f32::NAN);
+            let v = |xs: &[f32]| -> Vec<$T> { xs.iter().map(|&x| c(x)).collect() };
+            let isn = |x: $T| -> bool { f32::from(x).is_nan() };
+            let r = run(&v(&[f32::NAN, -1.0, 2.0]), $relu);
+            note(
+                concat!("relu_", $suffix),
+                isn(r[0]) && f32::from(r[1]) == 0.0 && f32::from(r[2]) == 2.0,
+                format!("{r:?}"),
+            );
+            let x = v(&[f32::NAN, 1.0, 2.0]);
+            let y = v(&[1.0, f32::NAN, 3.0]);
+            let r = run_binary(&x, &y, concat!("bmaximum_", $suffix));
+            note(
+                concat!("bmaximum_", $suffix),
+                isn(r[0]) && isn(r[1]) && f32::from(r[2]) == 3.0,
+                format!("{r:?}"),
+            );
+            let r = run_binary(&x, &y, concat!("bminimum_", $suffix));
+            note(
+                concat!("bminimum_", $suffix),
+                isn(r[0]) && isn(r[1]) && f32::from(r[2]) == 2.0,
+                format!("{r:?}"),
+            );
+            let row = v(&[1.0, f32::NAN, 0.0, 5.0]);
+            let r: Vec<$T> = run_reduce(&row, 4, 1, concat!("fast_max_", $suffix));
+            note(concat!("fast_max_", $suffix), isn(r[0]), format!("{r:?}"));
+            let r: Vec<$T> = run_reduce(&row, 4, 1, concat!("fast_min_", $suffix));
+            note(concat!("fast_min_", $suffix), isn(r[0]), format!("{r:?}"));
+            let r: Vec<$T> = run_reduce(&row, 4, 1, concat!("fast_sum_", $suffix));
+            note(concat!("fast_sum_", $suffix), isn(r[0]), format!("{r:?}"));
+            let r = run_softmax(
+                &v(&[1.0, f32::NAN, 2.0, 3.0]),
+                4,
+                concat!("softmax_", $suffix),
+            );
+            note(
+                concat!("softmax_", $suffix),
+                r.iter().all(|x| isn(*x)),
+                format!("{r:?}"),
+            );
+            let _ = nan;
+        }};
+    }
+    half_variants!(f16, "f16", f16::from_f32, unary::contiguous::relu::HALF);
+    half_variants!(
+        bf16,
+        "bf16",
+        bf16::from_f32,
+        unary::contiguous::relu::BFLOAT
+    );
+    assert!(
+        bad.is_empty(),
+        "{} Metal NaN-audit case(s) diverge: {bad:?}",
+        bad.len()
+    );
+}
+
+/// Subnormal behaviour of the Metal kernels (vulkane's hosted-macOS probe, run 45748530618, found that the Metal
+/// device FLUSHES f32 and bf16 subnormals, operands and results, to zero and PRESERVES f16 ones). This test
+/// MEASURES it for Fuel's kernels on the host device and prints one `METALSUB` line per case (`FLUSHED` when the
+/// result is zero where IEEE gives a nonzero subnormal, `IEEE` when preserved). It asserts nothing: it is a
+/// record, not a gate (CPU/CUDA/Vulkan subnormals are a separate measurement; do not read it as parity).
+#[test]
+fn subnormal_behaviour_record() {
+    // f32: smallest normal is 1.17549435e-38; 1e-40 and 2e-40 are subnormal.
+    let s1 = 1.0e-40_f32;
+    let s2 = 2.0e-40_f32;
+    let report = |name: &str, got: f32, want: f32| {
+        let kind = if got == want {
+            "IEEE"
+        } else if got == 0.0 {
+            "FLUSHED"
+        } else {
+            "OTHER"
+        };
+        println!("METALSUB {name}: got {got:e} want {want:e} {kind}");
+    };
+    // operand subnormal, result subnormal
+    let r = run_binary(&[s1], &[s1], "badd_f32");
+    report("badd_f32 subnormal+subnormal", r[0], s1 + s1);
+    let r = run_binary(&[s1], &[0.0f32], "badd_f32");
+    report("badd_f32 subnormal+0 (operand preserved?)", r[0], s1);
+    // result subnormal from normal operands: 1e-30 * 1e-10 = 1e-40
+    let r = run_binary(&[1.0e-30_f32], &[1.0e-10_f32], "bmul_f32");
+    report(
+        "bmul_f32 normal*normal -> subnormal result",
+        r[0],
+        1.0e-30_f32 * 1.0e-10_f32,
+    );
+    let r = run_binary(&[s1], &[1.0f32], "bmul_f32");
+    report("bmul_f32 subnormal*1 (operand preserved?)", r[0], s1);
+    let r = run_binary(&[s1], &[0.0f32], "bmaximum_f32");
+    report("bmaximum_f32 max(subnormal, 0)", r[0], s1);
+    let r = run_affine(&[s1], 1.0, 0.0);
+    report("affine_f32 1*subnormal+0", r[0], s1);
+    let r = run_affine(&[1.0e-30_f32], 1.0e-10, 0.0);
+    report(
+        "affine_f32 normal*1e-10 -> subnormal result",
+        r[0],
+        1.0e-30_f32 * 1.0e-10_f32,
+    );
+    let r: Vec<f32> = run_reduce(&[s1, s2], 2, 1, "fast_sum_f32");
+    report("fast_sum_f32 [1e-40, 2e-40]", r[0], s1 + s2);
+    let r: Vec<f32> = run_reduce(&[s1, s2], 2, 1, "fast_max_f32");
+    report("fast_max_f32 [1e-40, 2e-40]", r[0], s2);
+    let r = run_softmax(&[s1, s2], 2, "softmax_f32");
+    println!(
+        "METALSUB softmax_f32 [1e-40, 2e-40]: got {:?} (uniform 0.5 expected either way)",
+        r
+    );
+    // bf16: same exponent range as f32 (smallest normal ~1.1755e-38); 1e-40 is a bf16 subnormal.
+    let b1 = bf16::from_f32(1.0e-40);
+    let rb = run_binary(&[b1], &[b1], "badd_bf16");
+    println!(
+        "METALSUB badd_bf16 subnormal+subnormal: got {:e} want {:e} (bf16 subnormal operand {:e})",
+        rb[0].to_f32(),
+        (b1 + b1).to_f32(),
+        b1.to_f32()
+    );
+    let rb = run_binary(&[b1], &[bf16::from_f32(0.0)], "badd_bf16");
+    println!(
+        "METALSUB badd_bf16 subnormal+0: got {:e} want {:e}",
+        rb[0].to_f32(),
+        b1.to_f32()
+    );
+    // f16: smallest normal 6.1035e-5; 1e-6 is an f16 subnormal.
+    let h1 = f16::from_f32(1.0e-6);
+    let rh = run_binary(&[h1], &[h1], "badd_f16");
+    println!(
+        "METALSUB badd_f16 subnormal+subnormal: got {:e} want {:e} (f16 subnormal operand {:e})",
+        rh[0].to_f32(),
+        (h1 + h1).to_f32(),
+        h1.to_f32()
+    );
+    let rh = run_binary(&[h1], &[f16::from_f32(0.0)], "badd_f16");
+    println!(
+        "METALSUB badd_f16 subnormal+0: got {:e} want {:e}",
+        rh[0].to_f32(),
+        h1.to_f32()
+    );
+}
+
+/// Subnormal behaviour of the Metal DATA-MOVEMENT kernels (index_select, where_cond, narrowing cast) and of `neg`/`abs`
+/// (sign-bit operations), per dtype: printed as `METALSUB2 <kernel>: got .. want .. PRESERVED|FLUSHED`. A record, not
+/// a gate (see `subnormal_behaviour_record`). f32/bf16 subnormal 1e-40 and 2e-40; f16 subnormal 1e-6 and 2e-6.
+#[test]
+fn subnormal_data_movement_record() {
+    let line = |name: &str, got: f32, want: f32| {
+        let kind = if got == want {
+            "PRESERVED"
+        } else if got == 0.0 {
+            "FLUSHED"
+        } else {
+            "OTHER"
+        };
+        println!("METALSUB2 {name}: got {got:e} want {want:e} {kind}");
+    };
+    // ---- index_select: embedding [2,1] = [a, b], ids [1, 0] -> [b, a]
+    let (a32, b32) = (1.0e-40_f32, 2.0e-40_f32);
+    let r = run_index_select(&[a32, b32], &[2, 1], &[1, 1], &[1u32, 0], 0, "is_u32_f32");
+    line("index_select f32 [b]", r[0], b32);
+    line("index_select f32 [a]", r[1], a32);
+    let (ab, bb) = (bf16::from_f32(1.0e-40), bf16::from_f32(2.0e-40));
+    let r = run_index_select(&[ab, bb], &[2, 1], &[1, 1], &[1u32, 0], 0, "is_u32_bf16");
+    line("index_select bf16 [b]", r[0].to_f32(), bb.to_f32());
+    let (ah, bh) = (f16::from_f32(1.0e-6), f16::from_f32(2.0e-6));
+    let r = run_index_select(&[ah, bh], &[2, 1], &[1, 1], &[1u32, 0], 0, "is_u32_f16");
+    line("index_select f16 [b]", r[0].to_f32(), bh.to_f32());
+    // ---- where_cond: cond [1, 0] picks left then right
+    let shape = [2usize];
+    let cond = vec![1u8, 0u8];
+    let one = (vec![1usize], 0usize);
+    let r = run_where_cond(
+        &shape,
+        &cond,
+        one.clone(),
+        &[a32, a32],
+        one.clone(),
+        &[b32, b32],
+        one.clone(),
+        "where_u8_f32",
+    );
+    line("where_cond f32 [true->a]", r[0], a32);
+    line("where_cond f32 [false->b]", r[1], b32);
+    let r = run_where_cond(
+        &shape,
+        &cond,
+        one.clone(),
+        &[ab, ab],
+        one.clone(),
+        &[bb, bb],
+        one.clone(),
+        "where_u8_bf16",
+    );
+    line("where_cond bf16 [true->a]", r[0].to_f32(), ab.to_f32());
+    let r = run_where_cond(
+        &shape,
+        &cond,
+        one.clone(),
+        &[ah, ah],
+        one.clone(),
+        &[bh, bh],
+        one.clone(),
+        "where_u8_f16",
+    );
+    line("where_cond f16 [true->a]", r[0].to_f32(), ah.to_f32());
+    // ---- narrowing cast f32 -> bf16 / f16 of a value that is subnormal in the TARGET type
+    let r: Vec<bf16> = run_cast(&[a32], "cast_f32_bf16");
+    line(
+        "cast f32->bf16 (bf16 subnormal result)",
+        r[0].to_f32(),
+        ab.to_f32(),
+    );
+    let r: Vec<f16> = run_cast(&[1.0e-6_f32], "cast_f32_f16");
+    line(
+        "cast f32->f16 (f16 subnormal result)",
+        r[0].to_f32(),
+        ah.to_f32(),
+    );
+    // ---- neg / abs (sign-bit operations) on a subnormal
+    let r = run(&[a32, -a32], unary::contiguous::neg::FLOAT);
+    line("neg f32 [a]", r[0], -a32);
+    let r = run(&[-a32, a32], unary::contiguous::abs::FLOAT);
+    line("abs f32 [-a]", r[0], a32);
+    let r = run(&[ab, -ab], unary::contiguous::neg::BFLOAT);
+    line("neg bf16 [a]", r[0].to_f32(), (-ab).to_f32());
+    let r = run(&[ah, -ah], unary::contiguous::neg::HALF);
+    line("neg f16 [a]", r[0].to_f32(), (-ah).to_f32());
+}
+
+/// Subnormal behaviour of the Metal MATMUL (`mlx_gemm`) and SOFTMAX kernels per dtype (GAP-410): printed as
+/// `METALSUB3 <case>: got .. want .. PRESERVED|FLUSHED`. A record, not a gate. gemm: `out[0] = lhs[0] * rhs[0] + 0..`
+/// with every other lhs element 0 and every rhs element `r`, so out[0] = lhs[0] * r (operand-subnormal case: r = 1;
+/// result-subnormal case: both operands normal, product subnormal). softmax: row `[0, -x]` -> out[1] = exp(-x) /
+/// (1 + exp(-x)), a subnormal RESULT from normal inputs.
+#[test]
+fn subnormal_matmul_softmax_record() {
+    let line = |name: &str, got: f32, want: f32| {
+        let kind = if got == want {
+            "PRESERVED"
+        } else if got == 0.0 {
+            "FLUSHED"
+        } else {
+            "OTHER"
+        };
+        println!("METALSUB3 {name}: got {got:e} want {want:e} {kind}");
+    };
+    let (b, m, n, k) = (1usize, 2usize, 4usize, 3usize);
+    let strides = ([m * k, k, 1], [n * k, n, 1]);
+    // f32
+    let mut lhs = vec![0.0f32; m * k];
+    lhs[0] = 1.0e-40;
+    let rhs = vec![1.0f32; n * k];
+    let r = run_mlx_gemm(
+        GemmDType::F32,
+        (b, m, n, k),
+        &lhs,
+        &strides.0,
+        0,
+        &rhs,
+        &strides.1,
+        0,
+    );
+    line("gemm f32 subnormal operand", r[0], 1.0e-40);
+    lhs[0] = 1.0e-30;
+    let rhs = vec![1.0e-10f32; n * k];
+    let r = run_mlx_gemm(
+        GemmDType::F32,
+        (b, m, n, k),
+        &lhs,
+        &strides.0,
+        0,
+        &rhs,
+        &strides.1,
+        0,
+    );
+    line("gemm f32 subnormal result", r[0], 1.0e-30f32 * 1.0e-10f32);
+    // bf16
+    let mut lhs = vec![bf16::from_f32(0.0); m * k];
+    lhs[0] = bf16::from_f32(1.0e-40);
+    let rhs = vec![bf16::from_f32(1.0); n * k];
+    let r = run_mlx_gemm(
+        GemmDType::BF16,
+        (b, m, n, k),
+        &lhs,
+        &strides.0,
+        0,
+        &rhs,
+        &strides.1,
+        0,
+    );
+    line(
+        "gemm bf16 subnormal operand",
+        r[0].to_f32(),
+        lhs[0].to_f32(),
+    );
+    lhs[0] = bf16::from_f32(1.0e-30);
+    let rhs = vec![bf16::from_f32(1.0e-10); n * k];
+    let r = run_mlx_gemm(
+        GemmDType::BF16,
+        (b, m, n, k),
+        &lhs,
+        &strides.0,
+        0,
+        &rhs,
+        &strides.1,
+        0,
+    );
+    line(
+        "gemm bf16 subnormal result",
+        r[0].to_f32(),
+        lhs[0].to_f32() * rhs[0].to_f32(),
+    );
+    // f16 (subnormal range ~6e-8..6e-5)
+    let mut lhs = vec![f16::from_f32(0.0); m * k];
+    lhs[0] = f16::from_f32(1.0e-6);
+    let rhs = vec![f16::from_f32(1.0); n * k];
+    let r = run_mlx_gemm(
+        GemmDType::F16,
+        (b, m, n, k),
+        &lhs,
+        &strides.0,
+        0,
+        &rhs,
+        &strides.1,
+        0,
+    );
+    line("gemm f16 subnormal operand", r[0].to_f32(), lhs[0].to_f32());
+    lhs[0] = f16::from_f32(1.0e-3);
+    let rhs = vec![f16::from_f32(1.0e-3); n * k];
+    let r = run_mlx_gemm(
+        GemmDType::F16,
+        (b, m, n, k),
+        &lhs,
+        &strides.0,
+        0,
+        &rhs,
+        &strides.1,
+        0,
+    );
+    line("gemm f16 subnormal result", r[0].to_f32(), 1.0e-6);
+    // softmax: out[1] = exp(-x)/(1+exp(-x)), subnormal for x = 90 (f32/bf16) and x = 10 (f16)
+    let want32 = (-90.0f64).exp() / (1.0 + (-90.0f64).exp());
+    let r = run_softmax(&[0.0f32, -90.0], 2, "softmax_f32");
+    line("softmax f32 subnormal result", r[1], want32 as f32);
+    let r = run_softmax(
+        &[bf16::from_f32(0.0), bf16::from_f32(-90.0)],
+        2,
+        "softmax_bf16",
+    );
+    line(
+        "softmax bf16 subnormal result",
+        r[1].to_f32(),
+        want32 as f32,
+    );
+    let want16 = (-10.0f64).exp() / (1.0 + (-10.0f64).exp());
+    let r = run_softmax(
+        &[f16::from_f32(0.0), f16::from_f32(-10.0)],
+        2,
+        "softmax_f16",
+    );
+    line("softmax f16 subnormal result", r[1].to_f32(), want16 as f32);
+}

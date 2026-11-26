@@ -81,6 +81,13 @@ pub fn matmul_structure_key(
     let Some(facts) = matmul_declared_facts(a, b, out) else {
         return Ok(None);
     };
+    // KISS-OPS-6.17-0002: a kernel that flushes subnormals must decline `Exact`, and the cell declares
+    // `GemMathPrecision::BitStable`. Metal flushes f32 and bf16 subnormal operands and results (measured on the hosted
+    // macOS device: vulkane run 45748530618, fuel run 45748920513), so no key is derived for them on a Metal target:
+    // the contraction is declined, not mis-declared. f16 preserves subnormals (measured) and keeps its key.
+    if target.starts_with("metal") && matches!(a.dtype, DType::F32 | DType::BF16) {
+        return Ok(None);
+    }
     let operands = [
         CellOperand::input(a.clone()),
         CellOperand::input(b.clone()),
@@ -117,6 +124,33 @@ mod tests {
         let c = f.contraction.expect("ctr");
         assert_eq!((c.m, c.n, c.k, c.batch), (8, 16, 64, Some(6)));
         assert_eq!(c.acc_dtype, DType::F32);
+    }
+
+    // KISS-OPS-6.17-0002: a kernel that flushes subnormals (FTZ/DAZ) is non-conformant under bit-stable and MUST decline
+    // `Exact`. Metal flushes f32 and bf16 subnormals (operands and results) and preserves f16 (vulkane's hosted-macOS
+    // probe, run 45748530618; Fuel's own record `subnormal_behaviour_record` in fuel-metal-kernels). The declared `st`
+    // math-precision of a contraction cell must therefore not be derived for a Metal target at f32/bf16.
+    #[test]
+    fn a_metal_target_declines_the_bit_stable_key_for_f32_and_bf16() {
+        for dt in [DType::F32, DType::BF16] {
+            let (a, b, o) = (d(&[8, 64], dt), d(&[64, 16], dt), d(&[8, 16], dt));
+            assert_eq!(
+                matmul_structure_key(&a, &b, &o, "metal:apple9").map(|k| k.is_none()),
+                Ok(true),
+                "{dt:?} on a Metal target must decline (FTZ), not derive a bit-stable key"
+            );
+        }
+    }
+
+    /// Sabotage sibling: the same operands on a CUDA target still derive a key (the decline is the Metal flush, not a
+    /// blanket decline), so the test above cannot pass by declining everything.
+    #[test]
+    fn a_cuda_target_still_derives_the_key_for_f32_and_bf16() {
+        for dt in [DType::F32, DType::BF16] {
+            let (a, b, o) = (d(&[8, 64], dt), d(&[64, 16], dt), d(&[8, 16], dt));
+            let k = matmul_structure_key(&a, &b, &o, "cuda:sm89");
+            assert!(matches!(k, Ok(Some(_))), "{dt:?} on cuda:sm89: {k:?}");
+        }
     }
 
     #[test]
