@@ -1,5 +1,6 @@
 #version 450
 // SPDX-License-Identifier: MIT OR Apache-2.0
+// compile: --target-env vulkan1.0   (SPIR-V 1.0 / BufferBlock: how the shipped .spv was built; GAP-407)
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
 // bf16 variant of flash_attn_split_f32.glsl: Q/K/V/alibi are bf16 (uint16_t), the
 // partials P stay f32 (math at f32, as flash_attn_bf16.glsl). Split-KV partial
