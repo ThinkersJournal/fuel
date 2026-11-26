@@ -3,6 +3,16 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## Unreleased (version allocated by pm-assist; BREAKING numerics: Vulkan argmax/argmin NaN)
+
+### Breaking
+
+- Vulkan `argmax`/`argmin` (f32/f16/bf16/f64, last-dim and any-dim kernels): a NaN now WINS and the FIRST NaN's index is returned (the CPU rule, torch convention); ties first index. The 8 `arg_reduce_{any,last}_dim_*.spv` are rebuilt from the PUBLISHED `fishstringer-kernels-source` 0.6.0 (fishstringer #49). Before, the shipped kernels IGNORED a NaN (`[1,NaN,0,5]` gave argmax 3 / argmin 2, now 1 / 1). Measured on the RTX 4070 and the Radeon 610M: 140 of 140 reachable spec-vector cases agree (36 per adapter diverged before); `fuel-vulkan-dispatch/tests/vulkan_arg_nan_vectors_live.rs` no longer pins any divergence.
+
+### Changed
+
+- `fuel-vulkan-kernels/spv/SOURCE.txt`: the 153 Slang-derived `.spv` now rebuild from the published crate with the recorded toolchain (slangc 2026.8, Python 3.15.2): 145 are byte-identical to the 0.0.17-built files they replace nothing of (positive control), the 8 `arg_reduce` files carry the 0.6.0 bytes; new tree sha256 recorded.
+
 ## v0.53.0 - 2026-11-26 (PM-allocated; BREAKING numerics: CPU/Metal argmax-argmin NaN, FlashAttn masked/NaN rows, var correction, greedy sampling on NaN)
 
 ### Breaking

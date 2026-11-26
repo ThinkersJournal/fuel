@@ -97,17 +97,10 @@ fn vectors() -> Vec<(String, Vec<f64>, u32, u32)> {
     v
 }
 
-/// Vectors on which the shipped Vulkan `.spv` DIVERGES from the spec today (measured 2026-11-25 on
-/// the AMD Radeon 610M): every vector that holds a NaN except the all-NaN row (index 0 either way).
-/// The kernels IGNORE a NaN (comparisons against NaN are false), so e.g. `[1,NaN,0,5]` gives argmax 3,
-/// argmin 2 where the spec says 1, 1. Matched by the vector-name suffix of `"op/dtype/vector"`.
-const KNOWN_DIVERGENT: &[&str] = &[
-    "/nan-mid",
-    "/nan-last",
-    "/nan-first",
-    "/two-nans",
-    "/long-nan-700",
-];
+/// Vectors on which the shipped Vulkan `.spv` DIVERGES from the spec today, as `"op/dtype/vector"` suffixes. EMPTY since the
+/// `arg_reduce` `.spv` were rebuilt from fishstringer-kernels-source 0.6.0 (a NaN wins, first NaN index): every vector agrees on both
+/// adapters. The test reddens if one regresses.
+const KNOWN_DIVERGENT: &[&str] = &[];
 
 #[test]
 fn vulkan_arg_reduce_nan_spec_vectors() {

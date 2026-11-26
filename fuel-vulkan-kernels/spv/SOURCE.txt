@@ -3,7 +3,7 @@ fishstringer-kernels-source 0.0.17 (tag v0.0.17 = 159cd15), by that
 crate's kernels/compile.sh --out-dir <dir> (153 outputs; manifest = compile.sh --print-manifest),
 with slangc 2026.8 (Vulkan SDK 1.4.350.0) and Python 3.15.2.
 Built and reported by the FishStringer lane (message 2026-11-10); Fuel did not run the script.
-Tree sha256 (sorted name + bytes over the 153): d02d101b83b6574141282926429c207454fc78bc22d4481830432e6281e412d1
+Tree sha256 (sorted name + bytes over the 153), AS BUILT FROM 0.0.17 (superseded for 8 files, see the UPDATE below): d02d101b83b6574141282926429c207454fc78bc22d4481830432e6281e412d1
 Check: SHA-256 over the 153 .spv files sorted by name, hashing each file's name then its bytes.
 Versus the 0.0.13 files: 141 byte-equal, 12 differ (unary x4, reduce x4, reduce_last_dim x4: the isnan NaN guards, GAP-381).
 Fuel verified the .crate sha256 (18b588b0d039c5e307996cb971f41e6365449a24034637837c511a7a36848c95) and the tree sha over the 153; the .crate ships sources only, so the .spv are FishStringer-built. spirv-val ok (FishStringer); device behaviour: vulkan_nan_shipped_spv_live.
@@ -46,3 +46,12 @@ reproduce each file's PREVIOUS bytes (positive control: the unmodified sources r
   flash_attn_combine_{f32,f16,bf16}.spv   glslangValidator -V -S comp                          (NOT what compile.sh runs: GAP-407)
 Device result: tests/vulkan_flash_attn_nan_rows_live.rs on the RTX 4070 and the Radeon 610M, f32/f16/bf16, single-pass and split-KV:
 60 of 60 cases agree with the contract after (before, on the Radeon 610M: the 6 Q-NaN cases, 3 dtypes x single-pass/split, returned zeros).
+
+UPDATE 2026-11-26: the 8 `arg_reduce_{any,last}_dim_{f32,f16,bf16,f64}.spv` are replaced by the build from the PUBLISHED crate
+fishstringer-kernels-source 0.6.0 (crates.io, 2026-11-26T02:35Z; .crate sha256 a179f16d8888067593e3e05e77d2bcbabac3e714cb301f2282728925b75bb403;
+fishstringer #49: a NaN wins argmax/argmin, first NaN's index; ties first index), by that crate's kernels/compile.sh --out-dir DIR with slangc 2026.8
+(Vulkan SDK 1.4.350.0) and Python 3.15.2 (153 outputs; manifest = compile.sh --print-manifest, 153 lines).
+POSITIVE CONTROL: of the 153 files that rebuild produces, 145 are byte-identical to the files built from 0.0.17 and shipped here before; exactly the
+8 arg_reduce files differ, and those 8 now carry the 0.6.0 bytes. The recorded tree sha over the OLD bytes recomputes to the value above (scheme confirmed).
+New tree sha256 (sorted name + bytes over the 153): 63bcf2cee9a3ce921f655d84f8c9fd0485e6c514188ed5dd398cf92ba75f7d7e
+Device result (2026-11-26): tests/vulkan_arg_nan_vectors_live.rs on the RTX 4070 and the Radeon 610M, f32/f16/bf16/f64, 10 spec vectors x argmax/argmin: 140 of 140 reachable cases agree with the spec (20 odd-length bf16 rows skipped: the bf16 kernel needs an even last dim); BEFORE (the 0.0.17 .spv): 36 cases per adapter diverged.
