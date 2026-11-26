@@ -90,10 +90,16 @@ fn run(be: &Arc<VulkanBackend>, op: OpKind, dt: DType, input: &[f32]) -> Result<
     Ok(dec(dt, &bytes))
 }
 
-/// `"op/dtype"` cases on which the shipped Vulkan kernels DIVERGE from KISS 6.2-0009 today (measured 2026-11-26 on the
-/// Radeon 610M): `sign(NaN)` = 1.0 for f32/f16/bf16 (the Slang `sign` intrinsic; the f64 kernel returns 0). Pinned both ways:
-/// the test reddens when the kernels are fixed (delete the entries then). The `.spv` are fishstringer-built (Slang).
-const KNOWN_DIVERGENT: &[&str] = &["sign/F32", "sign/F16", "sign/BF16"];
+/// `(adapter-name substring, "op/dtype")` cases on which the shipped Vulkan kernels DIVERGE from KISS 6.2-0009 today,
+/// measured 2026-11-26: on the AMD Radeon 610M `sign(NaN)` = 1.0 for f32/f16/bf16 (the f64 kernel returns 0); on the NVIDIA RTX
+/// 4070 every case agrees (`sign(NaN)` = 0). The Slang `sign` lowers to the SPIR-V `FSign` instruction, whose NaN result is
+/// implementation-defined, so this is a DRIVER/adapter property, not a Fuel source defect. Pinned both ways per adapter: the
+/// test reddens when a driver changes. The `.spv` are fishstringer-built (Slang).
+const KNOWN_DIVERGENT: &[(&str, &str)] = &[
+    ("AMD", "sign/F32"),
+    ("AMD", "sign/F16"),
+    ("AMD", "sign/BF16"),
+];
 
 #[test]
 fn vulkan_sign_and_step_of_nan_are_zero() {
@@ -139,7 +145,9 @@ fn vulkan_sign_and_step_of_nan_are_zero() {
                             if ok { "OK" } else { "DIVERGES" }
                         );
                         let key = format!("{op_name}/{dt:?}");
-                        let known = KNOWN_DIVERGENT.contains(&key.as_str());
+                        let known = KNOWN_DIVERGENT
+                            .iter()
+                            .any(|(ad, k)| name.contains(ad) && *k == key);
                         if known == ok {
                             bad.push(format!(
                                 "{key}: got {got:?} (known divergent: {known}, agrees: {ok})"
