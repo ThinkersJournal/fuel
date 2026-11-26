@@ -189,7 +189,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true                        # audited, no static bound applies (none(reason))
-  notes: "f32 accumulate; only lossy step is the pre-baked weight quantization. Not bit-stable cross- or same-hardware (GPU reduction order); per-quant error audited at model level. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
+  notes: "f32 accumulate; only lossy step is the pre-baked weight quantization. Not bit-stable cross- or same-hardware (GPU reduction order); per-quant error audited at model level. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: nondeterministic
 ```
@@ -304,7 +304,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true                        # audited, no static bound applies (none(reason))
-  notes: "f32 accumulate; only lossy step is the pre-baked weight quantization. Not bit-stable cross- or same-hardware (GPU tiled reduction order); per-quant error audited at model level. Q8_1/Q8K rejected on this path. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
+  notes: "f32 accumulate; only lossy step is the pre-baked weight quantization. Not bit-stable cross- or same-hardware (GPU tiled reduction order); per-quant error audited at model level. Q8_1/Q8K rejected on this path. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: nondeterministic
 ```

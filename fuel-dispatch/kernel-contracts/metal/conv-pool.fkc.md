@@ -153,7 +153,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Pure gather with zero-padding (literal 0 out of range); no arithmetic, exact and bitwise-stable. dtype preserved. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
+  notes: "Pure gather with zero-padding (literal 0 out of range); no arithmetic, exact and bitwise-stable. dtype preserved. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: bitwise
 ```
@@ -239,7 +239,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Pure gather with zero-padding; no arithmetic, exact and bitwise-stable. dtype preserved. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
+  notes: "Pure gather with zero-padding; no arithmetic, exact and bitwise-stable. dtype preserved. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: bitwise
 ```
@@ -326,7 +326,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "T-precision accumulator (NO f32 widening for half); deterministic fixed scatter order into a fresh zero-init buffer; overlapping contributions accumulated. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
+  notes: "T-precision accumulator (NO f32 widening for half); deterministic fixed scatter order into a fresh zero-init buffer; overlapping contributions accumulated. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
@@ -411,7 +411,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Nearest-neighbour copies the source value through unchanged; no arithmetic, exact and bitwise-stable. dtype preserved. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
+  notes: "Nearest-neighbour copies the source value through unchanged; no arithmetic, exact and bitwise-stable. dtype preserved. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: bitwise
 ```
@@ -500,7 +500,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Interpolation accumulated in f32 (fixed four-tap order) then cast to the output dtype; half (f16/bf16) narrows on store. Deterministic; not bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
+  notes: "Interpolation accumulated in f32 (fixed four-tap order) then cast to the output dtype; half (f16/bf16) narrows on store. Deterministic; not bit-stable cross-hardware. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
@@ -585,7 +585,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Pure max-reduction over the window: no rounding, no accumulation; result is bitwise-stable. NaN follows the fast::max / '>' window-scan semantics. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic). Subnormal behaviour of this data-movement kernel is UNMEASURED."
+  notes: "Pure max-reduction over the window: no rounding, no accumulation; result is bitwise-stable. NaN follows the fast::max / '>' window-scan semantics. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
@@ -670,7 +670,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Float dtypes accumulate the window sum in f32 then divide and cast on store; integer dtypes accumulate in the integer type. Fixed summation order, deterministic; not bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
+  notes: "Float dtypes accumulate the window sum in f32 then divide and cast on store; integer dtypes accumulate in the integer type. Fixed summation order, deterministic; not bit-stable cross-hardware. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
@@ -764,7 +764,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Float dtypes accumulate in f32 (A=float) then cast on store; integer dtypes accumulate in the integer type. Fixed accumulation order, deterministic; not bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
+  notes: "Float dtypes accumulate in f32 (A=float) then cast on store; integer dtypes accumulate in the integer type. Fixed accumulation order, deterministic; not bit-stable cross-hardware. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
@@ -854,7 +854,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Accumulation in an f32 accumulator (A=float) then cast on store; f32/f16/bf16 only (no int variants). Fixed accumulation order, deterministic; not bit-stable cross-hardware. FTZ f32/bf16 measured (hosted macOS run 45748920513): not KISS bit-stable (6.17-0001/-0002), does not advertise Exact; f16 preserved. bit_stable_on_same_hardware here means a deterministic re-run on the same hardware only (a flush is deterministic)."
+  notes: "Accumulation in an f32 accumulator (A=float) then cast on store; f32/f16/bf16 only (no int variants). Fixed accumulation order, deterministic; not bit-stable cross-hardware. Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
