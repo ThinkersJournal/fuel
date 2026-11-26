@@ -411,15 +411,15 @@ dependencies = [
 
 [[package]]
 name = "baracuda-build"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21367365799507786def503046363091a61a990ed1c6942d77b8fd755c2a91c1"
+checksum = "da5057752a9837cdc331299009b30b0cd51931d018cc4688f254fc31e5144424"
 
 [[package]]
 name = "baracuda-core"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cbb737b7e6fade7795e734a81f1e34e3be1df6de0213a972e104b44367eb347"
+checksum = "6bb5d41e7f4be52dbdb6d7698a2852d1983f067742071d688147e5ba3f86d665"
 dependencies = [
  "baracuda-types",
  "libloading 0.9.0",
@@ -428,9 +428,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cublas"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccb15befbfd00f2b5d5fb9975895bcdec16ac2608a6987116fa977afa984d1c5"
+checksum = "351dc844e66f566aa3bf272d9724f742218fd479a9c9cb3a395fa172cd2c3585"
 dependencies = [
  "baracuda-core",
  "baracuda-cublas-sys",
@@ -442,9 +442,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cublas-sys"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d3177628d08b67ffe93abdc9460c0cbbb123791c4809d433df398109f7682a4"
+checksum = "cd8f716dfba5d980b683cac293c907f7c434e2023c291e146107c5f9b090a2db"
 dependencies = [
  "baracuda-build",
  "baracuda-core",
@@ -454,33 +454,33 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cuda-emit"
-version = "0.57.0"
+version = "0.58.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f128384fe70c468bdb2d3b46d4a4e643dc6a5a46daa29902c351ba2457433434"
+checksum = "2b2d15bc3becf8ff9b3f111e3544ed118ce539dc2f8c89dd688b423d98221b44"
 dependencies = [
  "baracuda-nvrtc",
  "unpopped",
- "unpopped-vocab 0.57.0",
+ "unpopped-vocab",
 ]
 
 [[package]]
 name = "baracuda-cuda-seam"
-version = "0.57.0"
+version = "0.58.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe1065152089f053477b23187cde7ce59f9179aeae9f66809481774374096950"
+checksum = "782769e71161a93a2c7c72060525a52d9ff2ce2a41b88fd4307cf8b50ba09365"
 dependencies = [
  "baracuda-cuda-emit",
- "fireline-grammar 0.8.0",
- "fireline-synth 0.8.0",
+ "fireline-grammar",
+ "fireline-synth",
  "unpopped",
- "unpopped-vocab 0.57.0",
+ "unpopped-vocab",
 ]
 
 [[package]]
 name = "baracuda-cuda-sys"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab287c673f88e7cd03cf47024f3572b52bacaafbd1f59f4d7111056992a25615"
+checksum = "f4f933ee61462bf27bce6e0a130f87b9145169fb2bc3d28d2a9dbf2e28b0c4c8"
 dependencies = [
  "baracuda-build",
  "baracuda-core",
@@ -489,9 +489,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cudnn"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97d918393b464bed3ffc712851018a0522b58acebf0e7295f66eb4df6d4d0941"
+checksum = "a050ba59d2a40b3f419c3cc23b7639cafb942125d0d8ab74db8f8049e41dba04"
 dependencies = [
  "baracuda-core",
  "baracuda-cuda-sys",
@@ -504,9 +504,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cudnn-sys"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1e9e7828016e1405476c36021e096811c9dd8487c810a1f1c215bcb6cd20c73"
+checksum = "f9888db60f439f5bec9e0589661cc30a3a3c7a751a0ffc058833bde4410bf4b8"
 dependencies = [
  "baracuda-build",
  "baracuda-core",
@@ -516,9 +516,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-curand"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ed6d9a183a450cbb114c234dbaa425a8f2e515aafbe75ce1a1117d31b9aac47"
+checksum = "757b6ee7d08201440adf26a8bfbe928ec48d8af709b226434b442acf30cea070"
 dependencies = [
  "baracuda-core",
  "baracuda-cuda-sys",
@@ -530,9 +530,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-curand-sys"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fd93e2850f02777795df0feea79cc8c54008fec649ebe9b4325da9fe3e18890"
+checksum = "d1d41e16da3fdb1cd8021e3983bfbd868ad6f7ec938d0f0439f83abef27a7dac"
 dependencies = [
  "baracuda-build",
  "baracuda-core",
@@ -542,9 +542,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cutlass"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "311bb39a3ed831de6f1dd05f836f85ffe736ae704884371bd9969bed14e38ed0"
+checksum = "d78f61e4091e533dd9644e8b8f655cc018a07dfb9a44dfd628437b27fad8ff3b"
 dependencies = [
  "baracuda-cublas",
  "baracuda-cublas-sys",
@@ -558,9 +558,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cutlass-kernels-sys"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c75157bacf0f82eeb4f9faa06a459104bbedf87cc349f54491a30b3feaa62878"
+checksum = "4f29c63a400c51152a57f6886387c79647e4c032b2a36a1f53303b88bad52db1"
 dependencies = [
  "baracuda-cutlass-sys",
  "baracuda-forge",
@@ -568,18 +568,18 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cutlass-sys"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffe46b06533b647b4eb81e8752baf9fa14fa44f35a72d3413e8ec59392eb44d3"
+checksum = "d033a2fb80ffc821a88c715de823de0f08854364a9e3d147e8234182783dc37d"
 dependencies = [
  "fs2",
 ]
 
 [[package]]
 name = "baracuda-driver"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3f960a15afdbe921ee78f481817cec1dd45513d8c0433a52491c0d78ea770eb"
+checksum = "6e8ccbd2a4d74d105eb4429eeba8a91c9d18bedd73d6069a848268f0c22d7741"
 dependencies = [
  "baracuda-core",
  "baracuda-cuda-sys",
@@ -589,9 +589,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-forge"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de1048cd5b24fbab695cd4d9a0feec3ca0087789e71d41a24ebb2213424bde59"
+checksum = "0cd53982ad83a1589f01d621aec5e388196bc7e025dc30ab3bb1528f62700870"
 dependencies = [
  "baracuda-build",
  "fs2",
@@ -607,9 +607,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-kernels-sys"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "786e0ad7fbdf5b7cf7175269c3e3a1832c4682a066ac8761a8510de3ba3b6c03"
+checksum = "6c04b68adf7f06bdc806cd0b9e5393e57db5c086b73e6606b396bd27ed498b4a"
 dependencies = [
  "baracuda-cutlass-kernels-sys",
  "baracuda-cutlass-sys",
@@ -618,23 +618,23 @@ dependencies = [
 
 [[package]]
 name = "baracuda-kernels-types"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e43591973baad539a2b4f68671dd542eaadc0620924dd7abfb23be7fefca4626"
+checksum = "6b87123e95e64ea934fec14fb741765966af08c4bdb1ebc03fbd5c8a9f7af48d"
 dependencies = [
  "baracuda-driver",
  "baracuda-types",
  "float8",
  "half",
  "thiserror 2.0.21",
- "unpopped-vocab 0.57.0",
+ "unpopped-vocab",
 ]
 
 [[package]]
 name = "baracuda-nccl"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2d409439cc52a120f289b0c70cc17a5145fb1ff238f3b7396cf040461032e21"
+checksum = "344a2a2292ddffe4a89b8440bc2760dd4bbf4917a7b3bce7a0f27dba5ce1943f"
 dependencies = [
  "baracuda-core",
  "baracuda-cuda-sys",
@@ -647,9 +647,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-nccl-sys"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8ad1b9035a2824f374e266c79c496eac90929195a0f508607436fb53a50754a"
+checksum = "69388edec7caf3e89d6e2cd30416ecbb147be9ffa01d81d533f9ddf3bd9afabe"
 dependencies = [
  "baracuda-build",
  "baracuda-core",
@@ -659,9 +659,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-nvrtc"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "736815660917a43f1ebbe16deb69f46288afc7171add28967076cb9fbe9702e8"
+checksum = "0b7b7d550c92a91c8e16a8eb0468e0b5a76213608cf3d76f948501707f9c80ba"
 dependencies = [
  "baracuda-core",
  "baracuda-nvrtc-sys",
@@ -671,9 +671,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-nvrtc-sys"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "067c6f82b821fe0229ba8633b76353313d5f36ce9951d7d957c6862b32a77368"
+checksum = "b2f892cfc91b5bdd29d445432a4a2d581a2df8abd18064317de738b1b18bcc24"
 dependencies = [
  "baracuda-build",
  "baracuda-core",
@@ -682,13 +682,13 @@ dependencies = [
 
 [[package]]
 name = "baracuda-types"
-version = "0.1.0-alpha.202"
+version = "0.1.0-alpha.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85703240d38f35a64253300d01ad5d701898d84e790a89c53a49456806454839"
+checksum = "41a0d7c07c4fec338fbf45bd5a516e87a98880e286b22bf02a5412081faeb867"
 dependencies = [
  "float8",
  "half",
- "unpopped-vocab 0.57.0",
+ "unpopped-vocab",
 ]
 
 [[package]]
@@ -1665,25 +1665,9 @@ checksum = "aedcfb3409746eddb02b9e19ebda1c3394f759a152e48ee875a0844d1b955484"
 
 [[package]]
 name = "fireline-grammar"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eae71ca7cb684eae5e4c50f53da2d538f51794c08102faf792b9f0358ed170df"
-
-[[package]]
-name = "fireline-grammar"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7333138f222a331547d087b1524f951cfeb2fc5de1d0369945e62521d1effc40"
-
-[[package]]
-name = "fireline-synth"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92de3cae90cd2b6ac9df5d30f83634327c87c7b1123ced2b0be202dbcde5473b"
-dependencies = [
- "fireline-grammar 0.8.0",
- "unpopped-vocab 0.57.0",
-]
 
 [[package]]
 name = "fireline-synth"
@@ -1691,8 +1675,8 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e96afa0371e75f43829f053012d808b92c236860933ce41812a5d4107c03e50"
 dependencies = [
- "fireline-grammar 0.9.0",
- "unpopped-vocab 0.58.0",
+ "fireline-grammar",
+ "unpopped-vocab",
 ]
 
 [[package]]
@@ -1788,7 +1772,7 @@ dependencies = [
 
 [[package]]
 name = "fuel"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel-backend-contract",
  "fuel-cpu-backend",
@@ -1803,7 +1787,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-aocl-cpu-backend"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "aocl-blas",
  "aocl-types",
@@ -1817,21 +1801,21 @@ dependencies = [
 
 [[package]]
 name = "fuel-backend-contract"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel-ir",
 ]
 
 [[package]]
 name = "fuel-conv"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "num-traits",
 ]
 
 [[package]]
 name = "fuel-correctness-fixtures"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "bytemuck",
  "fuel-ir",
@@ -1841,7 +1825,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-cpu-backend"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "accelerate-src",
  "bytemuck",
@@ -1867,7 +1851,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-cpu-kernels"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "float8",
  "half",
@@ -1877,7 +1861,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-cuda-backend"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "baracuda-core",
  "baracuda-cublas",
@@ -1911,12 +1895,12 @@ dependencies = [
 
 [[package]]
 name = "fuel-cuda-dispatch"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "baracuda-cuda-seam",
  "baracuda-nvrtc",
  "bytemuck",
- "fireline-synth 0.9.0",
+ "fireline-synth",
  "fuel-cpu-backend",
  "fuel-cuda-backend",
  "fuel-dispatch",
@@ -1926,12 +1910,12 @@ dependencies = [
  "fuel-quantized",
  "fuel-test-support",
  "half",
- "unpopped-vocab 0.58.0",
+ "unpopped-vocab",
 ]
 
 [[package]]
 name = "fuel-datasets"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "byteorder",
  "fuel-ir",
@@ -1947,12 +1931,12 @@ dependencies = [
 
 [[package]]
 name = "fuel-dispatch"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "baracuda-kernels-types",
  "bytemuck",
- "fireline-grammar 0.9.0",
- "fireline-synth 0.9.0",
+ "fireline-grammar",
+ "fireline-synth",
  "fuel-backend-contract",
  "fuel-conv",
  "fuel-cpu-backend",
@@ -1976,12 +1960,12 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tracing",
- "unpopped-vocab 0.58.0",
+ "unpopped-vocab",
 ]
 
 [[package]]
 name = "fuel-examples"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "ab_glyph",
  "accelerate-src",
@@ -2028,7 +2012,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-formats"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "bytemuck",
  "byteorder",
@@ -2048,9 +2032,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-graph"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
- "fireline-grammar 0.9.0",
+ "fireline-grammar",
  "float8",
  "fuel-backend-contract",
  "fuel-cpu-backend",
@@ -2060,7 +2044,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-hardware"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel-cpu-backend",
  "fuel-cuda-backend",
@@ -2073,7 +2057,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-inference"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel",
  "fuel-backend-contract",
@@ -2092,7 +2076,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-ir"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "float8",
  "half",
@@ -2108,16 +2092,16 @@ dependencies = [
 
 [[package]]
 name = "fuel-kernels-source"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel-quantized",
 ]
 
 [[package]]
 name = "fuel-kiss-ref-backend"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
- "fireline-grammar 0.9.0",
+ "fireline-grammar",
  "fuel-ir",
  "half",
  "kiss-classify-vocab",
@@ -2127,11 +2111,11 @@ dependencies = [
 
 [[package]]
 name = "fuel-kv-pool"
-version = "0.55.0"
+version = "0.55.1"
 
 [[package]]
 name = "fuel-lazy-examples"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel",
  "fuel-backend-contract",
@@ -2151,7 +2135,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-loaders"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "byteorder",
  "fuel-backend-contract",
@@ -2173,7 +2157,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-memory"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "bytemuck",
  "fuel-cpu-backend",
@@ -2189,7 +2173,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-metal-backend"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel-backend-contract",
  "fuel-cpu-backend",
@@ -2206,7 +2190,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-metal-kernels"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2224,7 +2208,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-mkl-cpu-backend"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel-conv",
  "fuel-cpu-backend",
@@ -2237,7 +2221,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-core"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel-model-fixture",
  "fuel-model-umbrella-fixture",
@@ -2249,7 +2233,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-fixture"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel-model-core",
  "inventory",
@@ -2257,7 +2241,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-llama"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel-cuda-backend",
  "fuel-dispatch",
@@ -2278,7 +2262,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-phi"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel-dispatch",
  "fuel-formats",
@@ -2295,7 +2279,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-model-umbrella-fixture"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel-model-core",
  "fuel-model-fixture",
@@ -2304,7 +2288,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-nn"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel-formats",
  "fuel-graph",
@@ -2320,7 +2304,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-onnx"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2332,7 +2316,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-parallel"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel",
  "fuel-cuda-backend",
@@ -2343,7 +2327,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-posttrain"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel-ir",
  "fuel-tensor",
@@ -2351,7 +2335,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-quantized"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "bytemuck",
  "byteorder",
@@ -2364,7 +2348,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-tensor"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "accelerate-src",
  "anyhow",
@@ -2428,7 +2412,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-tensor-tools"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -2442,11 +2426,11 @@ dependencies = [
 
 [[package]]
 name = "fuel-test-support"
-version = "0.55.0"
+version = "0.55.1"
 
 [[package]]
 name = "fuel-training"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "fuel",
  "fuel-dispatch",
@@ -2461,7 +2445,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-transformers"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "accelerate-src",
  "anyhow",
@@ -2499,7 +2483,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-vulkan-backend"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "bytemuck",
  "fuel-backend-contract",
@@ -2518,7 +2502,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-vulkan-dispatch"
-version = "0.55.0"
+version = "0.55.1"
 dependencies = [
  "bytemuck",
  "fuel-conv",
@@ -2535,7 +2519,7 @@ dependencies = [
 
 [[package]]
 name = "fuel-vulkan-kernels"
-version = "0.55.0"
+version = "0.55.1"
 
 [[package]]
 name = "futures"
@@ -5820,24 +5804,14 @@ checksum = "81e544489bf3d8ef66c953931f56617f423cd4b5494be343d9b9d3dda037b9a3"
 
 [[package]]
 name = "unpopped"
-version = "0.57.0"
+version = "0.58.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c2576a70211662025a29a27040362d03172911a9d38833efff72da075c0df90"
+checksum = "6a23bedcdef148ac75fbcfb5231e3933189a68273546afc8628a555641b46635"
 dependencies = [
  "libm",
  "serde",
  "serde_json",
- "unpopped-vocab 0.57.0",
-]
-
-[[package]]
-name = "unpopped-vocab"
-version = "0.57.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fb70321eae7f5eeb7064b05315aae8546c95f61efc4dc0b3f191ef201fd57a7"
-dependencies = [
- "float8",
- "half",
+ "unpopped-vocab",
 ]
 
 [[package]]
