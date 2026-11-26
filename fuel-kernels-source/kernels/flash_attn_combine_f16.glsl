@@ -1,5 +1,6 @@
 #version 450
 // SPDX-License-Identifier: MIT OR Apache-2.0
+// compile: --target-env vulkan1.0   (SPIR-V 1.0 / BufferBlock: how the shipped .spv was built; GAP-407)
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
 // f16 variant of flash_attn_combine_f32.glsl: partials stay f32, the output is
 // f16 (float16_t), narrowed once at the store. Combine pass for flash_attn_split_f32.glsl (ROADMAP item 17, H12): merges the

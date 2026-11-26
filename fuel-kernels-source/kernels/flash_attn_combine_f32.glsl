@@ -1,5 +1,6 @@
 #version 450
 // SPDX-License-Identifier: MIT OR Apache-2.0
+// compile: --target-env vulkan1.0   (SPIR-V 1.0 / BufferBlock: how the shipped .spv was built; GAP-407)
 // Combine pass for flash_attn_split_f32.glsl (ROADMAP item 17, H12): merges the
 // per-split partials of one (b, h_q, q_i) row in fixed split order, so the
 // result is deterministic for a given `splits`:
