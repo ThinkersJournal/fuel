@@ -2877,3 +2877,91 @@ fn subnormal_behaviour_record() {
         h1.to_f32()
     );
 }
+
+/// Subnormal behaviour of the Metal DATA-MOVEMENT kernels (index_select, where_cond, narrowing cast) and of `neg`/`abs`
+/// (sign-bit operations), per dtype: printed as `METALSUB2 <kernel>: got .. want .. PRESERVED|FLUSHED`. A record, not
+/// a gate (see `subnormal_behaviour_record`). f32/bf16 subnormal 1e-40 and 2e-40; f16 subnormal 1e-6 and 2e-6.
+#[test]
+fn subnormal_data_movement_record() {
+    let line = |name: &str, got: f32, want: f32| {
+        let kind = if got == want {
+            "PRESERVED"
+        } else if got == 0.0 {
+            "FLUSHED"
+        } else {
+            "OTHER"
+        };
+        println!("METALSUB2 {name}: got {got:e} want {want:e} {kind}");
+    };
+    // ---- index_select: embedding [2,1] = [a, b], ids [1, 0] -> [b, a]
+    let (a32, b32) = (1.0e-40_f32, 2.0e-40_f32);
+    let r = run_index_select(&[a32, b32], &[2, 1], &[1, 1], &[1u32, 0], 0, "is_u32_f32");
+    line("index_select f32 [b]", r[0], b32);
+    line("index_select f32 [a]", r[1], a32);
+    let (ab, bb) = (bf16::from_f32(1.0e-40), bf16::from_f32(2.0e-40));
+    let r = run_index_select(&[ab, bb], &[2, 1], &[1, 1], &[1u32, 0], 0, "is_u32_bf16");
+    line("index_select bf16 [b]", r[0].to_f32(), bb.to_f32());
+    let (ah, bh) = (f16::from_f32(1.0e-6), f16::from_f32(2.0e-6));
+    let r = run_index_select(&[ah, bh], &[2, 1], &[1, 1], &[1u32, 0], 0, "is_u32_f16");
+    line("index_select f16 [b]", r[0].to_f32(), bh.to_f32());
+    // ---- where_cond: cond [1, 0] picks left then right
+    let shape = [2usize];
+    let cond = vec![1u8, 0u8];
+    let one = (vec![1usize], 0usize);
+    let r = run_where_cond(
+        &shape,
+        &cond,
+        one.clone(),
+        &[a32, a32],
+        one.clone(),
+        &[b32, b32],
+        one.clone(),
+        "where_u8_f32",
+    );
+    line("where_cond f32 [true->a]", r[0], a32);
+    line("where_cond f32 [false->b]", r[1], b32);
+    let r = run_where_cond(
+        &shape,
+        &cond,
+        one.clone(),
+        &[ab, ab],
+        one.clone(),
+        &[bb, bb],
+        one.clone(),
+        "where_u8_bf16",
+    );
+    line("where_cond bf16 [true->a]", r[0].to_f32(), ab.to_f32());
+    let r = run_where_cond(
+        &shape,
+        &cond,
+        one.clone(),
+        &[ah, ah],
+        one.clone(),
+        &[bh, bh],
+        one.clone(),
+        "where_u8_f16",
+    );
+    line("where_cond f16 [true->a]", r[0].to_f32(), ah.to_f32());
+    // ---- narrowing cast f32 -> bf16 / f16 of a value that is subnormal in the TARGET type
+    let r: Vec<bf16> = run_cast(&[a32], "cast_f32_bf16");
+    line(
+        "cast f32->bf16 (bf16 subnormal result)",
+        r[0].to_f32(),
+        ab.to_f32(),
+    );
+    let r: Vec<f16> = run_cast(&[1.0e-6_f32], "cast_f32_f16");
+    line(
+        "cast f32->f16 (f16 subnormal result)",
+        r[0].to_f32(),
+        ah.to_f32(),
+    );
+    // ---- neg / abs (sign-bit operations) on a subnormal
+    let r = run(&[a32, -a32], unary::contiguous::neg::FLOAT);
+    line("neg f32 [a]", r[0], -a32);
+    let r = run(&[-a32, a32], unary::contiguous::abs::FLOAT);
+    line("abs f32 [-a]", r[0], a32);
+    let r = run(&[ab, -ab], unary::contiguous::neg::BFLOAT);
+    line("neg bf16 [a]", r[0].to_f32(), (-ab).to_f32());
+    let r = run(&[ah, -ah], unary::contiguous::neg::HALF);
+    line("neg f16 [a]", r[0].to_f32(), (-ah).to_f32());
+}
