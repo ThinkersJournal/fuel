@@ -3,7 +3,7 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
-## Unreleased - follow-up to #715 (version allocated at gate time; behaviour change on the DECOMPOSED FlashAttn path, so noted Breaking)
+## v0.54.0 - 2026-11-26 (PM-allocated; BREAKING: follow-up to #715, behaviour change on the DECOMPOSED FlashAttn path and var NaN correction is an Err)
 
 ### Breaking
 
