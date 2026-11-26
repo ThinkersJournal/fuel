@@ -5475,7 +5475,7 @@ mod cast_contract_tests {
     /// dtypes + Sign in 4 dtypes = 88 keys) is registered FROM its FKC contract via
     /// `register_cuda_unary_from_contract` - the SOLE path (hand-written
     /// `register_with_caps(..., strided)` regs DELETED). The Gelu<->gelu_tanh name
-    /// inversion is LINK-TABLE handled (base symbol == wrapper; Sign is `sign_f32` + a fanned `sign` section, like Neg).
+    /// inversion is LINK-TABLE handled (base symbol == wrapper; Sign is `sign` (F32, carries the accuracy claim, hash unchanged) + a fanned `sign_half` section {F16,BF16,F64}).
     /// Asserts the EXACT production wrapper is bound, `kernel_source == "baracuda"`
     /// (RED while hand-written stamps `""`), and `caps.strided_input == true`.
     #[test]

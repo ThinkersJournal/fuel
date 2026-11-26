@@ -771,10 +771,10 @@ pub static CUDA_UNARY_ENTRY_POINTS: &[(&str, KernelRef)] = &[
     cuda_ep!("erf_f16", crate::baracuda_dispatch::unary::erf_f16),
     cuda_ep!("erf_bf16", crate::baracuda_dispatch::unary::erf_bf16),
     cuda_ep!("erf_f64", crate::baracuda_dispatch::unary::erf_f64),
-    cuda_ep!("sign_f32", crate::baracuda_dispatch::unary::sign_f32),
-    cuda_ep!("sign_f16", crate::baracuda_dispatch::unary::sign_f16),
-    cuda_ep!("sign_bf16", crate::baracuda_dispatch::unary::sign_bf16),
-    cuda_ep!("sign_f64", crate::baracuda_dispatch::unary::sign_f64),
+    cuda_ep!("sign", crate::baracuda_dispatch::unary::sign_f32),
+    cuda_ep!("sign_half_f16", crate::baracuda_dispatch::unary::sign_f16),
+    cuda_ep!("sign_half_bf16", crate::baracuda_dispatch::unary::sign_bf16),
+    cuda_ep!("sign_half_f64", crate::baracuda_dispatch::unary::sign_f64),
 ];
 
 /// CUDA `clamp_inplace` family (in-place scalar-bounds clamp): fanned `<op>_<dtype>` symbol -> production wrapper.

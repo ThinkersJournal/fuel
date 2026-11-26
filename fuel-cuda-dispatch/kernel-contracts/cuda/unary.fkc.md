@@ -2401,17 +2401,17 @@ determinism: same_hardware_bitwise
 
 ---
 
-## sign_f32  (SignElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
+## sign  (SignElementwise - {F32}, strided+broadcast)
 
-out[i]=sign(in[i]) in {-1,0,1}  Backs `OpKind::SignElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
+out[i]=sign(in[i]) in {-1,0,1} (f32-only) Backs `OpKind::SignElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
 
 ```fkc
-kernel: sign_f32
+kernel: sign
 op_kind: SignElementwise
-blurb: "out[i]=sign(in[i]) in {-1,0,1}  (CUDA/baracuda) {F32, F16, BF16, F64}; strided+broadcast; per-(op,dtype)."
+blurb: "out[i]=sign(in[i]) in {-1,0,1} (f32-only) (CUDA/baracuda) {F32}; strided+broadcast; per-(op,dtype)."
 backend: Cuda
 kernel_source: "baracuda"
-entry_point: "fuel_cuda_backend::fkc::sign_f32"
+entry_point: "fuel_cuda_backend::fkc::sign"
 kernel_revision_hash: auto
 
 accept:
@@ -2454,18 +2454,17 @@ precision:
 
 determinism: same_hardware_bitwise
 ```
-
-## sign  (SignElementwise - {F16, BF16, F64}, strided+broadcast)
+## sign_half  (SignElementwise - {F16, BF16, F64}, strided+broadcast)
 
 out[i]=sign(in[i]) in {-1,0,1}  Backs `OpKind::SignElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
-kernel: sign
+kernel: sign_half
 op_kind: SignElementwise
 blurb: "out[i]=sign(in[i]) in {-1,0,1}  (CUDA/baracuda) {F32, F16, BF16, F64}; strided+broadcast; per-(op,dtype)."
 backend: Cuda
 kernel_source: "baracuda"
-entry_point: "fuel_cuda_backend::fkc::sign"
+entry_point: "fuel_cuda_backend::fkc::sign_half"
 kernel_revision_hash: auto
 
 accept:
@@ -2504,7 +2503,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "baracuda-kernels-sys/kernels/elementwise/unary_sign_fp.cu: SignFunctor<double> / SignFunctor<__half> / SignFunctor<__nv_bfloat16> are each a single piecewise compare-select (`x>0 ? 1 : x<0 ? -1 : 0`, the half types precompute the three constants via __float2half/__float2bfloat16; read from source, NaN -> 0 by that form; NOT YET MEASURED on a device, the 4070 vectors are baracuda_sign_step_nan_live) per element via the shared unary_pointwise_contig_kernel/unary_pointwise_strided_kernel templates (one thread per output index, no atomics, no __shared__) — bit-stable same hardware."
+  notes: "baracuda-kernels-sys/kernels/elementwise/unary_sign_fp.cu: SignFunctor<double> / SignFunctor<__half> / SignFunctor<__nv_bfloat16> are each a single piecewise compare-select (`x>0 ? 1 : x<0 ? -1 : 0`, the half types precompute the three constants via __float2half/__float2bfloat16; read from source, NaN -> 0 by that form; MEASURED on the RTX 4070 Laptop 2026-11-26 by baracuda_sign_step_nan_live: [NaN, 0.5, -2, 0] -> [0, 1, -1, 0] on F16, BF16 and F64, 3 of 3 sections; one input set, one device) per element via the shared unary_pointwise_contig_kernel/unary_pointwise_strided_kernel templates (one thread per output index, no atomics, no __shared__) — bit-stable same hardware."
 
 determinism: same_hardware_bitwise
 ```
