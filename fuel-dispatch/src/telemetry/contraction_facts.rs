@@ -81,6 +81,13 @@ pub fn matmul_structure_key(
     let Some(facts) = matmul_declared_facts(a, b, out) else {
         return Ok(None);
     };
+    // KISS-OPS-6.17-0002: a kernel that flushes subnormals must decline `Exact`, and the cell declares
+    // `GemMathPrecision::BitStable`. Metal flushes f32 and bf16 subnormal operands and results (measured on the hosted
+    // macOS device: vulkane run 45748530618, fuel run 45748920513), so no key is derived for them on a Metal target:
+    // the contraction is declined, not mis-declared. f16 preserves subnormals (measured) and keeps its key.
+    if target.starts_with("metal") && matches!(a.dtype, DType::F32 | DType::BF16) {
+        return Ok(None);
+    }
     let operands = [
         CellOperand::input(a.clone()),
         CellOperand::input(b.clone()),
