@@ -3,6 +3,23 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.57.0 - 2026-11-26 (PM-allocated; BREAKING: `sample_logits` and `spec_argmax` return `Result`; NaN row = typed Err)
+
+### Fixed
+
+- `fuel::lazy::sample_logits` (greedy, and `Temperature` with `temp <= 0` or NaN) picked a token from a row containing NaN (`max_by(partial_cmp -> Equal)` treats NaN as a tie) and the LAST index on a tie. **This was a published silent wrong result:** every published `fuel-tensor` carries it, from the oldest (0.19.1) to 0.56.1 (read from the 17 `.crate` files on crates.io: `sample_logits` with `max_by(partial_cmp -> Equal)` in each; earlier `fuel-core` publishes were not read). Callers in this workspace: `fuel-inference` (`sample_next`, the legacy path), `fuel-model-llama`, `fuel-model-phi`, `fuel-transformers` (`lazy_deepseek2`) and the `gemma-lazy` example. It now follows the `sample_argmax` contract (cluster ruling 2026-11-26): an empty row or a NaN anywhere in the row is a typed `Err`, ties take the FIRST index, `+inf`/`-inf` are ordinary values for greedy; the `Temperature` path also refuses any non-finite logit, as `sample_with_params` does. `spec_argmax` follows the same rule. `fuel-inference`'s legacy path (a session with no `SamplingParams`) therefore returns an `Err` on a NaN row instead of a garbage token.
+
+### Breaking
+
+- `sample_logits(..) -> u32` is now `-> fuel_ir::Result<u32>` and `spec_argmax(..) -> u32` is now `-> fuel_ir::Result<u32>`: callers add `?`.
+- **Greedy tie-break flips from the last tied index to the FIRST** (the torch convention). Lightbulb's golden outputs for tied-logit rows change; regenerate them.
+
+## v0.56.1 - 2026-11-26 (PM-allocated; CI only; not breaking)
+
+### Added
+
+- `.github/workflows/metal-shader-check.yml`: a hosted macOS job that compiles the Metal shaders and runs the device probe (no probe-branch push trigger). No crate code changes.
+
 ## v0.56.0 - 2026-11-26 (PM-allocated; BREAKING: takes unpopped-vocab 0.58 and fireline-grammar 0.9, whose types fuel re-exports; first published version of the 0.53.0 to 0.55.2 content)
 
 **This is the first published version carrying the content of the sections 0.53.0, 0.54.0, 0.55.0, 0.55.1 and 0.55.2 below (none of them was published; each is superseded by this one). Read those sections for the changes; the Breaking items in 0.53.0, 0.54.0 and 0.55.0 apply to this release.**
