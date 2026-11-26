@@ -3,6 +3,17 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## Unreleased (the PM stamps the version; BREAKING: `sample_logits` and `spec_argmax` return `Result`)
+
+### Fixed
+
+- `fuel::lazy::sample_logits` (greedy, and `Temperature` with `temp <= 0` or NaN) picked a token from a row containing NaN (`max_by(partial_cmp -> Equal)` treats NaN as a tie) and the LAST index on a tie. Present since the April 2026 Phase 6a commit (first tag containing it: v0.26.12; which tags reached crates.io was not checked). It now follows the `sample_argmax` contract (cluster ruling 2026-11-26): an empty row or a NaN anywhere in the row is a typed `Err`, ties take the FIRST index, `+inf`/`-inf` are ordinary values for greedy; the `Temperature` path also refuses any non-finite logit, as `sample_with_params` does. `spec_argmax` follows the same rule. `fuel-inference`'s legacy path (a session with no `SamplingParams`) therefore returns an `Err` on a NaN row instead of a garbage token.
+
+### Breaking
+
+- `sample_logits(..) -> u32` is now `-> fuel_ir::Result<u32>` and `spec_argmax(..) -> u32` is now `-> fuel_ir::Result<u32>`: callers add `?`.
+- **Greedy tie-break flips from the last tied index to the FIRST** (the torch convention). Lightbulb's golden outputs for tied-logit rows change; regenerate them.
+
 ## v0.56.1 - 2026-11-26 (PM-allocated; CI only; not breaking)
 
 ### Added

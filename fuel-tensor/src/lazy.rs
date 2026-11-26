@@ -9732,19 +9732,47 @@ pub enum SamplingStrategy {
     Temperature { temp: f32, seed: u64 },
 }
 
-fn argmax_logits(logits: &[f32]) -> u32 {
-    let (i, _) = logits
-        .iter()
-        .enumerate()
-        .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-        .expect("sample_logits: empty logits");
-    i as u32
+/// Greedy argmax over a logits row, by the `sample_argmax` contract (ruling 2026-11-25, the same
+/// rule `fuel-transformers` `generation::sample_argmax` follows): an empty row is an `Err`; a NaN
+/// ANYWHERE in the row is an `Err` (the model produced NaN: never pick a token from such a row, even
+/// when the NaN is not at the maximum); ties take the FIRST index (strict `>`; `-0.0 == +0.0`);
+/// `+inf` and `-inf` are ordinary values here.
+///
+/// This replaces `max_by(partial_cmp -> Equal)`, which treated a NaN comparison as a tie, so a NaN
+/// row returned an arbitrary index, and which returned the LAST of a set of tied maxima.
+fn argmax_logits(logits: &[f32]) -> fuel_ir::Result<u32> {
+    if logits.is_empty() {
+        return Err(fuel_ir::error::Error::Msg(
+            "sample_logits: empty logits".into(),
+        ));
+    }
+    if let Some(at) = logits.iter().position(|v| v.is_nan()) {
+        return Err(fuel_ir::error::Error::Msg(format!(
+            "sample_logits: logit {at} of {} is NaN (the model produced NaN); refusing to pick a token",
+            logits.len()
+        )));
+    }
+    let mut best = 0usize;
+    for (i, &v) in logits.iter().enumerate() {
+        if v > logits[best] {
+            best = i;
+        }
+    }
+    Ok(best as u32)
 }
 
 /// Pick the next token from a logits vector using the configured
 /// sampling strategy. Pulled out of `generate` so both the cached and
 /// future non-cached callers can share it.
-pub fn sample_logits(logits: &[f32], strategy: SamplingStrategy, rng_state: &mut u64) -> u32 {
+///
+/// Errors (never panics): an empty row; a NaN logit anywhere (greedy and temperature paths alike);
+/// on the temperature path also an infinite logit, as [`crate::sampling::sample_with_params`] does
+/// (the softmax of an infinity is NaN). Greedy ties take the first index (see `argmax_logits`).
+pub fn sample_logits(
+    logits: &[f32],
+    strategy: SamplingStrategy,
+    rng_state: &mut u64,
+) -> fuel_ir::Result<u32> {
     match strategy {
         SamplingStrategy::Greedy => argmax_logits(logits),
         // `temp <= 0.0` (and NaN) is the greedy limit: documented as "effectively greedy". It
@@ -9753,6 +9781,17 @@ pub fn sample_logits(logits: &[f32], strategy: SamplingStrategy, rng_state: &mut
             argmax_logits(logits)
         }
         SamplingStrategy::Temperature { temp, .. } => {
+            if let Some(at) = logits.iter().position(|v| !v.is_finite()) {
+                return Err(fuel_ir::error::Error::Msg(format!(
+                    "sample_logits: logit {at} of {} is not finite; refusing to sample",
+                    logits.len()
+                )));
+            }
+            if logits.is_empty() {
+                return Err(fuel_ir::error::Error::Msg(
+                    "sample_logits: empty logits".into(),
+                ));
+            }
             // Stable softmax over temperature-scaled logits,
             // then a deterministic multinomial draw.
             let inv_temp = 1.0 / temp;
@@ -9761,7 +9800,7 @@ pub fn sample_logits(logits: &[f32], strategy: SamplingStrategy, rng_state: &mut
             let exp: Vec<f32> = scaled.iter().map(|&x| (x - max).exp()).collect();
             let sum: f32 = exp.iter().sum();
             let probs: Vec<f32> = exp.iter().map(|&x| x / sum).collect();
-            sample_multinomial(&probs, rng_state)
+            Ok(sample_multinomial(&probs, rng_state))
         }
     }
 }
@@ -9772,17 +9811,11 @@ pub fn sample_logits(logits: &[f32], strategy: SamplingStrategy, rng_state: &mut
 // phases. All host-side: spec decode's accept rule operates on logits
 // vectors already downloaded from the device.
 
-/// Greedy argmax over a logits row.
-pub fn spec_argmax(logits: &[f32]) -> u32 {
-    let mut best = 0;
-    let mut best_v = logits[0];
-    for (i, &v) in logits.iter().enumerate().skip(1) {
-        if v > best_v {
-            best_v = v;
-            best = i;
-        }
-    }
-    best as u32
+/// Greedy argmax over a logits row, by the same contract as `sample_logits` (empty or NaN row is an
+/// `Err`, ties take the first index). It used to index `logits[0]` (a panic on an empty row) and, with
+/// a NaN at index 0, compare against it for the whole scan (every `v > NaN` is false: index 0 won).
+pub fn spec_argmax(logits: &[f32]) -> fuel_ir::Result<u32> {
+    argmax_logits(logits)
 }
 
 /// Temperature-scaled softmax. Returns normalized probabilities.
