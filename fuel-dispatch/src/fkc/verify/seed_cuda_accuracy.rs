@@ -97,7 +97,7 @@ pub(crate) const UNARY_CLAIMS: &[(OpKind, &str, Claim)] = &[
     (OpKind::CeilElementwise, "ceil_f32", both(0.0)),
     (OpKind::RoundElementwise, "round_f32", both(0.0)),
     (OpKind::ErfElementwise, "erf_f32", both(1.0e-5)),
-    (OpKind::SignElementwise, "sign", both(0.0)),
+    (OpKind::SignElementwise, "sign_f32", both(0.0)),
 ];
 
 /// `(op, f32 section, claim)` of each binary op, one entry per `BINARY_SPECS` spec; the

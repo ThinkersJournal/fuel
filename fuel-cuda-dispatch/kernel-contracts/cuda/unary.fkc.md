@@ -8,9 +8,9 @@ provider:
   revision_base: "git:f41137b4"
 ---
 
-# fuel-cuda-backend - forward elementwise unary (21 ops x 4 dtypes + f32-only Sign; the F32 section of each op carries its accuracy claim) kernel contracts
+# fuel-cuda-backend - forward elementwise unary (22 ops x 4 dtypes; the F32 section of each op carries its accuracy claim) kernel contracts
 
-CUDA (baracuda) baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only.. Each section binds one concrete `OpKind` and fans its operand(s)
+CUDA (baracuda) baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes.. Each section binds one concrete `OpKind` and fans its operand(s)
 over the accepted dtypes (sec 3.4 dtype-fan; base `entry_point` -> `<op>_<dtype>` resolved through
 [`crate::fkc::CudaLinkRegistry`]). Caps ride through the import truthfully (sec 6 / caps_map):
 each per-operand five-flag layout projects onto
@@ -29,7 +29,7 @@ section's `precision.notes` for the specific source file/functor cited.
 
 ## neg_f32  (NegElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=neg(in[i]) Backs `OpKind::NegElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=neg(in[i]) Backs `OpKind::NegElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: neg_f32
@@ -85,7 +85,7 @@ determinism: same_hardware_bitwise
 
 ## neg  (NegElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=neg(in[i]) Backs `OpKind::NegElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=neg(in[i]) Backs `OpKind::NegElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: neg
@@ -141,7 +141,7 @@ determinism: same_hardware_bitwise
 
 ## abs_f32  (AbsElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=abs(in[i]) Backs `OpKind::AbsElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=abs(in[i]) Backs `OpKind::AbsElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: abs_f32
@@ -197,7 +197,7 @@ determinism: same_hardware_bitwise
 
 ## abs  (AbsElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=abs(in[i]) Backs `OpKind::AbsElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=abs(in[i]) Backs `OpKind::AbsElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: abs
@@ -253,7 +253,7 @@ determinism: same_hardware_bitwise
 
 ## sqr_f32  (SqrElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=sqr(in[i]) Backs `OpKind::SqrElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=sqr(in[i]) Backs `OpKind::SqrElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: sqr_f32
@@ -309,7 +309,7 @@ determinism: same_hardware_bitwise
 
 ## sqr  (SqrElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=sqr(in[i]) Backs `OpKind::SqrElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=sqr(in[i]) Backs `OpKind::SqrElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: sqr
@@ -365,7 +365,7 @@ determinism: same_hardware_bitwise
 
 ## sqrt_f32  (SqrtElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=sqrt(in[i]) Backs `OpKind::SqrtElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=sqrt(in[i]) Backs `OpKind::SqrtElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: sqrt_f32
@@ -421,7 +421,7 @@ determinism: same_hardware_bitwise
 
 ## sqrt  (SqrtElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=sqrt(in[i]) Backs `OpKind::SqrtElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=sqrt(in[i]) Backs `OpKind::SqrtElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: sqrt
@@ -477,7 +477,7 @@ determinism: same_hardware_bitwise
 
 ## recip_f32  (RecipElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=recip(in[i]) Backs `OpKind::RecipElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=recip(in[i]) Backs `OpKind::RecipElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: recip_f32
@@ -533,7 +533,7 @@ determinism: same_hardware_bitwise
 
 ## recip  (RecipElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=recip(in[i]) Backs `OpKind::RecipElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=recip(in[i]) Backs `OpKind::RecipElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: recip
@@ -589,7 +589,7 @@ determinism: same_hardware_bitwise
 
 ## exp_f32  (ExpElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=exp(in[i]) Backs `OpKind::ExpElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=exp(in[i]) Backs `OpKind::ExpElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: exp_f32
@@ -645,7 +645,7 @@ determinism: same_hardware_bitwise
 
 ## exp  (ExpElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=exp(in[i]) Backs `OpKind::ExpElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=exp(in[i]) Backs `OpKind::ExpElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: exp
@@ -701,7 +701,7 @@ determinism: same_hardware_bitwise
 
 ## log_f32  (LogElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=log(in[i]) Backs `OpKind::LogElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=log(in[i]) Backs `OpKind::LogElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: log_f32
@@ -757,7 +757,7 @@ determinism: same_hardware_bitwise
 
 ## log  (LogElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=log(in[i]) Backs `OpKind::LogElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=log(in[i]) Backs `OpKind::LogElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: log
@@ -813,7 +813,7 @@ determinism: same_hardware_bitwise
 
 ## sin_f32  (SinElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=sin(in[i]) Backs `OpKind::SinElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=sin(in[i]) Backs `OpKind::SinElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: sin_f32
@@ -869,7 +869,7 @@ determinism: same_hardware_bitwise
 
 ## sin  (SinElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=sin(in[i]) Backs `OpKind::SinElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=sin(in[i]) Backs `OpKind::SinElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: sin
@@ -925,7 +925,7 @@ determinism: same_hardware_bitwise
 
 ## cos_f32  (CosElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=cos(in[i]) Backs `OpKind::CosElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=cos(in[i]) Backs `OpKind::CosElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: cos_f32
@@ -981,7 +981,7 @@ determinism: same_hardware_bitwise
 
 ## cos  (CosElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=cos(in[i]) Backs `OpKind::CosElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=cos(in[i]) Backs `OpKind::CosElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: cos
@@ -1037,7 +1037,7 @@ determinism: same_hardware_bitwise
 
 ## tanh_f32  (TanhElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=tanh(in[i]) Backs `OpKind::TanhElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=tanh(in[i]) Backs `OpKind::TanhElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: tanh_f32
@@ -1093,7 +1093,7 @@ determinism: same_hardware_bitwise
 
 ## tanh  (TanhElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=tanh(in[i]) Backs `OpKind::TanhElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=tanh(in[i]) Backs `OpKind::TanhElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: tanh
@@ -1159,7 +1159,7 @@ backs `OpKind::ReluInplace` — a residual, not-yet-rebound gap; see
 agree on NaN handling (pinned 2026-07-08, `docs/architecture/10-decisions-log.md`; live pin:
 `fuel-dispatch/tests/cuda_dispatch_live.rs::cuda_relu_propagates_nan_f32` + bf16 sibling —
 direct binding-table invocation, born-red-verified). Gelu is the TANH approx
-(unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no
+(unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no
 aliasing.
 
 ```fkc
@@ -1226,7 +1226,7 @@ backs `OpKind::ReluInplace` — a residual, not-yet-rebound gap; see
 agree on NaN handling (pinned 2026-07-08, `docs/architecture/10-decisions-log.md`; live pin:
 `fuel-dispatch/tests/cuda_dispatch_live.rs::cuda_relu_propagates_nan_f32` + bf16 sibling —
 direct binding-table invocation, born-red-verified). Gelu is the TANH approx
-(unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no
+(unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no
 aliasing.
 
 ```fkc
@@ -1283,7 +1283,7 @@ determinism: same_hardware_bitwise
 
 ## gelu_tanh_f32  (GeluElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=gelu_tanh(in[i]) Backs `OpKind::GeluElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=gelu_tanh(in[i]) Backs `OpKind::GeluElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: gelu_tanh_f32
@@ -1339,7 +1339,7 @@ determinism: same_hardware_bitwise
 
 ## gelu_tanh  (GeluElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=gelu_tanh(in[i]) Backs `OpKind::GeluElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=gelu_tanh(in[i]) Backs `OpKind::GeluElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: gelu_tanh
@@ -1395,7 +1395,7 @@ determinism: same_hardware_bitwise
 
 ## gelu_f32  (GeluErfElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=gelu(in[i]) Backs `OpKind::GeluErfElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=gelu(in[i]) Backs `OpKind::GeluErfElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: gelu_f32
@@ -1451,7 +1451,7 @@ determinism: same_hardware_bitwise
 
 ## gelu  (GeluErfElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=gelu(in[i]) Backs `OpKind::GeluErfElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=gelu(in[i]) Backs `OpKind::GeluErfElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: gelu
@@ -1507,7 +1507,7 @@ determinism: same_hardware_bitwise
 
 ## step_f32  (StepElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=step(in[i]) Backs `OpKind::StepElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=step(in[i]) Backs `OpKind::StepElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: step_f32
@@ -1563,7 +1563,7 @@ determinism: same_hardware_bitwise
 
 ## step  (StepElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=step(in[i]) Backs `OpKind::StepElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=step(in[i]) Backs `OpKind::StepElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: step
@@ -1619,7 +1619,7 @@ determinism: same_hardware_bitwise
 
 ## silu_f32  (SiluElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=silu(in[i]) Backs `OpKind::SiluElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=silu(in[i]) Backs `OpKind::SiluElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: silu_f32
@@ -1675,7 +1675,7 @@ determinism: same_hardware_bitwise
 
 ## silu  (SiluElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=silu(in[i]) Backs `OpKind::SiluElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=silu(in[i]) Backs `OpKind::SiluElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: silu
@@ -1731,7 +1731,7 @@ determinism: same_hardware_bitwise
 
 ## sigmoid_f32  (SigmoidElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=sigmoid(in[i]) Backs `OpKind::SigmoidElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=sigmoid(in[i]) Backs `OpKind::SigmoidElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: sigmoid_f32
@@ -1787,7 +1787,7 @@ determinism: same_hardware_bitwise
 
 ## sigmoid  (SigmoidElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=sigmoid(in[i]) Backs `OpKind::SigmoidElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=sigmoid(in[i]) Backs `OpKind::SigmoidElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: sigmoid
@@ -1843,7 +1843,7 @@ determinism: same_hardware_bitwise
 
 ## rsqrt_f32  (RsqrtElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=rsqrt(in[i]) Backs `OpKind::RsqrtElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=rsqrt(in[i]) Backs `OpKind::RsqrtElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: rsqrt_f32
@@ -1899,7 +1899,7 @@ determinism: same_hardware_bitwise
 
 ## rsqrt  (RsqrtElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=rsqrt(in[i]) Backs `OpKind::RsqrtElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=rsqrt(in[i]) Backs `OpKind::RsqrtElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: rsqrt
@@ -1955,7 +1955,7 @@ determinism: same_hardware_bitwise
 
 ## floor_f32  (FloorElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=floor(in[i]) Backs `OpKind::FloorElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=floor(in[i]) Backs `OpKind::FloorElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: floor_f32
@@ -2011,7 +2011,7 @@ determinism: same_hardware_bitwise
 
 ## floor  (FloorElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=floor(in[i]) Backs `OpKind::FloorElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=floor(in[i]) Backs `OpKind::FloorElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: floor
@@ -2067,7 +2067,7 @@ determinism: same_hardware_bitwise
 
 ## ceil_f32  (CeilElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=ceil(in[i]) Backs `OpKind::CeilElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=ceil(in[i]) Backs `OpKind::CeilElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: ceil_f32
@@ -2123,7 +2123,7 @@ determinism: same_hardware_bitwise
 
 ## ceil  (CeilElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=ceil(in[i]) Backs `OpKind::CeilElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=ceil(in[i]) Backs `OpKind::CeilElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: ceil
@@ -2179,7 +2179,7 @@ determinism: same_hardware_bitwise
 
 ## round_f32  (RoundElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=round(in[i]) Backs `OpKind::RoundElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=round(in[i]) Backs `OpKind::RoundElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: round_f32
@@ -2235,7 +2235,7 @@ determinism: same_hardware_bitwise
 
 ## round  (RoundElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=round(in[i]) Backs `OpKind::RoundElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=round(in[i]) Backs `OpKind::RoundElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: round
@@ -2291,7 +2291,7 @@ determinism: same_hardware_bitwise
 
 ## erf_f32  (ErfElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=erf(in[i]) Backs `OpKind::ErfElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=erf(in[i]) Backs `OpKind::ErfElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: erf_f32
@@ -2347,7 +2347,7 @@ determinism: same_hardware_bitwise
 
 ## erf  (ErfElementwise - {F16, BF16, F64}, strided+broadcast)
 
-out[i]=erf(in[i]) Backs `OpKind::ErfElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=erf(in[i]) Backs `OpKind::ErfElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
 kernel: erf
@@ -2401,17 +2401,17 @@ determinism: same_hardware_bitwise
 
 ---
 
-## sign  (SignElementwise - {F32}, strided+broadcast)
+## sign_f32  (SignElementwise - F32, strided+broadcast; carries the numeric accuracy claim)
 
-out[i]=sign(in[i]) in {-1,0,1} (f32-only) Backs `OpKind::SignElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is f32-only. Output: fresh, contiguous, no aliasing.
+out[i]=sign(in[i]) in {-1,0,1}  Backs `OpKind::SignElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
 
 ```fkc
-kernel: sign
+kernel: sign_f32
 op_kind: SignElementwise
-blurb: "out[i]=sign(in[i]) in {-1,0,1} (f32-only) (CUDA/baracuda) {F32}; strided+broadcast; per-(op,dtype)."
+blurb: "out[i]=sign(in[i]) in {-1,0,1}  (CUDA/baracuda) {F32, F16, BF16, F64}; strided+broadcast; per-(op,dtype)."
 backend: Cuda
 kernel_source: "baracuda"
-entry_point: "fuel_cuda_backend::fkc::sign"
+entry_point: "fuel_cuda_backend::fkc::sign_f32"
 kernel_revision_hash: auto
 
 accept:
@@ -2451,6 +2451,60 @@ precision:
   max_absolute: 0
   audited: true
   notes: "baracuda-kernels-sys/kernels/elementwise/unary_sign_fp.cu: SignFunctor<float> is a single piecewise compare-select (`x>0 ? 1 : x<0 ? -1 : 0`) per element via the shared unary_pointwise_contig_kernel/unary_pointwise_strided_kernel templates (one thread per output index, no atomics, no __shared__) — bit-stable same hardware."
+
+determinism: same_hardware_bitwise
+```
+
+## sign  (SignElementwise - {F16, BF16, F64}, strided+broadcast)
+
+out[i]=sign(in[i]) in {-1,0,1}  Backs `OpKind::SignElementwise`. baracuda unary_* contig + <sym>_strided_run; wrapper picks per-call. Gelu is the TANH approx (unary::gelu_tanh); GeluErf is erf (unary::gelu); Sign is bound in all four dtypes. Output: fresh, contiguous, no aliasing.
+
+```fkc
+kernel: sign
+op_kind: SignElementwise
+blurb: "out[i]=sign(in[i]) in {-1,0,1}  (CUDA/baracuda) {F32, F16, BF16, F64}; strided+broadcast; per-(op,dtype)."
+backend: Cuda
+kernel_source: "baracuda"
+entry_point: "fuel_cuda_backend::fkc::sign"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: in
+      dtypes: [F16, BF16, F64]
+      layout: { contiguous: accepted, strided: accepted, broadcast_stride0: accepted, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "same_as=out"
+  op_params: { variant: None }
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(in)
+      shape_rule: same_as(in)
+      layout_guarantee: contiguous
+      aliasing: none
+
+caps:
+  awkward_layout_strategy: handles_strided
+  fast_paths: []
+  in_place: false
+  alignment_bytes: 16
+  access_granularity_bits: 32
+
+cost:
+  provenance: judge_measured
+  class: cheap_elementwise
+  bytes_moved: "2 * n * dtype_bytes"
+  memory: { device_bytes: "n * dtype_bytes", host_bytes: 0, disk_bytes: 0 }
+
+precision:
+  bit_stable_on_same_hardware: true
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "baracuda-kernels-sys/kernels/elementwise/unary_sign_fp.cu: SignFunctor<double> / SignFunctor<__half> / SignFunctor<__nv_bfloat16> are each a single piecewise compare-select (`x>0 ? 1 : x<0 ? -1 : 0`, the half types precompute the three constants via __float2half/__float2bfloat16; read from source, NaN -> 0 by that form; NOT YET MEASURED on a device, the 4070 vectors are baracuda_sign_step_nan_live) per element via the shared unary_pointwise_contig_kernel/unary_pointwise_strided_kernel templates (one thread per output index, no atomics, no __shared__) — bit-stable same hardware."
 
 determinism: same_hardware_bitwise
 ```
