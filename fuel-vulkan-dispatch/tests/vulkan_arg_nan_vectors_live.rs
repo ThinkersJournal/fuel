@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
+// HOSTED-CI NOTE (PIP #715 N2): this test needs a live Vulkan adapter, so the hosted `rust-ci.yml` test steps skip it BY NAME
+// (`--skip` list); a rename of any test here MUST be mirrored there, or hosted CI reddens. The GPU runner
+// (`device-tests.yml`) runs it whole.
 //! **What the SHIPPED Vulkan `.spv` argmax/argmin do on the NaN spec vectors** (the CPU rule since
 //! the torch-convention ruling: a NaN WINS and the FIRST NaN's index is returned; no NaN: ties take
 //! the first index, `-0.0 == +0.0`), for f32/f16/bf16/f64 on every non-CPU Vulkan adapter, named by

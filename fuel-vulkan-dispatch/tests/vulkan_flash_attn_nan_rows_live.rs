@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
+// HOSTED-CI NOTE (PIP #715 N2): this test needs a live Vulkan adapter, so the hosted `rust-ci.yml` test steps skip it BY NAME
+// (`--skip` list); a rename of any test here MUST be mirrored there, or hosted CI reddens. The GPU runner
+// (`device-tests.yml`) runs it whole.
 //! FlashAttn on NaN rows through the SHIPPED Vulkan kernels, on every non-CPU adapter, f32 / f16 /
 //! bf16, single-pass AND split-KV decode: the masked/NaN-row contract (ruling 2026-11-25): a NaN in
 //! Q, or in K/V at a position the query ATTENDS, makes that output NaN (never swallowed); a NaN in a

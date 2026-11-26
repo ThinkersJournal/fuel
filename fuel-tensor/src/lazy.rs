@@ -2701,6 +2701,41 @@ mod tests {
                 false,
                 None,
             ),
+            // PIP #715 M1: a non-finite score at a MASKED-OUT position must never reach the softmax.
+            // sq=3 > sk=2, causal, window_left=0: row 2 attends nothing, and its Q is NaN. Contract (1)
+            // "a fully masked row is zeros" takes precedence over (2) "NaN in Q makes the row NaN":
+            // nothing is attended, so nothing is poisoned (the fused CPU kernel's result).
+            c(
+                "nan-q-fully-masked-row",
+                vec![0.5, -0.25, 0.1, 0.9, nan, 0.3],
+                bk.clone(),
+                bv.clone(),
+                3,
+                2,
+                true,
+                Some(0),
+            ),
+            // Row 0 does not attend key 1 (causal); key 1 is NaN / +inf. Row 0 must be its NaN-free value.
+            c(
+                "nan-k-masked-key",
+                bq[..4].to_vec(),
+                vec![0.3, 0.2, nan, nan],
+                bv.clone(),
+                2,
+                2,
+                true,
+                None,
+            ),
+            c(
+                "inf-k-masked-key",
+                bq[..4].to_vec(),
+                vec![0.3, 0.2, f32::INFINITY, f32::INFINITY],
+                bv.clone(),
+                2,
+                2,
+                true,
+                None,
+            ),
             c(
                 "nan-v-masked-key",
                 bq[..4].to_vec(),
@@ -2723,10 +2758,12 @@ mod tests {
         Val(f32),
         /// UNSPECIFIED (contract (3)): NaN is allowed; otherwise it must equal this NaN-free reference.
         NanOrVal(f32),
+        /// Not asserted (the attended non-finite score row: a pre-existing fused/decomposed difference, PIP L1).
+        Any,
     }
 
     fn attn_expected(name: &str) -> Vec<Want> {
-        use Want::{Nan as n, NanOrVal as o, Val as s};
+        use Want::{Any as a, Nan as n, NanOrVal as o, Val as s};
         match name {
             "control" => vec![s(1.8943309), s(2.894331), s(2.1126559), s(3.1126556)],
             "fully-masked-row-mixed" => vec![s(1.0), s(2.0), s(3.0), s(4.0), s(0.0), s(0.0)],
@@ -2736,6 +2773,9 @@ mod tests {
             // Row 0 attends only key 0 (the NaN V row is masked out for it): UNSPECIFIED; the
             // NaN-free reference is [1, 2]. Row 1 attends the NaN V row: column 0 must be NaN.
             "nan-v-masked-key" => vec![o(1.0), o(2.0), n, s(3.1126556)],
+            "nan-q-fully-masked-row" => vec![s(1.0), s(2.0), s(3.0), s(4.0), s(0.0), s(0.0)],
+            "nan-k-masked-key" => vec![s(1.0), s(2.0), n, n],
+            "inf-k-masked-key" => vec![s(1.0), s(2.0), a, a],
             other => panic!("no expectation for {other}"),
         }
     }
@@ -2750,6 +2790,7 @@ mod tests {
                 Want::Nan => !g.is_nan(),
                 Want::Val(x) => g.is_nan() || (**g - *x).abs() > 1e-4,
                 Want::NanOrVal(x) => !g.is_nan() && (**g - *x).abs() > 1e-4,
+                Want::Any => false,
             })
             .map(|(i, (g, w))| format!("[{i}] got {g} want {w:?}"))
             .collect();
@@ -6637,6 +6678,13 @@ impl Tensor {
         dim: D,
         correction: f64,
     ) -> std::result::Result<Self, fuel_ir::Error> {
+        // A NaN correction is a caller error: `f64::max` returns the non-NaN operand, so it would otherwise be
+        // clamped to a zero divisor and silently turn a NaN result into `inf` (PIP #715 L2).
+        if correction.is_nan() {
+            return Err(fuel_ir::Error::Msg(
+                "var_keepdim: correction must not be NaN".to_string(),
+            ));
+        }
         let shape = self.shape();
         let dim = dim.to_index(&shape, "var_keepdim")?;
         let dims = shape.dims();
@@ -11125,6 +11173,16 @@ mod phase_a3_keepdim_tests {
             .collect(),
             other => panic!("dtype {other}"),
         }
+    }
+
+    /// PIP #715 L2: a NaN correction is a typed error, never a silently clamped zero divisor (`inf`).
+    #[test]
+    fn var_rejects_a_nan_correction() {
+        let dev = Device::cpu();
+        let x = Tensor::from_f32(vec![1.0, 3.0], Shape::from_dims(&[2]), &dev).unwrap();
+        assert!(x.var_keepdim(0, f64::NAN).is_err());
+        // control: the same call with a finite correction succeeds
+        assert!(x.var_keepdim(0, 1.0).is_ok());
     }
 
     #[test]
