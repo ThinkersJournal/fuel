@@ -302,7 +302,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "online (Welford MD) max-subtract softmax; denominator d accumulates in f32 (f16/bf16 narrow on store); exp at f32; NOT bit-stable cross-hardware (transcendental + lane order). Declined Exact (KISS-OPS-6.17-0002): this kernel's own subnormal behaviour is UNMEASURED; arithmetic on this device flushes f32/bf16 subnormal operands and results (measured on add, mul, affine, sum: vulkane run 45748530618, fuel run 45748920513) and data movement preserves them (measured on index_select, where_cond, narrowing cast, neg/abs: fuel run 45749639333). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserved subnormals on every measured kernel. bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
+  notes: "online (Welford MD) max-subtract softmax; denominator d accumulates in f32 (f16/bf16 narrow on store); exp at f32; NOT bit-stable cross-hardware (transcendental + lane order). Declined Exact (KISS-OPS-6.17-0002): this kernel flushes f32/bf16 subnormal operands and results to zero (measured, vulkane run 45748530618; fuel run 45748920513; softmax f32/bf16 subnormal result flushed to 0: fuel run 45764780697 (hosted macOS Apple Paravirtual device)). Not bit-stable; no MathFidelity value (KISS-OPS-6.17-0003) admits flushing. Not a KISS Contract (KISS-CONTRACT-6.8-0001 needs math_fidelity). f16 preserves subnormals (measured, same run). bit_stable_on_same_hardware here is a deterministic-re-run claim, NOT KISS bit-stable."
 
 determinism: same_hardware_bitwise
 ```
