@@ -319,8 +319,12 @@ fn cuda_half_index_add_accumulates_duplicates_and_oob_is_measured() {
                 other => bad.push(format!("index_add/{dt:?}: {other:?}")),
             }
         }
-        // Out-of-range index (3 >= base_dim_size = 3): MEASURED, printed.
+        // Out-of-range index (3 >= base_dim_size = 3): MEASURED 2026-11-27 on the 4070 (baracuda alpha.220): the
+        // out-of-range update is SKIPPED and Ok is returned, every other row accumulates. This conforms to
+        // KISS-OPS-6.11-0005 (merged, KISS 0.24.4: a scatter-decomposed write op such as index_add SKIPS an
+        // out-of-bounds write and never declines); the CPU backend's typed Err is the divergence (GAP-415).
         let oob = storage(&dev, &u32_bytes(&[2, 3, 0]), DType::U32);
+        let want_oob = [51.0, 62.0, 3.0, 4.0, 15.0, 26.0];
         for r in run_all(
             &t,
             OpKind::IndexAdd,
@@ -330,7 +334,12 @@ fn cuda_half_index_add_accumulates_duplicates_and_oob_is_measured() {
             &params,
         ) {
             ran += 1;
-            println!("HALFIDX index_add_oob/{dt:?}: {:?}", r.map(|b| dec(dt, &b)));
+            match r.map(|b| dec(dt, &b)) {
+                Ok(got) if got == want_oob => {
+                    println!("HALFIDX index_add_oob/{dt:?}: OK skipped {got:?}")
+                }
+                other => bad.push(format!("index_add_oob/{dt:?}: {other:?}")),
+            }
         }
     }
     println!("HALFIDX index_add ran {ran} cases, {} diverge", bad.len());
