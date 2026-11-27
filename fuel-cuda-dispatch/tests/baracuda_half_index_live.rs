@@ -149,7 +149,7 @@ fn cuda_half_index_select_gather_masked_fill_are_bit_exact() {
         for r in run_all(
             &t,
             OpKind::IndexSelect,
-            &[dt, DType::U32, dt, dt],
+            &[dt, DType::U32, dt],
             &[src.clone(), idx],
             &|| out_storage(&dev, 6 * sz, dt),
             &params,
@@ -175,7 +175,7 @@ fn cuda_half_index_select_gather_masked_fill_are_bit_exact() {
         for r in run_all(
             &t,
             OpKind::Gather,
-            &[dt, DType::U32, dt, dt],
+            &[dt, DType::U32, dt],
             &[src.clone(), gi],
             &|| out_storage(&dev, 6 * sz, dt),
             &params,
