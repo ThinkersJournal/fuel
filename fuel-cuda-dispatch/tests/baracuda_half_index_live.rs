@@ -289,7 +289,7 @@ fn cuda_half_scatter_add_accumulates_duplicates_and_is_pinned_on_out_of_range() 
 /// that it SKIPS, pending the clause), so whatever it does today is CURRENT BEHAVIOUR, not the contract.
 #[test]
 fn cuda_half_index_add_accumulates_duplicates_and_oob_is_measured() {
-    fuel_test_support::hardware::require_gpu_run_lock();
+    fuel_test_support::require_gpu_run_lock();
     let dev = CudaDevice::new(0).expect("cuda device");
     let t = table();
     let mut ran = 0usize;
