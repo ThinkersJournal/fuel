@@ -1,5 +1,6 @@
 #version 450
 // SPDX-License-Identifier: MIT OR Apache-2.0
+// compile: --target-env vulkan1.0   (SPIR-V 1.0 / BufferBlock: how the shipped .spv was built; GAP-407)
 // Split-KV partial pass for the single-pass attention forward (ROADMAP item 17,
 // H12). Same math and masking as flash_attn_f32.glsl, but the key range is cut
 // into `splits` chunks of `chunk` keys and each (b, h_q, q_i, split) gets its own
