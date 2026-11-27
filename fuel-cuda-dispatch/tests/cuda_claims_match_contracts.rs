@@ -98,9 +98,6 @@ fn the_ledger_backs_the_f32_claims_and_leaves_the_other_dtypes_audited() {
         assert!(f32e.precision.bit_stable_on_same_hardware, "{kernel}");
         assert_eq!(f32e.precision.max_relative, Some(max_relative), "{kernel}");
         assert_eq!(f32e.precision.max_absolute, Some(max_absolute), "{kernel}");
-        if kernel == "sign" {
-            continue; // F32-only op: there is no other-dtype section to keep audited
-        }
         let f16e = find_entry(&table, op, &vec![DType::F16; arity]);
         assert!(f16e.precision.bit_stable_on_same_hardware, "{kernel} f16");
         assert_eq!(f16e.precision.max_relative, None, "{kernel} f16");
