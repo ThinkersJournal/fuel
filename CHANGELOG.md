@@ -3,6 +3,13 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.59.0 - 2026-11-27 (PM-allocated; BREAKING: takes baracuda 0.1.0-alpha.217, cuda-seam 0.60.0, unpopped-vocab 0.60.23 and fireline 0.11, whose types fuel re-exports)
+
+### Changed
+
+- Dependencies: `baracuda` 0.1.0-alpha.217, `cuda-seam` 0.60.0, `unpopped-vocab` 0.60.23 (the highest on crates.io), `fireline` 0.11 (fuel re-exports `fireline_grammar` types in `fuel-graph` `jit.rs` and `fuel-dispatch` `fkc/shape_expr.rs`, so this is a breaking take). One copy each of `unpopped-vocab`, `fireline-grammar` and `fireline-synth` in the tree. `jit_adopt` declines the seven new `ElementKind`s by name, with a test (6/6).
+- Not run: any GPU test of the new baracuda kernels. baracuda alpha.218 to alpha.220 are merged and unpublished; the half Gather/ScatterAdd binding is a later slice.
+
 ## v0.58.4 - 2026-11-27 (PM-allocated; tests and docs only: Vulkan sign/step NaN live test, GAP-411/412/413 rows; not breaking)
 
 - A Vulkan sign/step NaN live test: the RTX 4070 returns 0 and the AMD 610M returns 1 for `sign(NaN)`, pinned per adapter; hosted CI skips it by name in `rust-ci.yml`. GAP-411 is closed by the CUDA sign slice (0.58.1), and GAP-412 and GAP-413 rows are added. No source change.
