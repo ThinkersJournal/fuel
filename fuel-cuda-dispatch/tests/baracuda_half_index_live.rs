@@ -267,6 +267,8 @@ fn cuda_half_scatter_add_accumulates_duplicates_and_is_pinned_on_out_of_range() 
             ran += 1;
             // MEASURED 2026-11-27 (4070, baracuda alpha.220): the out-of-range update is SKIPPED, the call
             // returns Ok, every other cell accumulates normally (documented baracuda divergence from an error).
+            // CURRENT BEHAVIOUR, NOT THE CONTRACT: the cross-backend out-of-range convention is undecided (CPU returns
+            // a typed Err; Vulkan/Metal clamp or ignore; see GAP-413). If the union gate rules Err or a sticky flag, this pin changes.
             let want_oob = [1.0, 12.0, 3.0, 11.0, 5.0, 14.0];
             match r.map(|b| dec(dt, &b)) {
                 Ok(got) if got == want_oob => {
