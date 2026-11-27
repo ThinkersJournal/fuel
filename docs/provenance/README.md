@@ -50,7 +50,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `(root)` | 25 | 4 | 4 |  |  | 17 |  |  |
 | `.cargo` | 1 |  | 1 |  |  |  |  |  |
 | `.github` | 10 | 1 | 2 |  |  | 7 |  |  |
-| `docs` | 207 |  |  |  |  | 207 |  |  |
+| `docs` | 208 |  |  |  |  | 208 |  |  |
 | `fuel` | 9 |  |  |  |  | 6 |  | 3 |
 | `fuel-aocl-cpu-backend` | 8 |  |  |  |  | 5 |  | 3 |
 | `fuel-backend-contract` | 10 |  |  | 3 |  | 4 |  | 3 |

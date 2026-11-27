@@ -3,6 +3,16 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.58.3 - 2026-11-27 (PM-allocated; takes aocl-blas and aocl-types 0.2.5; not breaking)
+
+### Changed
+
+- `aocl-blas` and `aocl-types` 0.2.4 to 0.2.5 (manifest and lock only). Not breaking: a multi-line search for public items naming aocl or `Trans` finds only `register_aocl_cpu_kernels` and `probe_aocl_loadable`, whose signatures use fuel types. `cargo check --locked --all-targets -p fuel-aocl-cpu-backend` passes; the AOCL tests were not run (no AOCL DLLs on PATH).
+
+## v0.58.2 - 2026-11-27 (PM-allocated; docs only: ROADMAP row 173 and the embedding GGUF design note; not breaking)
+
+- Design note for loading embedding GGUF models and ROADMAP row 173, with the provenance rows. No code change.
+
 ## v0.58.1 - 2026-11-27 (PM-allocated; additive: CUDA sign for f16, bf16 and f64 (GAP-411 slice 1); not breaking)
 
 ### Added
