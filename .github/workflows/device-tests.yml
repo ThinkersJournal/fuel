@@ -30,6 +30,14 @@
 # regenerate_allowlist) and the network/bench tests. Retirement steps 3 (tools to
 # bins), 4 (instruments/benches to examples) and 2 (hub) MUST merge before this
 # workflow is enabled, or the first run dirties the ledger.
+# CRATE/FEATURE LIST (2026-11-27, ROADMAP row 174): a package or feature missing here means its `#[ignore]`d device
+# tests are never COMPILED, so `--include-ignored` silently never runs them. Before this change the CUDA job did not
+# build `fuel-cuda-dispatch` (170 attributes; its tests are `#![cfg(feature = "cuda")]`), `fuel-parallel` (3),
+# `fuel-transformers` (3), and never enabled `fuel-model-llama/cuda`, `fuel-model-phi/cuda`, `fuel-inference/cuda`
+# (each crate's own `cuda` feature gates its device tests); the Vulkan job lacked `fuel-tensor` and the
+# `fuel-tensor/vulkan` and `fuel-model-llama/vulkan` features. `fuel-parallel`'s tri-backend test needs both
+# features, so the CUDA job enables `fuel-parallel/vulkan` too. A new device test in another crate or feature:
+# add it here, and read the executed-test count per crate from the job log.
 name: Device tests
 
 on:
@@ -62,16 +70,16 @@ jobs:
       - name: Build (forge capped at 4 threads, as cuda-metal-compile-check does)
         shell: pwsh
         run: >
-          cargo test -j 4 -p fuel-dispatch -p fuel-cuda-backend -p fuel-tensor
-          -p fuel-model-llama -p fuel-model-phi -p fuel-inference
-          --features fuel-dispatch/cuda,fuel-dispatch/jit,fuel-tensor/cuda --no-run
+          cargo test -j 4 -p fuel-dispatch -p fuel-cuda-backend -p fuel-cuda-dispatch -p fuel-tensor
+          -p fuel-model-llama -p fuel-model-phi -p fuel-transformers -p fuel-inference -p fuel-parallel
+          --features fuel-dispatch/cuda,fuel-dispatch/jit,fuel-tensor/cuda,fuel-cuda-dispatch/cuda,fuel-model-llama/cuda,fuel-model-phi/cuda,fuel-transformers/cuda,fuel-inference/cuda,fuel-parallel/cuda,fuel-parallel/vulkan --no-run
       - name: Run (GPU mutex held)
         shell: pwsh
         run: >
           pwsh scripts/gpu-run.ps1 -Project fuel --
-          cargo test -j 4 -p fuel-dispatch -p fuel-cuda-backend -p fuel-tensor
-          -p fuel-model-llama -p fuel-model-phi -p fuel-inference
-          --features fuel-dispatch/cuda,fuel-dispatch/jit,fuel-tensor/cuda
+          cargo test -j 4 -p fuel-dispatch -p fuel-cuda-backend -p fuel-cuda-dispatch -p fuel-tensor
+          -p fuel-model-llama -p fuel-model-phi -p fuel-transformers -p fuel-inference -p fuel-parallel
+          --features fuel-dispatch/cuda,fuel-dispatch/jit,fuel-tensor/cuda,fuel-cuda-dispatch/cuda,fuel-model-llama/cuda,fuel-model-phi/cuda,fuel-transformers/cuda,fuel-inference/cuda,fuel-parallel/cuda,fuel-parallel/vulkan
           -- --include-ignored --test-threads=1
 
   vulkan:
@@ -91,12 +99,12 @@ jobs:
       - name: Build
         shell: pwsh
         run: >
-          cargo test -j 4 -p fuel-dispatch -p fuel-vulkan-backend -p fuel-vulkan-dispatch -p fuel-model-llama
-          --features fuel-dispatch/vulkan --no-run
+          cargo test -j 4 -p fuel-dispatch -p fuel-vulkan-backend -p fuel-vulkan-dispatch -p fuel-tensor -p fuel-model-llama
+          --features fuel-dispatch/vulkan,fuel-tensor/vulkan,fuel-model-llama/vulkan --no-run
       - name: Run (GPU mutex held)
         shell: pwsh
         run: >
           pwsh scripts/gpu-run.ps1 -Project fuel --
-          cargo test -j 4 -p fuel-dispatch -p fuel-vulkan-backend -p fuel-vulkan-dispatch -p fuel-model-llama
-          --features fuel-dispatch/vulkan
+          cargo test -j 4 -p fuel-dispatch -p fuel-vulkan-backend -p fuel-vulkan-dispatch -p fuel-tensor -p fuel-model-llama
+          --features fuel-dispatch/vulkan,fuel-tensor/vulkan,fuel-model-llama/vulkan
           -- --include-ignored --test-threads=1
