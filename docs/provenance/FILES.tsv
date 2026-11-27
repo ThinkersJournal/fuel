@@ -16,7 +16,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 3% of 948 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 3% of 950 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1301 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 5% of 294 lines verbatim
@@ -92,6 +92,7 @@ docs/fuel-consumer-seam.md	own		no lineage; 0 of 1061 lines verbatim in candle (
 docs/fused-op-registry.md	own		no lineage; 0 of 311 lines verbatim in candle (0%)
 docs/gap-015-handoff.md	own		no lineage; 0 of 183 lines verbatim in candle (0%)
 docs/gaps.md	own		no lineage; 0 of 452 lines verbatim in candle (0%)
+docs/ignored-tests-census.tsv	own		no lineage; 0 of 499 lines verbatim in candle (0%)
 docs/interchange/stablehlo-to-fuel-op-map.md	own		no lineage; 0 of 157 lines verbatim in candle (0%)
 docs/kernel-contracts/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
 docs/method-rules-drafts-issue-159.md	own		no lineage; 0 of 286 lines verbatim in candle (0%)
@@ -1987,6 +1988,7 @@ scripts/gpu-run-canonical.SHA256SUMS	own		no lineage; 0 of 3 lines verbatim in c
 scripts/gpu-run-mutex.ps1	own		no lineage; 0 of 44 lines verbatim in candle (0%)
 scripts/gpu-run.ps1	own		no lineage; 0 of 185 lines verbatim in candle (0%)
 scripts/hooks/pre-commit	own		no lineage; 0 of 171 lines verbatim in candle (0%)
+scripts/ignore-census.py	own		no lineage; 0 of 38 lines verbatim in candle (0%)
 scripts/install-hooks.sh	own		no lineage; 0 of 43 lines verbatim in candle (0%)
 scripts/judge_compare.py	own		no lineage; 0 of 25 lines verbatim in candle (0%)
 scripts/packaged-escapes-allowlist.txt	own		no lineage; 0 of 13 lines verbatim in candle (0%)
