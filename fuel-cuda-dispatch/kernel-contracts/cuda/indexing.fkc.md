@@ -443,7 +443,7 @@ fully overwritten. The `source` operand fans over `{F16, BF16}` (§3.4), so the 
 ```fkc
 kernel: index_select_half
 op_kind: IndexSelect
-blurb: "Pick slices along dim by a rank-1 U32 index tensor (CUDA/baracuda) {F16, BF16}; contiguous; OOB index errors; per-(op,dtype)."
+blurb: "Pick slices along dim by a rank-1 U32 index tensor (CUDA/baracuda) {F16, BF16}; contiguous; OOB index behaviour unmeasured (no host-side check); per-(op,dtype)."
 backend: Cuda
 kernel_source: "baracuda"
 entry_point: "fuel_cuda_backend::fkc::index_select_half"
@@ -515,7 +515,7 @@ contiguous row-major (shape == `output_shape`), fully overwritten. The `source` 
 ```fkc
 kernel: gather_half
 op_kind: Gather
-blurb: "N-D gather along dim by a same-rank U32 index tensor (CUDA/baracuda) {F16, BF16}; contiguous; OOB index errors; per-(op,dtype)."
+blurb: "N-D gather along dim by a same-rank U32 index tensor (CUDA/baracuda) {F16, BF16}; contiguous; OOB index behaviour unmeasured (no host-side check); per-(op,dtype)."
 backend: Cuda
 kernel_source: "baracuda"
 entry_point: "fuel_cuda_backend::fkc::gather_half"
@@ -654,7 +654,7 @@ resolved AS-IS (no fan), key `[F16, U32, F16, F16]`. Backs `OpKind::ScatterAdd`.
 ```fkc
 kernel: scatter_add_f16
 op_kind: ScatterAdd
-blurb: "N-D scatter-add (inverse of gather) into a base copy via a U32 index tensor (CUDA/baracuda) f16; contiguous; OOB index errors."
+blurb: "N-D scatter-add (inverse of gather) into a base copy via a U32 index tensor (CUDA/baracuda) f16; contiguous; OOB index update skipped, Ok returned (measured)."
 backend: Cuda
 kernel_source: "baracuda"
 entry_point: "fuel_cuda_backend::fkc::scatter_add_f16"
@@ -711,7 +711,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Half dtype (F16) through baracuda's own `scatter_add_f16` kernel (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so f16/bf16 sums are order-dependent beyond the f32 case; baracuda documents an out-of-range index as SKIPPED, not an error (IndexBoundsPlan from alpha.218 detects it) -- the MEASURED behaviour is in `baracuda_half_index_live`. Genuinely nondeterministic, NOT a static-bound gap: the kernel accumulates duplicate-index writes via atomicAdd (confirmed baracuda/crates/baracuda-kernels/src/indexing/scatter_add.rs, whose own doc comment states 'Precision guarantee: non-deterministic — atomicAdd ordering varies between launches'). Corrects a prior seed that wrongly carried bit_stable_on_same_hardware: true while audited: false — the false claim predates this audit; per-thread float addition is not associative, so accumulation order varies run-to-run for any index with >1 contributor."
+  notes: "Half dtype (F16) through baracuda's own `scatter_add_f16` kernel (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so f16/bf16 sums are order-dependent beyond the f32 case; baracuda documents an out-of-range index as SKIPPED, not an error (IndexBoundsPlan from alpha.218 detects it) -- MEASURED on the RTX 4070 (baracuda alpha.220, `baracuda_half_index_live`): the out-of-range update is skipped, the call returns Ok and every other cell accumulates. Genuinely nondeterministic, NOT a static-bound gap: the kernel accumulates duplicate-index writes via atomicAdd (confirmed baracuda/crates/baracuda-kernels/src/indexing/scatter_add.rs, whose own doc comment states 'Precision guarantee: non-deterministic — atomicAdd ordering varies between launches'). Corrects a prior seed that wrongly carried bit_stable_on_same_hardware: true while audited: false — the false claim predates this audit; per-thread float addition is not associative, so accumulation order varies run-to-run for any index with >1 contributor."
 
 determinism: nondeterministic
 ```
@@ -730,7 +730,7 @@ resolved AS-IS (no fan), key `[BF16, U32, BF16, BF16]`. Backs `OpKind::ScatterAd
 ```fkc
 kernel: scatter_add_bf16
 op_kind: ScatterAdd
-blurb: "N-D scatter-add (inverse of gather) into a base copy via a U32 index tensor (CUDA/baracuda) bf16; contiguous; OOB index errors."
+blurb: "N-D scatter-add (inverse of gather) into a base copy via a U32 index tensor (CUDA/baracuda) bf16; contiguous; OOB index update skipped, Ok returned (measured)."
 backend: Cuda
 kernel_source: "baracuda"
 entry_point: "fuel_cuda_backend::fkc::scatter_add_bf16"
@@ -787,7 +787,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Half dtype (BF16) through baracuda's own `scatter_add_bf16` kernel (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so f16/bf16 sums are order-dependent beyond the f32 case; baracuda documents an out-of-range index as SKIPPED, not an error (IndexBoundsPlan from alpha.218 detects it) -- the MEASURED behaviour is in `baracuda_half_index_live`. Genuinely nondeterministic, NOT a static-bound gap: the kernel accumulates duplicate-index writes via atomicAdd (confirmed baracuda/crates/baracuda-kernels/src/indexing/scatter_add.rs, whose own doc comment states 'Precision guarantee: non-deterministic — atomicAdd ordering varies between launches'). Corrects a prior seed that wrongly carried bit_stable_on_same_hardware: true while audited: false — the false claim predates this audit; per-thread float addition is not associative, so accumulation order varies run-to-run for any index with >1 contributor."
+  notes: "Half dtype (BF16) through baracuda's own `scatter_add_bf16` kernel (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so f16/bf16 sums are order-dependent beyond the f32 case; baracuda documents an out-of-range index as SKIPPED, not an error (IndexBoundsPlan from alpha.218 detects it) -- MEASURED on the RTX 4070 (baracuda alpha.220, `baracuda_half_index_live`): the out-of-range update is skipped, the call returns Ok and every other cell accumulates. Genuinely nondeterministic, NOT a static-bound gap: the kernel accumulates duplicate-index writes via atomicAdd (confirmed baracuda/crates/baracuda-kernels/src/indexing/scatter_add.rs, whose own doc comment states 'Precision guarantee: non-deterministic — atomicAdd ordering varies between launches'). Corrects a prior seed that wrongly carried bit_stable_on_same_hardware: true while audited: false — the false claim predates this audit; per-thread float addition is not associative, so accumulation order varies run-to-run for any index with >1 contributor."
 
 determinism: nondeterministic
 ```

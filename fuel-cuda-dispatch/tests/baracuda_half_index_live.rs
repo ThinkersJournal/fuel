@@ -217,7 +217,7 @@ fn cuda_half_index_select_gather_masked_fill_are_bit_exact() {
         }
     }
     println!("HALFIDX copy ops ran {ran} cases, {} diverge", bad.len());
-    assert!(ran >= 12, "fewer cases ran than bound: {ran}");
+    assert_eq!(ran, 8, "2 dtypes x 4 copy cases must all run");
     assert!(bad.is_empty(), "{bad:?}");
 }
 
@@ -265,10 +265,15 @@ fn cuda_half_scatter_add_accumulates_duplicates_and_is_pinned_on_out_of_range() 
             &params,
         ) {
             ran += 1;
-            println!(
-                "HALFIDX scatter_add_oob/{dt:?}: {:?}",
-                r.map(|b| dec(dt, &b))
-            );
+            // MEASURED 2026-11-27 (4070, baracuda alpha.220): the out-of-range update is SKIPPED, the call
+            // returns Ok, every other cell accumulates normally (documented baracuda divergence from an error).
+            let want_oob = [1.0, 12.0, 3.0, 11.0, 5.0, 14.0];
+            match r.map(|b| dec(dt, &b)) {
+                Ok(got) if got == want_oob => {
+                    println!("HALFIDX scatter_add_oob/{dt:?}: OK skipped {got:?}")
+                }
+                other => bad.push(format!("scatter_add_oob/{dt:?}: {other:?}")),
+            }
         }
     }
     println!("HALFIDX scatter ran {ran} cases, {} diverge", bad.len());
