@@ -3453,6 +3453,7 @@ pub mod unary {
 
     // f16
     cuda_unary_baracuda_wrapper!(neg_f16, bk::unary_neg_f16_into);
+    cuda_unary_baracuda_wrapper!(sign_f16, bk::unary_sign_f16_into);
     cuda_unary_baracuda_wrapper!(abs_f16, bk::unary_abs_f16_into);
     cuda_unary_baracuda_wrapper!(sqr_f16, bk::unary_sqr_f16_into);
     cuda_unary_baracuda_wrapper!(sqrt_f16, bk::unary_sqrt_f16_into);
@@ -3476,6 +3477,7 @@ pub mod unary {
 
     // bf16
     cuda_unary_baracuda_wrapper!(neg_bf16, bk::unary_neg_bf16_into);
+    cuda_unary_baracuda_wrapper!(sign_bf16, bk::unary_sign_bf16_into);
     cuda_unary_baracuda_wrapper!(abs_bf16, bk::unary_abs_bf16_into);
     cuda_unary_baracuda_wrapper!(sqr_bf16, bk::unary_sqr_bf16_into);
     cuda_unary_baracuda_wrapper!(sqrt_bf16, bk::unary_sqrt_bf16_into);
@@ -3499,6 +3501,7 @@ pub mod unary {
 
     // f64
     cuda_unary_baracuda_wrapper!(neg_f64, bk::unary_neg_f64_into);
+    cuda_unary_baracuda_wrapper!(sign_f64, bk::unary_sign_f64_into);
     cuda_unary_baracuda_wrapper!(abs_f64, bk::unary_abs_f64_into);
     cuda_unary_baracuda_wrapper!(sqr_f64, bk::unary_sqr_f64_into);
     cuda_unary_baracuda_wrapper!(sqrt_f64, bk::unary_sqrt_f64_into);
@@ -5469,10 +5472,10 @@ mod cast_contract_tests {
     }
 
     /// GROUP 3 (born-red gate). The forward elementwise-unary family (21 ops x 4
-    /// dtypes + f32-only Sign = 85 keys) is registered FROM its FKC contract via
+    /// dtypes + Sign in 4 dtypes = 88 keys) is registered FROM its FKC contract via
     /// `register_cuda_unary_from_contract` - the SOLE path (hand-written
     /// `register_with_caps(..., strided)` regs DELETED). The Gelu<->gelu_tanh name
-    /// inversion + f32-only Sign are LINK-TABLE handled (base symbol == wrapper).
+    /// inversion is LINK-TABLE handled (base symbol == wrapper; Sign is `sign` (F32, carries the accuracy claim, hash unchanged) + a fanned `sign_half` section {F16,BF16,F64}).
     /// Asserts the EXACT production wrapper is bound, `kernel_source == "baracuda"`
     /// (RED while hand-written stamps `""`), and `caps.strided_input == true`.
     #[test]
@@ -5991,6 +5994,24 @@ mod cast_contract_tests {
                 unary::sign_f32 as KernelRef,
                 true,
             ),
+            (
+                OpKind::SignElementwise,
+                &[DType::F16, DType::F16][..],
+                unary::sign_f16 as KernelRef,
+                true,
+            ),
+            (
+                OpKind::SignElementwise,
+                &[DType::BF16, DType::BF16][..],
+                unary::sign_bf16 as KernelRef,
+                true,
+            ),
+            (
+                OpKind::SignElementwise,
+                &[DType::F64, DType::F64][..],
+                unary::sign_f64 as KernelRef,
+                true,
+            ),
         ];
         let mut checked = 0usize;
         for (op, key, expected, want_strided) in cases {
@@ -6018,7 +6039,7 @@ mod cast_contract_tests {
             );
             checked += 1;
         }
-        assert_eq!(checked, 85, "all 85 group3 keys checked");
+        assert_eq!(checked, 88, "all 88 group3 keys checked");
     }
 
     /// GROUP 2 (born-red gate). Every CONTIGUOUS in-place CUDA family

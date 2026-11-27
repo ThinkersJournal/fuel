@@ -3,6 +3,18 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.58.1 - 2026-11-27 (PM-allocated; additive: CUDA sign for f16, bf16 and f64 (GAP-411 slice 1); not breaking)
+
+### Added
+
+- CUDA `sign` bindings for f16, bf16 and f64 (GAP-411 slice 1), measured on the RTX 4070 (8/8, plus `gelu_tanh` 4/4); three new rows in the CUDA binding census golden; three new verified-kernel ledger records for the `sign_half` kernels (the wider CUDA ledger drift is recorded as GAP-414, not fixed). CUDA live tests run under `gpu-run`, not in hosted CI.
+
+## v0.58.0 - 2026-11-27 (PM-allocated; BREAKING: takes onemkl and onemkl-sys 0.4.5, whose `IsaLevel` and `ThreadCountGuard` fuel-mkl-cpu-backend re-exports)
+
+### Changed
+
+- `onemkl` and `onemkl-sys` 0.3.8 to 0.4.5 (pin `0.4`); `Cargo.toml` and `Cargo.lock` only. `fuel-mkl-cpu-backend` re-exports `onemkl::service::{IsaLevel, ThreadCountGuard}`, which differ between the two onemkl lines, so this is a breaking take by the dependency-take rule. Local check and the five backend tests passed; cross-target and `fuel-tensor --features onemkl` were not run (no SDK in hosted CI).
+
 ## v0.57.1 - 2026-11-26 (PM-allocated; kernel sources and tooling only; not breaking)
 
 ### Changed

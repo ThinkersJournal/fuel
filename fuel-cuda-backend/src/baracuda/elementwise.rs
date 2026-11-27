@@ -968,6 +968,10 @@ unary_kernel!(unary_neg_f64, unary_neg_f64, 8, "unary_neg_f64");
 unary_kernel!(unary_neg_f16, unary_neg_f16, 2, "unary_neg_f16");
 unary_kernel!(unary_neg_bf16, unary_neg_bf16, 2, "unary_neg_bf16");
 
+unary_kernel!(unary_sign_f64, unary_sign_f64, 8, "unary_sign_f64");
+unary_kernel!(unary_sign_f16, unary_sign_f16, 2, "unary_sign_f16");
+unary_kernel!(unary_sign_bf16, unary_sign_bf16, 2, "unary_sign_bf16");
+
 unary_kernel!(unary_abs_f64, unary_abs_f64, 8, "unary_abs_f64");
 unary_kernel!(unary_abs_f16, unary_abs_f16, 2, "unary_abs_f16");
 unary_kernel!(unary_abs_bf16, unary_abs_bf16, 2, "unary_abs_bf16");

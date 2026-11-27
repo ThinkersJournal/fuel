@@ -87,7 +87,7 @@ CireSnave asked whether Fuel should remove the candle code it still carries so t
 | `fuel-parallel` | 14 |  |  |  |  | 11 |  | 3 |
 | `fuel-posttrain` | 7 |  |  | 2 |  | 2 |  | 3 |
 | `fuel-quantized` | 16 |  | 2 | 1 | 4 | 6 |  | 3 |
-| `fuel-tensor` | 74 | 1 | 2 | 3 |  | 63 | 2 | 3 |
+| `fuel-tensor` | 75 | 1 | 2 | 3 |  | 64 | 2 | 3 |
 | `fuel-tensor-tools` | 6 |  | 1 | 1 |  | 1 |  | 3 |
 | `fuel-test-support` | 12 |  |  |  |  | 9 |  | 3 |
 | `fuel-training` | 9 |  |  |  |  | 6 |  | 3 |
