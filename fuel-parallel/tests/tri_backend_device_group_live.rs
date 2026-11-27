@@ -140,10 +140,11 @@ fn vulkan_igpu_or_fail() -> (Device, String) {
 fn shards_on_one_graph(values: &[f32], len: usize, dev: &Device) -> Vec<Tensor> {
     let shape = Shape::from_dims(&[len]);
     let mut out = Vec::with_capacity(values.len());
-    let root = Tensor::from_f32(vec![values[0]; len], shape.clone(), dev);
+    let root = Tensor::from_f32(vec![values[0]; len], shape.clone(), dev).expect("root shard");
     out.push(root);
     for v in &values[1..] {
-        let t = Tensor::from_f32_on(out[0].graph(), vec![*v; len], shape.clone(), dev);
+        let t = Tensor::from_f32_on(out[0].graph(), vec![*v; len], shape.clone(), dev)
+            .expect("shard on the shared graph");
         out.push(t);
     }
     out
