@@ -233,6 +233,10 @@ macro_rules! index_select_kernel {
 index_select_kernel!(index_select_f32, f32, 4, "index_select_f32");
 index_select_kernel!(index_select_f64, f64, 8, "index_select_f64");
 index_select_kernel!(index_select_i32, i32, 4, "index_select_i32");
+// Half dtypes (f16, bf16): a pure data copy, so baracuda's 2-byte `u16` kernel is exact for both (no arithmetic, no
+// NaN handling: a NaN payload is copied bit for bit). GAP-413.
+index_select_kernel!(index_select_f16, u16, 2, "index_select_f16");
+index_select_kernel!(index_select_bf16, u16, 2, "index_select_bf16");
 
 // ===========================================================================
 // Gather (N-dim, single dim, U32 indices)
@@ -386,6 +390,9 @@ macro_rules! gather_kernel {
 gather_kernel!(gather_f32, f32, 4, "gather_f32");
 gather_kernel!(gather_f64, f64, 8, "gather_f64");
 gather_kernel!(gather_i32, i32, 4, "gather_i32");
+// Half dtypes: same 2-byte bit copy (`gather_u16`), exact for f16 and bf16. GAP-413.
+gather_kernel!(gather_f16, u16, 2, "gather_f16");
+gather_kernel!(gather_bf16, u16, 2, "gather_bf16");
 
 // ===========================================================================
 // MaskedFill
@@ -487,6 +494,10 @@ macro_rules! masked_fill_kernel {
 masked_fill_kernel!(masked_fill_f32, f32, 4, "masked_fill_f32");
 masked_fill_kernel!(masked_fill_f64, f64, 8, "masked_fill_f64");
 masked_fill_kernel!(masked_fill_i32, i32, 4, "masked_fill_i32");
+// Half dtypes: `masked_fill_u16` writes the low 2 bytes of `fill_bits` where the mask is set, a bit copy, so the pre-encoded
+// f16/bf16 fill (including -inf or NaN) lands exactly. GAP-413.
+masked_fill_kernel!(masked_fill_f16, u16, 2, "masked_fill_f16");
+masked_fill_kernel!(masked_fill_bf16, u16, 2, "masked_fill_bf16");
 
 // ===========================================================================
 // ScatterAdd
@@ -618,3 +629,7 @@ macro_rules! scatter_add_kernel {
 
 scatter_add_kernel!(scatter_add_f32, f32, 4, "scatter_add_f32");
 scatter_add_kernel!(scatter_add_f64, f64, 8, "scatter_add_f64");
+// Half dtypes: baracuda's own `scatter_add_{f16,bf16}`. Duplicate indices into one cell accumulate in an undefined order
+// (atomics, as torch CUDA), and an out-of-range index is skipped, not an error (baracuda, alpha.219 notes). GAP-413.
+scatter_add_kernel!(scatter_add_f16, f16, 2, "scatter_add_f16");
+scatter_add_kernel!(scatter_add_bf16, bf16, 2, "scatter_add_bf16");

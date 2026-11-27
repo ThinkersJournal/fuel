@@ -1456,10 +1456,27 @@ pub static CUDA_INDEXING_ENTRY_POINTS: &[(&str, KernelRef)] = &[
         "index_select_i32",
         crate::baracuda_dispatch::indexing::index_select_i32
     ),
+    // GAP-413: half data dtypes, baracuda's 2-byte `u16` copy kernels (section `index_select_half`).
+    cuda_ep!(
+        "index_select_half_f16",
+        crate::baracuda_dispatch::indexing::index_select_f16
+    ),
+    cuda_ep!(
+        "index_select_half_bf16",
+        crate::baracuda_dispatch::indexing::index_select_bf16
+    ),
     // Gather — data-dtype fan {F32, F64, I32}; distinct per-dtype wrappers.
     cuda_ep!("gather_f32", crate::baracuda_dispatch::indexing::gather_f32),
     cuda_ep!("gather_f64", crate::baracuda_dispatch::indexing::gather_f64),
     cuda_ep!("gather_i32", crate::baracuda_dispatch::indexing::gather_i32),
+    cuda_ep!(
+        "gather_half_f16",
+        crate::baracuda_dispatch::indexing::gather_f16
+    ),
+    cuda_ep!(
+        "gather_half_bf16",
+        crate::baracuda_dispatch::indexing::gather_bf16
+    ),
     // MaskedFill — data-dtype fan {F32, F64, I32}; fixed U8 mask slot.
     cuda_ep!(
         "masked_fill_f32",
@@ -1473,6 +1490,14 @@ pub static CUDA_INDEXING_ENTRY_POINTS: &[(&str, KernelRef)] = &[
         "masked_fill_i32",
         crate::baracuda_dispatch::indexing::masked_fill_i32
     ),
+    cuda_ep!(
+        "masked_fill_half_f16",
+        crate::baracuda_dispatch::indexing::masked_fill_f16
+    ),
+    cuda_ep!(
+        "masked_fill_half_bf16",
+        crate::baracuda_dispatch::indexing::masked_fill_bf16
+    ),
     // ScatterAdd — per-dtype {F32, F64}; single-dtype entry_point resolved AS-IS.
     cuda_ep!(
         "scatter_add_f32",
@@ -1481,6 +1506,14 @@ pub static CUDA_INDEXING_ENTRY_POINTS: &[(&str, KernelRef)] = &[
     cuda_ep!(
         "scatter_add_f64",
         crate::baracuda_dispatch::indexing::scatter_add_f64
+    ),
+    cuda_ep!(
+        "scatter_add_f16",
+        crate::baracuda_dispatch::indexing::scatter_add_f16
+    ),
+    cuda_ep!(
+        "scatter_add_bf16",
+        crate::baracuda_dispatch::indexing::scatter_add_bf16
     ),
 ];
 

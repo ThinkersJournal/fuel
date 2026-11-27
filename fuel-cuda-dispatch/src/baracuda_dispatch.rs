@@ -433,17 +433,25 @@ pub mod indexing {
     cuda_index_select_baracuda_wrapper!(index_select_f32, bk::index_select_f32_into);
     cuda_index_select_baracuda_wrapper!(index_select_f64, bk::index_select_f64_into);
     cuda_index_select_baracuda_wrapper!(index_select_i32, bk::index_select_i32_into);
+    cuda_index_select_baracuda_wrapper!(index_select_f16, bk::index_select_f16_into);
+    cuda_index_select_baracuda_wrapper!(index_select_bf16, bk::index_select_bf16_into);
 
     cuda_gather_baracuda_wrapper!(gather_f32, bk::gather_f32);
     cuda_gather_baracuda_wrapper!(gather_f64, bk::gather_f64);
     cuda_gather_baracuda_wrapper!(gather_i32, bk::gather_i32);
+    cuda_gather_baracuda_wrapper!(gather_f16, bk::gather_f16);
+    cuda_gather_baracuda_wrapper!(gather_bf16, bk::gather_bf16);
 
     cuda_scatter_add_baracuda_wrapper!(scatter_add_f32, bk::scatter_add_f32);
     cuda_scatter_add_baracuda_wrapper!(scatter_add_f64, bk::scatter_add_f64);
+    cuda_scatter_add_baracuda_wrapper!(scatter_add_f16, bk::scatter_add_f16);
+    cuda_scatter_add_baracuda_wrapper!(scatter_add_bf16, bk::scatter_add_bf16);
 
     cuda_masked_fill_baracuda_wrapper!(masked_fill_f32, bk::masked_fill_f32);
     cuda_masked_fill_baracuda_wrapper!(masked_fill_f64, bk::masked_fill_f64);
     cuda_masked_fill_baracuda_wrapper!(masked_fill_i32, bk::masked_fill_i32);
+    cuda_masked_fill_baracuda_wrapper!(masked_fill_f16, bk::masked_fill_f16);
+    cuda_masked_fill_baracuda_wrapper!(masked_fill_bf16, bk::masked_fill_bf16);
 }
 
 // ===========================================================================
