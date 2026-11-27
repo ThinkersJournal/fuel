@@ -7,7 +7,7 @@ This documents the main changes to the `fuel` workspace.
 
 ### Added
 
-- CUDA `sign` bindings for f16, bf16 and f64 (GAP-411 slice 1), measured on the RTX 4070 (8/8, plus `gelu_tanh` 4/4); three new rows in the CUDA binding census golden; the verified-kernel ledger is brought up to date (GAP-414 drift). CUDA live tests run under `gpu-run`, not in hosted CI.
+- CUDA `sign` bindings for f16, bf16 and f64 (GAP-411 slice 1), measured on the RTX 4070 (8/8, plus `gelu_tanh` 4/4); three new rows in the CUDA binding census golden; three new verified-kernel ledger records for the `sign_half` kernels (the wider CUDA ledger drift is recorded as GAP-414, not fixed). CUDA live tests run under `gpu-run`, not in hosted CI.
 
 ## v0.58.0 - 2026-11-27 (PM-allocated; BREAKING: takes onemkl and onemkl-sys 0.4.5, whose `IsaLevel` and `ThreadCountGuard` fuel-mkl-cpu-backend re-exports)
 
