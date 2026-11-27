@@ -149,7 +149,7 @@ fn cuda_half_index_select_gather_masked_fill_are_bit_exact() {
         for r in run_all(
             &t,
             OpKind::IndexSelect,
-            &[dt, DType::U32, dt],
+            &[dt, DType::U32, dt, dt],
             &[src.clone(), idx],
             &|| out_storage(&dev, 6 * sz, dt),
             &params,
@@ -175,7 +175,7 @@ fn cuda_half_index_select_gather_masked_fill_are_bit_exact() {
         for r in run_all(
             &t,
             OpKind::Gather,
-            &[dt, DType::U32, dt],
+            &[dt, DType::U32, dt, dt],
             &[src.clone(), gi],
             &|| out_storage(&dev, 6 * sz, dt),
             &params,
@@ -308,7 +308,7 @@ fn cuda_half_index_add_accumulates_duplicates_and_oob_is_measured() {
         for r in run_all(
             &t,
             OpKind::IndexAdd,
-            &[dt, DType::U32, dt],
+            &[dt, DType::U32, dt, dt],
             &[base.clone(), idx, src.clone()],
             &|| out_storage(&dev, 6 * 2, dt),
             &params,
@@ -324,7 +324,7 @@ fn cuda_half_index_add_accumulates_duplicates_and_oob_is_measured() {
         for r in run_all(
             &t,
             OpKind::IndexAdd,
-            &[dt, DType::U32, dt],
+            &[dt, DType::U32, dt, dt],
             &[base.clone(), oob, src.clone()],
             &|| out_storage(&dev, 6 * 2, dt),
             &params,
