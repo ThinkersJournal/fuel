@@ -7328,6 +7328,26 @@ mod cast_contract_tests {
                 &[DType::BF16, u32, DType::BF16, DType::BF16][..],
                 indexing::scatter_add_bf16 as KernelRef,
             ),
+            (
+                OpKind::IndexAdd,
+                &[DType::F32, u32, DType::F32, DType::F32][..],
+                indexing::index_add_f32 as KernelRef,
+            ),
+            (
+                OpKind::IndexAdd,
+                &[DType::F64, u32, DType::F64, DType::F64][..],
+                indexing::index_add_f64 as KernelRef,
+            ),
+            (
+                OpKind::IndexAdd,
+                &[DType::F16, u32, DType::F16, DType::F16][..],
+                indexing::index_add_f16 as KernelRef,
+            ),
+            (
+                OpKind::IndexAdd,
+                &[DType::BF16, u32, DType::BF16, DType::BF16][..],
+                indexing::index_add_bf16 as KernelRef,
+            ),
         ];
         let mut checked = 0usize;
         for (op, key, expected) in cases {
@@ -7355,7 +7375,7 @@ mod cast_contract_tests {
             );
             checked += 1;
         }
-        assert_eq!(checked, 19, "all 19 indexing keys checked");
+        assert_eq!(checked, 23, "all 23 indexing keys checked");
     }
 
     /// TASK-F born-red gate (the §4.4 cost-fn trampoline consumer). The
