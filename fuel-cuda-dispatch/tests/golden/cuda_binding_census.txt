@@ -180,6 +180,8 @@ FloorInplace [BF16, BF16] Cuda src=baracuda generic=false rev=28df3999e37f1dbb
 FloorInplace [F16, F16] Cuda src=baracuda generic=false rev=28df3999e37f1dbb
 FloorInplace [F32, F32] Cuda src=baracuda generic=false rev=28df3999e37f1dbb
 FloorInplace [F64, F64] Cuda src=baracuda generic=false rev=28df3999e37f1dbb
+Gather [BF16, U32, BF16] Cuda src=baracuda generic=false rev=80464c5cb8ac356c
+Gather [F16, U32, F16] Cuda src=baracuda generic=false rev=80464c5cb8ac356c
 Gather [F32, U32, F32] Cuda src=baracuda generic=false rev=34a403a71bdc7c69
 Gather [F64, U32, F64] Cuda src=baracuda generic=false rev=34a403a71bdc7c69
 Gather [I32, U32, I32] Cuda src=baracuda generic=false rev=34a403a71bdc7c69
@@ -207,6 +209,8 @@ GreaterEqualElementwise [BF16, BF16, Bool] Cuda src=baracuda generic=true rev=17
 GreaterEqualElementwise [F16, F16, Bool] Cuda src=baracuda generic=true rev=049ca7c998dd71c5
 GreaterEqualElementwise [F32, F32, Bool] Cuda src=baracuda generic=true rev=00c01df1f3866063
 GreaterEqualElementwise [F64, F64, Bool] Cuda src=baracuda generic=true rev=954cc387ad3bd7eb
+IndexSelect [BF16, U32, BF16] Cuda src=baracuda generic=false rev=7a70ecacea4cdb25
+IndexSelect [F16, U32, F16] Cuda src=baracuda generic=false rev=7a70ecacea4cdb25
 IndexSelect [F32, U32, F32] Cuda src=baracuda generic=false rev=1a3e242d3a7f894a
 IndexSelect [F64, U32, F64] Cuda src=baracuda generic=false rev=1a3e242d3a7f894a
 IndexSelect [I32, U32, I32] Cuda src=baracuda generic=false rev=1a3e242d3a7f894a
@@ -238,6 +242,8 @@ LogSoftmaxLastDim [BF16, BF16] Cuda src=baracuda generic=true rev=5756402924269d
 LogSoftmaxLastDim [F16, F16] Cuda src=baracuda generic=true rev=5756402924269d1c
 LogSoftmaxLastDim [F32, F32] Cuda src=baracuda generic=true rev=5756402924269d1c
 LogSoftmaxLastDim [F64, F64] Cuda src=baracuda generic=true rev=5756402924269d1c
+MaskedFill [BF16, Bool, BF16] Cuda src=baracuda generic=false rev=22e571c1e2cbb087
+MaskedFill [F16, Bool, F16] Cuda src=baracuda generic=false rev=22e571c1e2cbb087
 MaskedFill [F32, Bool, F32] Cuda src=baracuda generic=false rev=57efe22f5159665a
 MaskedFill [F64, Bool, F64] Cuda src=baracuda generic=false rev=57efe22f5159665a
 MaskedFill [I32, Bool, I32] Cuda src=baracuda generic=false rev=57efe22f5159665a
@@ -364,6 +370,8 @@ RsqrtInplace [BF16, BF16] Cuda src=baracuda generic=false rev=32ba805c961b225d
 RsqrtInplace [F16, F16] Cuda src=baracuda generic=false rev=32ba805c961b225d
 RsqrtInplace [F32, F32] Cuda src=baracuda generic=false rev=32ba805c961b225d
 RsqrtInplace [F64, F64] Cuda src=baracuda generic=false rev=32ba805c961b225d
+ScatterAdd [BF16, U32, BF16, BF16] Cuda src=baracuda generic=false rev=8715bb1a60ed3901
+ScatterAdd [F16, U32, F16, F16] Cuda src=baracuda generic=false rev=66814b2a58c97b15
 ScatterAdd [F32, U32, F32, F32] Cuda src=baracuda generic=false rev=9fb7bdc393fbaae9
 ScatterAdd [F64, U32, F64, F64] Cuda src=baracuda generic=false rev=222ec95e001a49a5
 SigmoidElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=dd41023c326a2b9f
