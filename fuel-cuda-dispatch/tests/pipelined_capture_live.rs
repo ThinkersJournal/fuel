@@ -12,9 +12,9 @@
 
 use std::sync::{Arc, RwLock};
 
-use fuel_dispatch::pipelined::{PipelinedExecutor, StorageCache};
-use fuel_graph::{Graph, Node, Op};
-use fuel_ir::{DType, probe::BackendId};
+use fuel_dispatch::pipelined::{CapturedDecodeSession, PipelinedExecutor, StorageCache};
+use fuel_graph::{Graph, Node, NodeId, Op};
+use fuel_ir::{DType, DeviceLocation, SymEnv, probe::BackendId};
 use fuel_memory::Storage;
 
 /// CapturedRun executor build-out (Increment 1): capture a 2-op binary
