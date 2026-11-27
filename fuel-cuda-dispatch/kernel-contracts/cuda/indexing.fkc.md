@@ -428,3 +428,368 @@ precision:
 
 determinism: nondeterministic
 ```
+
+## index_select_half  (IndexSelect — pick slices along dim by a rank-1 U32 index tensor; data-dtype fan {F16, BF16})
+
+Pick `n_indices` slices from `source` along the selected axis using a rank-1 `U32` `indices` tensor;
+the output's selected-dim size equals the index count. The flat layout is `[outer_count,
+source_dim_size, inner_count]` for the source and `[outer_count, n_indices, inner_count]` for the
+output, with `outer_count` = product of the dims before the selected axis and `inner_count` = product
+of the dims after it. The index tensor is `U32`, contiguous, length `n_indices`; an index
+`≥ source_dim_size` returns `Err`. Output is the **same dtype as the source**, contiguous row-major,
+fully overwritten. The `source` operand fans over `{F16, BF16}` (§3.4), so the importer resolves
+`index_select_half_<dtype>` and keys `[T, U32, T]`. Backs `OpKind::IndexSelect`.
+
+```fkc
+kernel: index_select_half
+op_kind: IndexSelect
+blurb: "Pick slices along dim by a rank-1 U32 index tensor (CUDA/baracuda) {F16, BF16}; contiguous; OOB index errors; per-(op,dtype)."
+backend: Cuda
+kernel_source: "baracuda"
+entry_point: "fuel_cuda_backend::fkc::index_select_half"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: source
+      dtypes: [F16, BF16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "notes: flat [outer_count, source_dim_size, inner_count]"
+    - name: indices
+      dtypes: [U32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: 1
+      shape_constraint: "notes: length n_indices; each value < source_dim_size or the kernel returns Err"
+  op_params:
+    variant: IndexSelect          # OpParams::IndexSelect (primitive namespace; §3.7)
+    fields:
+      outer_count:     { kind: usize, note: "product of dims before the selected axis" }
+      source_dim_size: { kind: usize, note: "size of the selected source axis; index bound" }
+      n_indices:       { kind: usize, note: "number of indices == output selected-dim size" }
+      inner_count:     { kind: usize, note: "product of dims after the selected axis" }
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(source)          # per-dtype typed copy preserves source dtype
+      shape_rule: from_params(outer_count, n_indices, inner_count)   # selected axis size := n_indices
+      layout_guarantee: contiguous
+      aliasing: none
+
+caps:
+  awkward_layout_strategy: requires_contiguous   # planner inserts Op::Contiguize (itself an FKC kernel) + sums its cost
+  fast_paths: []
+  in_place: false
+  alignment_bytes: 16
+  access_granularity_bits: 8
+
+cost:
+  provenance: judge_measured     # fill_unset upgrades the imported unknown_cost sentinel to the shared CUDA OpKind cost fn
+  class: cheap_elementwise
+  bytes_moved: "2 * outer_count * n_indices * inner_count * dtype_bytes"   # read selected + write out
+  memory: { device_bytes: "outer_count * n_indices * inner_count * dtype_bytes", host_bytes: 0, disk_bytes: 0 }
+
+precision:
+  bit_stable_on_same_hardware: true   # per-dtype copy — exact, no arithmetic
+  max_ulp: 0
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Half data dtypes (F16, BF16): a pure 2-byte copy through baracuda's `u16` kernel, exact for both (NaN payloads and -inf copied bit for bit). GAP-413. Reasoned from source: index_select_kernel (baracuda/crates/baracuda-kernels-sys/kernels/include/baracuda_indexing.cuh) is one-thread-per-output-element with a single plain store `out[out_off] = src[src_off]` — no atomics, no shared-memory reduction, no launch-config-dependent ordering. Matches the Rust plan's own PrecisionGuarantee { bit_stable_on_same_hardware: true } (baracuda-kernels/src/indexing/index_select.rs)."
+
+determinism: bitwise
+```
+---
+## gather_half  (Gather — N-D gather along dim by a same-rank U32 index tensor; data-dtype fan {F16, BF16})
+
+N-dimensional gather: `source` and `indices`/`output` have the **same rank** and agree on every axis
+except `dim`; the output shape equals the index tensor's shape. For each output position the source is
+read at the same multi-index except the `dim` coordinate is taken from the `U32` index value. Rank
+equality and the per-axis agreement (`source_shape[d] == output_shape[d]` for `d != dim`) are
+validated; an index `≥ source_shape[dim]` returns `Err`. Output is the **same dtype as the source**,
+contiguous row-major (shape == `output_shape`), fully overwritten. The `source` operand fans over
+`{F16, BF16}` (§3.4), so the importer resolves `gather_half_<dtype>` and keys `[T, U32, T]`. Backs
+`OpKind::Gather`.
+
+```fkc
+kernel: gather_half
+op_kind: Gather
+blurb: "N-D gather along dim by a same-rank U32 index tensor (CUDA/baracuda) {F16, BF16}; contiguous; OOB index errors; per-(op,dtype)."
+backend: Cuda
+kernel_source: "baracuda"
+entry_point: "fuel_cuda_backend::fkc::gather_half"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: source
+      dtypes: [F16, BF16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "notes: source_shape; agrees with output_shape on every axis != dim"
+    - name: indices
+      dtypes: [U32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "same_rank=source"   # source/output/indices share rank; differ only on dim; each value < source_shape[dim]
+  op_params:
+    variant: Gather               # OpParams::Gather (primitive namespace; §3.7)
+    fields:
+      source_shape: { kind: "Vec<usize>", note: "row-major source extents" }
+      output_shape: { kind: "Vec<usize>", constraint: "== indices.shape; agrees with source_shape on every axis != dim", note: "output == index tensor shape" }
+      dim:          { kind: usize, constraint: "< source_shape.len()", note: "gathered axis; index bound is source_shape[dim]" }
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(source)          # per-dtype typed copy preserves source dtype
+      shape_rule: from_params(output_shape)     # output == index tensor shape
+      layout_guarantee: contiguous
+      aliasing: none
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  fast_paths: []
+  in_place: false
+  alignment_bytes: 16
+  access_granularity_bits: 8
+
+cost:
+  provenance: judge_measured
+  class: cheap_elementwise
+  bytes_moved: "2 * n * dtype_bytes"   # n = prod(output_shape); read gathered element + write out
+  memory: { device_bytes: "n * dtype_bytes", host_bytes: 0, disk_bytes: 0 }
+
+precision:
+  bit_stable_on_same_hardware: true   # per-dtype copy — exact, no arithmetic
+  max_ulp: 0
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Half data dtypes (F16, BF16): a pure 2-byte copy through baracuda's `u16` kernel, exact for both (NaN payloads and -inf copied bit for bit). GAP-413. Reasoned from source: gather_kernel (baracuda/crates/baracuda-kernels-sys/kernels/include/baracuda_indexing.cuh) is one-thread-per-output-element with a single plain store `out[out_off] = src[src_off]` — no atomics, no cross-thread accumulation (that's gather_backward_kernel, a distinct kernel not bound here). Matches the Rust plan's own PrecisionGuarantee { bit_stable_on_same_hardware: true } (baracuda-kernels/src/indexing/gather.rs)."
+
+determinism: bitwise
+```
+---
+## masked_fill_half  (MaskedFill — fill source where a Bool mask is nonzero; data-dtype fan {F16, BF16})
+
+Elementwise masked fill: for every position where the `Bool` `mask` is nonzero, write the pre-encoded
+`fill_bytes` value; elsewhere copy `source`. `mask` shares the element count with `source` (the kernel
+reads the count from the layout); `fill_bytes` is one element's worth of the fill value, pre-encoded
+in the output dtype and carried in `OpParams::MaskedFill`. Output is the **same dtype as the source**,
+contiguous row-major, fully written. The `source` operand fans over `{F32, F64, I32}` (§3.4), so the
+importer resolves `masked_fill_half_<dtype>` and keys `[T, Bool, T]` (the `Bool` mask is the fixed index-slot
+analogue — the compare-mask precedent). Backs `OpKind::MaskedFill`.
+
+```fkc
+kernel: masked_fill_half
+op_kind: MaskedFill
+blurb: "Fill source where a Bool mask is nonzero (CUDA/baracuda) {F16, BF16}; contiguous; per-(op,dtype)."
+backend: Cuda
+kernel_source: "baracuda"
+entry_point: "fuel_cuda_backend::fkc::masked_fill_half"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: source
+      dtypes: [F16, BF16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "same_as=out"
+    - name: mask
+      dtypes: [BOOL]                     # GAP-168(c): mask is Bool
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "same_as=source"   # element-count match; nonzero → fill
+  op_params:
+    variant: MaskedFill           # OpParams::MaskedFill (primitive namespace; §3.7)
+    fields:
+      fill_bytes: { kind: "Vec<u8>", note: "one element's worth of the fill value, pre-encoded in the output dtype" }
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(source)
+      shape_rule: same_as(source)
+      layout_guarantee: contiguous
+      aliasing: none
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  fast_paths: []
+  in_place: false
+  alignment_bytes: 16
+  access_granularity_bits: 8
+
+cost:
+  provenance: judge_measured
+  class: cheap_elementwise
+  bytes_moved: "2 * n * dtype_bytes"   # n = element count; read source + write out
+  memory: { device_bytes: "n * dtype_bytes", host_bytes: 0, disk_bytes: 0 }
+
+precision:
+  bit_stable_on_same_hardware: true   # copy / constant fill — no arithmetic
+  max_ulp: 0
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Half data dtypes (F16, BF16): a pure 2-byte copy through baracuda's `u16` kernel, exact for both (NaN payloads and -inf copied bit for bit). GAP-413. Reasoned from source: masked_fill_kernel (baracuda/crates/baracuda-kernels-sys/kernels/include/baracuda_indexing.cuh) is one-thread-per-element with a single plain store `out[i] = mask[i] ? fill_value : src[i]` — no atomics, no shared state, no launch-config-dependent ordering. Matches the Rust plan's own PrecisionGuarantee { bit_stable_on_same_hardware: true } (baracuda-kernels/src/indexing/masked_fill.rs)."
+
+determinism: bitwise
+```
+---
+## scatter_add_f16  (ScatterAdd — N-D scatter-add into a base copy via a U32 index tensor, f16)
+
+N-dimensional scatter-add, the functional inverse of `gather`: seed the output from `base`, then for
+every flat position `p` in the `indices`/`src` shape, read `indices[p]` (`U32`) as the destination's
+`dim` coordinate and accumulate `src[p]` into `base` at that multi-index. `base` and `src` share rank
+and agree on every axis except `dim`; `indices` and `src` share shape. Rank equality, the per-axis
+agreement, `dim < rank`, and byte lengths are validated; an index `≥ base_shape[dim]` returns `Err`.
+Duplicate index values accumulate into the same destination. Output is **F16**, contiguous, shape ==
+base, base-seeded then accumulated. This is a **per-dtype** section: the single-dtype `entry_point` is
+resolved AS-IS (no fan), key `[F16, U32, F16, F16]`. Backs `OpKind::ScatterAdd`.
+
+```fkc
+kernel: scatter_add_f16
+op_kind: ScatterAdd
+blurb: "N-D scatter-add (inverse of gather) into a base copy via a U32 index tensor (CUDA/baracuda) f16; contiguous; OOB index errors."
+backend: Cuda
+kernel_source: "baracuda"
+entry_point: "fuel_cuda_backend::fkc::scatter_add_f16"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: base
+      dtypes: [F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "notes: base_shape; out shape == base_shape; agrees with src_shape on every axis != dim"
+    - name: indices
+      dtypes: [U32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "same_as=src"   # indices.shape == src_shape; each value < base_shape[dim] or the kernel returns Err
+    - name: src
+      dtypes: [F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "same_rank=base"   # src_shape; differs from base only along dim
+  op_params:
+    variant: ScatterAdd           # OpParams::ScatterAdd (primitive namespace; §3.7)
+    fields:
+      base_shape: { kind: "Vec<usize>", note: "row-major base extents; out == base_shape" }
+      src_shape:  { kind: "Vec<usize>", constraint: "== indices.shape; agrees with base_shape on every axis != dim" }
+      dim:        { kind: usize, constraint: "< base_shape.len()", note: "scattered axis; index bound is base_shape[dim]" }
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(base)
+      shape_rule: same_as(base)
+      layout_guarantee: contiguous
+      aliasing: accumulate(base)     # out is base read-modify-written: seeded from base then += src
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  fast_paths: []
+  in_place: false
+  alignment_bytes: 16
+  access_granularity_bits: 8
+
+cost:
+  provenance: judge_measured
+  class: cheap_elementwise
+  bytes_moved: "(2 * base_total + 3 * n) * dtype_bytes"   # n = prod(src_shape); base_total = prod(base_shape)
+  memory: { device_bytes: "base_total * dtype_bytes", host_bytes: 0, disk_bytes: 0 }
+
+precision:
+  bit_stable_on_same_hardware: false
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Half dtype (F16) through baracuda's own `scatter_add_f16` kernel (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so f16/bf16 sums are order-dependent beyond the f32 case; baracuda documents an out-of-range index as SKIPPED, not an error (IndexBoundsPlan from alpha.218 detects it) -- the MEASURED behaviour is in `baracuda_half_index_live`. Genuinely nondeterministic, NOT a static-bound gap: the kernel accumulates duplicate-index writes via atomicAdd (confirmed baracuda/crates/baracuda-kernels/src/indexing/scatter_add.rs, whose own doc comment states 'Precision guarantee: non-deterministic — atomicAdd ordering varies between launches'). Corrects a prior seed that wrongly carried bit_stable_on_same_hardware: true while audited: false — the false claim predates this audit; per-thread float addition is not associative, so accumulation order varies run-to-run for any index with >1 contributor."
+
+determinism: nondeterministic
+```
+---
+## scatter_add_bf16  (ScatterAdd — N-D scatter-add into a base copy via a U32 index tensor, bf16)
+
+N-dimensional scatter-add, the functional inverse of `gather`: seed the output from `base`, then for
+every flat position `p` in the `indices`/`src` shape, read `indices[p]` (`U32`) as the destination's
+`dim` coordinate and accumulate `src[p]` into `base` at that multi-index. `base` and `src` share rank
+and agree on every axis except `dim`; `indices` and `src` share shape. Rank equality, the per-axis
+agreement, `dim < rank`, and byte lengths are validated; an index `≥ base_shape[dim]` returns `Err`.
+Duplicate index values accumulate into the same destination. Output is **BF16**, contiguous, shape ==
+base, base-seeded then accumulated. This is a **per-dtype** section: the single-dtype `entry_point` is
+resolved AS-IS (no fan), key `[BF16, U32, BF16, BF16]`. Backs `OpKind::ScatterAdd`.
+
+```fkc
+kernel: scatter_add_bf16
+op_kind: ScatterAdd
+blurb: "N-D scatter-add (inverse of gather) into a base copy via a U32 index tensor (CUDA/baracuda) bf16; contiguous; OOB index errors."
+backend: Cuda
+kernel_source: "baracuda"
+entry_point: "fuel_cuda_backend::fkc::scatter_add_bf16"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: base
+      dtypes: [BF16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "notes: base_shape; out shape == base_shape; agrees with src_shape on every axis != dim"
+    - name: indices
+      dtypes: [U32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "same_as=src"   # indices.shape == src_shape; each value < base_shape[dim] or the kernel returns Err
+    - name: src
+      dtypes: [BF16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "same_rank=base"   # src_shape; differs from base only along dim
+  op_params:
+    variant: ScatterAdd           # OpParams::ScatterAdd (primitive namespace; §3.7)
+    fields:
+      base_shape: { kind: "Vec<usize>", note: "row-major base extents; out == base_shape" }
+      src_shape:  { kind: "Vec<usize>", constraint: "== indices.shape; agrees with base_shape on every axis != dim" }
+      dim:        { kind: usize, constraint: "< base_shape.len()", note: "scattered axis; index bound is base_shape[dim]" }
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(base)
+      shape_rule: same_as(base)
+      layout_guarantee: contiguous
+      aliasing: accumulate(base)     # out is base read-modify-written: seeded from base then += src
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  fast_paths: []
+  in_place: false
+  alignment_bytes: 16
+  access_granularity_bits: 8
+
+cost:
+  provenance: judge_measured
+  class: cheap_elementwise
+  bytes_moved: "(2 * base_total + 3 * n) * dtype_bytes"   # n = prod(src_shape); base_total = prod(base_shape)
+  memory: { device_bytes: "base_total * dtype_bytes", host_bytes: 0, disk_bytes: 0 }
+
+precision:
+  bit_stable_on_same_hardware: false
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Half dtype (BF16) through baracuda's own `scatter_add_bf16` kernel (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so f16/bf16 sums are order-dependent beyond the f32 case; baracuda documents an out-of-range index as SKIPPED, not an error (IndexBoundsPlan from alpha.218 detects it) -- the MEASURED behaviour is in `baracuda_half_index_live`. Genuinely nondeterministic, NOT a static-bound gap: the kernel accumulates duplicate-index writes via atomicAdd (confirmed baracuda/crates/baracuda-kernels/src/indexing/scatter_add.rs, whose own doc comment states 'Precision guarantee: non-deterministic — atomicAdd ordering varies between launches'). Corrects a prior seed that wrongly carried bit_stable_on_same_hardware: true while audited: false — the false claim predates this audit; per-thread float addition is not associative, so accumulation order varies run-to-run for any index with >1 contributor."
+
+determinism: nondeterministic
+```
+
+---
