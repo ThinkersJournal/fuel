@@ -113,8 +113,8 @@ accelerate-src = { version = "0.3.2" }
 # NOTE: building fuel-aocl-cpu-backend still needs a libclang for bindgen +
 # AMD's AOCL install for the prebuilt BLIS lib — those are runtime/build
 # prerequisites, independent of where the Rust wrapper crate comes from.
-aocl-blas  = "0.1"
-aocl-types = "0.1"
+aocl-blas  = "0.2"
+aocl-types = "0.2"
 # Intel oneMKL safe wrapper for the Phase 7b second CPU backend.
 # Crates.io release 0.2.0 (2026-05-15) — adds service module
 # (IsaLevel, cpu_* helpers, ThreadCountGuard, AlignedBuffer), RNG
