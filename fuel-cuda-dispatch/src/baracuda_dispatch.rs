@@ -7217,6 +7217,46 @@ mod cast_contract_tests {
                 &[DType::F64, u32, DType::F64, DType::F64][..],
                 indexing::scatter_add_f64 as KernelRef,
             ),
+            (
+                OpKind::IndexSelect,
+                &[DType::F16, u32, DType::F16][..],
+                indexing::index_select_f16 as KernelRef,
+            ),
+            (
+                OpKind::Gather,
+                &[DType::F16, u32, DType::F16][..],
+                indexing::gather_f16 as KernelRef,
+            ),
+            (
+                OpKind::MaskedFill,
+                &[DType::F16, mask, DType::F16][..],
+                indexing::masked_fill_f16 as KernelRef,
+            ),
+            (
+                OpKind::ScatterAdd,
+                &[DType::F16, u32, DType::F16, DType::F16][..],
+                indexing::scatter_add_f16 as KernelRef,
+            ),
+            (
+                OpKind::IndexSelect,
+                &[DType::BF16, u32, DType::BF16][..],
+                indexing::index_select_bf16 as KernelRef,
+            ),
+            (
+                OpKind::Gather,
+                &[DType::BF16, u32, DType::BF16][..],
+                indexing::gather_bf16 as KernelRef,
+            ),
+            (
+                OpKind::MaskedFill,
+                &[DType::BF16, mask, DType::BF16][..],
+                indexing::masked_fill_bf16 as KernelRef,
+            ),
+            (
+                OpKind::ScatterAdd,
+                &[DType::BF16, u32, DType::BF16, DType::BF16][..],
+                indexing::scatter_add_bf16 as KernelRef,
+            ),
         ];
         let mut checked = 0usize;
         for (op, key, expected) in cases {
@@ -7244,7 +7284,7 @@ mod cast_contract_tests {
             );
             checked += 1;
         }
-        assert_eq!(checked, 11, "all 11 indexing keys checked");
+        assert_eq!(checked, 19, "all 19 indexing keys checked");
     }
 
     /// TASK-F born-red gate (the §4.4 cost-fn trampoline consumer). The
