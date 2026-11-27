@@ -282,3 +282,58 @@ fn cuda_half_scatter_add_accumulates_duplicates_and_is_pinned_on_out_of_range() 
     assert!(ran >= 4);
     assert!(bad.is_empty(), "{bad:?}");
 }
+
+/// `IndexAdd` f16/bf16 (first CUDA keys, GAP-413): `out[idx[i]] += src[i]` on the flat `[outer, axis, inner]`
+/// view, with a duplicate index into one row. Small integers are exact in half. The out-of-range case is
+/// MEASURED and printed (`HALFIDX index_add_oob/...`): KISS has no `index_add` clause yet (PM ruled 2026-11-27
+/// that it SKIPS, pending the clause), so whatever it does today is CURRENT BEHAVIOUR, not the contract.
+#[test]
+fn cuda_half_index_add_accumulates_duplicates_and_oob_is_measured() {
+    fuel_test_support::hardware::require_gpu_run_lock();
+    let dev = CudaDevice::new(0).expect("cuda device");
+    let t = table();
+    let mut ran = 0usize;
+    let mut bad: Vec<String> = Vec::new();
+    for dt in HALVES {
+        let base = storage(&dev, &enc(dt, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]), dt);
+        let src = storage(&dev, &enc(dt, &[10.0, 20.0, 30.0, 40.0, 50.0, 60.0]), dt);
+        let params = OpParams::IndexAdd {
+            outer_count: 1,
+            base_dim_size: 3,
+            n_indices: 3,
+            inner_count: 2,
+        };
+        let idx = storage(&dev, &u32_bytes(&[2, 0, 2]), DType::U32);
+        let want = [31.0, 42.0, 3.0, 4.0, 65.0, 86.0];
+        for r in run_all(
+            &t,
+            OpKind::IndexAdd,
+            &[dt, DType::U32, dt],
+            &[base.clone(), idx, src.clone()],
+            &|| out_storage(&dev, 6 * 2, dt),
+            &params,
+        ) {
+            ran += 1;
+            match r.map(|b| dec(dt, &b)) {
+                Ok(got) if got == want => println!("HALFIDX index_add/{dt:?}: OK {got:?}"),
+                other => bad.push(format!("index_add/{dt:?}: {other:?}")),
+            }
+        }
+        // Out-of-range index (3 >= base_dim_size = 3): MEASURED, printed.
+        let oob = storage(&dev, &u32_bytes(&[2, 3, 0]), DType::U32);
+        for r in run_all(
+            &t,
+            OpKind::IndexAdd,
+            &[dt, DType::U32, dt],
+            &[base.clone(), oob, src.clone()],
+            &|| out_storage(&dev, 6 * 2, dt),
+            &params,
+        ) {
+            ran += 1;
+            println!("HALFIDX index_add_oob/{dt:?}: {:?}", r.map(|b| dec(dt, &b)));
+        }
+    }
+    println!("HALFIDX index_add ran {ran} cases, {} diverge", bad.len());
+    assert_eq!(ran, 4, "2 dtypes x (sum + oob) must all run");
+    assert!(bad.is_empty(), "{bad:?}");
+}

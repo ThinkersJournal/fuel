@@ -633,3 +633,113 @@ scatter_add_kernel!(scatter_add_f64, f64, 8, "scatter_add_f64");
 // (atomics, as torch CUDA), and an out-of-range index is skipped, not an error (baracuda, alpha.219 notes). GAP-413.
 scatter_add_kernel!(scatter_add_f16, f16, 2, "scatter_add_f16");
 scatter_add_kernel!(scatter_add_bf16, bf16, 2, "scatter_add_bf16");
+
+/// baracuda `index_add_<val>_run` FFI shape (U32 indices; the `_i64idx_` variants are not bound here).
+type IndexAddRun = unsafe extern "C" fn(
+    src_numel: i64,
+    rank: i32,
+    add_dim: i32,
+    dst_dim_size: i32,
+    src_shape: *const i32,
+    stride_src: *const i64,
+    stride_dst: *const i64,
+    src: *const std::ffi::c_void,
+    idx: *const std::ffi::c_void,
+    dst: *mut std::ffi::c_void,
+    workspace: *mut std::ffi::c_void,
+    workspace_bytes: usize,
+    stream: *mut std::ffi::c_void,
+) -> i32;
+
+/// IndexAdd: `out[..., indices[i], ...] += src[..., i, ...]` along one axis, `out` seeded from `base`
+/// (Fuel's `OpKind::IndexAdd`, flat `[outer, axis, inner]` view). GAP-413 (first CUDA key for IndexAdd).
+fn index_add_run(
+    base: &CudaStorageBytes,
+    index: &CudaStorageBytes,
+    src: &CudaStorageBytes,
+    outer_count: usize,
+    base_dim_size: usize,
+    n_indices: usize,
+    inner_count: usize,
+    kernel: IndexAddRun,
+    op_label: &'static str,
+) -> Result<CudaStorageBytes> {
+    let device = base.device().clone();
+    let host_base = base.to_cpu_bytes()?;
+    let out = CudaStorageBytes::from_cpu_bytes(&device, &host_base)?;
+    let src_numel = outer_count * n_indices * inner_count;
+    if src_numel == 0 {
+        return Ok(out);
+    }
+    let src_shape = [outer_count, n_indices, inner_count];
+    let dst_shape = [outer_count, base_dim_size, inner_count];
+    let (src_shape_i32, stride_src) = shape_strides_for(&src_shape, op_label)?;
+    let (_dst_shape_i32, stride_dst) = shape_strides_for(&dst_shape, op_label)?;
+    let dst_dim_size = i32::try_from(base_dim_size).map_err(|_| {
+        fuel_ir::Error::cuda(crate::error::CudaError::BaracudaShapeOverflow {
+            op: op_label,
+            dim_index: 1,
+            dim_value: base_dim_size,
+        })
+    })?;
+    let scratch = Workspace::alloc(&device, 0)?;
+    let stream = device.stream().as_raw() as *mut std::ffi::c_void;
+    let src_ptr = src.buffer().as_raw().0 as *const std::ffi::c_void;
+    let idx_ptr = index.buffer().as_raw().0 as *const std::ffi::c_void;
+    let out_ptr = out.buffer().as_raw().0 as *mut std::ffi::c_void;
+    let status = unsafe {
+        kernel(
+            src_numel as i64,
+            3,
+            1,
+            dst_dim_size,
+            src_shape_i32.as_ptr(),
+            stride_src.as_ptr(),
+            stride_dst.as_ptr(),
+            src_ptr,
+            idx_ptr,
+            out_ptr,
+            scratch.as_raw(),
+            scratch.bytes(),
+            stream,
+        )
+    };
+    check(status, op_label)?;
+    Ok(out)
+}
+
+macro_rules! index_add_kernel {
+    ($name:ident, $sys_stem:ident, $op_label:expr $(,)?) => {
+        ::paste::paste! {
+            #[doc = concat!("Baracuda `", $op_label, "` kernel (U32 indices).")]
+            pub fn $name(
+                base: &CudaStorageBytes,
+                index: &CudaStorageBytes,
+                src: &CudaStorageBytes,
+                outer_count: usize,
+                base_dim_size: usize,
+                n_indices: usize,
+                inner_count: usize,
+            ) -> Result<CudaStorageBytes> {
+                index_add_run(
+                    base,
+                    index,
+                    src,
+                    outer_count,
+                    base_dim_size,
+                    n_indices,
+                    inner_count,
+                    sys::[<baracuda_kernels_index_add_ $sys_stem _run>],
+                    $op_label,
+                )
+            }
+        }
+    };
+}
+
+index_add_kernel!(index_add_f32, f32, "index_add_f32");
+index_add_kernel!(index_add_f64, f64, "index_add_f64");
+// Half dtypes (GAP-413): baracuda `IndexAddPlan` accepts f16/bf16; duplicate indices accumulate by atomics in an
+// undefined order, and the out-of-range behaviour is MEASURED in `baracuda_half_index_live`.
+index_add_kernel!(index_add_f16, f16, "index_add_f16");
+index_add_kernel!(index_add_bf16, bf16, "index_add_bf16");
