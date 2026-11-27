@@ -3,6 +3,10 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.58.4 - 2026-11-27 (PM-allocated; tests and docs only: Vulkan sign/step NaN live test, GAP-411/412/413 rows; not breaking)
+
+- A Vulkan sign/step NaN live test: the RTX 4070 returns 0 and the AMD 610M returns 1 for `sign(NaN)`, pinned per adapter; hosted CI skips it by name in `rust-ci.yml`. GAP-411 is closed by the CUDA sign slice (0.58.1), and GAP-412 and GAP-413 rows are added. No source change.
+
 ## v0.58.3 - 2026-11-27 (PM-allocated; takes aocl-blas and aocl-types 0.2.5; not breaking)
 
 ### Changed
