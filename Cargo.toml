@@ -120,7 +120,7 @@ aocl-types = "0.2"
 # (IsaLevel, cpu_* helpers, ThreadCountGuard, AlignedBuffer), RNG
 # distribution suite, iterative-refinement LAPACK, sparse SYRK/SYPR,
 # summary-stats preprocessing.
-onemkl = "0.4"
+onemkl = "0.5"
 anyhow = { version = "1", features = ["backtrace"] }
 byteorder = "1.4.3"
 fuel = { path = "./fuel", version = "0.59.0" }

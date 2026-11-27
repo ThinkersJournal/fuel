@@ -3900,9 +3900,9 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "onemkl"
-version = "0.4.5"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3921946f88f42d7a15f05060ce12e2926f4ca39619c83df14d68d70424b76b11"
+checksum = "11f68854658866a2964066416ab1bf08e21194b50c13c393b6ccbe3bb786fef6"
 dependencies = [
  "num-complex",
  "num-traits",
@@ -3911,9 +3911,9 @@ dependencies = [
 
 [[package]]
 name = "onemkl-sys"
-version = "0.4.5"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50801c3aaa1c4ab54c8a6b52bb2348935d10b8178bfd59ac71fa8be8d745abf4"
+checksum = "bbd5de08f6a203828795cadd275683d7319a5b0be3b8cf5c79a47549fef8779a"
 dependencies = [
  "bindgen",
 ]
