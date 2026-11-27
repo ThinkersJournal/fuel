@@ -149,3 +149,40 @@ fn cuda_sign_and_step_of_nan_are_zero() {
     assert!(ran > 0, "no CUDA sign/step binding ran");
     assert!(bad.is_empty(), "{bad:?}");
 }
+
+/// `gelu_tanh` on every dtype: 1.0 -> 0.841192 (tanh approximation), NaN -> NaN, 0 -> 0. Turns the
+/// GAP-411 "derived" claim for the half and f64 sections into a measurement.
+#[test]
+fn cuda_gelu_tanh_vectors_hold_on_every_dtype() {
+    fuel_test_support::require_gpu_run_lock();
+    let dev = CudaDevice::new(0).expect("cuda device (a missing device is a failure)");
+    let mut t = KernelBindingTable::new();
+    register_cuda_kernels(&mut t);
+    register_baracuda_cuda_kernels(&mut t);
+    let input = [1.0f32, f32::NAN, 0.0];
+    let (mut bad, mut ran) = (Vec::new(), 0usize);
+    for dt in DTYPES {
+        let tol = match dt {
+            DType::F16 => 2e-3,
+            DType::BF16 => 1e-2,
+            _ => 1e-5,
+        };
+        let op = OpKind::GeluTanhElementwise;
+        let n = t.lookup_alternatives(op, &[dt, dt], BackendId::Cuda).len();
+        assert!(n > 0, "gelu_tanh/{dt:?}: no CUDA binding");
+        for alt in 0..n {
+            let got = run(&dev, &t, op, dt, alt, &input).expect("gelu_tanh runs");
+            ran += 1;
+            let ok = (got[0] - 0.841192).abs() <= tol && got[1].is_nan() && got[2] == 0.0;
+            println!(
+                "CUDAGELU gelu_tanh/{dt:?}/alt{alt}: got {got:?} {}",
+                if ok { "OK" } else { "DIVERGES" }
+            );
+            if !ok {
+                bad.push(format!("{dt:?}/alt{alt}: {got:?}"));
+            }
+        }
+    }
+    println!("CUDAGELU ran {ran} cases, {} diverge", bad.len());
+    assert!(bad.is_empty(), "{bad:?}");
+}

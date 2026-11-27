@@ -669,7 +669,7 @@ pub static CUDA_ROPE_ENTRY_POINTS: &[(&str, KernelRef)] = &[
     cuda_ep!("rope_f64", crate::baracuda_dispatch::attention::rope_f64),
 ];
 
-/// CUDA `unary` family (forward elementwise unary (21 ops x 4 dtypes + f32-only Sign)): fanned `<op>_<dtype>` symbol -> production wrapper.
+/// CUDA `unary` family (forward elementwise unary (22 ops x 4 dtypes)): fanned `<op>_<dtype>` symbol -> production wrapper.
 /// Contract: `fuel-cuda-dispatch/kernel-contracts/cuda/unary.fkc.md`.
 pub static CUDA_UNARY_ENTRY_POINTS: &[(&str, KernelRef)] = &[
     cuda_ep!("neg_f32", crate::baracuda_dispatch::unary::neg_f32),
@@ -772,6 +772,9 @@ pub static CUDA_UNARY_ENTRY_POINTS: &[(&str, KernelRef)] = &[
     cuda_ep!("erf_bf16", crate::baracuda_dispatch::unary::erf_bf16),
     cuda_ep!("erf_f64", crate::baracuda_dispatch::unary::erf_f64),
     cuda_ep!("sign", crate::baracuda_dispatch::unary::sign_f32),
+    cuda_ep!("sign_half_f16", crate::baracuda_dispatch::unary::sign_f16),
+    cuda_ep!("sign_half_bf16", crate::baracuda_dispatch::unary::sign_bf16),
+    cuda_ep!("sign_half_f64", crate::baracuda_dispatch::unary::sign_f64),
 ];
 
 /// CUDA `clamp_inplace` family (in-place scalar-bounds clamp): fanned `<op>_<dtype>` symbol -> production wrapper.
