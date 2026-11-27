@@ -819,7 +819,13 @@ fn capture_decode_same_device_copy_replays_bit_exact_cuda() {
         let mut ins = StorageCache::new();
         ins.insert(xr, up(xv));
         ins.insert(br, up(bv));
-        let (arc, _) = PipelinedExecutor::realize(g, yr, ins).expect("ref realize");
+        let (arc, _) = PipelinedExecutor::realize_with_devices(
+            g,
+            yr,
+            ins,
+            fuel_dispatch::pipelined::DeviceRegistry::new().with_cuda(dev.clone()),
+        )
+        .expect("ref realize");
         read(&arc)
     };
     let expect0 = realize_ref(&x_data, &b_data);
