@@ -3,6 +3,10 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.58.2 - 2026-11-27 (PM-allocated; docs only: ROADMAP row 173 and the embedding GGUF design note; not breaking)
+
+- Design note for loading embedding GGUF models and ROADMAP row 173, with the provenance rows. No code change.
+
 ## v0.58.1 - 2026-11-27 (PM-allocated; additive: CUDA sign for f16, bf16 and f64 (GAP-411 slice 1); not breaking)
 
 ### Added
