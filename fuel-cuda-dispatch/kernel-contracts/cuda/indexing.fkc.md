@@ -793,3 +793,303 @@ determinism: nondeterministic
 ```
 
 ---
+---
+## index_add_f32  (IndexAdd — accumulate src into a copy of base at rank-1 U32 indices, f32, CUDA/baracuda)
+
+Seed the output from `base`, then `out[..., indices[i], ...] += src[..., i, ...]` for each rank-1 `U32` index, via baracuda's `index_add_f32` kernel on the flat `[outer, axis, inner]` view. Output is **F32**, contiguous, shape == base. Per-dtype section (single-dtype `entry_point` resolved AS-IS), key `[F32, U32, F32]`. Backs `OpKind::IndexAdd` (first CUDA keys, GAP-413).
+
+```fkc
+kernel: index_add_f32
+op_kind: IndexAdd
+blurb: "Accumulate src into a base copy at rank-1 U32 indices along one axis (CUDA/baracuda) f32; contiguous; OOB index update behaviour is measured per dtype."
+backend: Cuda
+kernel_source: "baracuda"
+entry_point: "fuel_cuda_backend::fkc::index_add_f32"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: base
+      dtypes: [F32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "notes: flat [outer_count, base_dim_size, inner_count]; out shape == base shape"
+    - name: indices
+      dtypes: [U32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: 1
+      shape_constraint: "notes: length n_indices; each value should be < base_dim_size; out-of-range behaviour measured, see notes"
+    - name: src
+      dtypes: [F32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "notes: flat [outer_count, n_indices, inner_count]"
+  op_params:
+    variant: IndexAdd             # OpParams::IndexAdd (primitive namespace; §3.7)
+    fields:
+      outer_count:   { kind: usize, note: "product of dims before the indexed axis" }
+      base_dim_size: { kind: usize, note: "size of the indexed base axis; index bound" }
+      n_indices:     { kind: usize, note: "number of indices == src indexed-dim size" }
+      inner_count:   { kind: usize, note: "product of dims after the indexed axis" }
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(base)
+      shape_rule: same_as(base)
+      layout_guarantee: contiguous
+      aliasing: accumulate(base)     # out is base read-modify-written: seeded from base then += src
+  bundle: ~
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  fast_paths:
+    - { when: "all_inputs_contiguous", class: cheap_elementwise }
+  in_place: false
+  alignment_bytes: 16
+  access_granularity_bits: 8
+
+cost:
+  provenance: judge_measured
+  class: cheap_elementwise
+  # base copy (base_dim_size) + accumulate (n_indices) rows, each outer*inner f32 elements. Hint only.
+  flops: "outer_count * n_indices * inner_count"
+  bytes_moved: "(outer_count * base_dim_size * inner_count * 2 + outer_count * n_indices * inner_count) * dtype_bytes"
+  memory: { device_bytes: "outer_count * base_dim_size * inner_count * dtype_bytes", host_bytes: 0, disk_bytes: 0 }
+
+precision:
+  bit_stable_on_same_hardware: false
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Baracuda `index_add_f32` (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so the sum is order-dependent and NOT bit-stable; native f32 accumulation. The out-of-range index behaviour is MEASURED in `baracuda_half_index_live` and is a labelled KNOWN DIVERGENCE pending the KISS index_add clause (PM ruled 2026-11-27: index_add SKIPS an out-of-range write)."
+
+determinism: nondeterministic
+```
+
+---
+## index_add_f64  (IndexAdd — accumulate src into a copy of base at rank-1 U32 indices, f64, CUDA/baracuda)
+
+Seed the output from `base`, then `out[..., indices[i], ...] += src[..., i, ...]` for each rank-1 `U32` index, via baracuda's `index_add_f64` kernel on the flat `[outer, axis, inner]` view. Output is **F64**, contiguous, shape == base. Per-dtype section (single-dtype `entry_point` resolved AS-IS), key `[F64, U32, F64]`. Backs `OpKind::IndexAdd` (first CUDA keys, GAP-413).
+
+```fkc
+kernel: index_add_f64
+op_kind: IndexAdd
+blurb: "Accumulate src into a base copy at rank-1 U32 indices along one axis (CUDA/baracuda) f64; contiguous; OOB index update behaviour is measured per dtype."
+backend: Cuda
+kernel_source: "baracuda"
+entry_point: "fuel_cuda_backend::fkc::index_add_f64"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: base
+      dtypes: [F64]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "notes: flat [outer_count, base_dim_size, inner_count]; out shape == base shape"
+    - name: indices
+      dtypes: [U32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: 1
+      shape_constraint: "notes: length n_indices; each value should be < base_dim_size; out-of-range behaviour measured, see notes"
+    - name: src
+      dtypes: [F64]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "notes: flat [outer_count, n_indices, inner_count]"
+  op_params:
+    variant: IndexAdd             # OpParams::IndexAdd (primitive namespace; §3.7)
+    fields:
+      outer_count:   { kind: usize, note: "product of dims before the indexed axis" }
+      base_dim_size: { kind: usize, note: "size of the indexed base axis; index bound" }
+      n_indices:     { kind: usize, note: "number of indices == src indexed-dim size" }
+      inner_count:   { kind: usize, note: "product of dims after the indexed axis" }
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(base)
+      shape_rule: same_as(base)
+      layout_guarantee: contiguous
+      aliasing: accumulate(base)     # out is base read-modify-written: seeded from base then += src
+  bundle: ~
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  fast_paths:
+    - { when: "all_inputs_contiguous", class: cheap_elementwise }
+  in_place: false
+  alignment_bytes: 16
+  access_granularity_bits: 8
+
+cost:
+  provenance: judge_measured
+  class: cheap_elementwise
+  # base copy (base_dim_size) + accumulate (n_indices) rows, each outer*inner f32 elements. Hint only.
+  flops: "outer_count * n_indices * inner_count"
+  bytes_moved: "(outer_count * base_dim_size * inner_count * 2 + outer_count * n_indices * inner_count) * dtype_bytes"
+  memory: { device_bytes: "outer_count * base_dim_size * inner_count * dtype_bytes", host_bytes: 0, disk_bytes: 0 }
+
+precision:
+  bit_stable_on_same_hardware: false
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Baracuda `index_add_f64` (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so the sum is order-dependent and NOT bit-stable; native f64 accumulation. The out-of-range index behaviour is MEASURED in `baracuda_half_index_live` and is a labelled KNOWN DIVERGENCE pending the KISS index_add clause (PM ruled 2026-11-27: index_add SKIPS an out-of-range write)."
+
+determinism: nondeterministic
+```
+
+---
+## index_add_f16  (IndexAdd — accumulate src into a copy of base at rank-1 U32 indices, f16, CUDA/baracuda)
+
+Seed the output from `base`, then `out[..., indices[i], ...] += src[..., i, ...]` for each rank-1 `U32` index, via baracuda's `index_add_f16` kernel on the flat `[outer, axis, inner]` view. Output is **F16**, contiguous, shape == base. Per-dtype section (single-dtype `entry_point` resolved AS-IS), key `[F16, U32, F16]`. Backs `OpKind::IndexAdd` (first CUDA keys, GAP-413).
+
+```fkc
+kernel: index_add_f16
+op_kind: IndexAdd
+blurb: "Accumulate src into a base copy at rank-1 U32 indices along one axis (CUDA/baracuda) f16; contiguous; OOB index update behaviour is measured per dtype."
+backend: Cuda
+kernel_source: "baracuda"
+entry_point: "fuel_cuda_backend::fkc::index_add_f16"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: base
+      dtypes: [F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "notes: flat [outer_count, base_dim_size, inner_count]; out shape == base shape"
+    - name: indices
+      dtypes: [U32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: 1
+      shape_constraint: "notes: length n_indices; each value should be < base_dim_size; out-of-range behaviour measured, see notes"
+    - name: src
+      dtypes: [F16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "notes: flat [outer_count, n_indices, inner_count]"
+  op_params:
+    variant: IndexAdd             # OpParams::IndexAdd (primitive namespace; §3.7)
+    fields:
+      outer_count:   { kind: usize, note: "product of dims before the indexed axis" }
+      base_dim_size: { kind: usize, note: "size of the indexed base axis; index bound" }
+      n_indices:     { kind: usize, note: "number of indices == src indexed-dim size" }
+      inner_count:   { kind: usize, note: "product of dims after the indexed axis" }
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(base)
+      shape_rule: same_as(base)
+      layout_guarantee: contiguous
+      aliasing: accumulate(base)     # out is base read-modify-written: seeded from base then += src
+  bundle: ~
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  fast_paths:
+    - { when: "all_inputs_contiguous", class: cheap_elementwise }
+  in_place: false
+  alignment_bytes: 16
+  access_granularity_bits: 8
+
+cost:
+  provenance: judge_measured
+  class: cheap_elementwise
+  # base copy (base_dim_size) + accumulate (n_indices) rows, each outer*inner f32 elements. Hint only.
+  flops: "outer_count * n_indices * inner_count"
+  bytes_moved: "(outer_count * base_dim_size * inner_count * 2 + outer_count * n_indices * inner_count) * dtype_bytes"
+  memory: { device_bytes: "outer_count * base_dim_size * inner_count * dtype_bytes", host_bytes: 0, disk_bytes: 0 }
+
+precision:
+  bit_stable_on_same_hardware: false
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Baracuda `index_add_f16` (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so the sum is order-dependent and NOT bit-stable; native f16 accumulation. The out-of-range index behaviour is MEASURED in `baracuda_half_index_live` and is a labelled KNOWN DIVERGENCE pending the KISS index_add clause (PM ruled 2026-11-27: index_add SKIPS an out-of-range write)."
+
+determinism: nondeterministic
+```
+
+---
+## index_add_bf16  (IndexAdd — accumulate src into a copy of base at rank-1 U32 indices, bf16, CUDA/baracuda)
+
+Seed the output from `base`, then `out[..., indices[i], ...] += src[..., i, ...]` for each rank-1 `U32` index, via baracuda's `index_add_bf16` kernel on the flat `[outer, axis, inner]` view. Output is **BF16**, contiguous, shape == base. Per-dtype section (single-dtype `entry_point` resolved AS-IS), key `[BF16, U32, BF16]`. Backs `OpKind::IndexAdd` (first CUDA keys, GAP-413).
+
+```fkc
+kernel: index_add_bf16
+op_kind: IndexAdd
+blurb: "Accumulate src into a base copy at rank-1 U32 indices along one axis (CUDA/baracuda) bf16; contiguous; OOB index update behaviour is measured per dtype."
+backend: Cuda
+kernel_source: "baracuda"
+entry_point: "fuel_cuda_backend::fkc::index_add_bf16"
+kernel_revision_hash: auto
+
+accept:
+  inputs:
+    - name: base
+      dtypes: [BF16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "notes: flat [outer_count, base_dim_size, inner_count]; out shape == base shape"
+    - name: indices
+      dtypes: [U32]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: 1
+      shape_constraint: "notes: length n_indices; each value should be < base_dim_size; out-of-range behaviour measured, see notes"
+    - name: src
+      dtypes: [BF16]
+      layout: { contiguous: required, strided: rejected, broadcast_stride0: rejected, start_offset: rejected, reverse_strides: rejected }
+      rank: any
+      shape_constraint: "notes: flat [outer_count, n_indices, inner_count]"
+  op_params:
+    variant: IndexAdd             # OpParams::IndexAdd (primitive namespace; §3.7)
+    fields:
+      outer_count:   { kind: usize, note: "product of dims before the indexed axis" }
+      base_dim_size: { kind: usize, note: "size of the indexed base axis; index bound" }
+      n_indices:     { kind: usize, note: "number of indices == src indexed-dim size" }
+      inner_count:   { kind: usize, note: "product of dims after the indexed axis" }
+
+return:
+  outputs:
+    - name: out
+      dtype_rule: passthrough(base)
+      shape_rule: same_as(base)
+      layout_guarantee: contiguous
+      aliasing: accumulate(base)     # out is base read-modify-written: seeded from base then += src
+  bundle: ~
+
+caps:
+  awkward_layout_strategy: requires_contiguous
+  fast_paths:
+    - { when: "all_inputs_contiguous", class: cheap_elementwise }
+  in_place: false
+  alignment_bytes: 16
+  access_granularity_bits: 8
+
+cost:
+  provenance: judge_measured
+  class: cheap_elementwise
+  # base copy (base_dim_size) + accumulate (n_indices) rows, each outer*inner f32 elements. Hint only.
+  flops: "outer_count * n_indices * inner_count"
+  bytes_moved: "(outer_count * base_dim_size * inner_count * 2 + outer_count * n_indices * inner_count) * dtype_bytes"
+  memory: { device_bytes: "outer_count * base_dim_size * inner_count * dtype_bytes", host_bytes: 0, disk_bytes: 0 }
+
+precision:
+  bit_stable_on_same_hardware: false
+  max_ulp: ~
+  max_relative: ~
+  max_absolute: ~
+  audited: true
+  notes: "Baracuda `index_add_bf16` (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so the sum is order-dependent and NOT bit-stable; native bf16 accumulation. The out-of-range index behaviour is MEASURED in `baracuda_half_index_live` and is a labelled KNOWN DIVERGENCE pending the KISS index_add clause (PM ruled 2026-11-27: index_add SKIPS an out-of-range write)."
+
+determinism: nondeterministic
+```
+

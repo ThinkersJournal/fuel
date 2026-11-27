@@ -1515,6 +1515,23 @@ pub static CUDA_INDEXING_ENTRY_POINTS: &[(&str, KernelRef)] = &[
         "scatter_add_bf16",
         crate::baracuda_dispatch::indexing::scatter_add_bf16
     ),
+    // IndexAdd - per-dtype; first CUDA keys (GAP-413).
+    cuda_ep!(
+        "index_add_f32",
+        crate::baracuda_dispatch::indexing::index_add_f32
+    ),
+    cuda_ep!(
+        "index_add_f64",
+        crate::baracuda_dispatch::indexing::index_add_f64
+    ),
+    cuda_ep!(
+        "index_add_f16",
+        crate::baracuda_dispatch::indexing::index_add_f16
+    ),
+    cuda_ep!(
+        "index_add_bf16",
+        crate::baracuda_dispatch::indexing::index_add_bf16
+    ),
 ];
 
 /// CUDA `flash_decoding` family (FlashDecoding decode arm; `OpKind::FlashAttn`,

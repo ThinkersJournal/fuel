@@ -381,6 +381,73 @@ macro_rules! cuda_scatter_add_baracuda_wrapper {
     };
 }
 
+macro_rules! cuda_index_add_baracuda_wrapper {
+    ($wrapper_name:ident, $baracuda_fn:path) => {
+        pub fn $wrapper_name(
+            inputs: &[Arc<RwLock<Storage>>],
+            outputs: &mut [Arc<RwLock<Storage>>],
+            _layouts: &[Layout],
+            params: &OpParams,
+        ) -> Result<()> {
+            if inputs.len() != 3 || outputs.len() != 1 {
+                return Err(Error::Msg(format!(
+                    concat!(
+                        stringify!($wrapper_name),
+                        ": expected 3 inputs + 1 output, got {} + {}"
+                    ),
+                    inputs.len(),
+                    outputs.len(),
+                ))
+                .bt());
+            }
+            let (outer_count, base_dim_size, n_indices, inner_count) = match params {
+                OpParams::IndexAdd {
+                    outer_count,
+                    base_dim_size,
+                    n_indices,
+                    inner_count,
+                } => (*outer_count, *base_dim_size, *n_indices, *inner_count),
+                other => {
+                    return Err(Error::Msg(format!(
+                        concat!(
+                            stringify!($wrapper_name),
+                            ": expected OpParams::IndexAdd, got {:?}"
+                        ),
+                        other,
+                    ))
+                    .bt());
+                }
+            };
+            let base_guard = read_storage(&inputs[0])?;
+            let idx_guard = read_storage(&inputs[1])?;
+            if idx_guard.dtype != DType::U32 {
+                return Err(Error::Msg(format!(
+                    concat!(stringify!($wrapper_name), ": indices must be U32, got {:?}"),
+                    idx_guard.dtype,
+                ))
+                .bt());
+            }
+            let src_guard = read_storage(&inputs[2])?;
+            let mut out_guard = write_storage(&outputs[0])?;
+            let base_cuda = cuda_input(&base_guard)?;
+            let idx_cuda = cuda_input(&idx_guard)?;
+            let src_cuda = cuda_input(&src_guard)?;
+            let result = $baracuda_fn(
+                base_cuda,
+                idx_cuda,
+                src_cuda,
+                outer_count,
+                base_dim_size,
+                n_indices,
+                inner_count,
+            )?;
+            let out_cuda = cuda_output(&mut out_guard)?;
+            *out_cuda = result;
+            Ok(())
+        }
+    };
+}
+
 macro_rules! cuda_masked_fill_baracuda_wrapper {
     ($wrapper_name:ident, $baracuda_fn:path) => {
         pub fn $wrapper_name(
@@ -444,6 +511,10 @@ pub mod indexing {
 
     cuda_scatter_add_baracuda_wrapper!(scatter_add_f32, bk::scatter_add_f32);
     cuda_scatter_add_baracuda_wrapper!(scatter_add_f64, bk::scatter_add_f64);
+    cuda_index_add_baracuda_wrapper!(index_add_f32, bk::index_add_f32);
+    cuda_index_add_baracuda_wrapper!(index_add_f64, bk::index_add_f64);
+    cuda_index_add_baracuda_wrapper!(index_add_f16, bk::index_add_f16);
+    cuda_index_add_baracuda_wrapper!(index_add_bf16, bk::index_add_bf16);
     cuda_scatter_add_baracuda_wrapper!(scatter_add_f16, bk::scatter_add_f16);
     cuda_scatter_add_baracuda_wrapper!(scatter_add_bf16, bk::scatter_add_bf16);
 
