@@ -16,7 +16,7 @@ path	class	candle_source	basis
 .github/workflows/trufflehog.yml	candle-modified	.github/workflows/trufflehog.yml	same path; 0% of 3 lines verbatim
 .gitignore	candle-modified	.gitignore	same path; 57% of 21 lines verbatim
 .pre-commit-config.yaml	candle	.pre-commit-config.yaml	identical path; 100% of 2 lines verbatim
-CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 3% of 942 lines verbatim
+CHANGELOG.md	candle-modified	CHANGELOG.md	same path; 3% of 946 lines verbatim
 CLAUDE.md	own		no lineage; 0 of 148 lines verbatim in candle (0%)
 Cargo.lock	own		no lineage; 2 of 1301 lines verbatim in candle (0%)
 Cargo.toml	candle-modified	Cargo.toml	same path; 5% of 294 lines verbatim
@@ -90,7 +90,7 @@ docs/frontier-paradigms-vision.md	own		no lineage; 0 of 155 lines verbatim in ca
 docs/fuel-consumer-seam.md	own		no lineage; 0 of 1061 lines verbatim in candle (0%)
 docs/fused-op-registry.md	own		no lineage; 0 of 311 lines verbatim in candle (0%)
 docs/gap-015-handoff.md	own		no lineage; 0 of 183 lines verbatim in candle (0%)
-docs/gaps.md	own		no lineage; 0 of 451 lines verbatim in candle (0%)
+docs/gaps.md	own		no lineage; 0 of 454 lines verbatim in candle (0%)
 docs/interchange/stablehlo-to-fuel-op-map.md	own		no lineage; 0 of 157 lines verbatim in candle (0%)
 docs/kernel-contracts/README.md	own		no lineage; 0 of 2 lines verbatim in candle (0%)
 docs/method-rules-drafts-issue-159.md	own		no lineage; 0 of 286 lines verbatim in candle (0%)
@@ -1757,6 +1757,7 @@ fuel-vulkan-dispatch/tests/vulkan_deferred_eviction_live.rs	own		no lineage; 1 o
 fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	own		no lineage; 3 of 5538 lines verbatim in candle (0%)
 fuel-vulkan-dispatch/tests/vulkan_flash_attn_nan_rows_live.rs	own		no lineage; 4 of 130 lines verbatim in candle (3%)
 fuel-vulkan-dispatch/tests/vulkan_nan_shipped_spv_live.rs	own		no lineage; 1 of 114 lines verbatim in candle (1%)
+fuel-vulkan-dispatch/tests/vulkan_sign_step_nan_live.rs	own		no lineage; 1 of 73 lines verbatim in candle (1%)
 fuel-vulkan-dispatch/tests/vulkan_write_slice_rotating_live.rs	own		no lineage; 1 of 116 lines verbatim in candle (1%)
 fuel-vulkan-kernels/Cargo.toml	own		no lineage; 2 of 9 lines verbatim in candle (22%)
 fuel-vulkan-kernels/LICENSE-APACHE	copy		byte-identical packaged copy of the root LICENSE-APACHE
