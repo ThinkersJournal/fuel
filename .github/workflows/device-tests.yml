@@ -38,6 +38,9 @@
 # `fuel-tensor/vulkan` and `fuel-model-llama/vulkan` features. `fuel-parallel`'s tri-backend test needs both
 # features, so the CUDA job enables `fuel-parallel/vulkan` too. A new device test in another crate or feature:
 # add it here, and read the executed-test count per crate from the job log.
+# RUNNER SHELL (2026-11-27, first dispatch, run 45955733783): the runner service has no `pwsh` on PATH (every step
+# died with `pwsh: command not found` at the first step), so steps use `shell: powershell` (Windows PowerShell 5.1, as
+# cuda-metal-compile-check.yml does) and call `scripts/gpu-run.ps1` (`#Requires -Version 5.1`) through `powershell -File`.
 name: Device tests
 
 on:
@@ -62,21 +65,21 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Print CARGO_HOME and RUSTUP_HOME (board 429 stage 2 read; no toolchain is installed by this job)
-        shell: pwsh
+        shell: powershell
         run: |
           "CARGO_HOME=$env:CARGO_HOME"
           "RUSTUP_HOME=$env:RUSTUP_HOME"
           "USERPROFILE=$env:USERPROFILE"
       - name: Build (forge capped at 4 threads, as cuda-metal-compile-check does)
-        shell: pwsh
+        shell: powershell
         run: >
           cargo test -j 4 -p fuel-dispatch -p fuel-cuda-backend -p fuel-cuda-dispatch -p fuel-tensor
           -p fuel-model-llama -p fuel-model-phi -p fuel-transformers -p fuel-inference -p fuel-parallel
           --features fuel-dispatch/cuda,fuel-dispatch/jit,fuel-tensor/cuda,fuel-cuda-dispatch/cuda,fuel-model-llama/cuda,fuel-model-phi/cuda,fuel-transformers/cuda,fuel-inference/cuda,fuel-parallel/cuda,fuel-parallel/vulkan --no-run
       - name: Run (GPU mutex held)
-        shell: pwsh
+        shell: powershell
         run: >
-          pwsh scripts/gpu-run.ps1 -Project fuel --
+          powershell -NoProfile -File scripts/gpu-run.ps1 -Project fuel --
           cargo test -j 4 -p fuel-dispatch -p fuel-cuda-backend -p fuel-cuda-dispatch -p fuel-tensor
           -p fuel-model-llama -p fuel-model-phi -p fuel-transformers -p fuel-inference -p fuel-parallel
           --features fuel-dispatch/cuda,fuel-dispatch/jit,fuel-tensor/cuda,fuel-cuda-dispatch/cuda,fuel-model-llama/cuda,fuel-model-phi/cuda,fuel-transformers/cuda,fuel-inference/cuda,fuel-parallel/cuda,fuel-parallel/vulkan
@@ -91,20 +94,20 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Print CARGO_HOME and RUSTUP_HOME (board 429 stage 2 read; no toolchain is installed by this job)
-        shell: pwsh
+        shell: powershell
         run: |
           "CARGO_HOME=$env:CARGO_HOME"
           "RUSTUP_HOME=$env:RUSTUP_HOME"
           "USERPROFILE=$env:USERPROFILE"
       - name: Build
-        shell: pwsh
+        shell: powershell
         run: >
           cargo test -j 4 -p fuel-dispatch -p fuel-vulkan-backend -p fuel-vulkan-dispatch -p fuel-tensor -p fuel-model-llama
           --features fuel-dispatch/vulkan,fuel-tensor/vulkan,fuel-model-llama/vulkan --no-run
       - name: Run (GPU mutex held)
-        shell: pwsh
+        shell: powershell
         run: >
-          pwsh scripts/gpu-run.ps1 -Project fuel --
+          powershell -NoProfile -File scripts/gpu-run.ps1 -Project fuel --
           cargo test -j 4 -p fuel-dispatch -p fuel-vulkan-backend -p fuel-vulkan-dispatch -p fuel-tensor -p fuel-model-llama
           --features fuel-dispatch/vulkan,fuel-tensor/vulkan,fuel-model-llama/vulkan
           -- --include-ignored --test-threads=1
