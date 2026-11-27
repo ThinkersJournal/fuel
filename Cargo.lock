@@ -411,15 +411,15 @@ dependencies = [
 
 [[package]]
 name = "baracuda-build"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94f314ca4d578489cf879ecf057468902cb9fb5533a29e4434065e715b4b8cb2"
+checksum = "2cef2ac1f7a2ab053394ce8fd878ef393a78ad538d7d2896b9806ba4ff4aec6e"
 
 [[package]]
 name = "baracuda-core"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ef44c49f55419e6e7f23d535c21672283fcce7a63fe029608aac4920346a4e9"
+checksum = "61490e7e6890625f717d7516dd966e7ac5b1f38d70e6f914a6f3f05fb881311e"
 dependencies = [
  "baracuda-types",
  "libloading 0.9.0",
@@ -428,9 +428,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cublas"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63d394971f97314f084eba706614f785c1dbf5ed3ca38566351cf2f20271184f"
+checksum = "b4516d01f7808b1a23bfa08eb7b7def3db8d4aa5eaee809aeaedb2671b1db16a"
 dependencies = [
  "baracuda-core",
  "baracuda-cublas-sys",
@@ -442,9 +442,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cublas-sys"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "213dc125506631a36b8358aa5789503aecaddcb141909e44848a3b655f630609"
+checksum = "0cc45ed6c651bb14f99e2ca5c242f2bb22bcddbc3c745e538eebcb4db6d238e1"
 dependencies = [
  "baracuda-build",
  "baracuda-core",
@@ -454,9 +454,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cuda-emit"
-version = "0.60.0"
+version = "0.61.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04efb15071a8eaeb81287dc16262d21475ade2bd531c217876c97d238e0a9d24"
+checksum = "758f580783dabbf00bacbd8851981fbaedf8f27162877ee69389f2a1e1698f39"
 dependencies = [
  "baracuda-nvrtc",
  "unpopped",
@@ -465,9 +465,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cuda-seam"
-version = "0.60.0"
+version = "0.61.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9b224f3ea6a36f8d88a80781e25b844f83ba130394610c9aba0171f614133cc"
+checksum = "477ef962cf38ca5b56c66e0d6deab69abf48253e3c77211b8b4e05b27f4097dc"
 dependencies = [
  "baracuda-cuda-emit",
  "fireline-grammar",
@@ -478,9 +478,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cuda-sys"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fd08267c8cb931d6bc3c107d5990f29c170bd65339360562acb59071d489809"
+checksum = "b500f6db6ad125863df07d9c60e19f172c02a7caea5a5b5f96f30a944181e5e7"
 dependencies = [
  "baracuda-build",
  "baracuda-core",
@@ -489,9 +489,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cudnn"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "012f0b88126147d34350d7ea5a8564907711c08b43e516ee3096e27f6b2fc6a1"
+checksum = "16ed8abceb3c41cab69081ccebd703482185d937dfe42c51bd10eece91a5d725"
 dependencies = [
  "baracuda-core",
  "baracuda-cuda-sys",
@@ -504,9 +504,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cudnn-sys"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30db0eb6f63fe5bea78b21c5aa55953a2093c8555f843911dec98b1b4612d70d"
+checksum = "61960fd28d79727ae7c8908117481109f82110b8aec54e90e9186519f533b834"
 dependencies = [
  "baracuda-build",
  "baracuda-core",
@@ -516,9 +516,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-curand"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "374eda2a1fc796cd8001f63354be58b4e7aad9811b8b83956ee0aa623a026e9a"
+checksum = "b4083c9a60bd666855c31e457ce6b056065358a3116fb42fa8d991eca6e0427b"
 dependencies = [
  "baracuda-core",
  "baracuda-cuda-sys",
@@ -530,9 +530,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-curand-sys"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5482810bac7a369ca4b80d6ab4c7f8a56fc96243a243b612c56e7f12ad54ac3"
+checksum = "1e847aec815ef890b7d9d587048a7109932aa08a22b34f89ef9666a4f27bccd0"
 dependencies = [
  "baracuda-build",
  "baracuda-core",
@@ -542,9 +542,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cutlass"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c4fa521408805d18e225f0e15c4c6906dfb2808b43d28baee81c2658cd53308"
+checksum = "bec5b16ac1043a6e3d03da421cb566bd77b6136fcbc1f3ade9819e8d7b18fae0"
 dependencies = [
  "baracuda-cublas",
  "baracuda-cublas-sys",
@@ -558,9 +558,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cutlass-kernels-sys"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a275f413f01e81c6bf54001f1fdce3f6aff537563fe09072f00de2ede29a3737"
+checksum = "45011db9109681ee662af13f609d78ad84369455ecda73f6250cb5fc117f9fc0"
 dependencies = [
  "baracuda-cutlass-sys",
  "baracuda-forge",
@@ -568,18 +568,18 @@ dependencies = [
 
 [[package]]
 name = "baracuda-cutlass-sys"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3eed66846193b029f559650028a77efebc9abad38d6d64ad6b3f66a12e01d5a6"
+checksum = "fe225a82fa3b7f03e254a0af8411ed4d04d2519e339da1e8662e06bf6250d144"
 dependencies = [
  "fs2",
 ]
 
 [[package]]
 name = "baracuda-driver"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b04dae2c44656337caa3f03d5884b9e011c9499faf8a9e178f42ff4ec341af7e"
+checksum = "49b93748eff74481af492d2f690732f43067cbdeaf020cff8a8a494948f25d96"
 dependencies = [
  "baracuda-core",
  "baracuda-cuda-sys",
@@ -589,9 +589,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-forge"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3ceeee33383eb6e0d0d404ba88d9d3978070c0ad4d585b8b0acb640e7dce85c"
+checksum = "4d46137a1e8166b3cf75f5638469dd8b68c32bc961518963f9ca1584f3ef40c2"
 dependencies = [
  "baracuda-build",
  "fs2",
@@ -607,9 +607,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-kernels-sys"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f7333c07ad0d3bfbaa4781c05b0d03f251f88a076fa31767933e89cb92c6eda"
+checksum = "ac56eb335fa5b33b568f9078329d22a8ab02a31c3f6dca10057461af5cc84e8c"
 dependencies = [
  "baracuda-cutlass-kernels-sys",
  "baracuda-cutlass-sys",
@@ -618,9 +618,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-kernels-types"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80f73d5b9c33aaab0ae3b7ef53ec71e557b366473d6f20b83f73714790238247"
+checksum = "f07e3bbd8c61c343d140052aed29abe39a4b98dcb4c58463098c2c0f69991cc3"
 dependencies = [
  "baracuda-driver",
  "baracuda-types",
@@ -632,9 +632,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-nccl"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afe4f34c2962188ff078d8c80de22be2fc2be085e5e29599899174293b34d4fd"
+checksum = "cf26e1b6276a4f1c37fb1593daada91e741d1fb0641e4de71cd9aeb3d00534e6"
 dependencies = [
  "baracuda-core",
  "baracuda-cuda-sys",
@@ -647,9 +647,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-nccl-sys"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afb9468e5d593e2521ce911b02f812598bb64cc92d138e97721c1b4eab98ef39"
+checksum = "3ff417dd4ec982cfdc55428154be3caea5148795275da277a66c239574edd1ad"
 dependencies = [
  "baracuda-build",
  "baracuda-core",
@@ -659,9 +659,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-nvrtc"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f20991bab33751e6ad8749516d20edb8ee83f53946b65a0a334b1ce6a5b84177"
+checksum = "7d03557232c3e060f54e8f9720e9f836198910b07ab4149de22e35898ec7b999"
 dependencies = [
  "baracuda-core",
  "baracuda-nvrtc-sys",
@@ -671,9 +671,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-nvrtc-sys"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2275108c81cd5a68a5dc5f42ab330877c0174dab418285470612713638e94860"
+checksum = "68005b3d5d0d6c62dc82436dab941dc4f0536bd645c17271a055c3793eb24025"
 dependencies = [
  "baracuda-build",
  "baracuda-core",
@@ -682,9 +682,9 @@ dependencies = [
 
 [[package]]
 name = "baracuda-types"
-version = "0.1.0-alpha.220"
+version = "0.1.0-alpha.225"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4516825b5db709b3f54a1c4e5209e42031f22fccf9ffa5024a96c67354fb458b"
+checksum = "553eb814eb1329f1a9008f1d2a368fef6a9dfecc34f53a0e01a61edd346c7a36"
 dependencies = [
  "float8",
  "half",
@@ -1577,7 +1577,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1643,15 +1643,15 @@ checksum = "aedcfb3409746eddb02b9e19ebda1c3394f759a152e48ee875a0844d1b955484"
 
 [[package]]
 name = "fireline-grammar"
-version = "0.11.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0f3a6547e3b4738ceb2319dc137774472258b9344fef8cf16c2c9dcbdef55e6"
+checksum = "f418da2646f43518479881919ce5cecebf0a50f0185c79c5b71de000a942ec16"
 
 [[package]]
 name = "fireline-synth"
-version = "0.11.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cb47ef7d0dd9fb3064e4cd3aa32fb2f74f62d6d66c61af19219502b53d34297"
+checksum = "698fb69e1d96224a156d5ea478268c2203fe6ada19d5075ed915bb253bc72de3"
 dependencies = [
  "fireline-grammar",
  "unpopped-vocab",
@@ -4660,7 +4660,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5310,7 +5310,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5717,9 +5717,9 @@ checksum = "81e544489bf3d8ef66c953931f56617f423cd4b5494be343d9b9d3dda037b9a3"
 
 [[package]]
 name = "unpopped"
-version = "0.60.32"
+version = "0.61.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa4f2985a8fa7d05e870a0548db68985a99ebcf74833ad39171581e72a6e4246"
+checksum = "c4b337de0e038c41827021e9bc6d45ec7c9312baf6452a53f7ad00e7e9810a25"
 dependencies = [
  "libm",
  "serde",
@@ -5729,9 +5729,9 @@ dependencies = [
 
 [[package]]
 name = "unpopped-vocab"
-version = "0.60.32"
+version = "0.61.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f3ea10278fd24e72662f77e7d2a82453f683e35dfd6ffda72327cc5f717757d"
+checksum = "adf918a579016f4d62b856f18b15816ada215cedf4670459da8c133c16db870e"
 dependencies = [
  "float8",
  "half",
@@ -6054,7 +6054,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
