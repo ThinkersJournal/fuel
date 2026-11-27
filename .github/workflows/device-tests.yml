@@ -80,7 +80,7 @@ jobs:
         shell: powershell
         run: >
           powershell -NoProfile -File scripts/gpu-run.ps1 -Project fuel --
-          cargo test -j 4 -p fuel-dispatch -p fuel-cuda-backend -p fuel-cuda-dispatch -p fuel-tensor
+          cargo test --no-fail-fast -j 4 -p fuel-dispatch -p fuel-cuda-backend -p fuel-cuda-dispatch -p fuel-tensor
           -p fuel-model-llama -p fuel-model-phi -p fuel-transformers -p fuel-inference -p fuel-parallel
           --features fuel-dispatch/cuda,fuel-dispatch/jit,fuel-tensor/cuda,fuel-cuda-dispatch/cuda,fuel-model-llama/cuda,fuel-model-phi/cuda,fuel-transformers/cuda,fuel-inference/cuda,fuel-parallel/cuda,fuel-parallel/vulkan
           -- --include-ignored --test-threads=1
@@ -108,6 +108,6 @@ jobs:
         shell: powershell
         run: >
           powershell -NoProfile -File scripts/gpu-run.ps1 -Project fuel --
-          cargo test -j 4 -p fuel-dispatch -p fuel-vulkan-backend -p fuel-vulkan-dispatch -p fuel-tensor -p fuel-model-llama
+          cargo test --no-fail-fast -j 4 -p fuel-dispatch -p fuel-vulkan-backend -p fuel-vulkan-dispatch -p fuel-tensor -p fuel-model-llama
           --features fuel-dispatch/vulkan,fuel-tensor/vulkan,fuel-model-llama/vulkan
           -- --include-ignored --test-threads=1

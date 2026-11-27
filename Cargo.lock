@@ -2242,6 +2242,7 @@ dependencies = [
 name = "fuel-model-phi"
 version = "0.59.0"
 dependencies = [
+ "fuel-cuda-backend",
  "fuel-dispatch",
  "fuel-formats",
  "fuel-graph",
@@ -2249,6 +2250,7 @@ dependencies = [
  "fuel-loaders",
  "fuel-quantized",
  "fuel-tensor",
+ "fuel-test-support",
  "half",
  "hf-hub",
  "serde",
