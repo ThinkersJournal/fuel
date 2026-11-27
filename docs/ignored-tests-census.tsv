@@ -1,0 +1,500 @@
+file	test	reason	class
+fuel-cuda-backend/src/baracuda/attention.rs	fused_rope_driver_is_interleaved_not_fuel_rotate_half	requires a live CUDA device	cuda
+fuel-cuda-backend/src/baracuda/attention.rs	fused_rope_is_capture_safe_zero_alloc_on_reuse	requires a live CUDA device	cuda
+fuel-cuda-backend/src/baracuda/concat.rs	concat2_into_matches_concat2_run_2input	requires a live CUDA device	cuda
+fuel-cuda-backend/src/baracuda/concat.rs	concat_f32_into_refuses_n_ary	requires a live CUDA device	cuda
+fuel-cuda-backend/src/baracuda/contiguize.rs	contiguize_into_matches_contiguize_to_fresh_strided	requires a live CUDA device	cuda
+fuel-cuda-backend/src/baracuda/contiguize.rs	contiguize_into_rejects_mismatched_dest_size	requires a live CUDA device	cuda
+fuel-cuda-backend/src/baracuda/gemm_dense.rs	repeat_call_bit_exact_and_cross_process	requires a live CUDA device	cuda
+fuel-cuda-backend/src/baracuda/gemm_dense.rs	repeat_call_bit_exact_under_concurrent_stream_load	requires a live CUDA device	cuda
+fuel-cuda-backend/src/baracuda/scratch.rs	rope_table_cache_reuses_and_does_not_alias	requires a live CUDA device	cuda
+fuel-cuda-backend/src/capture.rs	capture_index_select_direct_replays_clean	requires a live CUDA device	cuda
+fuel-cuda-backend/src/capture.rs	capture_replay_rebind_affine_chain	requires a live CUDA device	cuda
+fuel-cuda-backend/src/probe.rs	concurrent_enumeration_probes_the_driver_exactly_once	requires a live CUDA device	cuda
+fuel-cuda-backend/src/probe.rs	cuda_probe_is_total	requires a live CUDA device	cuda
+fuel-cuda-backend/src/probe.rs	uncached_enumeration_really_does_re_probe	requires a live CUDA device	cuda
+fuel-cuda-backend/src/quantized.rs	batched_mmvq_runs_its_checks_before_launch	live GPU: run via scripts/gpu-run.ps1	cuda
+fuel-cuda-backend/src/storage.rs	matmul_q4_0_runs_its_checks_before_launch	live GPU: run via scripts/gpu-run.ps1	cuda
+fuel-cuda-backend/tests/backend_runtime_live.rs	cuda_backend_runtime_reports_sensible_memory		cuda
+fuel-cuda-backend/tests/backend_runtime_live.rs	cuda_backend_runtime_works_off_dispatch_thread		cuda
+fuel-cuda-backend/tests/backend_runtime_live.rs	cuda_backend_runtime_would_fit_classifies		cuda
+fuel-cuda-backend/tests/baracuda_contiguize_live.rs	baracuda_contiguize_f32_already_contig_fast_path		cuda
+fuel-cuda-backend/tests/baracuda_contiguize_live.rs	baracuda_contiguize_f32_broadcast_zero_stride		cuda
+fuel-cuda-backend/tests/baracuda_contiguize_live.rs	baracuda_contiguize_f32_flip_negative_stride		cuda
+fuel-cuda-backend/tests/baracuda_contiguize_live.rs	baracuda_contiguize_f32_slice_offset		cuda
+fuel-cuda-backend/tests/baracuda_contiguize_live.rs	baracuda_contiguize_f32_transpose_2d		cuda
+fuel-cuda-backend/tests/baracuda_contiguize_live.rs	baracuda_contiguize_f64_transpose_2d		cuda
+fuel-cuda-backend/tests/baracuda_gguf_mmvq_decline_live.rs	mmvq_declines_a_misaligned_offset_before_launch		cuda
+fuel-cuda-backend/tests/byte_storage_live.rs	alloc_then_read_is_zero		cuda
+fuel-cuda-backend/tests/byte_storage_live.rs	h2d_d2h_roundtrip_preserves_bytes		cuda
+fuel-cuda-backend/tests/byte_storage_live.rs	one_mib_roundtrip_preserves_bytes		cuda
+fuel-cuda-backend/tests/byte_storage_live.rs	zero_length_transfers_round_trip		cuda
+fuel-cuda-backend/tests/pinned_live.rs	pinned_write_then_read		cuda
+fuel-cuda-backend/tests/pinned_live.rs	pinned_zero_length_round_trip		cuda
+fuel-cuda-backend/tests/pinned_live.rs	pinned_zeros_by_dtype		cuda
+fuel-cuda-backend/tests/pinned_live.rs	pinned_zeros_f32_is_zero		cuda
+fuel-cuda-dispatch/tests/baracuda_affine_live.rs	baracuda_affine_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_affine_live.rs	baracuda_affine_f64		cuda
+fuel-cuda-dispatch/tests/baracuda_affine_live.rs	baracuda_affine_i32		cuda
+fuel-cuda-dispatch/tests/baracuda_affine_live.rs	baracuda_affine_i64		cuda
+fuel-cuda-dispatch/tests/baracuda_affine_live.rs	baracuda_affine_inplace_bf16		cuda
+fuel-cuda-dispatch/tests/baracuda_affine_live.rs	baracuda_affine_inplace_f16		cuda
+fuel-cuda-dispatch/tests/baracuda_affine_live.rs	baracuda_affine_inplace_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_affine_live.rs	baracuda_affine_inplace_f64		cuda
+fuel-cuda-dispatch/tests/baracuda_affine_live.rs	baracuda_affine_u8		cuda
+fuel-cuda-dispatch/tests/baracuda_arg_reduce_live.rs	baracuda_argmax_dim_f32_first_axis		cuda
+fuel-cuda-dispatch/tests/baracuda_arg_reduce_live.rs	baracuda_argmax_dim_f32_last_axis		cuda
+fuel-cuda-dispatch/tests/baracuda_arg_reduce_live.rs	baracuda_argmax_dim_f64_ties_break_to_smallest_index		cuda
+fuel-cuda-dispatch/tests/baracuda_arg_reduce_live.rs	baracuda_argmin_dim_f32_last_axis		cuda
+fuel-cuda-dispatch/tests/baracuda_attention_live.rs	baracuda_rope_f32_at_seq_position_one_rotates_pair		cuda
+fuel-cuda-dispatch/tests/baracuda_attention_live.rs	baracuda_rope_f32_at_seq_position_zero_is_identity		cuda
+fuel-cuda-dispatch/tests/baracuda_attention_live.rs	flash_decoding_bf16_gqa_matches_base_map		cuda
+fuel-cuda-dispatch/tests/baracuda_attention_live.rs	flash_decoding_f16_gqa_matches_base_map		cuda
+fuel-cuda-dispatch/tests/baracuda_attention_live.rs	flash_decoding_f16_klen_zero_is_zeros		cuda
+fuel-cuda-dispatch/tests/baracuda_attention_live.rs	flash_decoding_f16_rejects_unsupported_shapes		cuda
+fuel-cuda-dispatch/tests/baracuda_attention_live.rs	flash_decoding_reuses_per_device_workspace		cuda
+fuel-cuda-dispatch/tests/baracuda_binary_live.rs	baracuda_binary_add_f32_runs_through_binding_table		cuda
+fuel-cuda-dispatch/tests/baracuda_binary_live.rs	baracuda_binary_add_f32_still_correct_after_width_split		cuda
+fuel-cuda-dispatch/tests/baracuda_binary_live.rs	baracuda_binary_div_f32_runs_through_binding_table		cuda
+fuel-cuda-dispatch/tests/baracuda_binary_live.rs	baracuda_binary_maximum_f32_runs_through_binding_table		cuda
+fuel-cuda-dispatch/tests/baracuda_binary_live.rs	baracuda_binary_mul_f32_runs_through_binding_table		cuda
+fuel-cuda-dispatch/tests/baracuda_binary_live.rs	baracuda_compare_ge_f32_matches_cpu_semantics		cuda
+fuel-cuda-dispatch/tests/baracuda_binary_live.rs	baracuda_compare_ne_f32_returns_one_on_nan		cuda
+fuel-cuda-dispatch/tests/baracuda_cast_live.rs	baracuda_cast_f32_to_f64		cuda
+fuel-cuda-dispatch/tests/baracuda_cast_live.rs	baracuda_cast_f32_to_f8e4m3_round_trip		cuda
+fuel-cuda-dispatch/tests/baracuda_cast_live.rs	baracuda_cast_f32_to_i32		cuda
+fuel-cuda-dispatch/tests/baracuda_cast_live.rs	baracuda_cast_f64_to_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_cast_live.rs	baracuda_cast_f8e4m3_through_bf16_round_trip		cuda
+fuel-cuda-dispatch/tests/baracuda_cast_live.rs	baracuda_cast_i32_to_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_cast_live.rs	baracuda_cast_i64_to_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_cast_live.rs	baracuda_cast_u32_collapses_to_i32_at_ffi		cuda
+fuel-cuda-dispatch/tests/baracuda_cast_live.rs	baracuda_cast_u8_to_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_clamp_live.rs	baracuda_clamp_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_clamp_live.rs	baracuda_clamp_f64		cuda
+fuel-cuda-dispatch/tests/baracuda_concat_live.rs	baracuda_concat_f32_n_3_chained		cuda
+fuel-cuda-dispatch/tests/baracuda_concat_live.rs	baracuda_concat_f32_pair		cuda
+fuel-cuda-dispatch/tests/baracuda_concat_live.rs	baracuda_concat_f32_single_input_is_copy		cuda
+fuel-cuda-dispatch/tests/baracuda_cumsum_live.rs	baracuda_cumsum_f32_1d		cuda
+fuel-cuda-dispatch/tests/baracuda_cumsum_live.rs	baracuda_cumsum_f32_3d_middle_axis		cuda
+fuel-cuda-dispatch/tests/baracuda_flip_live.rs	baracuda_flip_bf16_1d		cuda
+fuel-cuda-dispatch/tests/baracuda_flip_live.rs	baracuda_flip_f32_1d		cuda
+fuel-cuda-dispatch/tests/baracuda_flip_live.rs	baracuda_flip_f32_3d_middle_axis		cuda
+fuel-cuda-dispatch/tests/baracuda_gemm_int_live.rs	baracuda_gemm_s8_rrr_identity_matches_reference		cuda
+fuel-cuda-dispatch/tests/baracuda_gemm_int_live.rs	baracuda_gemm_u8_rrr_identity_matches_reference		cuda
+fuel-cuda-dispatch/tests/baracuda_indexing_live.rs	baracuda_index_select_f32_picks_rows		cuda
+fuel-cuda-dispatch/tests/baracuda_indexing_live.rs	baracuda_index_select_f32_with_outer_batch		cuda
+fuel-cuda-dispatch/tests/baracuda_indexing_live.rs	baracuda_masked_fill_f32_replaces_masked_positions		cuda
+fuel-cuda-dispatch/tests/baracuda_inplace_expanded_live.rs	baracuda_abs_inplace_bf16		cuda
+fuel-cuda-dispatch/tests/baracuda_inplace_expanded_live.rs	baracuda_clamp_inplace_bf16		cuda
+fuel-cuda-dispatch/tests/baracuda_inplace_expanded_live.rs	baracuda_clamp_inplace_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_inplace_expanded_live.rs	baracuda_erf_inplace_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_inplace_expanded_live.rs	baracuda_exp_inplace_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_inplace_expanded_live.rs	baracuda_floor_inplace_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_inplace_expanded_live.rs	baracuda_log_inplace_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_inplace_expanded_live.rs	baracuda_neg_inplace_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_inplace_expanded_live.rs	baracuda_powi_inplace_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_inplace_expanded_live.rs	baracuda_powi_inplace_f64		cuda
+fuel-cuda-dispatch/tests/baracuda_inplace_expanded_live.rs	baracuda_sign_inplace_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_inplace_expanded_live.rs	baracuda_sqr_inplace_f64		cuda
+fuel-cuda-dispatch/tests/baracuda_norm_live.rs	baracuda_layer_norm_last_dim_f32_matches_reference		cuda
+fuel-cuda-dispatch/tests/baracuda_norm_live.rs	baracuda_rms_norm_last_dim_f32_matches_reference		cuda
+fuel-cuda-dispatch/tests/baracuda_pad_live.rs	baracuda_pad_backward_constant_f32_1d		cuda
+fuel-cuda-dispatch/tests/baracuda_pad_live.rs	baracuda_pad_const_f32_1d		cuda
+fuel-cuda-dispatch/tests/baracuda_pad_live.rs	baracuda_pad_const_f32_2d		cuda
+fuel-cuda-dispatch/tests/baracuda_pad_live.rs	baracuda_pad_reflect_f32_1d		cuda
+fuel-cuda-dispatch/tests/baracuda_pad_live.rs	baracuda_pad_replicate_f32_1d		cuda
+fuel-cuda-dispatch/tests/baracuda_powi_live.rs	baracuda_powi_backward_f32_exp_3		cuda
+fuel-cuda-dispatch/tests/baracuda_powi_live.rs	baracuda_powi_f32_exp_0_returns_ones		cuda
+fuel-cuda-dispatch/tests/baracuda_powi_live.rs	baracuda_powi_f32_exp_3		cuda
+fuel-cuda-dispatch/tests/baracuda_powi_live.rs	baracuda_powi_f32_exp_neg_2		cuda
+fuel-cuda-dispatch/tests/baracuda_powi_live.rs	baracuda_powi_f64_exp_4		cuda
+fuel-cuda-dispatch/tests/baracuda_reduce_live.rs	baracuda_reduce_max_f32_axis0_runs		cuda
+fuel-cuda-dispatch/tests/baracuda_reduce_live.rs	baracuda_reduce_mean_f32_axis1_runs		cuda
+fuel-cuda-dispatch/tests/baracuda_reduce_live.rs	baracuda_reduce_sum_f32_axis1_runs		cuda
+fuel-cuda-dispatch/tests/baracuda_reduce_live.rs	baracuda_reduce_sum_f32_multi_axis_runs		cuda
+fuel-cuda-dispatch/tests/baracuda_roll_live.rs	baracuda_roll_f32_1d_shift_minus2		cuda
+fuel-cuda-dispatch/tests/baracuda_roll_live.rs	baracuda_roll_f32_1d_shift_plus1		cuda
+fuel-cuda-dispatch/tests/baracuda_roll_live.rs	baracuda_roll_f32_3d_middle_axis		cuda
+fuel-cuda-dispatch/tests/baracuda_softmax_live.rs	baracuda_log_softmax_last_dim_f32_matches_reference		cuda
+fuel-cuda-dispatch/tests/baracuda_softmax_live.rs	baracuda_softmax_last_dim_f32_matches_reference		cuda
+fuel-cuda-dispatch/tests/baracuda_triangular_live.rs	baracuda_tril_f32_3x3_diag0		cuda
+fuel-cuda-dispatch/tests/baracuda_triangular_live.rs	baracuda_triu_bf16_2x3_diag0		cuda
+fuel-cuda-dispatch/tests/baracuda_triangular_live.rs	baracuda_triu_f32_3x3_diag0		cuda
+fuel-cuda-dispatch/tests/baracuda_triangular_live.rs	baracuda_triu_f32_3x3_diag1		cuda
+fuel-cuda-dispatch/tests/baracuda_unary_inplace_live.rs	baracuda_gelu_inplace_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_unary_inplace_live.rs	baracuda_relu_inplace_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_unary_inplace_live.rs	baracuda_relu_inplace_f64		cuda
+fuel-cuda-dispatch/tests/baracuda_unary_inplace_live.rs	baracuda_sigmoid_inplace_f16		cuda
+fuel-cuda-dispatch/tests/baracuda_unary_inplace_live.rs	baracuda_sigmoid_inplace_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_unary_inplace_live.rs	baracuda_silu_inplace_bf16		cuda
+fuel-cuda-dispatch/tests/baracuda_unary_inplace_live.rs	baracuda_silu_inplace_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_unary_inplace_live.rs	baracuda_tanh_inplace_f32		cuda
+fuel-cuda-dispatch/tests/baracuda_unary_live.rs	baracuda_unary_abs_f32_runs_through_binding_table		cuda
+fuel-cuda-dispatch/tests/baracuda_unary_live.rs	baracuda_unary_neg_f32_runs_through_binding_table		cuda
+fuel-cuda-dispatch/tests/baracuda_unary_live.rs	baracuda_unary_relu_f32_runs_through_binding_table		cuda
+fuel-cuda-dispatch/tests/baracuda_unary_live.rs	baracuda_unary_sqrt_f32_runs_through_binding_table		cuda
+fuel-cuda-dispatch/tests/baracuda_write_slice_live.rs	baracuda_write_slice_f16_1d		cuda
+fuel-cuda-dispatch/tests/baracuda_write_slice_live.rs	baracuda_write_slice_f32_interior_2d		cuda
+fuel-cuda-dispatch/tests/baracuda_write_slice_live.rs	baracuda_write_slice_f32_kv_append		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	abs_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	add_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	affine_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	argmax_dim_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	argmin_dim_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	cast_bf16_to_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	cast_f32_to_bf16_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	cast_f32_to_f16_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	cast_f32_to_f64_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	cast_f32_to_i64_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	cast_u8_to_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	ceil_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	clamp_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	concat_f32_three_inputs_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	cos_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	cuda_maximum_minimum_propagate_nan_f32		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	cuda_relu_inplace_propagates_nan_f32		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	cuda_relu_propagates_nan_bf16		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	cuda_relu_propagates_nan_f32		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	div_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	erf_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	exp_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	floor_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	gather_f32_u32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	gelu_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	index_select_f32_u32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	log_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	matmul_bf16_batched_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	matmul_bf16_rank2_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	matmul_f16_rank2_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	matmul_f32_batched_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	matmul_f32_gqa_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	matmul_f32_rank2_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	max_reduce_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	maximum_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	mean_reduce_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	min_reduce_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	minimum_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	mul_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	neg_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	pow_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	powi_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	recip_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	reduce_max_to_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	reduce_sum_to_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	relu_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	rem_elementwise_f32_pytorch_convention_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	round_elementwise_f32_halfway_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	rsqrt_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	sigmoid_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	silu_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	sin_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	sqr_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	sqrt_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	step_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	sub_elementwise_f32_broadcast_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	sub_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	sum_reduce_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	tanh_elementwise_f32_through_binding_table		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	write_slice_doff_f32_at_device_offset_cuda		cuda
+fuel-cuda-dispatch/tests/cuda_dispatch_live.rs	write_slice_doff_f32_decode_loop_cuda		cuda
+fuel-cuda-dispatch/tests/jit_synth_kernel_live.rs	jit_adopt_loads_and_launches_a_synthesized_cuda_kernel		cuda
+fuel-cuda-dispatch/tests/jit_synth_kernel_live.rs	jit_kernel_refuses_operands_on_a_foreign_cuda_context		cuda
+fuel-cuda-dispatch/tests/jit_synth_kernel_live.rs	jit_scalar_param_kernel_launches_with_live_value		cuda
+fuel-cuda-dispatch/tests/jit_synth_kernel_live.rs	jit_slot_reclamation_frees_dead_device_slots_but_not_live_ones		cuda
+fuel-cuda-dispatch/tests/jit_synth_kernel_live.rs	live_baracuda_synthesizer_full_loop_scalar		cuda
+fuel-cuda-dispatch/tests/jit_synth_kernel_live.rs	live_baracuda_synthesizer_paged_attn_dense_region		cuda
+fuel-dispatch/src/dispatch.rs	copy_from_cuda_wrapper_cuda_output_write_into_matches_old_behavior	requires a live CUDA device	cuda
+fuel-dispatch/src/fkc/verify/harness.rs	fkc_verify_rope_apply_writes_a_pass_ledger_entry	requires a live CUDA device + --features cuda	cuda
+fuel-dispatch/src/fkc/verify/invoker_cuda.rs	cuda_invoker_runs_add_elementwise_f32_end_to_end	requires a live CUDA device	cuda
+fuel-dispatch/src/fkc/verify/invoker_vulkan.rs	vulkan_invoker_runs_add_elementwise_f32_end_to_end	requires a live Vulkan device	vulkan
+fuel-dispatch/src/jit_ingest.rs	claimed_op_candidate_reaches_advisory_via_runtime_region	requires a live CUDA device	cuda
+fuel-dispatch/src/jit_ingest.rs	ingest_adopts_add_candidate_for_the_add_region	requires a live CUDA device	cuda
+fuel-dispatch/src/jit_ingest.rs	ingest_rejects_mul_candidate_for_the_add_region	requires a live CUDA device	cuda
+fuel-dispatch/src/jit_ingest.rs	ingestion_service_adopts_a_matching_add_candidate_e2e	requires a live CUDA device	cuda
+fuel-dispatch/src/jit_ingest.rs	ingestion_service_flags_an_f64_add_candidate_e2e	requires a live CUDA device	cuda
+fuel-dispatch/src/jit_ingest.rs	ingestion_service_rejects_a_mismatched_mul_candidate_e2e	requires a live CUDA device	cuda
+fuel-dispatch/src/jit_ingest.rs	kiss_ref_advisory_records_for_add_f32	requires a live CUDA device	cuda
+fuel-dispatch/src/jit_ingest.rs	multi_node_region_advisory_flags_add_kernel_for_relu_add	requires a live CUDA device	cuda
+fuel-dispatch/src/jit_ingest.rs	rope_oracle_adopts_matching_elementwise_claimant	requires a live CUDA device	cuda
+fuel-dispatch/src/jit_ingest.rs	rope_oracle_rejects_interleaved_rope_claiming_rope	requires a live CUDA device	cuda
+fuel-dispatch/src/jit_ingest.rs	verify_candidate_add_f32_passes_against_its_decompose	requires a live CUDA device	cuda
+fuel-dispatch/src/jit_ingest.rs	verify_candidate_add_f64_is_inconclusive_not_failed	requires a live CUDA device	cuda
+fuel-dispatch/src/jit_ingest.rs	verify_candidate_refuses_numeric_claim_for_non_f32	requires a live CUDA device	cuda
+fuel-dispatch/src/jit_ingest_probe.rs	reference_from_registered_recipe_realizes_rotate_half_rope	requires a live CUDA device	cuda
+fuel-dispatch/src/jit_ingest_probe.rs	reference_output_realizes_the_decompose	requires a live CUDA device	cuda
+fuel-dispatch/src/optimize.rs	paged_attn_decomposed_arm_placement_report_cuda	live GPU (CUDA); run via scripts/gpu-run.ps1	other
+fuel-dispatch/src/pipelined.rs	capture_decode_affine_replays_bit_exact_cuda	requires a live CUDA device	cuda
+fuel-dispatch/src/pipelined.rs	capture_decode_binary_chain_replays_bit_exact_cuda	requires a live CUDA device	cuda
+fuel-dispatch/src/pipelined.rs	capture_decode_contiguize_then_concat_replays_bit_exact_cuda	requires a live CUDA device	cuda
+fuel-dispatch/src/pipelined.rs	capture_decode_index_select_replays_bit_exact_cuda	requires a live CUDA device	cuda
+fuel-dispatch/src/pipelined.rs	capture_decode_matmul_replays_bit_exact_cuda	requires a live CUDA device	cuda
+fuel-dispatch/src/pipelined.rs	capture_decode_norm_silu_softmax_replays_bit_exact_cuda	requires a live CUDA device	cuda
+fuel-dispatch/src/pipelined.rs	capture_decode_rejects_cross_device_copy_cuda	requires a live CUDA device	cuda
+fuel-dispatch/src/pipelined.rs	capture_decode_same_device_copy_replays_bit_exact_cuda	requires a live CUDA device	cuda
+fuel-dispatch/src/pipelined.rs	captured_decode_session_replays_many_tokens_cuda	requires a live CUDA device	cuda
+fuel-dispatch/src/topology.rs	live_cuda_transfer_calibration_sane	requires a live CUDA GPU	cuda
+fuel-dispatch/src/topology.rs	live_vulkan_transfer_calibration_sane	requires a live Vulkan GPU	vulkan
+fuel-dispatch/tests/residency_eviction_live.rs	cuda_evict_fault_back_roundtrip_preserves_output		cuda
+fuel-inference/src/multi_session.rs	t5_gpu_batched_flash_equals_serial_bf16	live-GPU: RTX 4070, run locally after CUDA build; one live suite at a time	weights-or-network
+fuel-model-llama/src/lib.rs	bench_persistent_decode_real_model_cpu	real-model wall-clock bench — needs FUEL_BENCH_MODEL_DIR + a multi-GB checkpoint	weights-or-network
+fuel-model-llama/src/lib.rs	bench_persistent_decode_real_model_cuda	live-GPU wall-clock bench — needs FUEL_BENCH_MODEL_DIR + a CUDA device	cuda
+fuel-model-llama/src/lib.rs	bench_persistent_decode_real_model_cuda_bf16	live-GPU wall-clock bench — needs FUEL_BENCH_MODEL_DIR + a CUDA device	cuda
+fuel-model-llama/src/lib.rs	bench_persistent_decode_real_model_vulkan	live-GPU wall-clock bench — needs FUEL_BENCH_MODEL_DIR + a Vulkan device	vulkan
+fuel-model-llama/src/lib.rs	bf16_cuda_decode_graph_offers_flash_arm	requires a live CUDA device (topology probe needs real hardware)	cuda
+fuel-model-llama/src/lib.rs	bf16_decode_cuda_matches_cpu	requires a live CUDA device	cuda
+fuel-model-llama/src/lib.rs	bf16_paged_decode_matches_contiguous_on_cuda	requires a live CUDA device	cuda
+fuel-model-llama/src/lib.rs	captured_decode_exposes_per_node_intermediates_cuda	requires a live CUDA device	cuda
+fuel-model-llama/src/lib.rs	forward_with_kv_context_captured_matches_persistent	requires a live CUDA device	cuda
+fuel-model-llama/src/lib.rs	forward_with_kv_context_vulkan_matches_cpu	requires a live Vulkan device	vulkan
+fuel-model-llama/src/lib.rs	generate_loop_persistent_bench_scaffold	perf scaffold — manual live-GPU measurement, not a CI gate	weights-or-network
+fuel-model-llama/src/lib.rs	generate_persistent_decode_cuda_bench_scaffold	perf scaffold — manual live-CUDA measurement, not a CI gate	cuda
+fuel-model-llama/src/lib.rs	generate_persistent_decode_on_cuda_matches_rebuild_and_cpu	requires a live CUDA device	cuda
+fuel-model-llama/src/lib.rs	generate_persistent_decode_on_vulkan_matches_rebuild_and_cpu	requires a live Vulkan device	vulkan
+fuel-model-llama/src/lib.rs	paged_decode_node_placement_report_cuda	live GPU (CUDA); run via scripts/gpu-run.ps1	cuda
+fuel-model-llama/src/lib.rs	token_invariance_census_cuda	requires a live CUDA device	cuda
+fuel-model-phi/src/lib.rs	phi_decode_node_placement_report_cuda	requires a live CUDA device	cuda
+fuel-model-phi/src/lib.rs	phi_forward_with_kv_context_captured_matches_persistent	requires a live CUDA device	cuda
+fuel-parallel/tests/tri_backend_device_group_live.rs	cross_vendor_leader_stages_through_host	requires a live CUDA device AND an integrated Vulkan device	cuda
+fuel-parallel/tests/tri_backend_device_group_live.rs	tri_backend_all_reduce_max_is_elementwise	requires a live CUDA device AND an integrated Vulkan device	cuda
+fuel-parallel/tests/tri_backend_device_group_live.rs	tri_backend_all_reduce_sums_across_cpu_cuda_and_vulkan	requires a live CUDA device AND an integrated Vulkan device	cuda
+fuel-tensor/src/lazy.rs	maximum_minimum_nan_convention_lazy_realize_smoke	requires a live CUDA device	cuda
+fuel-tensor/src/lazy.rs	relu_nan_convention_lazy_realize_smoke	requires a live CUDA device	cuda
+fuel-tensor/tests/cuda_async_realize_live.rs	deep_chain_realize_on_cuda_matches_reference	requires a live CUDA device	cuda
+fuel-tensor/tests/cuda_async_realize_live.rs	long_chain_pool_reuse_on_cuda_matches_reference	requires a live CUDA device	cuda
+fuel-tensor/tests/cuda_async_realize_live.rs	mul_add_realize_on_cuda_matches_reference	requires a live CUDA device	cuda
+fuel-tensor/tests/cuda_multidevice_realize_live.rs	two_subdags_cpu_and_cuda_realize_in_one_pass	requires a live CUDA device	cuda
+fuel-tensor/tests/cuda_vulkan_multidevice_realize_live.rs	two_subdags_cuda_and_vulkan_realize_in_one_pass	requires a live CUDA device + a Vulkan device (AMD iGPU)	cuda
+fuel-tensor/tests/cuda_vulkan_overlap_bench_live.rs	arbitrary_independent_subdags_auto_overlap	requires a live CUDA device + a cross-vendor Vulkan device (AMD iGPU)	cuda
+fuel-tensor/tests/cuda_vulkan_overlap_bench_live.rs	auto_overlap_both_operand_orders	requires a live CUDA device + a cross-vendor Vulkan device (AMD iGPU)	cuda
+fuel-tensor/tests/cuda_vulkan_overlap_bench_live.rs	independent_cuda_and_vulkan_subdags_overlap	requires a live CUDA device + a cross-vendor Vulkan device (AMD iGPU)	cuda
+fuel-tensor/tests/gap029_step0_q4_0_cuda_prefill_probe.rs	gap029_step0_q4_0_prefill_shape_on_cuda	live GPU: run via scripts/gpu-run.ps1	cuda
+fuel-tensor/tests/recip_abs_realize_live.rs	abs_realize_on_cuda_matches_reference		cuda
+fuel-tensor/tests/recip_abs_realize_live.rs	recip_realize_on_cuda_matches_reference		cuda
+fuel-tensor/tests/vulkan_bridge_realize_live.rs	deep_chain_realize_on_vulkan_matches_reference	requires a live Vulkan device	vulkan
+fuel-tensor/tests/vulkan_bridge_realize_live.rs	mul_add_realize_on_vulkan_matches_reference	requires a live Vulkan device	vulkan
+fuel-transformers/tests/qwen3_cpu_yardstick.rs	kv_context_cpu_matches_forward_cpu_reference	needs network (hf_hub) to fetch the real Qwen3-0.6B GGUF on first run	weights-or-network
+fuel-transformers/tests/qwen3_cpu_yardstick.rs	m1_cuda_matches_cpu_reference	needs network, a real CUDA device, and --features cuda; run via scripts/gpu-run.ps1	cuda
+fuel-transformers/tests/qwen3_cpu_yardstick.rs	m1_cuda_speed_harness	needs network, a real CUDA device, and --features cuda; run via scripts/gpu-run.ps1	cuda
+fuel-vulkan-backend/src/capture.rs	capture_replay_rebind_affine	requires a live Vulkan device	vulkan
+fuel-vulkan-backend/src/probe.rs	driver_identity_is_stable_across_instance_version	requires a live Vulkan device	vulkan
+fuel-vulkan-backend/src/probe.rs	driver_version_key_is_never_empty	requires a live Vulkan device	vulkan
+fuel-vulkan-backend/src/probe.rs	report_host_visible_memory_layout_incomparability	live GPU: enumerates real Vulkan memory layouts; run via scripts/gpu-run.ps1	vulkan
+fuel-vulkan-backend/src/probe.rs	subgroup_width_is_never_a_zeroed_read	requires a live Vulkan device	vulkan
+fuel-vulkan-backend/src/probe.rs	uncached_enumeration_fans_out_per_thread	deliberately fires concurrent vkCreateInstance; run serialized under the GPU lock	vulkan
+fuel-vulkan-backend/src/probe.rs	v1_3_instance_bump_characterization	requires a live Vulkan device	vulkan
+fuel-vulkan-backend/src/probe.rs	vulkan_probe_is_total	requires a live Vulkan device	vulkan
+fuel-vulkan-backend/tests/adapter_inventory_live.rs	print_the_adapter_inventory	live GPU: enumerates real Vulkan adapters; run via scripts/gpu-run.ps1	vulkan
+fuel-vulkan-backend/tests/byte_storage_live.rs	alloc_then_download		vulkan
+fuel-vulkan-backend/tests/byte_storage_live.rs	bda_does_not_disturb_transfer_path		vulkan
+fuel-vulkan-backend/tests/byte_storage_live.rs	device_storage_has_valid_buffer_device_address		vulkan
+fuel-vulkan-backend/tests/byte_storage_live.rs	evicted_buffer_retained_on_batch_frees_post_fence	requires a live Vulkan device	vulkan
+fuel-vulkan-backend/tests/byte_storage_live.rs	one_mib_roundtrip_preserves_bytes		vulkan
+fuel-vulkan-backend/tests/byte_storage_live.rs	submit_pending_then_wait_submitted_computes_and_releases	requires a live Vulkan device	vulkan
+fuel-vulkan-backend/tests/byte_storage_live.rs	submitted_batch_dropped_without_wait_is_uaf_safe	requires a live Vulkan device	vulkan
+fuel-vulkan-backend/tests/byte_storage_live.rs	upload_download_roundtrip_preserves_bytes		vulkan
+fuel-vulkan-backend/tests/byte_storage_live.rs	zero_length_transfers_round_trip		vulkan
+fuel-vulkan-backend/tests/mapped_meter_live.rs	upload_and_download_account_host_visible_mappings	requires a live Vulkan device	vulkan
+fuel-vulkan-backend/tests/recycler_reclaim_live.rs	recycler_reclaims_across_full_realizes_no_unbounded_growth	requires a live Vulkan device	vulkan
+fuel-vulkan-dispatch/tests/vulkan_cross_vendor_masked_fill.rs	masked_fill_cross_vendor_second_adapter_verify_only	cross-vendor comparison: needs a second Vulkan adapter	vulkan
+fuel-vulkan-dispatch/tests/vulkan_deferred_eviction_live.rs	vulkan_evict_fault_back_roundtrip_preserves_output	requires a live Vulkan device	vulkan
+fuel-vulkan-dispatch/tests/vulkan_deferred_eviction_live.rs	vulkan_release_open_batch_deferred_deletion_no_drain	requires a live Vulkan device	vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_affine_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_affine_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_affine_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_affine_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_argmax_any_dim_bf16_dim0		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_argmax_any_dim_f32_dim0		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_argmax_any_dim_f64_dim0		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_argmax_last_dim_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_argmax_last_dim_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_argmin_any_dim_f16_dim0		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_argmin_any_dim_f32_middle		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_argmin_last_dim_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_binary_add_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_binary_add_f32_direct_wrapper		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_binary_add_f32_rank2_contig		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_binary_add_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_binary_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_binary_div_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_binary_maximum_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_binary_maximum_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_binary_minimum_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_binary_mul_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_binary_mul_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_binary_sub_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_cast_bf16_to_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_cast_f16_to_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_cast_f32_to_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_cast_f32_to_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_cast_f32_to_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_cast_f64_to_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_cast_f8e4m3_roundtrip		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_clamp_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_concat_along_dim_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_concat_along_dim_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_concat_along_last_bf16_odd_a_dim		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_concat_along_last_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_concat_n3_along_last_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_concat_n4_along_leading_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_conv2d_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_conv2d_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_conv2d_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_copy_to_cpu_f32_direct_wrapper		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_cumsum_f16_1d		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_cumsum_f32_1d		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_cumsum_f32_middle_axis		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_cumsum_f64_1d		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_flash_attn_backward_f32_causal		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_flash_attn_f32_causal		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_flip_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_gather_bf16_dim1		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_gather_f32_dim1		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_gather_f64_dim0		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_index_add_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_index_add_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_index_add_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_index_add_f32_starts_from_base		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_index_add_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_index_select_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_index_select_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_index_select_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_index_select_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_layer_norm_backward_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_layer_norm_backward_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_layer_norm_backward_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_layer_norm_backward_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_layer_norm_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_layer_norm_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_layer_norm_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_layer_norm_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_masked_fill_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_masked_fill_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_masked_fill_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_batched_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_bf16_bf16_bf16_coop_size		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_bf16_bf16_bf16_multi_tile		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_bf16_bf16_bf16_small		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_bf16_bf16_f32_coop_size		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_bf16_bf16_f32_multi_tile		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_bf16_bf16_f32_small		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_f16_f16_f16_coop_size		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_f16_f16_f16_multi_tile		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_f16_f16_f16_small		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_f16_f16_f32_coop_size		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_f16_f16_f32_multi_tile		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_f16_f16_f32_small		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_f32_bf16_b_coop_size		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_f32_bf16_b_matvec		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_f32_bf16_b_small_m		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_gqa_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_matvec_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_small_m_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_matmul_tiled_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_backward_const_bf16_1d		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_backward_const_f32_2d		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_backward_reflect_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_backward_reflect_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_backward_reflect_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_backward_replicate_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_backward_replicate_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_backward_replicate_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_const_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_const_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_const_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_reflect_bf16_2d		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_reflect_f32_1d		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_reflect_f64_1d		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_replicate_f16_2d		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_pad_replicate_f32_1d		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_powi_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_powi_squared_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_qmatmul_q4_0_m1		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_qmatmul_q4_0_tiled		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_qmatmul_q4_km		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_qmatmul_q8_0		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_reduce_max_full_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_reduce_max_last_dim_bf16_odd_rows		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_reduce_mean_full_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_reduce_mean_full_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_reduce_mean_last_dim_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_reduce_mean_last_dim_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_reduce_min_full_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_reduce_min_full_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_reduce_sum_full_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_reduce_sum_full_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_reduce_sum_last_dim_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_reduce_sum_last_dim_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_rms_norm_last_dim_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_rms_norm_last_dim_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_rms_norm_last_dim_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_rms_norm_last_dim_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_roll_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_rope_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_rope_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_rope_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_rope_identity_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_rope_quarter_rotation_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_scatter_add_bf16_dim0		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_scatter_add_bf16_starts_from_base		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_scatter_add_f16_dim0		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_scatter_add_f16_starts_from_base		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_scatter_add_f32_dim0		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_scatter_add_f32_starts_from_base		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_scatter_add_f64_dim0		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_scatter_add_f64_starts_from_base		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_softmax_last_dim_backward_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_softmax_last_dim_backward_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_softmax_last_dim_backward_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_softmax_last_dim_backward_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_softmax_last_dim_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_softmax_last_dim_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_softmax_last_dim_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_softmax_last_dim_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_tril_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_triu_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_triu_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_abs_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_abs_sign_recip_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_bf16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_cos_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_cos_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_exp_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_exp_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_gelu_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_gelu_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_log_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_log_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_neg_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_neg_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_neg_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_recip_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_recip_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_relu_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_relu_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_sigmoid_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_sigmoid_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_sigmoid_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_sign_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_sign_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_silu_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_silu_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_sin_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_sin_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_sin_f64_huge		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_sqr_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_sqrt_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_step_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_tanh_f16		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_tanh_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_unary_tanh_f64		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_write_slice_b1_u8		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_write_slice_b2_f16_kv_cache		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_write_slice_b4_1d_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_write_slice_b4_2d_f32		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_write_slice_b4_kv_cache_shape		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_dispatch_write_slice_b8_f64_1d		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_fill_bytes_zero_lives_on_device		vulkan
+fuel-vulkan-dispatch/tests/vulkan_dispatch_live.rs	vulkan_minmax_nan_propagates_a_first		vulkan
+fuel-vulkan-dispatch/tests/vulkan_write_slice_rotating_live.rs	vulkan_dispatch_write_slice_rotating_splits_across_boundary		vulkan
+fuel-vulkan-dispatch/tests/vulkan_write_slice_rotating_live.rs	vulkan_dispatch_write_slice_rotating_within_window		vulkan
+fuel-vulkan-dispatch/tests/vulkan_write_slice_rotating_live.rs	vulkan_dispatch_write_slice_rotating_wraps_position		vulkan
