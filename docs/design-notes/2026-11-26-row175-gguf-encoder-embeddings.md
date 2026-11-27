@@ -1,4 +1,4 @@
-# Row 175 (provisional): GGUF encoder embeddings (design note)
+# Row 173 (provisional; first drafted as 175, the file name keeps that): GGUF encoder embeddings (design note)
 
 Status: DESIGN, nothing built. Opened 2026-11-26. Owner: Fuel 1. Consumer: Lightbulb `/v1/embeddings` (CireSnave board 505: "Yes for the embeddings endpoint."). Scheduled, not a skip (6.21). The row number is provisional; the PM renumbers at the gate.
 
