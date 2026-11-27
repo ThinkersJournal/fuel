@@ -374,7 +374,10 @@ SigmoidInplace [BF16, BF16] Cuda src=baracuda generic=false rev=7e81d1277b7e2641
 SigmoidInplace [F16, F16] Cuda src=baracuda generic=false rev=7e81d1277b7e2641
 SigmoidInplace [F32, F32] Cuda src=baracuda generic=false rev=7e81d1277b7e2641
 SigmoidInplace [F64, F64] Cuda src=baracuda generic=false rev=7e81d1277b7e2641
+SignElementwise [BF16, BF16] Cuda src=baracuda generic=true rev=ba26dbf34ba68f68
+SignElementwise [F16, F16] Cuda src=baracuda generic=true rev=ba26dbf34ba68f68
 SignElementwise [F32, F32] Cuda src=baracuda generic=true rev=be4fed154d5b0515
+SignElementwise [F64, F64] Cuda src=baracuda generic=true rev=ba26dbf34ba68f68
 SignInplace [BF16, BF16] Cuda src=baracuda generic=false rev=c09836a88049d93a
 SignInplace [F16, F16] Cuda src=baracuda generic=false rev=c09836a88049d93a
 SignInplace [F32, F32] Cuda src=baracuda generic=false rev=c09836a88049d93a
