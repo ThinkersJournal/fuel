@@ -245,19 +245,19 @@ criterion = { version = "0.8", default-features = false }
 # 173/173 live CUDA parity). The whole workspace moved to alpha.77 in lockstep
 # (also carries kernelgen breadth: base_offset/where-select/hetero-dropout/
 # argsort/topk/im2col — all off-key, no STRUCTURE_KEY_VERSION bump).
-baracuda-types         = { version = "0.1.0-alpha.209", features = ["half-crate", "f8-crate"] }
-baracuda-core          = { version = "0.1.0-alpha.209" }
-baracuda-cuda-sys      = { version = "0.1.0-alpha.209" }
-baracuda-driver        = { version = "0.1.0-alpha.209" }
-baracuda-runtime       = { version = "0.1.0-alpha.209" }
-baracuda-cublas-sys    = { version = "0.1.0-alpha.209" }
-baracuda-cublas        = { version = "0.1.0-alpha.209" }
-baracuda-cudnn-sys     = { version = "0.1.0-alpha.209" }
-baracuda-cudnn         = { version = "0.1.0-alpha.209", features = ["half-crate"] }
-baracuda-curand-sys    = { version = "0.1.0-alpha.209" }
-baracuda-curand        = { version = "0.1.0-alpha.209" }
-baracuda-nvrtc-sys     = { version = "0.1.0-alpha.209" }
-baracuda-nvrtc         = { version = "0.1.0-alpha.209" }
+baracuda-types         = { version = "0.1.0-alpha.217", features = ["half-crate", "f8-crate"] }
+baracuda-core          = { version = "0.1.0-alpha.217" }
+baracuda-cuda-sys      = { version = "0.1.0-alpha.217" }
+baracuda-driver        = { version = "0.1.0-alpha.217" }
+baracuda-runtime       = { version = "0.1.0-alpha.217" }
+baracuda-cublas-sys    = { version = "0.1.0-alpha.217" }
+baracuda-cublas        = { version = "0.1.0-alpha.217" }
+baracuda-cudnn-sys     = { version = "0.1.0-alpha.217" }
+baracuda-cudnn         = { version = "0.1.0-alpha.217", features = ["half-crate"] }
+baracuda-curand-sys    = { version = "0.1.0-alpha.217" }
+baracuda-curand        = { version = "0.1.0-alpha.217" }
+baracuda-nvrtc-sys     = { version = "0.1.0-alpha.217" }
+baracuda-nvrtc         = { version = "0.1.0-alpha.217" }
 # The live JIT synthesizer (BaracudaSynthesizer, the fireline-synth Synthesizer
 # impl). Was an EXACT pin (only the `seam` module surface deemed
 # supported/stable, generator internals treated as alpha-fluid) — retired
@@ -322,10 +322,10 @@ baracuda-nvrtc         = { version = "0.1.0-alpha.209" }
 # prerelease would not float to the next alpha anyway). Fuel names only the seam crate; emit comes with it.
 # 0.1.0-alpha.2 (2026-10-24) requires fuel-kernel-seam{,-types} ^0.24.0 (alpha.161 required ^0.23.0, which
 # left two seam crates in a 0.24 workspace). 0.1.0-alpha.15 (2026-10-24) requires them on ^0.25 (built on 0.25.10).
-baracuda-cuda-seam     = { version = "0.58.0" }
-baracuda-nccl-sys      = { version = "0.1.0-alpha.209" }
-baracuda-nccl          = { version = "0.1.0-alpha.209", features = ["half-crate"] }
-baracuda-cutlass       = { version = "0.1.0-alpha.209" }
+baracuda-cuda-seam     = { version = "0.60.0" }
+baracuda-nccl-sys      = { version = "0.1.0-alpha.217" }
+baracuda-nccl          = { version = "0.1.0-alpha.217", features = ["half-crate"] }
+baracuda-cutlass       = { version = "0.1.0-alpha.217" }
 # baracuda alpha.26 — new ML kernel facade. Fuel uses `baracuda-kernels-sys`
 # (raw extern "C") rather than the safe `baracuda-kernels` Plan-based wrapper
 # so each kernel becomes its own KernelRef in Fuel's binding table — the
@@ -353,8 +353,8 @@ unpopped-vocab         = { version = "~0.60.1" }
 # not a Fuel dependency: nothing in Fuel imported it.)
 fireline-grammar       = { version = "~0.11" }
 fireline-synth         = { version = "~0.11" }
-baracuda-kernels-types = { version = "0.1.0-alpha.209" }
-baracuda-kernels-sys   = { version = "0.1.0-alpha.209", features = [
+baracuda-kernels-types = { version = "0.1.0-alpha.217" }
+baracuda-kernels-sys   = { version = "0.1.0-alpha.217", features = [
     "cudnn",
     "sm89",
     # Phase 48 (Consolidation B) 4-bit weight-only GEMM families.
