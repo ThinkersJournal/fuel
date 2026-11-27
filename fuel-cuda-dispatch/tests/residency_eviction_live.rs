@@ -11,9 +11,13 @@
 //! Invoke explicitly (verify agent):
 //!
 //! ```sh
-//! cargo test -p fuel-dispatch --features cuda \
+//! cargo test -p fuel-cuda-dispatch --features cuda \
 //!     --test residency_eviction_live -- --ignored --nocapture
 //! ```
+//!
+//! Moved here from `fuel-dispatch/tests` (GAP-416): since ROADMAP row 137 step 6.2 the CUDA kernels reach the global
+//! binding table only through `fuel_cuda_dispatch::install_global()`, which `fuel-dispatch` cannot call (it sits above it),
+//! so the test failed with "no backend supports relu on [F32, F32]; available backends: [Cpu]" on its first real run.
 
 #![cfg(feature = "cuda")]
 
@@ -76,6 +80,7 @@ fn registry_finds_the_device_by_identity(dev: &CudaDevice) {
 #[ignore]
 fn cuda_evict_fault_back_roundtrip_preserves_output() {
     let Some(dev) = dev_or_skip() else { return };
+    fuel_cuda_dispatch::install_global();
     registry_finds_the_device_by_identity(&dev);
 
     let build = || -> (SharedGraph, NodeId, NodeId) {
