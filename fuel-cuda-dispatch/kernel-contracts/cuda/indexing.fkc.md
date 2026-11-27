@@ -863,7 +863,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Baracuda `index_add_f32` (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so the sum is order-dependent and NOT bit-stable; native f32 accumulation. The out-of-range index behaviour is MEASURED in `baracuda_half_index_live` and is a labelled KNOWN DIVERGENCE pending the KISS index_add clause (PM ruled 2026-11-27: index_add SKIPS an out-of-range write)."
+  notes: "Baracuda `index_add_f32` (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so the sum is order-dependent and NOT bit-stable; native f32 accumulation. The out-of-range index behaviour is MEASURED in `baracuda_half_index_live` and is a labelled KNOWN DIVERGENCE from KISS-OPS-6.11-0005 (merged, KISS 0.24.4: an out-of-bounds write of a scatter-decomposed op such as index_add is SKIPPED, never declined) until the measurement here shows it conforms."
 
 determinism: nondeterministic
 ```
@@ -938,7 +938,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Baracuda `index_add_f64` (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so the sum is order-dependent and NOT bit-stable; native f64 accumulation. The out-of-range index behaviour is MEASURED in `baracuda_half_index_live` and is a labelled KNOWN DIVERGENCE pending the KISS index_add clause (PM ruled 2026-11-27: index_add SKIPS an out-of-range write)."
+  notes: "Baracuda `index_add_f64` (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so the sum is order-dependent and NOT bit-stable; native f64 accumulation. The out-of-range index behaviour is MEASURED in `baracuda_half_index_live` and is a labelled KNOWN DIVERGENCE from KISS-OPS-6.11-0005 (merged, KISS 0.24.4: an out-of-bounds write of a scatter-decomposed op such as index_add is SKIPPED, never declined) until the measurement here shows it conforms."
 
 determinism: nondeterministic
 ```
@@ -1013,7 +1013,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Baracuda `index_add_f16` (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so the sum is order-dependent and NOT bit-stable; native f16 accumulation. The out-of-range index behaviour is MEASURED in `baracuda_half_index_live` and is a labelled KNOWN DIVERGENCE pending the KISS index_add clause (PM ruled 2026-11-27: index_add SKIPS an out-of-range write)."
+  notes: "Baracuda `index_add_f16` (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so the sum is order-dependent and NOT bit-stable; native f16 accumulation. The out-of-range index behaviour is MEASURED in `baracuda_half_index_live` and is a labelled KNOWN DIVERGENCE from KISS-OPS-6.11-0005 (merged, KISS 0.24.4: an out-of-bounds write of a scatter-decomposed op such as index_add is SKIPPED, never declined) until the measurement here shows it conforms."
 
 determinism: nondeterministic
 ```
@@ -1088,7 +1088,7 @@ precision:
   max_relative: ~
   max_absolute: ~
   audited: true
-  notes: "Baracuda `index_add_bf16` (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so the sum is order-dependent and NOT bit-stable; native bf16 accumulation. The out-of-range index behaviour is MEASURED in `baracuda_half_index_live` and is a labelled KNOWN DIVERGENCE pending the KISS index_add clause (PM ruled 2026-11-27: index_add SKIPS an out-of-range write)."
+  notes: "Baracuda `index_add_bf16` (GAP-413): duplicate indices accumulate by atomics in an undefined order (as torch CUDA), so the sum is order-dependent and NOT bit-stable; native bf16 accumulation. The out-of-range index behaviour is MEASURED in `baracuda_half_index_live` and is a labelled KNOWN DIVERGENCE from KISS-OPS-6.11-0005 (merged, KISS 0.24.4: an out-of-bounds write of a scatter-decomposed op such as index_add is SKIPPED, never declined) until the measurement here shows it conforms."
 
 determinism: nondeterministic
 ```
