@@ -209,6 +209,10 @@ GreaterEqualElementwise [BF16, BF16, Bool] Cuda src=baracuda generic=true rev=17
 GreaterEqualElementwise [F16, F16, Bool] Cuda src=baracuda generic=true rev=049ca7c998dd71c5
 GreaterEqualElementwise [F32, F32, Bool] Cuda src=baracuda generic=true rev=00c01df1f3866063
 GreaterEqualElementwise [F64, F64, Bool] Cuda src=baracuda generic=true rev=954cc387ad3bd7eb
+IndexAdd [BF16, U32, BF16, BF16] Cuda src=baracuda generic=false rev=9f1d20e235dbe819
+IndexAdd [F16, U32, F16, F16] Cuda src=baracuda generic=false rev=5ace35455ecd6aad
+IndexAdd [F32, U32, F32, F32] Cuda src=baracuda generic=false rev=eb3ee2aaaa72f471
+IndexAdd [F64, U32, F64, F64] Cuda src=baracuda generic=false rev=9f4642f5a03cb915
 IndexSelect [BF16, U32, BF16] Cuda src=baracuda generic=false rev=7a70ecacea4cdb25
 IndexSelect [F16, U32, F16] Cuda src=baracuda generic=false rev=7a70ecacea4cdb25
 IndexSelect [F32, U32, F32] Cuda src=baracuda generic=false rev=1a3e242d3a7f894a
