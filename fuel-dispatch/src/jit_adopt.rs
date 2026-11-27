@@ -137,6 +137,19 @@ pub(crate) fn element_kind_to_dtype(ek: ElementKind) -> Option<DType> {
         // (fuel#255) rather than in this
         // comment, so the deferral has an owner instead of just a note.
         ElementKind::I16 | ElementKind::F8E8M0 | ElementKind::F8E6M2 => return None,
+        // unpopped-vocab 0.60 (E1a) added seven kinds. Fuel has NO `DType` for any of them, so each
+        // declines BY NAME (never `_`, so the next vocab bump is again a compile error here):
+        // `F128`/`I128`/`U128`/`I256`/`U256` are wide scalars Fuel does not carry, `F8E3M4` is a
+        // third FP8 layout (Fuel names only the OCP E4M3 and E5M2 pair), and `F8UE4M3` is an
+        // UNSIGNED E4M3, a different format from Fuel's `F8E4M3` (OCP finite E4M3, signed), so a
+        // name match would be the silent-corruption shape the Complex64 note above describes.
+        ElementKind::F128
+        | ElementKind::I128
+        | ElementKind::U128
+        | ElementKind::I256
+        | ElementKind::U256
+        | ElementKind::F8E3M4
+        | ElementKind::F8UE4M3 => return None,
     })
 }
 
@@ -355,6 +368,33 @@ mod tests {
     /// - The telemetry structure-key path already ships AND tests this exact pair
     ///   (`telemetry::baracuda_provider::map_element_kind`); this pins the JIT
     ///   path to the same committed identity rather than inventing one.
+    #[test]
+    fn the_vocab_0_60_kinds_fuel_has_no_dtype_for_decline_by_name() {
+        use super::element_kind_to_dtype;
+        use fuel_ir::DType;
+        for ek in [
+            ElementKind::F128,
+            ElementKind::I128,
+            ElementKind::U128,
+            ElementKind::I256,
+            ElementKind::U256,
+            ElementKind::F8E3M4,
+            ElementKind::F8UE4M3,
+        ] {
+            assert_eq!(
+                element_kind_to_dtype(ek),
+                None,
+                "{ek:?} has no Fuel DType: it must decline, not map onto a lookalike"
+            );
+        }
+        // CONTROL: the neighbouring signed OCP E4M3 still maps, so the loop above is not a
+        // function that declines everything.
+        assert_eq!(
+            element_kind_to_dtype(ElementKind::Fp8E4M3FN),
+            Some(DType::F8E4M3)
+        );
+    }
+
     #[test]
     fn bool_maps_to_the_seam_bool_and_did_not_stay_declined() {
         use super::{dtype_to_element_kind, element_kind_to_dtype};
