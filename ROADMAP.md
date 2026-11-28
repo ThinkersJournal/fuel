@@ -3364,3 +3364,7 @@ Side dependencies: `fuel-onnx` and `fuel-datasets` depend downward as needed.
 `fuel-pyo3` wraps whichever layers it needs without influencing them.
 `fuel-dispatch` (Phase 5 Tier 4, long-term) sits between `fuel-core` and
 new user-facing op-sequence APIs, with no effect on any layer above or below.
+
+## Known-red checks
+
+**DEVICE JOB RED: 11 KNOWN, LISTED (2026-11-28, run 46069546492 on `device-job-crates@28b4189ee`).** `device-tests.yml` now runs (shell `powershell`, crate lists fixed, `--no-fail-fast`): Vulkan job 81 binaries / 1810 passed / 0 failed; CUDA job 86 binaries / 1435 passed / 11 failed, all 11 owned by GAP-416 and its rows GAP-418 and GAP-419 (`fuel-dispatch` lib: jit_ingest x7, jit_ingest_probe x2, the optimize paged_attn placement report; `fuel-cuda-backend` lib: the determinism_audit concurrent-load guard). A red dispatch of that job is these 11 until a row says otherwise; nothing is `#[ignore]`d to get green.

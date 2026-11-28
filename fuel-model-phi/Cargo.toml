@@ -13,11 +13,14 @@
 # and docs/session-prompts/fuel-core-dissolution-b1.md's shim-debt ledger.
 [features]
     # Forwards to fuel-core's cuda feature -- see fuel-model-llama's Cargo.toml.
-    cuda = ["fuel-tensor/cuda"]
+    # `dep:fuel-cuda-backend`: the cuda-gated lib tests name `fuel_cuda_backend::` directly (found by the
+    # device-tests CUDA job, run 45960294168: E0433 -- no job had compiled this feature before).
+    cuda = ["fuel-tensor/cuda", "dep:fuel-cuda-backend"]
 
 [dependencies]
     # The cuda-gated capture path names `fuel_dispatch::pipelined::{CapturedDecodeSession, StorageCache}`;
     # the crate did not depend on it, so `--features cuda` failed with E0433 (found 2026-10-25).
+    fuel-cuda-backend = { workspace = true, optional = true }
     fuel-dispatch  = { workspace = true }
     fuel-graph     = { workspace = true }
     fuel-ir        = { workspace = true }
@@ -32,3 +35,7 @@
     hf-hub         = { workspace = true }
     serde          = { workspace = true }
     serde_json     = { workspace = true }
+
+[dev-dependencies]
+# The hardware-skip helper the live-device tests use (same pattern as fuel-model-llama).
+fuel-test-support = { path = "../fuel-test-support" }

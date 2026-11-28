@@ -11865,14 +11865,22 @@ mod generate_tests {
             fuel_ir::probe::BackendId::Vulkan.default_location()
         );
 
+        // POST-GATE TRUTH (GAP-416; bisect first-bad `7ecc79f6e`, 2026-11-23, the region-pathfinder competitiveness
+        // gate hotfix, Qwen3 Vulkan decode 3081 ms -> 25 ms): a CPU arm summed more than
+        // `REGION_COMPETITIVE_FACTOR` x slower than the GPU winner is no longer recorded as a branch arm, so this
+        // toy model on a real GPU has NO branches at any backlog and the 2026-11-21 criterion (arm 0 on an idle device,
+        // arm 1 under an hour of backlog; measured `arm_chosen [32, 3, 0, 0]` at `f747717f4`) cannot be observed here.
+        // What this still measures: the logits equal the CPU reference at backlog 0, 1 h and back to 0, and no branch
+        // resolves at any of them. The load-flip criterion itself is UNMEASURED on a real model until a competitive
+        // CPU arm exists (the synthetic-table cases in `fuel-dispatch/src/optimize.rs` cover the mechanism).
         let before_a = optimizer_trace::snapshot();
         let logits_a = forward(&vk_device);
         let a = optimizer_trace::snapshot().since(&before_a);
         check_logits("A (backlog 0)", &logits_a);
-        assert!(a.branches_resolved() > 0, "A: no branch resolved: {a:?}");
-        assert!(
-            a.arm_chosen[0] > a.arm_chosen[1],
-            "A (backlog 0): arm 0 must be chosen more often than arm 1 (the executor's own in-realize              backlog may move a few branches); {a:?}"
+        assert_eq!(
+            a.branches_resolved(),
+            0,
+            "A: no branch is expected under the competitiveness gate; {a:?}"
         );
 
         backlog_add_ns(loc, HOUR_NS);
@@ -11881,25 +11889,20 @@ mod generate_tests {
         let b = optimizer_trace::snapshot().since(&before_b);
         backlog_sub_ns(loc, HOUR_NS);
         check_logits("B (backlog 1 h)", &logits_b);
-        assert!(b.branches_resolved() > 0, "B: no branch resolved: {b:?}");
         assert_eq!(
-            b.arm_chosen[0], 0,
-            "B (backlog 1 h): no branch may resolve to arm 0; {b:?}"
-        );
-        assert_eq!(
-            b.arm_chosen[1],
             b.branches_resolved(),
-            "B (backlog 1 h): every branch must resolve to arm 1; {b:?}"
+            0,
+            "B (backlog 1 h): no branch is expected under the competitiveness gate; {b:?}"
         );
 
         let before_c = optimizer_trace::snapshot();
         let logits_c = forward(&vk_device);
         let c = optimizer_trace::snapshot().since(&before_c);
         check_logits("C (backlog back to 0)", &logits_c);
-        assert!(c.branches_resolved() > 0, "C: no branch resolved: {c:?}");
-        assert!(
-            c.arm_chosen[0] > c.arm_chosen[1],
-            "C (backlog back to 0): arm 0 must be chosen more often than arm 1; {c:?}"
+        assert_eq!(
+            c.branches_resolved(),
+            0,
+            "C: no branch is expected under the competitiveness gate; {c:?}"
         );
         eprintln!(
             "backlog phases: A arms {:?} / B arms {:?} / C arms {:?}",
