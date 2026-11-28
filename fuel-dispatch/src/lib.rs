@@ -136,6 +136,7 @@ mod jit_ingest_probe;
 #[doc(hidden)]
 pub mod jit_test_exports {
     pub use crate::fkc::verify::{HostTensor, fill_deterministic};
+    pub use crate::jit_ingest::{VerifyVerdict, ingest_one, verify_candidate};
     pub use crate::jit_ingest_probe::{reference_from_registered_recipe, reference_output};
 
     /// `pipelined::op_to_op_kind` (crate-private): the binding-table kind of a graph op.
