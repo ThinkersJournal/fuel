@@ -130,6 +130,19 @@ pub use jit_ingest::{
 };
 #[cfg(all(feature = "jit", any(feature = "cuda", test)))]
 mod jit_ingest_probe;
+/// Hidden, semver-exempt re-exports of private JIT/probe items for the live CUDA tests that moved to
+/// `fuel-cuda-dispatch/tests` (GAP-418). Not part of the supported API.
+#[cfg(all(feature = "dev-tools", feature = "jit", feature = "cuda"))]
+#[doc(hidden)]
+pub mod jit_test_exports {
+    pub use crate::fkc::verify::{HostTensor, fill_deterministic};
+    pub use crate::jit_ingest_probe::{reference_from_registered_recipe, reference_output};
+
+    /// `pipelined::op_to_op_kind` (crate-private): the binding-table kind of a graph op.
+    pub fn op_to_op_kind(op: &fuel_graph::Op) -> Option<fuel_ir::dispatch::OpKind> {
+        crate::pipelined::op_to_op_kind(op)
+    }
+}
 pub mod judge_cache;
 pub mod judge_report_path;
 pub mod kernel;
