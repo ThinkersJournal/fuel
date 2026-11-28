@@ -41,7 +41,6 @@ use fuel_dispatch::{FlagReport, RejectionReport};
 struct E2eFeedback {
     adopted: std::sync::Mutex<Vec<(String, fuel_graph::registry::FusedOpId)>>,
     rejected: std::sync::Mutex<Vec<RejectionReportSnapshot>>,
-    flagged: std::sync::Mutex<Vec<FlagReportSnapshot>>,
     notify: std::sync::Mutex<Option<std::sync::mpsc::Sender<()>>>,
 }
 
@@ -54,18 +53,6 @@ struct E2eFeedback {
 struct RejectionReportSnapshot {
     failed_claim: &'static str,
     detail: String,
-}
-
-/// An owned snapshot of a [`FlagReport`] — the escalate counterpart of
-/// [`RejectionReportSnapshot`], lifting the fields the T6 e2e assertions
-/// check (claim/detail/diff_summary/escalate) into an owned `'static`
-/// value the borrowed `&FlagReport` callback can push into a `Mutex`.
-#[derive(Debug)]
-struct FlagReportSnapshot {
-    claim: &'static str,
-    detail: String,
-    diff_summary: Option<String>,
-    escalate: bool,
 }
 
 impl E2eFeedback {
@@ -100,13 +87,7 @@ impl ProviderFeedback for E2eFeedback {
         self.fire_notify();
     }
 
-    fn on_flagged(&self, report: &FlagReport) {
-        self.flagged.lock().unwrap().push(FlagReportSnapshot {
-            claim: report.claim,
-            detail: report.detail.clone(),
-            diff_summary: report.diff_summary.clone(),
-            escalate: report.escalate,
-        });
+    fn on_flagged(&self, _report: &FlagReport) {
         self.fire_notify();
     }
 }
