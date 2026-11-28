@@ -3,6 +3,11 @@ This documents the main changes to the `fuel` workspace.
 
 > **0.42.0 is not a `main` version.** It is reserved for a seam-only crates.io release (`fuel-kernel-seam-types` and `fuel-kernel-seam` on `unpopped-vocab` ^0.43.2) cut from the branch `seam-vocab-043`. Versions on `main` go 0.41.x, then 0.43.0 (the vocabulary bump); do not stamp 0.42.0 on `main`.
 
+## v0.60.0 - 2026-11-27 (PM-allocated; BREAKING: takes baracuda 0.1.0-alpha.231, cuda-seam 0.61.0, unpopped-vocab 0.61.10 and fireline 0.12, whose types fuel re-exports; written by pm-assist from the lane's PR body and diff)
+
+- **Breaking (dependency re-pin):** `baracuda` alpha.231, `cuda-seam` 0.61.0, `unpopped-vocab` 0.61.10, `fireline` 0.12, `onemkl` 0.6.1 and the lock lags; fuel re-exports fireline types, so a consumer must take fireline 0.12 too. Not in this release: vulkane, onemkl 0.6.5 and the unpopped 0.62/0.63 take.
+- **device-tests.yml fixed** and the first real run of the previously ignored device suites (GAP-416/418/419): Vulkan 1810 passed / 0 failed on 81 binaries; CUDA 1435 passed / 11 failed on 86 (run 46069546492). The device job is `workflow_dispatch` only and is EXPECTED RED until the 11 listed in the PR body are fixed; nothing is `#[ignore]`d.
+
 ## v0.59.0 - 2026-11-27 (PM-allocated; BREAKING: takes baracuda 0.1.0-alpha.217, cuda-seam 0.60.0, unpopped-vocab 0.60.23 and fireline 0.11, whose types fuel re-exports)
 
 ### Changed
