@@ -33,6 +33,7 @@ use fuel_memory::Storage;
 #[ignore = "requires a live CUDA device"]
 fn capture_decode_binary_chain_replays_bit_exact_cuda() {
     fuel_cuda_dispatch::install_global();
+    fuel_test_support::require_gpu_run_lock();
     use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
     use fuel_ir::Shape;
     use fuel_memory::BackendStorage;
@@ -182,6 +183,7 @@ fn capture_decode_binary_chain_replays_bit_exact_cuda() {
 #[ignore = "requires a live CUDA device"]
 fn capture_decode_matmul_replays_bit_exact_cuda() {
     fuel_cuda_dispatch::install_global();
+    fuel_test_support::require_gpu_run_lock();
     use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
     use fuel_ir::Shape;
     use fuel_memory::BackendStorage;
@@ -279,6 +281,7 @@ fn capture_decode_matmul_replays_bit_exact_cuda() {
 #[ignore = "requires a live CUDA device"]
 fn capture_decode_affine_replays_bit_exact_cuda() {
     fuel_cuda_dispatch::install_global();
+    fuel_test_support::require_gpu_run_lock();
     use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
     use fuel_ir::Shape;
     use fuel_memory::BackendStorage;
@@ -355,6 +358,7 @@ fn capture_decode_affine_replays_bit_exact_cuda() {
 #[ignore = "requires a live CUDA device"]
 fn capture_decode_index_select_replays_bit_exact_cuda() {
     fuel_cuda_dispatch::install_global();
+    fuel_test_support::require_gpu_run_lock();
     use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
     use fuel_ir::Shape;
     use fuel_memory::BackendStorage;
@@ -462,6 +466,7 @@ fn capture_decode_index_select_replays_bit_exact_cuda() {
 #[ignore = "requires a live CUDA device"]
 fn capture_decode_norm_silu_softmax_replays_bit_exact_cuda() {
     fuel_cuda_dispatch::install_global();
+    fuel_test_support::require_gpu_run_lock();
     use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
     use fuel_graph::registry::{FusedOpParams, FusedOps};
     use fuel_ir::Shape;
@@ -586,6 +591,7 @@ fn capture_decode_norm_silu_softmax_replays_bit_exact_cuda() {
 #[ignore = "requires a live CUDA device"]
 fn capture_decode_contiguize_then_concat_replays_bit_exact_cuda() {
     fuel_cuda_dispatch::install_global();
+    fuel_test_support::require_gpu_run_lock();
     use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
     use fuel_ir::Shape;
     use fuel_memory::BackendStorage;
@@ -735,6 +741,7 @@ fn capture_decode_contiguize_then_concat_replays_bit_exact_cuda() {
 #[ignore = "requires a live CUDA device"]
 fn capture_decode_same_device_copy_replays_bit_exact_cuda() {
     fuel_cuda_dispatch::install_global();
+    fuel_test_support::require_gpu_run_lock();
     use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
     use fuel_ir::Shape;
     use fuel_memory::BackendStorage;
@@ -878,6 +885,7 @@ fn capture_decode_same_device_copy_replays_bit_exact_cuda() {
 #[ignore = "requires a live CUDA device"]
 fn capture_decode_rejects_cross_device_copy_cuda() {
     fuel_cuda_dispatch::install_global();
+    fuel_test_support::require_gpu_run_lock();
     use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
     use fuel_ir::Shape;
     use fuel_memory::BackendStorage;
@@ -942,6 +950,7 @@ fn capture_decode_rejects_cross_device_copy_cuda() {
 #[ignore = "requires a live CUDA device"]
 fn captured_decode_session_replays_many_tokens_cuda() {
     fuel_cuda_dispatch::install_global();
+    fuel_test_support::require_gpu_run_lock();
     use fuel_cuda_backend::{CudaDevice, CudaStorageBytes};
     use fuel_graph::registry::{FusedOpParams, FusedOps};
     use fuel_ir::Shape;
